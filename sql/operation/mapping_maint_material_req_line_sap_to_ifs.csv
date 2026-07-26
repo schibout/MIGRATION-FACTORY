@@ -1,0 +1,102 @@
+ifs_table;ifs_column;ifs_type;mandatory;insertable;primary_key;sap_source_or_rule;comment
+MAINT_MATERIAL_REQ_LINE;maint_material_order_no;numeric;FALSE;TRUE;TRUE;RESB.RSNUM (n° réservation SAP, assimilé au bon de sortie matière maintenance IFS);ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;line_item_no;numeric;FALSE;FALSE;TRUE;RESB.RSPOS;No ligne materiel de la tâche (1,2,3…)
+MAINT_MATERIAL_REQ_LINE;part_no;varchar(25);FALSE;TRUE;FALSE;RESB.MATNR, sans zéros à gauche, tronqué 25;code article
+MAINT_MATERIAL_REQ_LINE;spare_contract;varchar(5);FALSE;TRUE;FALSE;RESB.WERKS transcodé 9200->SJ, 9000->CS, sinon code WERKS tronqué 5;SJM ou CAST
+MAINT_MATERIAL_REQ_LINE;date_required;timestamp without time zone;FALSE;TRUE;FALSE;RESB.BDTER converti YYYYMMDD;DD/MM/YYYY hh:mm
+MAINT_MATERIAL_REQ_LINE;plan_qty;numeric;TRUE;TRUE;FALSE;RESB.BDMNG;Qté demandée
+MAINT_MATERIAL_REQ_LINE;qty;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;qty_short;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;qty_assigned;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;qty_returned;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;catalog_contract;varchar(5);FALSE;TRUE;FALSE;même valeur que spare_contract;SJM ou CAST
+MAINT_MATERIAL_REQ_LINE;catalog_no;varchar(25);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;price_list_no;varchar(10);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;list_price;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;list_price_curr;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;sale_unit_price;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;sale_unit_price_curr;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;discount;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;qty_to_invoice;numeric;FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;cost;numeric;FALSE;FALSE;FALSE;RESB.ENWRT;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;wo_no;numeric;FALSE;FALSE;FALSE;RESB.AUFNR;= No BT de JT_TASK
+MAINT_MATERIAL_REQ_LINE;plan_line_no;numeric;FALSE;TRUE;FALSE;RESB.RSPOS;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;task_plan_line_seq;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;serial_no;varchar(50);FALSE;TRUE;FALSE;RESB.SERNR;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;condition_code;varchar(10);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;part_ownership;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;part_ownership_db;varchar(20);FALSE;TRUE;FALSE;constante COMPANY OWNED;COMPANY OWNED
+MAINT_MATERIAL_REQ_LINE;owner;varchar(20);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_code;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_code_db;varchar(20);TRUE;TRUE;FALSE;constante INVENT_ORDER;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;job_id;numeric;FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;is_closed;numeric;FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;pegged_qty;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;repair_part_flag;varchar(5);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;"""FALSE"""
+MAINT_MATERIAL_REQ_LINE;manual_line;varchar(5);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_equip_object_seq;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_mch_contract;varchar(5);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_mch_code;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_contract;varchar(5);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_org_code;varchar(8);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_lot_batch_no;varchar(20);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_err_descr;varchar(60);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_copy_prepost;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rwo_copy_prepost_db;varchar(20);TRUE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;"""FALSE"""
+MAINT_MATERIAL_REQ_LINE;price_source_db;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;price_source_id;varchar(10);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;generated;varchar(5);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;"""FALSE"""
+MAINT_MATERIAL_REQ_LINE;markup;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rental;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;rental_db;varchar(5);TRUE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;"""FALSE"""
+MAINT_MATERIAL_REQ_LINE;rental_task_res_seq;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;price_effective_date;timestamp without time zone;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;quotation_no;varchar(12);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;quotation_rev;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;wo_quo_no;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;quo_spare_seq;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;change_reason;varchar(40);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;changes_line_item_no;numeric;FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;qty_changed;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;task_seq;numeric;FALSE;TRUE;FALSE;RESB.AUFPL * 100000000 + RESB.APLZL, cohérent avec clean_data.jt_task;= N° tâche table JT_TASK
+MAINT_MATERIAL_REQ_LINE;quo_task_seq;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;tool_fac_row_no;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;place_in_facility_db;varchar(20);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;swap_part_db;varchar(20);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;serial_in;varchar(100);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;serial_in_contract;varchar(5);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;vendor_no;varchar(20);FALSE;TRUE;FALSE;RESB.LIFNR;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_source_ref1;varchar(50);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_source_ref2;varchar(50);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_source_ref3;varchar(50);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_source_ref4;varchar(50);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_source_ref_state;varchar(4000);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_source_ref_type;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;supply_source_ref_type_db;varchar(20);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;delivery;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;delivery_db;varchar(20);TRUE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;"""NORMAL"""
+MAINT_MATERIAL_REQ_LINE;part_type;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;part_type_db;varchar(20);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;mobile_created;varchar(4000);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;ne pas renseigner
+MAINT_MATERIAL_REQ_LINE;mobile_created_db;varchar(20);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;"""FALSE"""
+MAINT_MATERIAL_REQ_LINE;objid;varchar(10);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;0
+MAINT_MATERIAL_REQ_LINE;objversion;varchar(2000);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;0
+MAINT_MATERIAL_REQ_LINE;cf_alt_on_hand_qty;numeric;FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;cf_ecartqtedispo;numeric;FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;cf_on_supply_qty;numeric;FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;no_part_description;varchar(2000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;buy_unit_meas;varchar(10);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;pickup_task_id;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;consumed_qty;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;fbuy_unit_price;numeric;FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;external_id;varchar(500);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;sender_type;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;sender_type_db;varchar(20);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;sender_id;varchar(50);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;supply_site;varchar(5);FALSE;TRUE;FALSE;même valeur que spare_contract;
+MAINT_MATERIAL_REQ_LINE;mobile_warranty;varchar(4000);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;mobile_warranty_db;varchar(20);FALSE;FALSE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;purchase_method;varchar(4000);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;purchase_method_db;varchar(20);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;service_type;varchar(20);FALSE;TRUE;FALSE;Non alimenté à ce stade / laissé NULL;
+MAINT_MATERIAL_REQ_LINE;note;varchar(2000);FALSE;TRUE;FALSE;RESB.SGTXT;

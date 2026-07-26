@@ -1,0 +1,241 @@
+Flags;Data Type;Length;Source Column;Default Value;Db Client Values;Conversion List;Note Text
+P;VARCHAR2;5;CONTRACT;'SJ';;;Default value ''SJM'' from PREPARE  
+P;VARCHAR2;25;CATALOG_NO;;;;
+MIU;VARCHAR2;200;CATALOG_DESC;;;;
+I;VARCHAR2;25;PART_NO;;;;
+MIU;VARCHAR2;10;CATALOG_GROUP;;;;
+MIU;VARCHAR2;10;SALES_PRICE_GROUP_ID;;;;
+IU;VARCHAR2;5;ENG_ATTRIBUTE;;;;
+I;NUMBER;20;NOTE_ID;;;;
+IU;VARCHAR2;10;PRINT_CONTROL_CODE;;;;
+MIU;VARCHAR2;10;SALES_UNIT_MEAS;;;;
+MIU;VARCHAR2;4000;;;"ActiveSalesPart
+
+Client-values :
+
+Active part
+Inactive part
+";;
+MIU;VARCHAR2;1;ACTIVEIND_DB;'Y';"ActiveSalesPart
+
+DB-values <==> Client-values :
+
+Y <==> Active part
+N <==> Inactive part
+";;Default value ''Y'' from PREPARE  
+MI;VARCHAR2;4000;;;"SalesPartType
+
+Client-values :
+
+Inventory part
+Non inventory part
+Package part
+Component part
+";;
+MI;VARCHAR2;4;CATALOG_TYPE_DB;;"SalesPartType
+
+DB-values <==> Client-values :
+
+INV <==> Inventory part
+NON <==> Non inventory part
+PKG <==> Package part
+KOMP <==> Component part
+";;
+MIU;NUMBER;20;CONV_FACTOR;'1';;;Default value ''1'' from PREPARE  
+IU;NUMBER;20;COST;;;;
+IU;VARCHAR2;15;CUSTOMS_STAT_NO;;;;
+I;DATE;21;DATE_ENTERED;;;;
+IU;VARCHAR2;6;DISCOUNT_GROUP;;;;
+MIU;NUMBER;20;LIST_PRICE;'0';;;Default value ''0'' from PREPARE  
+MIU;NUMBER;20;LIST_PRICE_INCL_TAX;'0';;;Default value ''0'' from PREPARE  
+MIU;NUMBER;20;RENTAL_LIST_PRICE;'0';;;Default value ''0'' from PREPARE  
+MIU;NUMBER;20;RENTAL_LIST_PRICE_INCL_TAX;'0';;;Default value ''0'' from PREPARE  
+IU;VARCHAR2;2000;NOTE_TEXT;;;;
+IU;DATE;21;PRICE_CHANGE_DATE;;;;
+MIU;NUMBER;20;PRICE_CONV_FACTOR;'1';;;Default value ''1'' from PREPARE  
+IU;VARCHAR2;10;PRICE_UNIT_MEAS;;;;
+IU;VARCHAR2;20;TAX_CODE;;;;
+IU;VARCHAR2;20;TAX_CLASS_ID;;;;
+MIU;VARCHAR2;4000;;;"FndBoolean
+
+Client-values :
+
+False
+True
+";;
+MIU;VARCHAR2;20;TAXABLE_DB;'TRUE';"FndBoolean
+
+DB-values <==> Client-values :
+
+FALSE <==> False
+TRUE <==> True
+";;Default value ''TRUE'' from PREPARE  
+MIU;NUMBER;20;CLOSE_TOLERANCE;'0';;;Default value ''0'' from PREPARE  
+MIU;VARCHAR2;4000;;;"CreateSmObjectOption
+
+Client-values :
+
+Create SM object
+Do not create SM object
+";;
+MIU;VARCHAR2;20;CREATE_SM_OBJECT_OPTION_DB;'DONOTCREATESMOBJECT';"CreateSmObjectOption
+
+DB-values <==> Client-values :
+
+CREATESMOBJECT <==> Create SM object
+DONOTCREATESMOBJECT <==> Do not create SM object
+";;Default value ''DONOTCREATESMOBJECT'' from PREPARE  
+IU;NUMBER;20;EXPECTED_AVERAGE_PRICE;;;;
+IU;VARCHAR2;25;PURCHASE_PART_NO;;;;
+IU;VARCHAR2;25;REPLACEMENT_PART_NO;;;;
+IU;DATE;21;DATE_OF_REPLACEMENT;;;;
+U;NUMBER;20;CUST_WARRANTY_ID;;;;
+MIU;VARCHAR2;4000;;;"NonInventoryPartType
+
+Client-values :
+
+Goods
+Service
+";;
+MIU;VARCHAR2;7;NON_INV_PART_TYPE_DB;;"NonInventoryPartType
+
+DB-values <==> Client-values :
+
+GOODS <==> Goods
+SERVICE <==> Service
+";;
+IU;NUMBER;20;INTRASTAT_CONV_FACTOR;;;;
+MIU;VARCHAR2;4000;SOURCING_OPTION;'Not supplied';"SourcingOption
+
+Client-values :
+
+Inventory Order
+Shop Order
+Not supplied
+Not decided
+Use sourcing rule
+Primary Supplier Transit
+Primary Supplier Direct
+DOP Order
+Production Schedule
+";;Default value ''Not supplied'' from PREPARE  
+MIU;VARCHAR2;20;;;"SourcingOption
+
+DB-values <==> Client-values :
+
+INVENTORYORDER <==> Inventory Order
+SHOPORDER <==> Shop Order
+NOTSUPPLIED <==> Not supplied
+NOTDECIDED <==> Not decided
+USESOURCINGRULE <==> Use sourcing rule
+PRIMARYSUPPTRANSIT <==> Primary Supplier Transit
+PRIMARYSUPPDIRECT <==> Primary Supplier Direct
+DOPORDER <==> DOP Order
+PRODUCTIONSCHEDULE <==> Production Schedule
+";;
+IU;VARCHAR2;15;RULE_ID;;;;
+MIU;VARCHAR2;4000;;;"FndBoolean
+
+Client-values :
+
+False
+True
+";;
+MIU;VARCHAR2;20;QUICK_REGISTERED_PART_DB;'FALSE';"FndBoolean
+
+DB-values <==> Client-values :
+
+FALSE <==> False
+TRUE <==> True
+";;Default value ''FALSE'' from PREPARE  
+IU;NUMBER;20;MINIMUM_QTY;;;;
+IU;VARCHAR2;20;DELIVERY_TYPE;;;;
+MIU;VARCHAR2;4000;;;"FndBoolean
+
+Client-values :
+
+False
+True
+";;
+MIU;VARCHAR2;20;EXPORT_TO_EXTERNAL_APP_DB;'FALSE';"FndBoolean
+
+DB-values <==> Client-values :
+
+FALSE <==> False
+TRUE <==> True
+";;Default value ''FALSE'' from PREPARE  
+MIU;VARCHAR2;5;ALLOW_INC_PKG_RSRV_PICKLST;'TRUE';;;Default value ''TRUE'' from PREPARE  
+IU;VARCHAR2;10;SALES_PART_REBATE_GROUP;;;;
+MIU;VARCHAR2;4000;;;"FndBoolean
+
+Client-values :
+
+False
+True
+";;
+MIU;VARCHAR2;5;PRIMARY_CATALOG_DB;;"FndBoolean
+
+DB-values <==> Client-values :
+
+FALSE <==> False
+TRUE <==> True
+";;
+MIU;NUMBER;20;INVERTED_CONV_FACTOR;'1';;;Default value ''1'' from PREPARE  
+MIU;VARCHAR2;4000;;;"FndBoolean
+
+Client-values :
+
+False
+True
+";;
+MIU;VARCHAR2;20;USE_PRICE_INCL_TAX_DB;'FALSE';"FndBoolean
+
+DB-values <==> Client-values :
+
+FALSE <==> False
+TRUE <==> True
+";;Default value ''FALSE'' from PREPARE  
+MIU;VARCHAR2;4000;SALES_TYPE;'Sales Only';"SalesType
+
+Client-values :
+
+Sales Only
+Sales and Rental
+Rental Only
+";;Default value ''Sales Only'' from PREPARE  
+MIU;VARCHAR2;20;;;"SalesType
+
+DB-values <==> Client-values :
+
+SALES <==> Sales Only
+SALES RENTAL <==> Sales and Rental
+RENTAL <==> Rental Only
+";;
+IU;VARCHAR2;2;COUNTRY_OF_ORIGIN;;;;
+IU;VARCHAR2;15;STATISTICAL_CODE;;;;
+IU;NUMBER;20;ACQUISITION_ORIGIN;;;;
+IU;VARCHAR2;20;ACQUISITION_REASON_ID;;;;
+MIU;VARCHAR2;5;PACK_COMP_IN_SHPMNT;;;;
+IU;VARCHAR2;20;HSN_SAC_CODE;;;;
+IU;VARCHAR2;4000;;;"ProductServiceType
+
+Client-values :
+
+P - Product
+S - Services
+O - Others
+E - Excise Duties
+I - Other Taxes
+";;
+IU;VARCHAR2;20;SAFT_CATEGORY_DB;;"ProductServiceType
+
+DB-values <==> Client-values :
+
+P <==> P - Product
+S <==> S - Services
+O <==> O - Others
+E <==> E - Excise Duties
+I <==> I - Other Taxes
+";;
+MIU;VARCHAR2;5;ALLOW_INCOMP_PKG_DELIVERY;'TRUE';;;Default value ''TRUE'' from PREPARE  
+;VARCHAR2;20;ROWID;;;;

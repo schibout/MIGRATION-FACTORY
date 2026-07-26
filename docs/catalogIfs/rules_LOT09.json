@@ -1,0 +1,1200 @@
+{
+  "PROJECT": [
+    {
+      "field": "NAME",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "MANAGER",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "MANAGER",
+      "rule": "DEFAULT",
+      "value": "KAPEIFS"
+    },
+    {
+      "field": "MANAGER",
+      "rule": "FK_LOGICAL",
+      "target": "PersonInfo"
+    },
+    {
+      "field": "CUSTOMER_ID",
+      "rule": "FK_LOGICAL",
+      "target": "CustomerInfo"
+    },
+    {
+      "field": "CUSTOMER_RESPONSIBLE",
+      "rule": "FK_LOGICAL",
+      "target": "PersonInfo"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "DEFAULT",
+      "value": "TRIM"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "FK_LOGICAL",
+      "target": "CompanyFinance"
+    },
+    {
+      "field": "CALENDAR_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "CALENDAR_ID",
+      "rule": "DEFAULT",
+      "value": "*"
+    },
+    {
+      "field": "CALENDAR_ID",
+      "rule": "FK_LOGICAL",
+      "target": "WorkTimeCalendar"
+    },
+    {
+      "field": "PROGRAM_ID",
+      "rule": "FK_LOGICAL",
+      "target": "ProjectProgram(company)"
+    },
+    {
+      "field": "CURRENCY_TYPE",
+      "rule": "FK_LOGICAL",
+      "target": "CurrencyType(company)"
+    },
+    {
+      "field": "PROBABILITY_TO_WIN",
+      "rule": "DEFAULT",
+      "value": "0"
+    },
+    {
+      "field": "DEFAULT_CHAR_TEMP",
+      "rule": "FK_LOGICAL",
+      "target": "IsoLanguage"
+    },
+    {
+      "field": "ACCESS_ON_OFF",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "ACCESS_ON_OFF",
+      "rule": "DEFAULT",
+      "value": "0"
+    },
+    {
+      "field": "BASELINE_REVISION_NUMBER",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "BASELINE_REVISION_NUMBER",
+      "rule": "DEFAULT",
+      "value": "0"
+    },
+    {
+      "field": "EARNED_VALUE_METHOD",
+      "rule": "DEFAULT",
+      "value": "Planned"
+    },
+    {
+      "field": "EARNED_VALUE_METHOD",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "BASELINE",
+        "PLANNED"
+      ]
+    },
+    {
+      "field": "EARNED_VALUE_METHOD_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "EARNED_VALUE_METHOD_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "BASELINE",
+        "PLANNED"
+      ]
+    },
+    {
+      "field": "MATERIAL_ALLOCATION",
+      "rule": "DEFAULT",
+      "value": "Within Project"
+    },
+    {
+      "field": "MATERIAL_ALLOCATION",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "WITHIN_PROJECT",
+        "WITHIN_ACTIVITY"
+      ]
+    },
+    {
+      "field": "MATERIAL_ALLOCATION_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "MATERIAL_ALLOCATION_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "WITHIN_PROJECT",
+        "WITHIN_ACTIVITY"
+      ]
+    },
+    {
+      "field": "FINANCIALLY_RESPONSIBLE",
+      "rule": "FK_LOGICAL",
+      "target": "PersonInfo"
+    },
+    {
+      "field": "BUDGET_CONTROL_ON",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "BUDGET_CONTROL_ON_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "BUDGET_CONTROL_ON_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "CONTROL_AS_BUDGETED",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "CONTROL_AS_BUDGETED_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "CONTROL_AS_BUDGETED_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "CONTROL_ON_TOTAL_BUDGET",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "CONTROL_ON_TOTAL_BUDGET_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "CONTROL_ON_TOTAL_BUDGET_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "PROJ_UNIQUE_PURCHASE",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "PROJ_UNIQUE_PURCHASE_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "PROJ_UNIQUE_SALE",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "PROJ_UNIQUE_SALE_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "COST_STRUCTURE_ID",
+      "rule": "FK_LOGICAL",
+      "target": "ProjCostStructure(company)"
+    },
+    {
+      "field": "MULTI_CURRENCY_BUDGETING",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "MULTI_CURRENCY_BUDGETING_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "MULTI_CURRENCY_BUDGETING_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "PROJECT_CURRENCY_TYPE",
+      "rule": "FK_LOGICAL",
+      "target": "CurrencyType(company)"
+    },
+    {
+      "field": "BUDGET_CURRENCY_TYPE",
+      "rule": "FK_LOGICAL",
+      "target": "CurrencyType(company)"
+    },
+    {
+      "field": "PROJECT_CURRENCY_CODE",
+      "rule": "FK_LOGICAL",
+      "target": "CurrencyCode(company)"
+    },
+    {
+      "field": "CATEGORY1_ID",
+      "rule": "FK_LOGICAL",
+      "target": "ProjectCategory1(company)"
+    },
+    {
+      "field": "CATEGORY2_ID",
+      "rule": "FK_LOGICAL",
+      "target": "ProjectCategory2(company)"
+    },
+    {
+      "field": "VALIDATE_REMAINING_AGAINST",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "BASE",
+        "BUDGET_BASE",
+        "FILTER",
+        "PROJECT",
+        "TRANSACTION"
+      ]
+    },
+    {
+      "field": "VALIDATE_REMAINING_AGAINST_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "BASE",
+        "BUDGET_BASE",
+        "FILTER",
+        "PROJECT",
+        "TRANSACTION"
+      ]
+    },
+    {
+      "field": "PROJECT_MISC_COMP_METHOD",
+      "rule": "DEFAULT",
+      "value": "Manually Planned"
+    },
+    {
+      "field": "PROJECT_MISC_COMP_METHOD",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "PMRP_PLANNED",
+        "MANUALLY_PLANNED"
+      ]
+    },
+    {
+      "field": "PROJECT_MISC_COMP_METHOD_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_MISC_COMP_METHOD_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "PMRP_PLANNED",
+        "MANUALLY_PLANNED"
+      ]
+    },
+    {
+      "field": "INTERNAL_RENTAL_PRICE_LIST",
+      "rule": "FK_LOGICAL",
+      "target": "InternalRentalPriceList(company)"
+    },
+    {
+      "field": "PLAN_PROJECT_TRANSACTION",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "PLAN_PROJECT_TRANSACTION_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PLAN_PROJECT_TRANSACTION_DB",
+      "rule": "DEFAULT",
+      "value": "FALSE"
+    },
+    {
+      "field": "PLAN_PROJECT_TRANSACTION_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "WORK_DAY_TO_HOURS_CONV",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "WORK_DAY_TO_HOURS_CONV",
+      "rule": "DEFAULT",
+      "value": "8"
+    },
+    {
+      "field": "DEFAULT_COST_ACTIVITY_SEQ",
+      "rule": "FK_LOGICAL",
+      "target": "Activity"
+    },
+    {
+      "field": "EXCLUDE_FROM_BATCH_INVOICE",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "EXCLUDE_FROM_BATCH_INVOICE_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "EXCLUDE_FROM_BATCH_INVOICE_DB",
+      "rule": "DEFAULT",
+      "value": "FALSE"
+    },
+    {
+      "field": "EXCLUDE_FROM_BATCH_INVOICE_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "ACTIVITY_SEQ",
+      "rule": "FK_LOGICAL",
+      "target": "Activity/NOCHECK"
+    },
+    {
+      "field": "MANDATORY_INVOICE_COMMENT",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "MANDATORY_INVOICE_COMMENT_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "MANDATORY_INVOICE_COMMENT_DB",
+      "rule": "DEFAULT",
+      "value": "FALSE"
+    },
+    {
+      "field": "MANDATORY_INVOICE_COMMENT_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "CASH_FORECAST_MULTI_CURR",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "CASH_FORECAST_MULTI_CURR_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "CASH_FORECAST_MULTI_CURR_DB",
+      "rule": "DEFAULT",
+      "value": "TRUE"
+    },
+    {
+      "field": "CASH_FORECAST_MULTI_CURR_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "BUSINESS_TRANSACTION_ID",
+      "rule": "FK_LOGICAL",
+      "target": "BusinessTransactionId(company)"
+    }
+  ],
+  "PROJECT_ROLE": [
+    {
+      "field": "PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/CASCADE"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "FK_LOGICAL",
+      "target": "CompanyFinance"
+    },
+    {
+      "field": "ROLE_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "ROLE_ID",
+      "rule": "FK_LOGICAL",
+      "target": "ProjectRoleBasic(company)"
+    }
+  ],
+  "PROJECT_ROLE_ASSIGNMENT": [
+    {
+      "field": "PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/CASCADE"
+    },
+    {
+      "field": "SUB_PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "SubProject(project_id)/CASCADE"
+    },
+    {
+      "field": "ACTIVITY_SEQ",
+      "rule": "FK_LOGICAL",
+      "target": "Activity/CASCADE"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "ROLE_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "ROLE_ID",
+      "rule": "FK_LOGICAL",
+      "target": "ProjectRole(project_id,company)/CUSTOMLIST=(, Remove_Role_Assignments__)"
+    },
+    {
+      "field": "PERSON_ID",
+      "rule": "FK_LOGICAL",
+      "target": "PersonInfo"
+    }
+  ],
+  "PROJECT_PRE_ACCOUNTING_EXT": [
+    {
+      "field": "PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/NOCHECK"
+    },
+    {
+      "field": "SUB_PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "SUB_PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "SubProject(project_id)/NOCHECK"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "FK_LOGICAL",
+      "target": "CompanyFinance/NOCHECK"
+    },
+    {
+      "field": "CODE_C",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "CODE_D",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "CODE_G",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "CODE_H",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "CODE_I",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "CODE_J",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "CODE_B",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "CODE_E",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "CODE_F",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue"
+    },
+    {
+      "field": "COST_ACCOUNTING",
+      "rule": "DEFAULT",
+      "value": "Yes"
+    },
+    {
+      "field": "COST_ACCOUNTING",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "YES",
+        "UPDATE_PROJ",
+        "NOT_UPDATE_PROJ"
+      ]
+    },
+    {
+      "field": "COST_ACCOUNTING_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "COST_ACCOUNTING_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "YES",
+        "UPDATE_PROJ",
+        "NOT_UPDATE_PROJ"
+      ]
+    },
+    {
+      "field": "WORK_IN_PROGRESS_REVENUE",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "WORK_IN_PROGRESS_REVENUE",
+      "rule": "DEFAULT",
+      "value": "1"
+    },
+    {
+      "field": "WORK_IN_PROGRESS_COST",
+      "rule": "DEFAULT",
+      "value": "0"
+    }
+  ],
+  "MANUAL_ACTIVITY_CON_PROJ": [
+    {
+      "field": "PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/CASCADE"
+    },
+    {
+      "field": "PROJ_LU_NAME",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "MTRLREQLINE",
+        "PREQLINEP",
+        "PREQLINENP",
+        "POLINEP",
+        "POLINENP",
+        "COLINE",
+        "SO",
+        "DOP",
+        "WO",
+        "AT",
+        "DP",
+        "ECO",
+        "PLDOBJ",
+        "AR",
+        "PT",
+        "VR",
+        "GLVR",
+        "AE",
+        "EXTIPR",
+        "PROJINVTRANS",
+        "SUBCONPROJ",
+        "SOR",
+        "FCST",
+        "SALESCONPROJ",
+        "IPR",
+        "IP",
+        "COINVLINE",
+        "PTR",
+        "COLINEREV",
+        "PRJ",
+        "PRD",
+        "POCOLINEP",
+        "POCOLINENP",
+        "CUEXITEM",
+        "CUPROCACTIVITY",
+        "PI"
+      ]
+    },
+    {
+      "field": "PROJ_LU_NAME_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJ_LU_NAME_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "MTRLREQLINE",
+        "PREQLINEP",
+        "PREQLINENP",
+        "POLINEP",
+        "POLINENP",
+        "COLINE",
+        "SO",
+        "DOP",
+        "WO",
+        "AT",
+        "DP",
+        "ECO",
+        "PLDOBJ",
+        "AR",
+        "PT",
+        "VR",
+        "GLVR",
+        "AE",
+        "EXTIPR",
+        "PROJINVTRANS",
+        "SUBCONPROJ",
+        "SOR",
+        "FCST",
+        "SALESCONPROJ",
+        "IPR",
+        "IP",
+        "COINVLINE",
+        "PTR",
+        "COLINEREV",
+        "PRJ",
+        "PRD",
+        "POCOLINEP",
+        "POCOLINENP",
+        "CUEXITEM",
+        "CUPROCACTIVITY",
+        "PI"
+      ]
+    },
+    {
+      "field": "PROJ_LU_NAME_DB",
+      "rule": "FK_LOGICAL",
+      "target": "ProjLuName"
+    },
+    {
+      "field": "MANUAL_CONNECTION",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "ALLOWED",
+        "NOT ALLOWED"
+      ]
+    },
+    {
+      "field": "MANUAL_CONNECTION_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "MANUAL_CONNECTION_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "ALLOWED",
+        "NOT ALLOWED"
+      ]
+    }
+  ],
+  "ACCOUNTING_PROJECT": [
+    {
+      "field": "COMPANY",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "FK_LOGICAL",
+      "target": "CompanyFinance"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "AccountingCodePartValue(company,code_part)/NOCHECK"
+    },
+    {
+      "field": "DESCRIPTION",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_GROUP",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_GROUP",
+      "rule": "FK_LOGICAL",
+      "target": "ProjectGroup(company)"
+    },
+    {
+      "field": "PROJECT_STATUS",
+      "rule": "DEFAULT",
+      "value": "Active"
+    },
+    {
+      "field": "PROJECT_STATUS",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "A",
+        "C",
+        "P",
+        "B"
+      ]
+    },
+    {
+      "field": "PROJECT_STATUS_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "A",
+        "C",
+        "P",
+        "B"
+      ]
+    },
+    {
+      "field": "VALID_FROM",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "VALID_FROM",
+      "rule": "DEFAULT",
+      "value": "2025-01-29-08.40.15"
+    },
+    {
+      "field": "VALID_UNTIL",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "VALID_UNTIL",
+      "rule": "DEFAULT",
+      "value": "2049-12-31-00.00.00"
+    },
+    {
+      "field": "PROJECT_ORIGIN",
+      "rule": "DEFAULT",
+      "value": "Financial Project"
+    },
+    {
+      "field": "PROJECT_ORIGIN",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FINPROJECT",
+        "PROJECT",
+        "JOB"
+      ]
+    },
+    {
+      "field": "PROJECT_ORIGIN_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ORIGIN_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FINPROJECT",
+        "PROJECT",
+        "JOB"
+      ]
+    },
+    {
+      "field": "PROJECT_REOPENED",
+      "rule": "DEFAULT",
+      "value": "FALSE"
+    },
+    {
+      "field": "CAPITALIZATION_POST_METHOD",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "TRANSACTION",
+        "PERIODICAL"
+      ]
+    },
+    {
+      "field": "CAPITALIZATION_POST_METHOD_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "CAPITALIZATION_POST_METHOD_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "TRANSACTION",
+        "PERIODICAL"
+      ]
+    },
+    {
+      "field": "SPECIFIC_CAP_PRINCIPLES",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "SPECIFIC_CAP_PRINCIPLES",
+      "rule": "DEFAULT",
+      "value": "FALSE"
+    },
+    {
+      "field": "CONTRACT",
+      "rule": "FK_LOGICAL",
+      "target": "Site"
+    },
+    {
+      "field": "CUSTOMER_NO",
+      "rule": "FK_LOGICAL",
+      "target": "CustOrdCustomer"
+    },
+    {
+      "field": "BUDGET_PLANNING_ONLY",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    },
+    {
+      "field": "BUDGET_PLANNING_ONLY_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "BUDGET_PLANNING_ONLY_DB",
+      "rule": "DEFAULT",
+      "value": "FALSE"
+    },
+    {
+      "field": "BUDGET_PLANNING_ONLY_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "FALSE",
+        "TRUE"
+      ]
+    }
+  ],
+  "REPORT_PROJECT": [
+    {
+      "field": "COMPANY",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "FK_LOGICAL",
+      "target": "CompanyFinance"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project"
+    },
+    {
+      "field": "PROJECT_SALES_PRICE_ID",
+      "rule": "FK_LOGICAL",
+      "target": "ProjectSalesPrice(company)"
+    },
+    {
+      "field": "CURRENCY_CODE",
+      "rule": "FK_LOGICAL",
+      "target": "IsoCurrency"
+    },
+    {
+      "field": "CURRENCY_TYPE",
+      "rule": "FK_LOGICAL",
+      "target": "CurrencyType(company)"
+    },
+    {
+      "field": "PROJECT_SUPPLIER_MARGIN_ID",
+      "rule": "FK_LOGICAL",
+      "target": "ProjectSupplierMargin(company)"
+    },
+    {
+      "field": "TRAVEL_EXP_MARGIN_ID",
+      "rule": "FK_LOGICAL",
+      "target": "StandardTravExpMargin(company)"
+    },
+    {
+      "field": "MAT_WITH_MARGIN_ID",
+      "rule": "FK_LOGICAL",
+      "target": "StandardMatWithMargin(company)"
+    },
+    {
+      "field": "COST_PLUS_BASIS",
+      "rule": "DEFAULT",
+      "value": "Default"
+    },
+    {
+      "field": "COST_PLUS_BASIS",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "INTERNAL_PRICE",
+        "ALTERNATIVE_COST",
+        "TOTAL_INTERNAL_PRICE",
+        "DEFAULT"
+      ]
+    },
+    {
+      "field": "COST_PLUS_BASIS_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "COST_PLUS_BASIS_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "INTERNAL_PRICE",
+        "ALTERNATIVE_COST",
+        "TOTAL_INTERNAL_PRICE",
+        "DEFAULT"
+      ]
+    },
+    {
+      "field": "MCPR_REVENUE_REP_METHOD",
+      "rule": "DEFAULT",
+      "value": "Project Invoice"
+    },
+    {
+      "field": "MCPR_REVENUE_REP_METHOD",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "1",
+        "2"
+      ]
+    },
+    {
+      "field": "MCPR_REVENUE_REP_METHOD_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "MCPR_REVENUE_REP_METHOD_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "1",
+        "2"
+      ]
+    }
+  ],
+  "PROJECT_RESOURCE_CRITERIA": [
+    {
+      "field": "PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/NOCHECK"
+    },
+    {
+      "field": "CRITERIA_SEQ",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "CRITERIA_ID",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "EMPLOYEE_CATEGORY",
+        "ORGANIZATION_CODE",
+        "POSITION_ID",
+        "REPORT_CODE",
+        "RESOURCE_ID",
+        "WORK_LOCATION"
+      ]
+    },
+    {
+      "field": "CRITERIA_ID_DB",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "CRITERIA_ID_DB",
+      "rule": "ENUM_DB_VALUES",
+      "allowed": [
+        "EMPLOYEE_CATEGORY",
+        "ORGANIZATION_CODE",
+        "POSITION_ID",
+        "REPORT_CODE",
+        "RESOURCE_ID",
+        "WORK_LOCATION"
+      ]
+    },
+    {
+      "field": "EVALUATION_ORDER",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "EVALUATION_ORDER",
+      "rule": "DEFAULT",
+      "value": "2.0"
+    }
+  ],
+  "PROJECT_ACCESS_DEFINITION2": [
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/NOCHECK"
+    },
+    {
+      "field": "SUB_PROJECT_ID",
+      "rule": "DEFAULT",
+      "value": "%"
+    }
+  ],
+  "PROJECT_ACCESS_PERSON": [
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/NOCHECK"
+    }
+  ],
+  "PROJECT_ACCESS_TEAM": [
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/NOCHECK"
+    },
+    {
+      "field": "SUB_PROJECT_ID",
+      "rule": "DEFAULT",
+      "value": "%"
+    },
+    {
+      "field": "SUB_PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "SubProject(project_id)/NOCHECK"
+    },
+    {
+      "field": "TEAM_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Team/NOCHECK"
+    }
+  ],
+  "TEAM_MEMBER": [
+    {
+      "field": "TEAM_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "TEAM_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Team"
+    },
+    {
+      "field": "COMPANY",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "EMPLOYEE_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "EMPLOYEE_ID",
+      "rule": "FK_LOGICAL",
+      "target": "CompanyEmp(company)"
+    },
+    {
+      "field": "PERSON_ID",
+      "rule": "FK_LOGICAL",
+      "target": "PersonInfo"
+    }
+  ],
+  "PROJ_COST_EL_CODE_P_DEM": [
+    {
+      "field": "COMPANY",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_COST_ELEMENT",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_COST_ELEMENT",
+      "rule": "FK_LOGICAL",
+      "target": "ProjCCostElCodePDem(company)"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "NOT_NULL_ON_LOAD"
+    },
+    {
+      "field": "PROJECT_ID",
+      "rule": "FK_LOGICAL",
+      "target": "Project/NOCHECK"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xml:base="http://asap.stjn.local/_api/" xmlns="http://www.w3.org/2005/Atom" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:georss="http://www.georss.org/georss" xmlns:gml="http://www.opengis.net/gml">
+	<id>e44e0143-0e07-412f-9a55-6ee09c33ad6a</id>
+	<title/>
+	<updated>2025-11-20T15:00:21Z</updated>
+	<entry>
+		<id>http://asap.stjn.local/_api/Web/GetUserById(89)</id>
+		<category term="SP.User" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/GetUserById(89)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Groups" type="application/atom+xml;type=feed" title="Groups" href="Web/GetUserById(89)/Groups"/>
+		<title/>
+		<updated>2025-11-20T15:00:21Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:Id m:type="Edm.Int32">89</d:Id>
+				<d:IsHiddenInUI m:type="Edm.Boolean">false</d:IsHiddenInUI>
+				<d:LoginName>i:0#.w|stjn\acebedoj</d:LoginName>
+				<d:Title>Acebedo, Jose</d:Title>
+				<d:PrincipalType m:type="Edm.Int32">1</d:PrincipalType>
+				<d:Email>Jose.ACEBEDO@trimet.fr</d:Email>
+				<d:IsSiteAdmin m:type="Edm.Boolean">false</d:IsSiteAdmin>
+				<d:UserId m:type="SP.UserIdInfo">
+					<d:NameId>s-1-5-21-3516978511-922768187-3908533995-3255</d:NameId>
+					<d:NameIdIssuer>urn:office:idp:activedirectory</d:NameIdIssuer>
+				</d:UserId>
+			</m:properties>
+		</content>
+	</entry>
+    	<entry>
+		<id>http://asap.stjn.local/_api/Web/GetUserById(41)</id>
+		<category term="SP.User" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/GetUserById(41)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Groups" type="application/atom+xml;type=feed" title="Groups" href="Web/GetUserById(41)/Groups"/>
+		<title/>
+		<updated>2025-11-20T15:00:21Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:Id m:type="Edm.Int32">41</d:Id>
+				<d:IsHiddenInUI m:type="Edm.Boolean">false</d:IsHiddenInUI>
+				<d:LoginName>i:0#.w|stjn\sebastien.zerla</d:LoginName>
+				<d:Title>Zerla, Sebastien</d:Title>
+				<d:PrincipalType m:type="Edm.Int32">1</d:PrincipalType>
+				<d:Email>Sebastien.Zerla@trimet.fr</d:Email>
+				<d:IsSiteAdmin m:type="Edm.Boolean">false</d:IsSiteAdmin>
+				<d:UserId m:type="SP.UserIdInfo">
+					<d:NameId>s-1-5-21-3516978511-922768187-3908533995-19837</d:NameId>
+					<d:NameIdIssuer>urn:office:idp:activedirectory</d:NameIdIssuer>
+				</d:UserId>
+			</m:properties>
+		</content>
+	</entry>
+</feed>

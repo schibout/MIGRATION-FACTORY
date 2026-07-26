@@ -1,0 +1,26 @@
+{
+  "domain": "equipements",
+  "keywords": ["equipement", "equipements", "equipment", "materiel"],
+  "synonyms": ["machine", "actif technique"],
+  "docs": [
+    "equi = fiche equipement ; libelle dans eqkt (eqktx, spras='F')"
+  ],
+  "tables": ["raw_data.equi", "raw_data.eqkt"],
+  "joins": [
+    "equi <-> eqkt sur equnr [libelle (eqkt.eqktx), eqkt.spras='F']"
+  ],
+  "enums": [
+    "equi.eqtyp=type d'equipement ; equi.herst=fabricant, typbz=designation type",
+    "equi.equnr=numero equipement (zeros de tete -> LTRIM)"
+  ],
+  "rules": [
+    "Libelle via eqkt (eqktx, spras='F').",
+    "equi n'a pas de lien direct vers le poste technique dans cet extrait : ne PAS supposer equi.tplnr ; verifier les colonnes reelles de equi avant toute jointure vers iflot."
+  ],
+  "patterns": [
+    {
+      "intent": "nombre d'equipements par type",
+      "sql": "SELECT e.eqtyp, COUNT(*) AS nb FROM raw_data.equi e GROUP BY e.eqtyp ORDER BY nb DESC"
+    }
+  ]
+}

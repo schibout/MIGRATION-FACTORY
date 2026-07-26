@@ -1,0 +1,115 @@
+services:
+  # Service Backend Flask
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: migration-app-backend
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - FLASK_ENV=production
+      # Connexion à la base PostgreSQL installée directement sur le serveur Unix (10.190.100.58)
+      - DATABASE_URI=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - SAP_EXTRACTION_PATH=/app/sap_extraction
+      - SAP_EXTRACTION_API_URL=${SAP_EXTRACTION_API_URL:-http://10.190.100.58:8000}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      # Cache Redis conteneurise (service "redis" ci-dessous). Surchargeable via .env.
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CACHE_ENABLED=${CACHE_ENABLED:-true}
+      - MAINTENANCE_CACHE_TTL=${MAINTENANCE_CACHE_TTL:-300}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - BACKUP_ENABLED=${BACKUP_ENABLED:-true}
+      - BACKUP_DIR=/backups
+      - BACKUP_HOUR=${BACKUP_HOUR:-2}
+      - BACKUP_MINUTE=${BACKUP_MINUTE:-0}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+      # Assistant IA — Ollama tourne sur l'hôte : depuis le conteneur on vise l'IP hôte
+      # (localhost pointerait sur le conteneur lui-même).
+      - OLLAMA_URL=${OLLAMA_URL:-http://10.190.100.58:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      - AI_DB_USER=${AI_DB_USER:-readonly_ai}
+      # Pas de secret en dur : doit être fourni via .env (non committé)
+      - AI_DB_PASSWORD=${AI_DB_PASSWORD}
+      - AI_MAX_ROWS=${AI_MAX_ROWS:-500}
+      - AI_EXPORT_MAX_ROWS=${AI_EXPORT_MAX_ROWS:-50000}
+      - AI_TIMEOUT_SECONDS=${AI_TIMEOUT_SECONDS:-34000}
+      - AI_KEEPWARM_ENABLED=${AI_KEEPWARM_ENABLED:-true}
+      - AI_KEEPWARM_SECONDS=${AI_KEEPWARM_SECONDS:-60}
+    volumes:
+      - ./backend/logs:/app/logs:rw
+      - ./backend:/app:rw  # Synchronisation du code (inclut .env)
+      - ${SAP_EXTRACTION_PATH:-/opt/sap_extraction}:/app/sap_extraction:ro
+      - ${BACKUP_DIR:-./backups}:/backups:rw
+    networks:
+      - migration-network
+    extra_hosts:
+      - "db:${DB_HOST:-10.190.100.58}"
+    # Exposer le port 5000 pour l'accès externe
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Service Redis (cache applicatif partage entre les workers)
+  redis:
+    image: redis:7-alpine
+    container_name: migration-app-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    networks:
+      - migration-network
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # Service Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: migration-app-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - migration-network
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - API_URL=http://backend:5000
+      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-false}
+      - WATCHPACK_POLLING=${WATCHPACK_POLLING:-false}
+    volumes:
+      - ./frontend:/workspace/frontend:rw
+      - /workspace/frontend/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+networks:
+  migration-network:
+    driver: bridge
+    name: migration-network
+
+volumes:
+  redis-data:
+    name: migration-app-redis-data

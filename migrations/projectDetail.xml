@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<entry xml:base="http://asap.stjn.local/_api/" xmlns="http://www.w3.org/2005/Atom" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:georss="http://www.georss.org/georss" xmlns:gml="http://www.opengis.net/gml" m:etag="&quot;27&quot;">
+	<id>Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)</id>
+	<category term="SP.Data.ProjectsListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+	<link rel="edit" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/FirstUniqueAncestorSecurableObject"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/RoleAssignments"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/AttachmentFiles"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/ContentType"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/FieldValuesAsHtml"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/FieldValuesAsText"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/FieldValuesForEdit"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/File"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/Folder"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'7a38eb49-5b72-418a-8966-184088a3360d')/Items(79)/ParentList"/>
+	<title/>
+	<updated>2025-10-17T10:23:53Z</updated>
+	<author>
+		<name/>
+	</author>
+	<content type="application/xml">
+		<m:properties>
+			<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+			<d:Id m:type="Edm.Int32">79</d:Id>
+			<d:Title>FONDERIE - Evacuation chlore et réseau informatique boucle</d:Title>
+			<d:Last_x0020_Status_x0020_Report_x m:type="Edm.DateTime">2016-11-04T23:00:00Z</d:Last_x0020_Status_x0020_Report_x>
+			<d:Project_x0020_Ahead m:type="Edm.Boolean">false</d:Project_x0020_Ahead>
+			<d:Retroplanning m:type="Edm.Boolean">false</d:Retroplanning>
+			<d:Site_x0020_URL m:type="SP.FieldUrlValue">
+				<d:Description>79 - FONDERIE - Evacuation chlore et réseau informatique boucle</d:Description>
+				<d:Url>http://asap.stjn.local/79?Phase=Phase de démarrage et de clôture</d:Url>
+			</d:Site_x0020_URL>
+			<d:PMId m:type="Edm.Int32">28</d:PMId>
+			<d:Correspondant_x002f__x0020_ClienId m:type="Edm.Int32">25</d:Correspondant_x002f__x0020_ClienId>
+			<d:ProjectTeamId m:null="true"/>
+			<d:Acheteur_x0020_CAPEXId m:null="true"/>
+			<d:Correspondant_x0020_MaintenanceId m:null="true"/>
+			<d:Group1>Saint Jean de Maurienne</d:Group1>
+			<d:Secteur>Fonderie</d:Secteur>
+			<d:Planning>Ok</d:Planning>
+			<d:StartDate m:type="Edm.DateTime">2015-06-28T22:00:00Z</d:StartDate>
+			<d:Health>Ok</d:Health>
+			<d:OData__x0025__x0020_Completed m:type="Edm.Double">1</d:OData__x0025__x0020_Completed>
+			<d:Last_x0020_Milestone_x0020_Passe m:type="Edm.DateTime">2016-07-12T22:00:00Z</d:Last_x0020_Milestone_x0020_Passe>
+			<d:Cost>Ok</d:Cost>
+			<d:Budget_x0020_Initial m:type="Edm.Double">197500</d:Budget_x0020_Initial>
+			<d:Budget_x0020_demand_x00e9_ m:null="true"/>
+			<d:Budget_x0020_1_x00e8_re_x0020_P3 m:null="true"/>
+			<d:Estimated_x0020_End_x0020_Date m:type="Edm.DateTime">2016-03-06T23:00:00Z</d:Estimated_x0020_End_x0020_Date>
+			<d:Global_x0020_Status>Clôturé</d:Global_x0020_Status>
+			<d:Filter_x0020_Project_x0020_Not_x>2016-12-05T23:00:00Z</d:Filter_x0020_Project_x0020_Not_x>
+			<d:Template>Petit projet</d:Template>
+			<d:ValidationId>383a79d2-e9d1-428f-bf17-420727b7528e</d:ValidationId>
+			<d:PassingGate>P6</d:PassingGate>
+			<d:Date_x0020_ouverture_x0020_cr_x0 m:type="Edm.DateTime">2015-12-14T23:00:00Z</d:Date_x0020_ouverture_x0020_cr_x0>
+			<d:Id_x00e9_eId m:null="true"/>
+			<d:Num_x00e9_ro_x0020_du_x0020_proj>16.001</d:Num_x00e9_ro_x0020_du_x0020_proj>
+			<d:Description>&lt;div class="ExternalClassC0014C859646430DAFB20BE2EFFAD069"&gt;&lt;p&gt;​Phase 1 &amp;#58; Création d'un nouveau réseau informatique en Fibre optique qui entoure la Fonderie.&lt;/p&gt;&lt;p&gt;Phase 2 &amp;#58; remplacement du système de gestion des alarmes sonores et visuelles d'evacuation Chlore par un nouvel API qui viendra se connecter à ce réseau.&lt;/p&gt;&lt;p&gt;Augmentation le 19/08/16&lt;/p&gt;&lt;p&gt;&amp;#160;&lt;/p&gt;&lt;/div&gt;</d:Description>
+			<d:PhaseText>P6 en validation</d:PhaseText>
+			<d:Budget_x0020_Total_x0020_SAP m:type="Edm.Double">197500</d:Budget_x0020_Total_x0020_SAP>
+			<d:BudgetIMSAP m:null="true"/>
+			<d:BudgetEXSAP m:null="true"/>
+			<d:Code>SN.16044</d:Code>
+			<d:Budget_x0020_Actual m:type="Edm.Double">193431.7</d:Budget_x0020_Actual>
+			<d:Budget_x0020_At_x0020_Completion m:type="Edm.Double">0</d:Budget_x0020_At_x0020_Completion>
+			<d:ID m:type="Edm.Int32">79</d:ID>
+			<d:ContentTypeId>0x0100AC0A898DB7E84F75ACAA76F11769C63A005FA8A21C952BC14A8BFAD686B49568AF</d:ContentTypeId>
+			<d:Modified m:type="Edm.DateTime">2016-11-05T14:57:29Z</d:Modified>
+			<d:Created m:type="Edm.DateTime">2015-11-23T14:35:25Z</d:Created>
+			<d:AuthorId m:type="Edm.Int32">21</d:AuthorId>
+			<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+			<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+			<d:Attachments m:type="Edm.Boolean">false</d:Attachments>
+			<d:GUID m:type="Edm.Guid">de9dd580-e51c-4540-b746-c99b0912624e</d:GUID>
+			<d:StaticID m:type="Edm.Double">79</d:StaticID>
+			<d:Budget_x0020_Delivered m:null="true"/>
+			<d:EndP1 m:null="true"/>
+			<d:EndP2 m:null="true"/>
+			<d:EndP3 m:null="true"/>
+			<d:EndP6 m:null="true"/>
+			<d:Priorit_x00e9_ m:null="true"/>
+			<d:SponsorId m:null="true"/>
+			<d:EndP4 m:null="true"/>
+			<d:EndP5 m:null="true"/>
+			<d:ConceptionDate m:null="true"/>
+			<d:MiseEnServiceDate m:null="true"/>
+			<d:AchevementIndustrielDate m:null="true"/>
+			<d:ConceptionState m:null="true"/>
+			<d:MiseEnServiceState m:null="true"/>
+			<d:AchevementIndustrielState m:null="true"/>
+			<d:EndProjectMark m:null="true"/>
+			<d:PrisEnCharge m:null="true"/>
+			<d:EndP0 m:null="true"/>
+		</m:properties>
+	</content>
+</entry>

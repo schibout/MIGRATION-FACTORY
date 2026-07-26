@@ -1,0 +1,3 @@
+# Ne jamais committer les secrets ni la config générée
+.env
+mcp-config.runtime.json

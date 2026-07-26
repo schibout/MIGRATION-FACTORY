@@ -1,0 +1,1375 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xml:base="http://asap.stjn.local/_api/" xmlns="http://www.w3.org/2005/Atom" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:georss="http://www.georss.org/georss" xmlns:gml="http://www.opengis.net/gml">
+	<id>5b48d494-e54f-4402-8f07-b5e1f5faad54</id>
+	<title/>
+	<updated>2026-01-13T22:32:18Z</updated>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(345)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">1</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">345</d:Id>
+				<d:ID m:type="Edm.Int32">345</d:ID>
+				<d:ContentTypeId>0x012000CDAB2EA336012C47BD2169A3DFFE56D6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">3f0b96ed-d7e1-4123-9469-da947557bfaf</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(369)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">1</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">369</d:Id>
+				<d:ID m:type="Edm.Int32">369</d:ID>
+				<d:ContentTypeId>0x012000CDAB2EA336012C47BD2169A3DFFE56D6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">dac23167-dd9c-41fc-93af-a2e32a0e587b</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(346)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">346</d:Id>
+				<d:ID m:type="Edm.Int32">346</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">b963dbea-483d-40cc-bff4-00def100ca45</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(348)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">348</d:Id>
+				<d:ID m:type="Edm.Int32">348</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">fe7931f1-be26-403f-a6ee-9f8f948e6f65</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(350)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">350</d:Id>
+				<d:ID m:type="Edm.Int32">350</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">1a56b4d8-5e53-4c94-a49b-f6e46d0787ba</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(352)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">352</d:Id>
+				<d:ID m:type="Edm.Int32">352</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">7dfa807e-dcf2-4c5b-a05d-62441216cf21</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(354)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">354</d:Id>
+				<d:ID m:type="Edm.Int32">354</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">77702a5c-8182-442e-b700-3c5b653cd865</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(356)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">356</d:Id>
+				<d:ID m:type="Edm.Int32">356</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">bf0aa566-1a97-4b59-ba21-882fd01cb442</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(358)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">358</d:Id>
+				<d:ID m:type="Edm.Int32">358</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">6b13363d-db8f-427d-ae74-37d023fba9b4</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(360)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">360</d:Id>
+				<d:ID m:type="Edm.Int32">360</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">b725d223-529b-4012-9fb7-173307fcd30a</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(362)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">362</d:Id>
+				<d:ID m:type="Edm.Int32">362</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">49e0884a-9296-4b88-a77a-912bc54852f3</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(364)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">364</d:Id>
+				<d:ID m:type="Edm.Int32">364</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">b3f17d69-79c3-4b7b-980b-18be61547631</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(366)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">366</d:Id>
+				<d:ID m:type="Edm.Int32">366</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">1e74b29b-c9ee-417c-82f7-75ac93ebdc90</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(368)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">368</d:Id>
+				<d:ID m:type="Edm.Int32">368</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-08-21T11:46:15Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">daf24bd8-343b-44f5-8fcf-3f9021940a47</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;3&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(471)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">471</d:Id>
+				<d:ID m:type="Edm.Int32">471</d:ID>
+				<d:ContentTypeId>0x010100C3676CDFA2F24E1D949A8BF2B06F6B8B0092950FF1F286D648AF40724EA67AE2A9</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-09-25T07:25:59Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-11-04T15:47:12Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">b047cbc2-2469-4158-9441-487b5a564e89</d:GUID>
+				<d:Title>Rapport StatutDesJalons</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;2&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(473)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">473</d:Id>
+				<d:ID m:type="Edm.Int32">473</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-09-25T07:25:59Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-11-04T15:47:12Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">1b9345f7-5fcd-4071-847b-b6b42417838e</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;8&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(477)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">477</d:Id>
+				<d:ID m:type="Edm.Int32">477</d:ID>
+				<d:ContentTypeId>0x010100C3676CDFA2F24E1D949A8BF2B06F6B8B0092950FF1F286D648AF40724EA67AE2A9</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-09-25T07:25:59Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2016-01-19T12:55:43Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">6a918ea3-6f6b-436d-a4e7-45cb89f56248</d:GUID>
+				<d:Title>Rapport TravailParRessource</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;2&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(479)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">479</d:Id>
+				<d:ID m:type="Edm.Int32">479</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-09-25T07:25:59Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-11-04T15:47:11Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">7e1a19c3-9067-4ecc-975b-517fb40bc285</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;4&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(481)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">481</d:Id>
+				<d:ID m:type="Edm.Int32">481</d:ID>
+				<d:ContentTypeId>0x010100C3676CDFA2F24E1D949A8BF2B06F6B8B0092950FF1F286D648AF40724EA67AE2A9</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-09-25T07:25:59Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2016-01-19T12:55:21Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">e886534e-f4f5-46fa-8a7e-6a12c88dbecf</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;4&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(483)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">483</d:Id>
+				<d:ID m:type="Edm.Int32">483</d:ID>
+				<d:ContentTypeId>0x010100C3676CDFA2F24E1D949A8BF2B06F6B8B0092950FF1F286D648AF40724EA67AE2A9</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-09-25T07:25:59Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2016-01-19T12:55:34Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">e8e3c14c-19fa-4c12-b5eb-2dad68dbdae4</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;4&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(485)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">485</d:Id>
+				<d:ID m:type="Edm.Int32">485</d:ID>
+				<d:ContentTypeId>0x010100C3676CDFA2F24E1D949A8BF2B06F6B8B0092950FF1F286D648AF40724EA67AE2A9</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-09-25T07:25:59Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2016-01-19T12:54:28Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">8c560627-31ad-4625-a692-300bfd0cfc61</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;2&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(491)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">491</d:Id>
+				<d:ID m:type="Edm.Int32">491</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-09-25T07:25:59Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-11-04T15:47:11Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">a7f8bb64-4ce3-4d55-81b3-8b0d0abbb76e</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(836)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">836</d:Id>
+				<d:ID m:type="Edm.Int32">836</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-11-04T15:47:12Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-11-04T15:47:12Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">02465bef-062f-4f9b-8d90-08b075ac2c68</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(837)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">837</d:Id>
+				<d:ID m:type="Edm.Int32">837</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-11-04T15:47:12Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2015-11-04T15:47:12Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">d8c52001-398e-45c7-9815-09dd3bd26ef3</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;5&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(838)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">838</d:Id>
+				<d:ID m:type="Edm.Int32">838</d:ID>
+				<d:ContentTypeId>0x0101007DFDDF56F8A9492DAA9366B83A95B3A0003F0ED20146A77B4FB81C80BC5128BAFF</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2015-11-13T13:38:55Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2020-09-01T18:59:38Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">731385e8-7062-48ac-b4d3-b84444d3447b</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;2&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(939)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">939</d:Id>
+				<d:ID m:type="Edm.Int32">939</d:ID>
+				<d:ContentTypeId>0x010100C3676CDFA2F24E1D949A8BF2B06F6B8B0092950FF1F286D648AF40724EA67AE2A9</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2016-01-19T12:54:41Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2016-01-19T12:54:49Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">ac79fe6e-3ac9-4744-9b8a-ad95b247d359</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;2&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(940)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">940</d:Id>
+				<d:ID m:type="Edm.Int32">940</d:ID>
+				<d:ContentTypeId>0x010100C3676CDFA2F24E1D949A8BF2B06F6B8B0092950FF1F286D648AF40724EA67AE2A9</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2016-01-19T12:55:01Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2016-01-19T12:55:06Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">b2395ed1-ebae-4dd0-80c8-26cac988688c</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;2&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(941)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">941</d:Id>
+				<d:ID m:type="Edm.Int32">941</d:ID>
+				<d:ContentTypeId>0x010100C3676CDFA2F24E1D949A8BF2B06F6B8B0092950FF1F286D648AF40724EA67AE2A9</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2016-01-19T12:55:55Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2016-01-19T12:55:58Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">76822712-0037-4dce-badc-255c127ea6a9</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1016)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1016</d:Id>
+				<d:ID m:type="Edm.Int32">1016</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2020-07-06T15:11:30Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2020-07-06T15:11:30Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">62eb2cb2-e73f-4f2c-a4dc-ebb7d204f8b5</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;2&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1018)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1018</d:Id>
+				<d:ID m:type="Edm.Int32">1018</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2020-07-06T15:11:30Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2024-08-22T23:24:43Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">4d558b66-dc75-4c1d-a704-85736e222908</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1020)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1020</d:Id>
+				<d:ID m:type="Edm.Int32">1020</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2020-07-06T15:11:30Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2020-07-06T15:11:30Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">4aa8e39d-29ca-4df0-88c6-9b9af7befcb5</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1023)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1023</d:Id>
+				<d:ID m:type="Edm.Int32">1023</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2020-08-19T17:39:03Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2020-08-19T17:39:03Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">58ad2c26-7659-49b7-8aad-4dd273b14629</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;2&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1041)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1041</d:Id>
+				<d:ID m:type="Edm.Int32">1041</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2020-08-19T17:39:03Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2024-08-22T23:24:45Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">6c2bf61e-a2db-4c44-aad0-352273e6c00d</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1043)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1043</d:Id>
+				<d:ID m:type="Edm.Int32">1043</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2020-08-19T17:39:03Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2020-08-19T17:39:03Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">4b922a48-d2a9-4d8a-b3dc-fa0ff570f108</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1108)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1108</d:Id>
+				<d:ID m:type="Edm.Int32">1108</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2020-10-05T17:32:55Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2020-10-05T17:32:55Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">4c748f6b-aa77-40e6-8d6b-4e8b993914f3</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1147)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1147</d:Id>
+				<d:ID m:type="Edm.Int32">1147</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2022-03-14T17:47:24Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2022-03-14T17:47:24Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">1a4d0370-e768-4e94-a7d9-f69268c5de25</d:GUID>
+				<d:Title m:null="true"/>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;3&quot;">
+		<id>Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)</id>
+		<category term="SP.Data.ReportingListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/FieldValuesAsText"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'6c6d1c86-b962-4a00-a18c-3165ff2766a3')/Items(1222)/ParentList"/>
+		<title/>
+		<updated>2026-01-13T22:32:18Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1222</d:Id>
+				<d:ID m:type="Edm.Int32">1222</d:ID>
+				<d:ContentTypeId>0x010100C7E63D2674579A4EAA1CDA7A3459ADC6</d:ContentTypeId>
+				<d:Created m:type="Edm.DateTime">2023-07-03T17:20:05Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:Modified m:type="Edm.DateTime">2023-07-05T15:41:09Z</d:Modified>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__CopySource m:null="true"/>
+				<d:CheckoutUserId m:null="true"/>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:GUID m:type="Edm.Guid">b9cd98b8-c8ba-456a-95a0-758c036ed222</d:GUID>
+				<d:Title>Rapport Travail Par Projet</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+</feed>

@@ -1,0 +1,30 @@
+{
+  "domain": "articles_stock",
+  "keywords": ["article", "articles", "stock", "stocks", "matiere", "produit", "valorisation"],
+  "synonyms": ["reference article", "matiere premiere"],
+  "docs": [
+    "Stock disponible = SUM(mard.labst::numeric) (stock a utilisation libre)",
+    "Valorisation stock = quantite * mbew.verpr (PMP) ou mbew.stprs (prix standard)"
+  ],
+  "tables": ["raw_data.mara", "raw_data.makt", "raw_data.marc", "raw_data.mard", "raw_data.mbew"],
+  "joins": [
+    "mara<->makt sur matnr [libelle, makt.spras='F']",
+    "mara<->marc sur matnr [par division werks]",
+    "marc<->mard sur (matnr,werks) [par magasin lgort]",
+    "mara<->mbew sur matnr [valorisation ; mbew.bwkey=domaine de valorisation, souvent = division (werks)]"
+  ],
+  "enums": [
+    "mara.mtart=type (FERT=produit fini, HALB=semi-fini, ROH=matiere premiere, HAWA=marchandise)",
+    "mara.spart=secteur ; mara.meins=unite de base ; divisions du projet: marc.werks IN ('2200','9200')"
+  ],
+  "rules": [
+    "matnr a des zeros de tete -> LTRIM(matnr,'0').",
+    "Stock = SUM(mard.labst::numeric) (varchar). Libelle = makt.maktx (spras='F'). Valorisation = mbew.verpr/stprs (::numeric)."
+  ],
+  "patterns": [
+    {
+      "intent": "stock total par article",
+      "sql": "SELECT LTRIM(a.matnr,'0') AS matnr, t.maktx, SUM(d.labst::numeric) AS stock FROM raw_data.mara a JOIN raw_data.makt t ON t.matnr=a.matnr AND t.spras='F' JOIN raw_data.mard d ON d.matnr=a.matnr GROUP BY a.matnr, t.maktx"
+    }
+  ]
+}

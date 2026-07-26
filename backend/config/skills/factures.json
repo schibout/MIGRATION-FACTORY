@@ -1,0 +1,27 @@
+{
+  "domain": "factures",
+  "keywords": ["facture", "factures", "invoice"],
+  "synonyms": ["facture fournisseur", "piece comptable fournisseur"],
+  "docs": [
+    "Montant total facture = SUM(rseg.wrbtr::numeric) groupe par belnr+gjahr (ou rbkp.rmwwr en en-tete)"
+  ],
+  "tables": ["raw_data.rbkp", "raw_data.rseg", "raw_data.lfa1"],
+  "joins": [
+    "rbkp (entete) <-> rseg (postes) sur (belnr,gjahr)",
+    "rbkp.lifnr = lfa1.lifnr sur lifnr pour le fournisseur"
+  ],
+  "enums": [
+    "rbkp.blart=type de piece ; rbkp.rmwwr=montant brut total facture (en-tete, ::numeric)",
+    "rbkp.bldat=date piece, budat=date compta (YYYYMMDD) ; rseg.wrbtr=montant ligne (::numeric) ; rseg.shkzg=sens (S=debit,H=credit) ; rseg.matnr=article"
+  ],
+  "rules": [
+    "Montants en varchar -> CAST ::numeric. Total facture = SUM(rseg.wrbtr::numeric) groupe par belnr/gjahr.",
+    "Factures FOURNISSEUR = rbkp/rseg (logistique MM), a NE PAS confondre avec les commandes (ekko/ekpo)."
+  ],
+  "patterns": [
+    {
+      "intent": "montant total par facture fournisseur",
+      "sql": "SELECT r.belnr, r.gjahr, SUM(s.wrbtr::numeric) AS total FROM raw_data.rbkp r JOIN raw_data.rseg s ON s.belnr=r.belnr AND s.gjahr=r.gjahr GROUP BY r.belnr, r.gjahr"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <title>Migration Factory</title>
+  <meta name="description" content="Application de gestion de migration de données fournisseurs depuis SAP vers PostgreSQL" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #1e2738;
+      color: #fff;
+      font-family: 'Roboto', sans-serif;
+      overflow-x: hidden;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    /* Loader for initial app loading */
+    .app-loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #1e2738;
+    }
+    .app-loader-spinner {
+      width: 60px;
+      height: 60px;
+      border: 5px solid transparent;
+      border-top-color: #4d8bf0;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    .app-loader-text {
+      color: #b0b8c8;
+      font-size: 18px;
+      margin-top: 16px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="app-loader">
+      <div class="app-loader-spinner"></div>
+      <div class="app-loader-text">Chargement de Migration Factory...</div>
+    </div>
+  </div>
+  <script type="module" src="/main.tsx"></script>
+</body>
+</html>

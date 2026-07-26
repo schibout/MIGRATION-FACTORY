@@ -1,0 +1,42 @@
+# Dépendances principales
+Flask==2.3.3
+Flask-RESTful==0.3.10
+Flask-SQLAlchemy==3.1.1
+Flask-JWT-Extended==4.6.0
+Flask-Cors==4.0.0
+Flask-Limiter==3.5.0
+SQLAlchemy==2.0.21
+Werkzeug==2.3.7
+python-dotenv==1.0.0
+gunicorn==21.2.0
+
+# Dépendances pour l'export de données
+pandas==2.1.1
+openpyxl==3.1.5
+XlsxWriter==3.1.2
+
+# Dépendances pour la base de données
+psycopg2-binary==2.9.7
+
+# Dépendances pour l'Assistant IA (validation du SQL généré par Ollama)
+sqlparse==0.5.1
+
+# Dépendances pour SharePoint
+requests==2.31.0
+requests-ntlm==1.2.0
+
+# Dépendances pour la sécurité
+PyJWT==2.8.0
+cryptography==41.0.4
+
+# Dépendances pour la journalisation
+loguru==0.7.2
+
+# Dépendances pour le développement
+pytest==7.4.2
+pytest-flask==1.2.0
+pytest-cov==4.1.0
+black==23.9.1
+flake8==6.1.0
+# Cache applicatif (optionnel) — active le cache Redis si REDIS_URL est defini
+redis==5.0.8

@@ -1,0 +1,30 @@
+{
+  "domain": "achats",
+  "keywords": ["commande", "commandes", "achat", "achats", "order", "infoachat", "approvisionnement", "appro"],
+  "synonyms": ["bon de commande", "purchase order"],
+  "docs": [
+    "Nombre de commandes = COUNT(DISTINCT ekko.ebeln)",
+    "Montant commande = SUM(ekpo.netwr::numeric)"
+  ],
+  "tables": ["raw_data.ekko", "raw_data.ekpo", "raw_data.ekbe", "raw_data.lfa1", "raw_data.eina", "raw_data.eine"],
+  "joins": [
+    "ekko (entete) <-> ekpo (postes) sur ebeln",
+    "ekko.lifnr = lfa1.lifnr sur lifnr [fournisseur]",
+    "ekpo <-> ekbe sur (ebeln,ebelp) [historique reception/facture]",
+    "eina (info-achat general) <-> eine (par org. achat ekorg) sur infnr ; eina.matnr/lifnr"
+  ],
+  "enums": [
+    "ekko.bsart=type de commande, aedat=date creation (YYYYMMDD)",
+    "ekpo.menge=quantite (::numeric), netpr=prix net (::numeric), netwr=valeur, matnr, werks ; ekbe.bewtp=type (E=reception,Q=facture)"
+  ],
+  "rules": [
+    "Quantites/montants varchar -> CAST ::numeric.",
+    "Commandes d'achat = ekko/ekpo (a NE PAS confondre avec les factures rbkp/rseg ni les info-achats eina/eine)."
+  ],
+  "patterns": [
+    {
+      "intent": "nombre de commandes par fournisseur",
+      "sql": "SELECT k.lifnr, COUNT(DISTINCT k.ebeln) AS nb_commandes FROM raw_data.ekko k GROUP BY k.lifnr ORDER BY nb_commandes DESC"
+    }
+  ]
+}

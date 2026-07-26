@@ -1,0 +1,826 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Migration Factory API",
+    "description": "API pour l'extraction de données SAP vers PostgreSQL et l'export de données",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Support Migration Factory"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Serveur principal"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "Table": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "LFA1"
+          },
+          "description": {
+            "type": "string",
+            "example": "Données de base fournisseurs"
+          },
+          "row_count": {
+            "type": "integer",
+            "example": 3000
+          }
+        }
+      },
+      "Field": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "LIFNR"
+          },
+          "type": {
+            "type": "string",
+            "example": "varchar"
+          },
+          "description": {
+            "type": "string",
+            "example": "Numéro fournisseur"
+          }
+        }
+      },
+      "ExtractionStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["LFA1", "ADRC"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["starting", "running", "completed", "failed", "stopped"],
+            "example": "running"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 45
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "duration": {
+            "type": "number",
+            "nullable": true,
+            "example": 123.5
+          },
+          "user": {
+            "type": "string",
+            "example": "admin"
+          }
+        }
+      },
+      "ExtractionLog": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["info", "error", "warning"],
+            "example": "info"
+          },
+          "message": {
+            "type": "string",
+            "example": "Extraction de la table LFA1 en cours..."
+          }
+        }
+      },
+      "FilterCriteria": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "LAND1"
+          },
+          "operator": {
+            "type": "string",
+            "enum": ["=", "!=", ">", "<", ">=", "<=", "LIKE", "NOT LIKE", "IN", "NOT IN", "IS NULL", "IS NOT NULL"],
+            "example": "="
+          },
+          "value": {
+            "type": "string",
+            "example": "FR"
+          }
+        }
+      },
+      "UserCredentials": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "password123"
+          }
+        },
+        "required": ["username", "password"]
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "username": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          },
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Authentification utilisateur",
+        "description": "Authentification avec nom d'utilisateur et mot de passe",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCredentials"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentification réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentification échouée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Rafraîchissement du token",
+        "description": "Obtient un nouveau token d'accès avec un token de rafraîchissement",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token rafraîchi avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token de rafraîchissement invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extraction/tables": {
+      "get": {
+        "summary": "Liste des tables disponibles",
+        "description": "Récupère la liste des tables SAP disponibles pour extraction",
+        "responses": {
+          "200": {
+            "description": "Liste des tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Table"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extraction/start": {
+      "post": {
+        "summary": "Démarrer une extraction",
+        "description": "Démarre l'extraction des tables spécifiées",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tables": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": ["LFA1", "ADRC"]
+                  },
+                  "options": {
+                    "type": "object",
+                    "properties": {
+                      "batch_size": {
+                        "type": "integer",
+                        "example": 100
+                      },
+                      "verbose": {
+                        "type": "boolean",
+                        "example": true
+                      }
+                    }
+                  }
+                },
+                "required": ["tables"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Extraction démarrée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "extraction_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "tables": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Paramètres invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extraction/status/{extraction_id}": {
+      "get": {
+        "summary": "Statut d'une extraction",
+        "description": "Récupère le statut d'une extraction en cours ou terminée",
+        "parameters": [
+          {
+            "name": "extraction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statut de l'extraction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Extraction non trouvée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extraction/logs/{extraction_id}": {
+      "get": {
+        "summary": "Logs d'une extraction",
+        "description": "Récupère les logs d'une extraction",
+        "parameters": [
+          {
+            "name": "extraction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logs de l'extraction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExtractionLog"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extraction/history": {
+      "get": {
+        "summary": "Historique des extractions",
+        "description": "Récupère l'historique des extractions",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historique des extractions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExtractionStatus"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/tables": {
+      "get": {
+        "summary": "Liste des tables disponibles",
+        "description": "Récupère la liste des tables disponibles dans PostgreSQL",
+        "responses": {
+          "200": {
+            "description": "Liste des tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Table"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/{table}/fields": {
+      "get": {
+        "summary": "Liste des champs d'une table",
+        "description": "Récupère la liste des champs d'une table avec leur description",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des champs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Field"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Table non valide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/{table}/preview": {
+      "get": {
+        "summary": "Aperçu des données",
+        "description": "Récupère un aperçu des données d'une table",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Liste des champs à inclure, séparés par des virgules"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 5
+            },
+            "description": "Nombre de lignes à récupérer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aperçu des données",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/{table}/filter": {
+      "post": {
+        "summary": "Filtrer les données",
+        "description": "Filtre les données d'une table selon des critères spécifiés",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Champs à inclure dans le résultat"
+                  },
+                  "filters": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/FilterCriteria"
+                    }
+                  },
+                  "conjunction": {
+                    "type": "string",
+                    "enum": ["AND", "OR"],
+                    "default": "AND"
+                  },
+                  "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                  },
+                  "page_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Résultats du filtrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "description": "Nombre total de résultats"
+                    },
+                    "page": {
+                      "type": "integer",
+                      "description": "Page courante"
+                    },
+                    "page_size": {
+                      "type": "integer",
+                      "description": "Taille de la page"
+                    },
+                    "pages": {
+                      "type": "integer",
+                      "description": "Nombre total de pages"
+                    },
+                    "columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/{table}/export": {
+      "post": {
+        "summary": "Exporter les données",
+        "description": "Exporte les données filtrées d'une table au format CSV ou Excel",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Champs à inclure dans l'export"
+                  },
+                  "filters": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/FilterCriteria"
+                    },
+                    "description": "Critères de filtrage"
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": ["csv", "excel"],
+                    "default": "csv",
+                    "description": "Format d'export"
+                  },
+                  "options": {
+                    "type": "object",
+                    "properties": {                      "delimiter": {
+                        "type": "string",
+                        "default": ";",
+                        "description": "Délimiteur pour le CSV"
+                      },
+                      "encoding": {
+                        "type": "string",
+                        "default": "utf-8",
+                        "description": "Encodage pour le CSV"
+                      },
+                      "includeHeaders": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Inclure les en-têtes de colonnes"
+                      },
+                      "filename": {
+                        "type": "string",
+                        "description": "Nom du fichier d'export"
+                      },
+                      "sheetName": {
+                        "type": "string",
+                        "description": "Nom de la feuille Excel"
+                      }
+                    }
+                  }
+                },
+                "required": ["fields"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fichier exporté",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Paramètres invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+} 

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xml:base="http://asap.stjn.local/255/_api/" xmlns="http://www.w3.org/2005/Atom" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:georss="http://www.georss.org/georss" xmlns:gml="http://www.opengis.net/gml">
+	<id>d97759b6-8d32-4530-a971-2e32a0c52204</id>
+	<title/>
+	<updated>2026-07-06T21:25:07Z</updated>
+	<entry m:etag="&quot;4&quot;">
+		<id>Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)</id>
+		<category term="SP.Data.TasksListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/FieldValuesAsText">
+			<m:inline>
+				<entry>
+					<id>http://asap.stjn.local/255/_api/Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/FieldValuesAsText</id>
+					<category term="SP.FieldStringValues" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+					<link rel="edit" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/FieldValuesAsText"/>
+					<title/>
+					<updated>2026-07-06T21:25:07Z</updated>
+					<author>
+						<name/>
+					</author>
+					<content type="application/xml">
+						<m:properties>
+							<d:ID>1</d:ID>
+							<d:ContentTypeId>0x010800C8042168D5464DB99757CED2077E53380025773932268FDC4C8C119CADC577D4CA</d:ContentTypeId>
+							<d:Title>P1</d:Title>
+							<d:Modified>14/03/2022 20:21</d:Modified>
+							<d:Created>07/04/2016 14:28</d:Created>
+							<d:Author>1073741823</d:Author>
+							<d:Editor>1073741823</d:Editor>
+							<d:OData__x005f_UIVersionString>1.0</d:OData__x005f_UIVersionString>
+							<d:Attachments>False</d:Attachments>
+							<d:GUID>bbb577f0-fabc-44fd-a037-d4319a7bbf51</d:GUID>
+							<d:Predecessors/>
+							<d:Priority>(2) Normal</d:Priority>
+							<d:Status>Terminé</d:Status>
+							<d:PercentComplete>100 %</d:PercentComplete>
+							<d:AssignedTo/>
+							<d:Body/>
+							<d:StartDate>02/03/2016</d:StartDate>
+							<d:DueDate>02/03/2016</d:DueDate>
+							<d:Checkmark>Oui</d:Checkmark>
+							<d:RelatedItems/>
+							<d:Phase>1</d:Phase>
+							<d:RetroplanningShifting>0</d:RetroplanningShifting>
+							<d:Gate>P1</d:Gate>
+							<d:OData__x005f_ModerationStatus>Approuvé</d:OData__x005f_ModerationStatus>
+							<d:OData__x005f_Level>1</d:OData__x005f_Level>
+							<d:UniqueId>74c4551f-4b8e-4af4-bd9e-f763427b2729</d:UniqueId>
+							<d:FSObjType>0</d:FSObjType>
+							<d:FileRef>/255/Lists/Tasks/1_.000</d:FileRef>
+							<d:owshiddenversion>4</d:owshiddenversion>
+						</m:properties>
+					</content>
+				</entry>
+			</m:inline>
+		</link>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(1)/ParentList"/>
+		<title/>
+		<updated>2026-07-06T21:25:07Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">1</d:Id>
+				<d:ID m:type="Edm.Int32">1</d:ID>
+				<d:ContentTypeId>0x010800C8042168D5464DB99757CED2077E53380025773932268FDC4C8C119CADC577D4CA</d:ContentTypeId>
+				<d:Title>P1</d:Title>
+				<d:Modified m:type="Edm.DateTime">2022-03-14T19:21:07Z</d:Modified>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:25Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:Attachments m:type="Edm.Boolean">false</d:Attachments>
+				<d:GUID m:type="Edm.Guid">bbb577f0-fabc-44fd-a037-d4319a7bbf51</d:GUID>
+				<d:PredecessorsId m:type="Collection(Edm.Int32)"/>
+				<d:Priority>(2) Normal</d:Priority>
+				<d:Status>Terminé</d:Status>
+				<d:PercentComplete m:type="Edm.Double">1</d:PercentComplete>
+				<d:AssignedToId m:null="true"/>
+				<d:Body m:null="true"/>
+				<d:StartDate m:type="Edm.DateTime">2016-03-01T23:00:00Z</d:StartDate>
+				<d:DueDate m:type="Edm.DateTime">2016-03-01T23:00:00Z</d:DueDate>
+				<d:Checkmark>1</d:Checkmark>
+				<d:RelatedItems m:null="true"/>
+				<d:PhaseId m:type="Edm.Int32">1</d:PhaseId>
+				<d:RetroplanningShifting m:type="Edm.Double">0</d:RetroplanningShifting>
+				<d:Gate>P1</d:Gate>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;4&quot;">
+		<id>Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)</id>
+		<category term="SP.Data.TasksListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/AttachmentFiles"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/ContentType"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/FieldValuesAsHtml"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/FieldValuesAsText">
+			<m:inline>
+				<entry>
+					<id>http://asap.stjn.local/255/_api/Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/FieldValuesAsText</id>
+					<category term="SP.FieldStringValues" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+					<link rel="edit" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/FieldValuesAsText"/>
+					<title/>
+					<updated>2026-07-06T21:25:07Z</updated>
+					<author>
+						<name/>
+					</author>
+					<content type="application/xml">
+						<m:properties>
+							<d:ID>3</d:ID>
+							<d:ContentTypeId>0x010800C8042168D5464DB99757CED2077E53380025773932268FDC4C8C119CADC577D4CA</d:ContentTypeId>
+							<d:Title>P3</d:Title>
+							<d:Modified>14/03/2022 20:21</d:Modified>
+							<d:Created>07/04/2016 14:28</d:Created>
+							<d:Author>1073741823</d:Author>
+							<d:Editor>1073741823</d:Editor>
+							<d:OData__x005f_UIVersionString>1.0</d:OData__x005f_UIVersionString>
+							<d:Attachments>False</d:Attachments>
+							<d:GUID>cff705a8-c641-4ac5-a23a-cf916c85cf91</d:GUID>
+							<d:Predecessors/>
+							<d:Priority>(2) Normal</d:Priority>
+							<d:Status>Terminé</d:Status>
+							<d:PercentComplete>100 %</d:PercentComplete>
+							<d:AssignedTo/>
+							<d:Body/>
+							<d:StartDate>25/05/2016</d:StartDate>
+							<d:DueDate>25/05/2016</d:DueDate>
+							<d:Checkmark>Oui</d:Checkmark>
+							<d:RelatedItems/>
+							<d:Phase>1</d:Phase>
+							<d:RetroplanningShifting>60</d:RetroplanningShifting>
+							<d:Gate>P3</d:Gate>
+							<d:OData__x005f_ModerationStatus>Approuvé</d:OData__x005f_ModerationStatus>
+							<d:OData__x005f_Level>1</d:OData__x005f_Level>
+							<d:UniqueId>8cac8e14-c241-45e9-a41d-997b5bdbc183</d:UniqueId>
+							<d:FSObjType>0</d:FSObjType>
+							<d:FileRef>/255/Lists/Tasks/3_.000</d:FileRef>
+							<d:owshiddenversion>4</d:owshiddenversion>
+						</m:properties>
+					</content>
+				</entry>
+			</m:inline>
+		</link>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/FieldValuesForEdit"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/File"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/Folder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items(3)/ParentList"/>
+		<title/>
+		<updated>2026-07-06T21:25:07Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+				<d:Id m:type="Edm.Int32">3</d:Id>
+				<d:ID m:type="Edm.Int32">3</d:ID>
+				<d:ContentTypeId>0x010800C8042168D5464DB99757CED2077E53380025773932268FDC4C8C119CADC577D4CA</d:ContentTypeId>
+				<d:Title>P3</d:Title>
+				<d:Modified m:type="Edm.DateTime">2022-03-14T19:21:07Z</d:Modified>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:25Z</d:Created>
+				<d:AuthorId m:type="Edm.Int32">1073741823</d:AuthorId>
+				<d:EditorId m:type="Edm.Int32">1073741823</d:EditorId>
+				<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+				<d:Attachments m:type="Edm.Boolean">false</d:Attachments>
+				<d:GUID m:type="Edm.Guid">cff705a8-c641-4ac5-a23a-cf916c85cf91</d:GUID>
+				<d:PredecessorsId m:type="Collection(Edm.Int32)"/>
+				<d:Priority>(2) Normal</d:Priority>
+				<d:Status>Terminé</d:Status>
+				<d:PercentComplete m:type="Edm.Double">1</d:PercentComplete>
+				<d:AssignedToId m:null="true"/>
+				<d:Body m:null="true"/>
+				<d:StartDate m:type="Edm.DateTime">2016-05-24T22:00:00Z</d:StartDate>
+				<d:DueDate m:type="Edm.DateTime">2016-05-24T22:00:00Z</d:DueDate>
+				<d:Checkmark>1</d:Checkmark>
+				<d:RelatedItems m:null="true"/>
+				<d:PhaseId m:type="Edm.Int32">1</d:PhaseId>
+				<d:RetroplanningShifting m:type="Edm.Double">60</d:RetroplanningShifting>
+				<d:Gate>P3</d:Gate>
+			</m:properties>
+		</content>
+	</entry>
+	<link rel="next" href="http://asap.stjn.local/255/_api/web/lists/getByTitle('Jalons')/items?%24skiptoken=Paged%3dTRUE%26p_ID%3d3&amp;%24top=2&amp;%24expand=FieldValuesAsText"/>
+</feed>

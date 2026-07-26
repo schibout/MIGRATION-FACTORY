@@ -1,0 +1,29 @@
+{
+  "domain": "fournisseurs",
+  "keywords": ["fournisseur", "fournisseurs", "supplier", "vendeur"],
+  "synonyms": ["donneur d'ordre", "creditor", "qui nous livre"],
+  "docs": [
+    "Perimetre de migration des fournisseurs : table public.fournisseurs_a_conserver"
+  ],
+  "tables": ["raw_data.lfa1", "raw_data.lfb1", "raw_data.lfm1", "raw_data.lfbk"],
+  "joins": [
+    "lfa1<->lfb1 sur lifnr [compta par societe bukrs]",
+    "lfa1<->lfm1 sur lifnr [achat par organisation ekorg]",
+    "lfa1<->lfbk sur lifnr [comptes bancaires: banks,bankl,bankn]",
+    "Adresse directe dans lfa1: stras (rue), ort01 (ville), pstlz (CP), land1 (pays), regio"
+  ],
+  "enums": [
+    "lfa1.ktokk=groupe de comptes",
+    "Identifiants: lfa1.stcd1=SIRET, stcd2=SIREN, stceg=TVA intracom ; land1=pays (FR, DE...)"
+  ],
+  "rules": [
+    "Un fournisseur peut exister sans lfb1/lfm1 -> LEFT JOIN si on liste tous les fournisseurs.",
+    "lfb1 = donnees comptables par societe (bukrs) ; lfm1 = donnees achat par organisation d'achat (ekorg)."
+  ],
+  "patterns": [
+    {
+      "intent": "fournisseurs par pays",
+      "sql": "SELECT a.land1, COUNT(*) AS nb FROM raw_data.lfa1 a GROUP BY a.land1 ORDER BY nb DESC"
+    }
+  ]
+}

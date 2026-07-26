@@ -1,0 +1,26 @@
+{
+  "domain": "clients",
+  "keywords": ["client", "clients", "customer"],
+  "synonyms": ["debiteur", "donneur d'ordre client"],
+  "docs": [
+    "kna1 = fiche client (donnees generales)"
+  ],
+  "tables": ["raw_data.kna1", "raw_data.knb1"],
+  "joins": [
+    "kna1 <-> knb1 sur kunnr [donnees comptables par societe bukrs, si extraite]",
+    "Adresse directe dans kna1: stras (rue), ort01 (ville), pstlz (CP), land1 (pays), regio"
+  ],
+  "enums": [
+    "kna1.ktokd=groupe de comptes client",
+    "Identifiants: kna1.stcd1=SIRET, stceg=TVA intracom ; land1=pays (FR, DE...)"
+  ],
+  "rules": [
+    "kna1 = donnees generales du client ; knb1 = donnees comptables par societe (bukrs)."
+  ],
+  "patterns": [
+    {
+      "intent": "nombre de clients par pays",
+      "sql": "SELECT c.land1, COUNT(*) AS nb FROM raw_data.kna1 c GROUP BY c.land1 ORDER BY nb DESC"
+    }
+  ]
+}

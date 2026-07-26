@@ -1,0 +1,944 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xml:base="http://asap.stjn.local/255/_api/" xmlns="http://www.w3.org/2005/Atom" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:georss="http://www.georss.org/georss" xmlns:gml="http://www.opengis.net/gml">
+	<id>73dc905e-c3db-44df-8b9e-c21b85ca6288</id>
+	<title/>
+	<updated>2026-07-06T21:29:19Z</updated>
+	<entry m:etag="&quot;0&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'a6873930-d360-4666-bfdd-ca32765be356')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">10011</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>Change_x0020_RequestsList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">a6873930-d360-4666-bfdd-ca32765be356</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.png</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">0</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-20T22:00:05Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.Change_x0020_RequestsListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">4636c6af-23cd-4771-a297-d6d971da9585</d:TemplateFeatureId>
+				<d:Title>Demandes de changement</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">101</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">1</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">false</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:20Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl>/255/Documents partages/Forms/template.dotx</d:DocumentTemplateUrl>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">false</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">true</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">true</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">true</d:EnableVersioning>
+				<d:EntityTypeName>Documents_x0020_partages</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">a9f3bbbd-ef30-4ccf-8a32-ee8dfa9b3c57</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itdl.png?rev=23</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">29</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:20Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-19T17:56:37Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.Documents_x0020_partagesItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">00bfea71-e717-4e80-aa17-d0c71b360101</d:TemplateFeatureId>
+				<d:Title>Documents</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;10&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'bcc60916-e685-4baf-8181-2ca46f4a321d')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">10019</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:25Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>Status_x0020_ReportsList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">bcc60916-e685-4baf-8181-2ca46f4a321d</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.png</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">11</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:25Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-07-03T17:26:54Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.Status_x0020_ReportsListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">4636c6af-23cd-4771-a297-d6d971da9585</d:TemplateFeatureId>
+				<d:Title>États d'avancement</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;0&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'046ea8d6-d2a8-4da7-bded-c214314941b2')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">116</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">1</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">false</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:20Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description>Utilisez la galerie Pages maîtres pour stocker les pages maîtres. Les pages maîtres de cette galerie sont disponibles pour ce site et tous les sites sous-jacents.</d:Description>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">false</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">true</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">true</d:EnableVersioning>
+				<d:EntityTypeName>OData__x005f_catalogs_x002f_masterpage</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">true</d:Hidden>
+				<d:Id m:type="Edm.Guid">046ea8d6-d2a8-4da7-bded-c214314941b2</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itdl.png?rev=23</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">true</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">true</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">6</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:20Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2016-04-07T12:28:32Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.OData__x005f_catalogs_x002f_masterpageItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">true</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:TemplateFeatureId>
+				<d:Title>Galerie Pages maîtres</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;0&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'afbe4dcb-4821-40a6-920f-60e2ea9498d5')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">100</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">false</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>ImportZCOAList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">afbe4dcb-4821-40a6-920f-60e2ea9498d5</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.png?rev=23</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">58</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2017-12-14T04:14:59Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-20T22:00:05Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.ImportZCOAListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">00bfea71-de22-43b2-a848-c05709900100</d:TemplateFeatureId>
+				<d:Title>ImportZCOA</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;8&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'cd410910-22d3-4456-847c-2946deede3b7')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">171</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:25Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>TasksList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">cd410910-22d3-4456-847c-2946deede3b7</d:Id>
+				<d:ImageUrl>/_layouts/15/images/ittask.png?rev=23</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">7</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:25Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-10-19T21:09:43Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.TasksListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">false</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">f9ce21f8-f437-4f7e-8bc6-946378c850f0</d:TemplateFeatureId>
+				<d:Title>Jalons</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;0&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'c9da313a-2a15-4eb0-a0a3-f936a41f6222')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">119</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">1</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:27Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">false</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">true</d:EnableVersioning>
+				<d:EntityTypeName>SitePages</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">c9da313a-2a15-4eb0-a0a3-f936a41f6222</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itwp.png?rev=23</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">true</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">2</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:27Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-19T17:56:34Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.SitePagesItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">00bfea71-c796-4402-9f2f-0eb9a6e71b18</d:TemplateFeatureId>
+				<d:Title>Pages du site</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;0&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'2c058afd-4327-4c4a-a91a-a6df5bf93d91')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">10015</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>PhasesList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">2c058afd-4327-4c4a-a91a-a6df5bf93d91</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.png</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">3</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-19T17:56:36Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.PhasesListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">4636c6af-23cd-4771-a297-d6d971da9585</d:TemplateFeatureId>
+				<d:Title>Phases</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'3b64fb14-93ff-4017-bad4-e80d44beeebc')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">101</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">1</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">false</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:27Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description>Cette bibliothèque permet de stocker les fichiers qui sont contenus dans les pages de ce site, tels que les images des pages Wiki.</d:Description>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl>/255/SiteAssets/Forms/template.doc</d:DocumentTemplateUrl>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">false</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">true</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>SiteAssets</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">3b64fb14-93ff-4017-bad4-e80d44beeebc</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itdl.png?rev=23</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">true</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">0</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:27Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-20T22:00:06Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.SiteAssetsItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">00bfea71-e717-4e80-aa17-d0c71b360101</d:TemplateFeatureId>
+				<d:Title>Pièces jointes</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;0&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'2f0c0d40-48d8-4740-9831-b06054f4878f')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">124</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">false</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:18Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description>Stocker les présentations composées dans cette liste. Pour les appliquer à ce site, accédez aux Paramètres du site et sélectionnez l’option Modifier l’apparence.</d:Description>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">true</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>OData__x005f_catalogs_x002f_design</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">true</d:Hidden>
+				<d:Id m:type="Edm.Guid">2f0c0d40-48d8-4740-9831-b06054f4878f</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.gif?rev=23</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">18</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:18Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2016-04-07T12:28:20Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.OData__x005f_catalogs_x002f_designItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">true</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:TemplateFeatureId>
+				<d:Title>Présentations composées</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;0&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'6421380a-3a80-4470-9122-1854be9ded6f')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">10018</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:25Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>RisksList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">6421380a-3a80-4470-9122-1854be9ded6f</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.png</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">0</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:25Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-20T22:00:06Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.RisksListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">4636c6af-23cd-4771-a297-d6d971da9585</d:TemplateFeatureId>
+				<d:Title>Risques</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;0&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'8947b462-ecd4-418a-b066-591af9cad74a')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">10029</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2022-03-14T17:56:01Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description>Statut des CFV</d:Description>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>Statut_x0020_des_x0020_CFVList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">8947b462-ecd4-418a-b066-591af9cad74a</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.png</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">0</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2022-03-14T17:56:01Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2022-03-14T17:56:01Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.Statut_x0020_des_x0020_CFVListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">4636c6af-23cd-4771-a297-d6d971da9585</d:TemplateFeatureId>
+				<d:Title>Statut des CFV</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'3007fd0d-bbc6-4cef-91ce-85038911a9b9')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">10012</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>Costs_x0020_StatusList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">3007fd0d-bbc6-4cef-91ce-85038911a9b9</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.png</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">11</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-19T17:56:36Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.Costs_x0020_StatusListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">4636c6af-23cd-4771-a297-d6d971da9585</d:TemplateFeatureId>
+				<d:Title>Statut des coûts</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+	<entry m:etag="&quot;1&quot;">
+		<id>http://asap.stjn.local/255/_api/Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')</id>
+		<category term="SP.List" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+		<link rel="edit" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/FirstUniqueAncestorSecurableObject"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/RoleAssignments"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentTypes" type="application/atom+xml;type=feed" title="ContentTypes" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/ContentTypes"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/DefaultView" type="application/atom+xml;type=entry" title="DefaultView" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/DefaultView"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/EventReceivers" type="application/atom+xml;type=feed" title="EventReceivers" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/EventReceivers"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Fields" type="application/atom+xml;type=feed" title="Fields" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/Fields"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Forms" type="application/atom+xml;type=feed" title="Forms" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/Forms"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/InformationRightsManagementSettings" type="application/atom+xml;type=entry" title="InformationRightsManagementSettings" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/InformationRightsManagementSettings"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Items" type="application/atom+xml;type=feed" title="Items" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/Items"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentWeb" type="application/atom+xml;type=entry" title="ParentWeb" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/ParentWeb"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RootFolder" type="application/atom+xml;type=entry" title="RootFolder" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/RootFolder"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/UserCustomActions" type="application/atom+xml;type=feed" title="UserCustomActions" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/UserCustomActions"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Views" type="application/atom+xml;type=feed" title="Views" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/Views"/>
+		<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/WorkflowAssociations" type="application/atom+xml;type=feed" title="WorkflowAssociations" href="Web/Lists(guid'51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe')/WorkflowAssociations"/>
+		<title/>
+		<updated>2026-07-06T21:29:19Z</updated>
+		<author>
+			<name/>
+		</author>
+		<content type="application/xml">
+			<m:properties>
+				<d:AllowContentTypes m:type="Edm.Boolean">true</d:AllowContentTypes>
+				<d:BaseTemplate m:type="Edm.Int32">10014</d:BaseTemplate>
+				<d:BaseType m:type="Edm.Int32">0</d:BaseType>
+				<d:ContentTypesEnabled m:type="Edm.Boolean">true</d:ContentTypesEnabled>
+				<d:Created m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:Created>
+				<d:DefaultContentApprovalWorkflowId m:type="Edm.Guid">00000000-0000-0000-0000-000000000000</d:DefaultContentApprovalWorkflowId>
+				<d:Description/>
+				<d:Direction>none</d:Direction>
+				<d:DocumentTemplateUrl m:null="true"/>
+				<d:DraftVersionVisibility m:type="Edm.Int32">0</d:DraftVersionVisibility>
+				<d:EnableAttachments m:type="Edm.Boolean">true</d:EnableAttachments>
+				<d:EnableFolderCreation m:type="Edm.Boolean">false</d:EnableFolderCreation>
+				<d:EnableMinorVersions m:type="Edm.Boolean">false</d:EnableMinorVersions>
+				<d:EnableModeration m:type="Edm.Boolean">false</d:EnableModeration>
+				<d:EnableVersioning m:type="Edm.Boolean">false</d:EnableVersioning>
+				<d:EntityTypeName>Milestones_x0020_StatusList</d:EntityTypeName>
+				<d:ForceCheckout m:type="Edm.Boolean">false</d:ForceCheckout>
+				<d:HasExternalDataSource m:type="Edm.Boolean">false</d:HasExternalDataSource>
+				<d:Hidden m:type="Edm.Boolean">false</d:Hidden>
+				<d:Id m:type="Edm.Guid">51948eb7-c3fd-46b2-bcf1-4cb6fb39edbe</d:Id>
+				<d:ImageUrl>/_layouts/15/images/itgen.png</d:ImageUrl>
+				<d:IrmEnabled m:type="Edm.Boolean">false</d:IrmEnabled>
+				<d:IrmExpire m:type="Edm.Boolean">false</d:IrmExpire>
+				<d:IrmReject m:type="Edm.Boolean">false</d:IrmReject>
+				<d:IsApplicationList m:type="Edm.Boolean">false</d:IsApplicationList>
+				<d:IsCatalog m:type="Edm.Boolean">false</d:IsCatalog>
+				<d:IsPrivate m:type="Edm.Boolean">false</d:IsPrivate>
+				<d:ItemCount m:type="Edm.Int32">77</d:ItemCount>
+				<d:LastItemDeletedDate m:type="Edm.DateTime">2016-04-07T12:28:24Z</d:LastItemDeletedDate>
+				<d:LastItemModifiedDate m:type="Edm.DateTime">2023-04-20T22:00:06Z</d:LastItemModifiedDate>
+				<d:ListItemEntityTypeFullName>SP.Data.Milestones_x0020_StatusListItem</d:ListItemEntityTypeFullName>
+				<d:MajorVersionLimit m:type="Edm.Int32">0</d:MajorVersionLimit>
+				<d:MajorWithMinorVersionsLimit m:type="Edm.Int32">0</d:MajorWithMinorVersionsLimit>
+				<d:MultipleDataList m:type="Edm.Boolean">false</d:MultipleDataList>
+				<d:NoCrawl m:type="Edm.Boolean">false</d:NoCrawl>
+				<d:ParentWebUrl>/255</d:ParentWebUrl>
+				<d:ServerTemplateCanCreateFolders m:type="Edm.Boolean">true</d:ServerTemplateCanCreateFolders>
+				<d:TemplateFeatureId m:type="Edm.Guid">4636c6af-23cd-4771-a297-d6d971da9585</d:TemplateFeatureId>
+				<d:Title>Statut des jalons</d:Title>
+			</m:properties>
+		</content>
+	</entry>
+</feed>

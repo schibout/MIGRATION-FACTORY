@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<entry xml:base="http://asap.stjn.local/863/_api/" xmlns="http://www.w3.org/2005/Atom" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:georss="http://www.georss.org/georss" xmlns:gml="http://www.opengis.net/gml" m:etag="&quot;1&quot;">
+	<id>Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)</id>
+	<category term="SP.Data.Status_x0020_ReportsListItem" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme"/>
+	<link rel="edit" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FirstUniqueAncestorSecurableObject" type="application/atom+xml;type=entry" title="FirstUniqueAncestorSecurableObject" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/FirstUniqueAncestorSecurableObject"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/RoleAssignments" type="application/atom+xml;type=feed" title="RoleAssignments" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/RoleAssignments"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/AttachmentFiles" type="application/atom+xml;type=feed" title="AttachmentFiles" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/AttachmentFiles"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ContentType" type="application/atom+xml;type=entry" title="ContentType" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/ContentType"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsHtml" type="application/atom+xml;type=entry" title="FieldValuesAsHtml" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/FieldValuesAsHtml"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesAsText" type="application/atom+xml;type=entry" title="FieldValuesAsText" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/FieldValuesAsText"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/FieldValuesForEdit" type="application/atom+xml;type=entry" title="FieldValuesForEdit" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/FieldValuesForEdit"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/File" type="application/atom+xml;type=entry" title="File" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/File"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/Folder" type="application/atom+xml;type=entry" title="Folder" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/Folder"/>
+	<link rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/ParentList" type="application/atom+xml;type=entry" title="ParentList" href="Web/Lists(guid'0143fa81-887f-49bc-9878-c1bf871d7f3b')/Items(1)/ParentList"/>
+	<title/>
+	<updated>2026-01-13T22:41:02Z</updated>
+	<author>
+		<name/>
+	</author>
+	<content type="application/xml">
+		<m:properties>
+			<d:FileSystemObjectType m:type="Edm.Int32">0</d:FileSystemObjectType>
+			<d:Id m:type="Edm.Int32">1</d:Id>
+			<d:ID m:type="Edm.Int32">1</d:ID>
+			<d:ContentTypeId>0x0100621D5293300847E8B36D8528E72BBE2500DBDF67365CA8F344BBC4615741EF49BF</d:ContentTypeId>
+			<d:Title>État d'avancement - 06/10/2022</d:Title>
+			<d:Modified m:type="Edm.DateTime">2022-10-27T13:50:26Z</d:Modified>
+			<d:Created m:type="Edm.DateTime">2022-10-27T13:50:26Z</d:Created>
+			<d:AuthorId m:type="Edm.Int32">205</d:AuthorId>
+			<d:EditorId m:type="Edm.Int32">205</d:EditorId>
+			<d:OData__UIVersionString>1.0</d:OData__UIVersionString>
+			<d:Attachments m:type="Edm.Boolean">false</d:Attachments>
+			<d:GUID m:type="Edm.Guid">a63eecac-7398-4824-84d8-44992534ed4c</d:GUID>
+			<d:OData__x0025__x0020_Completed m:type="Edm.Double">0.05</d:OData__x0025__x0020_Completed>
+			<d:Cost>Ok</d:Cost>
+			<d:Global_x0020_Status>En cours</d:Global_x0020_Status>
+			<d:Health>Ok</d:Health>
+			<d:Planning>Ok</d:Planning>
+			<d:Status_x0020_Date m:type="Edm.DateTime">2022-10-05T22:00:00Z</d:Status_x0020_Date>
+			<d:Update>&lt;div class="ExternalClassEA19051ECE2943938AE69DE421C6AD71"&gt;Passage de la porte P1 OK
+- Lancer contrôle d'accès
+- Voir si budget CAPEX ou OPEX
+- P2/P3 en fonction des offres&lt;/div&gt;</d:Update>
+			<d:Current_x0020_PhaseId m:type="Edm.Int32">1</d:Current_x0020_PhaseId>
+			<d:EndProjectMark m:null="true"/>
+		</m:properties>
+	</content>
+</entry>
