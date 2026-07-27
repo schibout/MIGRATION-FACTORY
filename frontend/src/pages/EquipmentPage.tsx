@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import MaintenanceActions from '../components/maintenance/MaintenanceActions';
 import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import {
   Box,
@@ -9,8 +10,6 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  IconButton,
-  Tooltip,
   Divider,
   useTheme,
   alpha,
@@ -42,14 +41,12 @@ import {
 import {
   Search as SearchIcon,
   Build as EquipmentIcon,
-  Refresh as RefreshIcon,
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
   Info as InfoIcon,
   Business as BusinessIcon,
   CalendarToday as CalendarIcon,
-  FilterList as FilterIcon,
   Clear as ClearIcon,
   LocationOn as LocationIcon,
   Factory as FactoryIcon,
@@ -168,6 +165,10 @@ const EquipmentPage: React.FC = () => {
   // List state
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
+  // Restauration / rechargement SAP : raw_data.equi/eqkt/equz sont reecrites par
+  // l'operation, et le backend refuse les editions pendant (409).
+  const [trackedJobId, setTrackedJobId] = useState<number | null>(null);
+  const [jobActive, setJobActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -628,17 +629,33 @@ const EquipmentPage: React.FC = () => {
         <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
           Équipements
         </Typography>
-        <IconButton onClick={loadEquipment} sx={{ ml: 2 }} disabled={loading}>
-          <RefreshIcon />
-        </IconButton>
         <Box sx={{ flex: 1 }} />
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog}>
+        <MaintenanceActions
+          onRefresh={loadEquipment}
+          onJobStarted={(job) => setTrackedJobId(job.id)}
+          jobActive={jobActive}
+          loading={loading}
+        />
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={openCreateDialog}
+          disabled={jobActive}
+          sx={{ ml: 1 }}
+        >
           Nouveau
         </Button>
       </Box>
 
       {/* Restauration / rechargement SAP : ces donnees sont reecrites pendant l'operation */}
-      <MaintenanceJobBanner onFinished={() => loadEquipment()} />
+      <MaintenanceJobBanner
+        jobId={trackedJobId}
+        onActiveChange={setJobActive}
+        onFinished={() => {
+          setTrackedJobId(null);
+          loadEquipment();
+        }}
+      />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

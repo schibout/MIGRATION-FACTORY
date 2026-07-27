@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import MaintenanceActions from '../components/maintenance/MaintenanceActions';
 import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import {
   Box,
@@ -31,17 +32,13 @@ import {
   FolderOpen as FolderOpenIcon,
   Build as EquipmentIcon,
   LocationOn as LocationIcon,
-  Refresh as RefreshIcon,
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
   Info as InfoIcon,
   Business as BusinessIcon,
-  CalendarToday as CalendarIcon,
-  Person as PersonIcon,
   Place as PlaceIcon,
   Schema as StructureIcon,
-  History as HistoryIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -158,6 +155,10 @@ const MaintenanceHierarchyPage: React.FC = () => {
   const [loadedChildren, setLoadedChildren] = useState<LoadedChildren>({});
   const [loading, setLoading] = useState(true);
   const [loadingNodes, setLoadingNodes] = useState<{ [key: string]: boolean }>({});
+  // Restauration / rechargement SAP : ces ecrans lisent des donnees reecrites
+  // par l'operation, et le backend refuse les editions pendant (409).
+  const [trackedJobId, setTrackedJobId] = useState<number | null>(null);
+  const [jobActive, setJobActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ locations: TreeNode[]; equipment: TreeNode[] } | null>(null);
@@ -1067,13 +1068,24 @@ const MaintenanceHierarchyPage: React.FC = () => {
         <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
           Structure de Maintenance
         </Typography>
-        <IconButton onClick={loadRootNodes} sx={{ ml: 2 }} disabled={loading}>
-          <RefreshIcon />
-        </IconButton>
+        <Box sx={{ flex: 1 }} />
+        <MaintenanceActions
+          onRefresh={loadRootNodes}
+          onJobStarted={(job) => setTrackedJobId(job.id)}
+          jobActive={jobActive}
+          loading={loading}
+        />
       </Box>
 
       {/* Restauration / rechargement SAP : ces donnees sont reecrites pendant l'operation */}
-      <MaintenanceJobBanner onFinished={() => loadRootNodes()} />
+      <MaintenanceJobBanner
+        jobId={trackedJobId}
+        onActiveChange={setJobActive}
+        onFinished={() => {
+          setTrackedJobId(null);
+          loadRootNodes();
+        }}
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

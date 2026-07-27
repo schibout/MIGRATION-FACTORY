@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import MaintenanceActions from '../components/maintenance/MaintenanceActions';
 import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import {
   Box,
@@ -9,7 +10,6 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  IconButton,
   Divider,
   useTheme,
   alpha,
@@ -37,11 +37,9 @@ import {
 import {
   Search as SearchIcon,
   Inventory2 as ArticleIcon,
-  Refresh as RefreshIcon,
   Info as InfoIcon,
   Category as CategoryIcon,
   Warehouse as WarehouseIcon,
-  FilterList as FilterIcon,
   Clear as ClearIcon,
   Layers as LayersIcon,
   Edit as EditIcon,
@@ -229,6 +227,10 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  // Restauration / rechargement SAP : raw_data.mara/makt sont reecrites par
+  // l'operation, et le backend refuse les editions pendant (409).
+  const [trackedJobId, setTrackedJobId] = useState<number | null>(null);
+  const [jobActive, setJobActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -689,13 +691,24 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
             variant="outlined"
           />
         </Box>
-        <IconButton onClick={loadArticles} sx={{ ml: 2 }} disabled={loading}>
-          <RefreshIcon />
-        </IconButton>
+        <Box sx={{ flex: 1 }} />
+        <MaintenanceActions
+          onRefresh={loadArticles}
+          onJobStarted={(job) => setTrackedJobId(job.id)}
+          jobActive={jobActive}
+          loading={loading}
+        />
       </Box>
 
       {/* Restauration / rechargement SAP : ces donnees sont reecrites pendant l'operation */}
-      <MaintenanceJobBanner onFinished={() => loadArticles()} />
+      <MaintenanceJobBanner
+        jobId={trackedJobId}
+        onActiveChange={setJobActive}
+        onFinished={() => {
+          setTrackedJobId(null);
+          loadArticles();
+        }}
+      />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

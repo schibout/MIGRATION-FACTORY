@@ -5,6 +5,7 @@ import {
   Engineering as IH02Icon,
   Inventory2 as ArticleIcon,
   Layers as LayersIcon,
+  SettingsBackupRestore as BackupIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -33,6 +34,14 @@ const cards = [
     icon: ArticleIcon,
     color: 'primary' as const,
     tag: 'MARA',
+  },
+  {
+    title: 'Sauvegardes & restauration',
+    description: 'Enregistrer un état de travail, y revenir à tout moment, et recharger les données depuis SAP.',
+    path: '/maintenance/backups',
+    icon: BackupIcon,
+    color: 'info' as const,
+    tag: 'ÉTATS',
   },
 ];
 

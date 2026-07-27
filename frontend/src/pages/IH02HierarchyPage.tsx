@@ -5,7 +5,6 @@ import {
   Business as BusinessIcon,
   ChevronRight as ChevronRightIcon,
   Close as CloseIcon,
-  CloudSync as CloudSyncIcon,
   Delete as DeleteIcon,
   FileDownload as DownloadIcon,
   DragIndicator as DragIcon,
@@ -16,10 +15,8 @@ import {
   Folder as FolderIcon,
   FolderOpen as FolderOpenIcon,
   Handyman as HandymanIcon,
-  History as HistoryIcon,
   Info as InfoIcon,
   LocationOn as LocationIcon,
-  Refresh as RefreshIcon,
   Save as SaveIcon,
   Search as SearchIcon,
   AccountTree as TreeIcon
@@ -66,8 +63,7 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import api from '../services/api';
 import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
-import ReloadSapDialog from '../components/maintenance/ReloadSapDialog';
-import SnapshotManagerDialog from '../components/maintenance/SnapshotManagerDialog';
+import MaintenanceActions from '../components/maintenance/MaintenanceActions';
 import { MaintenanceJob } from '../services/maintenanceSnapshotService';
 
 interface LocationNode {
@@ -336,8 +332,6 @@ const IH02HierarchyPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
 
   // Etats sauvegardes / rechargement SAP
-  const [snapshotDialogOpen, setSnapshotDialogOpen] = useState(false);
-  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
   const [trackedJobId, setTrackedJobId] = useState<number | null>(null);
   // Pendant une restauration/rechargement, le backend refuse les ecritures (409) :
   // on desactive aussi les actions cote UI pour eviter les erreurs inutiles.
@@ -1973,26 +1967,6 @@ const IH02HierarchyPage: React.FC = () => {
         <Button
           variant="outlined"
           size="small"
-          startIcon={<HistoryIcon />}
-          onClick={() => setSnapshotDialogOpen(true)}
-          sx={{ mr: 1 }}
-        >
-          États sauvegardés
-        </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          color="secondary"
-          startIcon={<CloudSyncIcon />}
-          onClick={() => setReloadDialogOpen(true)}
-          disabled={jobActive}
-          sx={{ mr: 1 }}
-        >
-          Recharger depuis SAP
-        </Button>
-        <Button
-          variant="outlined"
-          size="small"
           startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
           onClick={(e) => setExportAnchorEl(e.currentTarget)}
           disabled={exporting}
@@ -2014,26 +1988,18 @@ const IH02HierarchyPage: React.FC = () => {
             <ListItemText>Équipements</ListItemText>
           </MenuItem>
         </Menu>
-        <IconButton onClick={() => { loadRootNodes(); loadStats(); }} disabled={loading}><RefreshIcon /></IconButton>
+        <MaintenanceActions
+          onRefresh={() => { loadRootNodes(); loadStats(); }}
+          onJobStarted={(job) => setTrackedJobId(job.id)}
+          jobActive={jobActive}
+          loading={loading}
+        />
       </Box>
 
       <MaintenanceJobBanner
         jobId={trackedJobId}
         onFinished={handleJobFinished}
         onActiveChange={setJobActive}
-      />
-
-      <SnapshotManagerDialog
-        open={snapshotDialogOpen}
-        onClose={() => setSnapshotDialogOpen(false)}
-        onRestoreStarted={(job) => setTrackedJobId(job.id)}
-        jobActive={jobActive}
-      />
-
-      <ReloadSapDialog
-        open={reloadDialogOpen}
-        onClose={() => setReloadDialogOpen(false)}
-        onStarted={(job) => setTrackedJobId(job.id)}
       />
 
       {stats && (

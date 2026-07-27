@@ -48,6 +48,7 @@ import Login from './pages/Login';
 import MaintenanceArticlesPage from './pages/MaintenanceArticlesPage';
 import MaintenanceHierarchyPage from './pages/MaintenanceHierarchyPage';
 import MaintenancePage from './pages/MaintenancePage';
+import MaintenanceBackupsPage from './pages/MaintenanceBackupsPage';
 import Parametres from './pages/Parametres';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
@@ -212,6 +213,7 @@ function App() {
           <Route path="maintenance/articles/ibau" element={<MaintenanceArticlesPage fixedMtart="IBAU" />} />
           <Route path="maintenance/articles/nlag" element={<MaintenanceArticlesPage fixedMtart="NLAG" />} />
           <Route path="maintenance/ih02" element={<IH02HierarchyPage />} />
+          <Route path="maintenance/backups" element={<MaintenanceBackupsPage />} />
           <Route path="export/clients" element={<ExportClients />} />
           <Route path="export/projets" element={<ExportProjects />} />
           
