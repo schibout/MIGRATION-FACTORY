@@ -34,6 +34,11 @@ ST_JEAN_WERKS = ('9200', '2200')
 _WERKS_IN = ', '.join(f"'{w}'" for w in ST_JEAN_WERKS)
 
 
+def _flag(value) -> bool:
+    """Lecture d'un parametre booleen de query string."""
+    return (value or '').strip().lower() in ('1', 'true', 'yes')
+
+
 def _st_jean_scope_clause(alias='m'):
     """Clause SQL "perimetre St-Jean" appliquee a toutes les pages articles.
 
@@ -73,22 +78,36 @@ def list_articles():
         matkl = request.args.get('matkl', '', type=str).strip()
         order_by = request.args.get('order_by', 'matnr', type=str)
         order = request.args.get('order', 'asc', type=str)
-        st_jean = request.args.get('st_jean', '', type=str).strip().lower() in ('1', 'true', 'yes')
+        st_jean = _flag(request.args.get('st_jean'))
+        # Recherche dans TOUT le catalogue SAP : leve le perimetre maintenance
+        # (types ERSA/IBAU/NLAG + division St-Jean). Utile pour retrouver un
+        # article qui n'a pas encore ete rattache a la maintenance.
+        all_sap = _flag(request.args.get('all_sap'))
+        if all_sap:
+            st_jean = False
 
         offset = (page - 1) * per_page
 
         cache_key = (f"{CACHE_PREFIX}list:{page}:{per_page}:{order_by}:{order}:"
-                     f"{search}:{mtart}:{matkl}:stjean={int(st_jean)}")
+                     f"{search}:{mtart}:{matkl}:stjean={int(st_jean)}:all={int(all_sap)}")
         cached = cache_get(cache_key)
         if cached is not None:
             return Response(cached, mimetype='application/json')
 
-        where_clauses = ["m.mtart = ANY(%s)"]
-        params = [list(ALLOWED_MTART)]
+        where_clauses = []
+        params = []
 
-        if mtart and mtart in ALLOWED_MTART:
-            where_clauses[0] = "m.mtart = %s"
-            params = [mtart]
+        if all_sap:
+            # Tous types acceptes (pas seulement les types maintenance)
+            if mtart:
+                where_clauses.append("TRIM(m.mtart) = %s")
+                params.append(mtart)
+        elif mtart and mtart in ALLOWED_MTART:
+            where_clauses.append("m.mtart = %s")
+            params.append(mtart)
+        else:
+            where_clauses.append("m.mtart = ANY(%s)")
+            params.append(list(ALLOWED_MTART))
 
         if search:
             where_clauses.append("""
@@ -112,6 +131,12 @@ def list_articles():
             where_clauses.append(_st_jean_scope_clause('m'))
 
         where_sql = "WHERE " + " AND ".join(where_clauses)
+
+        # Listes deroulantes (types / groupes) : elles doivent proposer ce que la
+        # recherche courante peut effectivement retourner, donc suivre le meme
+        # perimetre que la requete principale.
+        opt_type_sql = 'TRUE' if all_sap else 'm.mtart = ANY(%s)'
+        opt_type_params = [] if all_sap else [list(ALLOWED_MTART)]
 
         order_mapping = {
             'matnr': 'm.matnr',
@@ -195,10 +220,10 @@ def list_articles():
                            ''
                        ) AS label
                 FROM raw_data.mara m
-                WHERE m.mtart = ANY(%s)
+                WHERE {opt_type_sql}
                 ORDER BY 1
-                """,
-                [list(ALLOWED_MTART)]
+                """.format(opt_type_sql=opt_type_sql),
+                list(opt_type_params)
             )
             mtart_options = [
                 {'code': r['mtart'], 'label': r['label']}
@@ -216,10 +241,10 @@ def list_articles():
                            ''
                        ) AS label
                 FROM raw_data.mara m
-                WHERE m.mtart = ANY(%s) AND m.matkl IS NOT NULL AND TRIM(m.matkl) <> ''
+                WHERE {opt_type_sql} AND m.matkl IS NOT NULL AND TRIM(m.matkl) <> ''
                 ORDER BY 1
-                """,
-                [list(ALLOWED_MTART)]
+                """.format(opt_type_sql=opt_type_sql),
+                list(opt_type_params)
             )
             matkl_options = [
                 {'code': r['matkl'], 'label': r['label']}
@@ -369,17 +394,27 @@ def get_articles_stats():
       - mtart   : restreint les compteurs a un type
       - st_jean : ne compte que les articles du perimetre St-Jean
                   (IBAU via structure IH02, ERSA/NLAG via division 9200/2200)
+      - all_sap : compte TOUT le catalogue SAP (leve types maintenance + division)
     """
     try:
         mtart = request.args.get('mtart', '', type=str).strip().upper()
-        st_jean = request.args.get('st_jean', '', type=str).strip().lower() in ('1', 'true', 'yes')
+        st_jean = _flag(request.args.get('st_jean'))
+        all_sap = _flag(request.args.get('all_sap'))
+        if all_sap:
+            st_jean = False
 
-        cache_key = f"{CACHE_PREFIX}stats:{mtart}:stjean={int(st_jean)}"
+        cache_key = f"{CACHE_PREFIX}stats:{mtart}:stjean={int(st_jean)}:all={int(all_sap)}"
         cached = cache_get(cache_key)
         if cached is not None:
             return Response(cached, mimetype='application/json')
 
-        if mtart and mtart in ALLOWED_MTART:
+        if all_sap:
+            # Compteurs sur tout le catalogue : le type reste filtrable librement.
+            if mtart:
+                type_clause, type_param = "TRIM(m.mtart) = %s", [mtart]
+            else:
+                type_clause, type_param = "TRUE", []
+        elif mtart and mtart in ALLOWED_MTART:
             type_clause, type_param = "m.mtart = %s", [mtart]
         else:
             type_clause, type_param = "m.mtart = ANY(%s)", [list(ALLOWED_MTART)]

@@ -26,6 +26,8 @@ import {
   TablePagination,
   TableSortLabel,
   FormControl,
+  FormControlLabel,
+  Switch,
   InputLabel,
   Select,
   MenuItem,
@@ -240,6 +242,9 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Recherche etendue a tout le catalogue SAP (leve le perimetre maintenance :
+  // types ERSA/IBAU/NLAG + division St-Jean). ~84 000 articles au lieu de ~29 000.
+  const [allSap, setAllSap] = useState(false);
   const [filterMtart, setFilterMtart] = useState(fixedMtart || '');
   const [filterMatkl, setFilterMatkl] = useState('');
   const [mtartOptions, setMtartOptions] = useState<MatklOption[]>([]);
@@ -273,7 +278,10 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
       if (debouncedSearch) params.append('search', debouncedSearch);
       if (filterMtart) params.append('mtart', filterMtart);
       if (filterMatkl) params.append('matkl', filterMatkl);
-      params.append('st_jean', '1');
+      // Par defaut : perimetre maintenance (ERSA/IBAU/NLAG + division St-Jean).
+      // all_sap leve ce perimetre pour chercher dans tout le catalogue SAP.
+      if (allSap) params.append('all_sap', '1');
+      else params.append('st_jean', '1');
 
       const response = await api.get(`/maintenance/articles?${params}`);
       if (response.data.success) {
@@ -290,18 +298,18 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, orderBy, order, debouncedSearch, filterMtart, filterMatkl]);
+  }, [page, rowsPerPage, orderBy, order, debouncedSearch, filterMtart, filterMatkl, allSap]);
 
   const loadStats = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ st_jean: '1' });
+      const params = new URLSearchParams(allSap ? { all_sap: '1' } : { st_jean: '1' });
       if (fixedMtart) params.append('mtart', fixedMtart);
       const response = await api.get(`/maintenance/articles/stats?${params}`);
       if (response.data.success) setStats(response.data.data);
     } catch (err) {
       console.error('Erreur stats articles:', err);
     }
-  }, [fixedMtart]);
+  }, [fixedMtart, allSap]);
 
   useEffect(() => {
     loadArticles();
@@ -680,14 +688,17 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
           {fixedMtart ? `Articles maintenance — ${fixedMtart}` : 'Articles maintenance'}
         </Typography>
         <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
-          {(fixedMtart ? [fixedMtart] : ['ERSA', 'IBAU', 'NLAG']).map((m) => (
-            <Chip key={m} label={m} size="small" color={mtartColor(m)} variant="outlined" />
-          ))}
+          {/* En mode « tout SAP » les pastilles de type seraient mensongeres :
+              la liste n'est plus restreinte aux types maintenance. */}
+          {!allSap &&
+            (fixedMtart ? [fixedMtart] : ['ERSA', 'IBAU', 'NLAG']).map((m) => (
+              <Chip key={m} label={m} size="small" color={mtartColor(m)} variant="outlined" />
+            ))}
           <Chip
             icon={<LayersIcon />}
-            label={scopeLabel(fixedMtart)}
+            label={allSap ? 'Catalogue SAP complet' : scopeLabel(fixedMtart)}
             size="small"
-            color="success"
+            color={allSap ? 'warning' : 'success'}
             variant="outlined"
           />
         </Box>
@@ -742,6 +753,30 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
                       </InputAdornment>
                     ),
                   }}
+                />
+                {/* Le perimetre maintenance masque ~55 000 articles du catalogue
+                    SAP : l'interrupteur permet de les retrouver sans quitter l'ecran. */}
+                <FormControlLabel
+                  sx={{ mt: 0.5, ml: 0 }}
+                  control={
+                    <Switch
+                      size="small"
+                      checked={allSap}
+                      onChange={(e) => {
+                        setAllSap(e.target.checked);
+                        setPage(0);
+                        // Les types hors maintenance n'existent pas dans l'autre
+                        // perimetre : on repart d'un filtre propre.
+                        if (!fixedMtart) setFilterMtart('');
+                        setFilterMatkl('');
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="caption" color={allSap ? 'text.primary' : 'text.secondary'}>
+                      Chercher dans tout le catalogue SAP
+                    </Typography>
+                  }
                 />
               </Grid>
               {!fixedMtart && (
