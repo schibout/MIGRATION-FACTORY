@@ -24,6 +24,31 @@ def get_db_params() -> dict:
     }
 
 
+def get_etl_db_params() -> dict:
+    """
+    Paramètres de connexion pour les modules ETL (etl_modules/).
+
+    Ces modules lisaient chacun leur propre jeu de variables ``PG_*`` avec
+    ``localhost`` par défaut. Or docker-compose ne transmet PAS ``PG_HOST`` au
+    conteneur : tous les chargements échouaient donc sur
+    « connection to server at "localhost" (::1), port 5432 failed » — depuis le
+    conteneur, localhost désigne le conteneur lui-même, pas le serveur PostgreSQL.
+
+    On repart de get_db_params() (source UNIQUE des identifiants, celle qui fait
+    fonctionner le reste de l'application) tout en respectant une surcharge
+    ``PG_*`` si elle est explicitement fournie — utile pour exécuter un module
+    ETL en direct, hors conteneur.
+    """
+    params = get_db_params()
+    return {
+        'host': os.getenv("PG_HOST") or params['host'],
+        'port': os.getenv("PG_PORT") or params['port'],
+        'database': os.getenv("PG_DATABASE") or params['database'],
+        'user': os.getenv("PG_USER") or params['user'],
+        'password': os.getenv("PG_PASSWORD") or params['password'],
+    }
+
+
 @contextmanager
 def get_db_connection():
     """

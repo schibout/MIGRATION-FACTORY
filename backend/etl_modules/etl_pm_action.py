@@ -21,6 +21,7 @@ import logging
 from sqlalchemy import create_engine, event
 from dotenv import load_dotenv
 import psycopg2
+from config.database import get_etl_db_params
 
 
 def setup_logging():
@@ -74,11 +75,18 @@ class PmActionETL:
     ]
 
     def __init__(self):
-        self.pg_host = os.environ.get("PG_HOST", "localhost")
-        self.pg_port = os.environ.get("PG_PORT", "5432")
-        self.pg_database = os.environ.get("PG_DATABASE", "sap_migration_db")
-        self.pg_user = os.environ.get("PG_USER", "postgres")
-        self.pg_password = os.environ.get("PG_PASSWORD", "trimet2025")
+        # Identifiants issus de la source UNIQUE (config.database), qui lit les
+        # variables DB_* de l'environnement. Auparavant ce bloc resolvait des
+        # variables PG_* que docker-compose ne transmet pas au conteneur, d'ou un
+        # repli sur "localhost" et l'echec de TOUS les chargements
+        # (connection refused sur localhost:5432). Une surcharge PG_* explicite
+        # reste honoree pour lancer un module hors conteneur.
+        _db = get_etl_db_params()
+        self.pg_host = _db['host']
+        self.pg_port = _db['port']
+        self.pg_database = _db['database']
+        self.pg_user = _db['user']
+        self.pg_password = _db['password']
 
         self.postgres_connection_string = (
             f"postgresql://{self.pg_user}:{self.pg_password}@"

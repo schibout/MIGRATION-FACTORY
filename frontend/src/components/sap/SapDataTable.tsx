@@ -639,9 +639,9 @@ const SapDataTable = ({
               </TableRow>
             </TableHead>
             <TableBody>
+              {/* Zebrage et survol viennent du theme (MuiTableBody) : les
+                  redefinir sur chaque ligne superposerait deux fonds. */}
               {displayedRows.map((row, rowIndex) => (
-                {/* Zebrage et survol viennent du theme (MuiTableBody) : les
-                    redefinir ici superposerait deux fonds. */}
                 <TableRow key={rowIndex}>
                   {visibleColsList.map((column) => (
                     <TableCell key={`${rowIndex}-${column.name}`}>
