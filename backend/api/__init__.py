@@ -22,6 +22,7 @@ from .table_structure import table_structure_blueprint
 from .resources_api import resources_blueprint
 from .maintenance_hierarchy import maintenance_hierarchy_blueprint
 from .maintenance_articles import maintenance_articles_blueprint
+from .maintenance_snapshots import maintenance_snapshots_blueprint
 from .data_browser import data_browser_blueprint
 from .sap_data_explorer import sap_data_explorer_blueprint
 from .ih02_hierarchy import ih02_hierarchy_blueprint
@@ -64,6 +65,7 @@ def register_blueprints(app):
     app.register_blueprint(resources_blueprint, url_prefix=f'{API_PREFIX}/resources')
     app.register_blueprint(maintenance_hierarchy_blueprint, url_prefix=f'{API_PREFIX}/maintenance')
     app.register_blueprint(maintenance_articles_blueprint, url_prefix=f'{API_PREFIX}/maintenance')
+    app.register_blueprint(maintenance_snapshots_blueprint, url_prefix=f'{API_PREFIX}/maintenance')
     app.register_blueprint(data_browser_blueprint, url_prefix=f'{API_PREFIX}/data-browser')
     app.register_blueprint(sap_data_explorer_blueprint, url_prefix=f'{API_PREFIX}/sap-data-explorer')
     # Ecran IH02 : bascule table unique via le flag IH02_USE_MAINTENANCE_OBJECT

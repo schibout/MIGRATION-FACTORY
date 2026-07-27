@@ -32,6 +32,18 @@ ih02_hierarchy_mo_blueprint = Blueprint('ih02_hierarchy_mo', __name__)
 MO = 'clean_data.maintenance_object'
 
 
+@ih02_hierarchy_mo_blueprint.before_request
+def _block_writes_during_maintenance_job():
+    """
+    Pendant une restauration ou un rechargement SAP, toute ecriture concurrente
+    serait perdue (les tables sont reecrites) : on renvoie 409 sur les methodes
+    mutantes. La lecture reste autorisee.
+    """
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        from api.maintenance_snapshots import active_job_conflict
+        return active_job_conflict()
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

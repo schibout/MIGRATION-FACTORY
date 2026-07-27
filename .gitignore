@@ -94,4 +94,6 @@ Thumbs.db
 *~
 .*.swp
 
-# --- Task Ma
+# --- Task Master ----------------------------------------------------------
+tasks.json
+tasks/

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import {
   Box,
   Paper,
@@ -1070,6 +1071,9 @@ const MaintenanceHierarchyPage: React.FC = () => {
           <RefreshIcon />
         </IconButton>
       </Box>
+
+      {/* Restauration / rechargement SAP : ces donnees sont reecrites pendant l'operation */}
+      <MaintenanceJobBanner onFinished={() => loadRootNodes()} />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

@@ -8,6 +8,15 @@ from config.database import get_db_connection
 maintenance_hierarchy_blueprint = Blueprint('maintenance_hierarchy', __name__)
 
 
+@maintenance_hierarchy_blueprint.before_request
+def _block_writes_during_maintenance_job():
+    """409 sur les ecritures pendant une restauration / un rechargement SAP
+    (les tables raw_data editees ici sont reecrites par ces operations)."""
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        from api.maintenance_snapshots import active_job_conflict
+        return active_job_conflict()
+
+
 @maintenance_hierarchy_blueprint.route('/functional-locations', methods=['GET'])
 def get_functional_locations():
     """Récupère la hiérarchie des postes techniques avec leurs équipements"""

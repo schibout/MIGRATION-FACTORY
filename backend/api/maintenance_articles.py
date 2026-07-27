@@ -12,6 +12,16 @@ from services.cache_service import cache_get, cache_set, cache_invalidate
 
 maintenance_articles_blueprint = Blueprint('maintenance_articles', __name__)
 
+
+@maintenance_articles_blueprint.before_request
+def _block_writes_during_maintenance_job():
+    """409 sur les ecritures pendant une restauration / un rechargement SAP
+    (raw_data.mara / makt sont reecrites par ces operations)."""
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        from api.maintenance_snapshots import active_job_conflict
+        return active_job_conflict()
+
+
 CACHE_PREFIX = 'maint:articles:'
 
 # Types d'articles consideres "maintenance" (SAP PM) :

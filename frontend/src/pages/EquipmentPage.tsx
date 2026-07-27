@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import {
   Box,
   Paper,
@@ -635,6 +636,9 @@ const EquipmentPage: React.FC = () => {
           Nouveau
         </Button>
       </Box>
+
+      {/* Restauration / rechargement SAP : ces donnees sont reecrites pendant l'operation */}
+      <MaintenanceJobBanner onFinished={() => loadEquipment()} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

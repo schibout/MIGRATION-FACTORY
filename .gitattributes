@@ -1,0 +1,4 @@
+# Forcer les fins de ligne LF sur les scripts exécutés côté serveur Linux.
+# Un .sh en CRLF casse au lancement (\r parasite dans le shebang / les commandes).
+*.sh   text eol=lf
+*.bash text eol=lf

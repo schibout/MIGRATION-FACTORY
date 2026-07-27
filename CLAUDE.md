@@ -64,7 +64,7 @@ frontend/src/
 - Composants pages dans `src/pages/`, composants reutilisables dans `src/components/`
 
 ### Base de donnees
-- Migrations SQL dans `migrations/` (numerotees 003_, 004_, etc.)
+- Migrations SQL dans `migrations/` (numerotees 003_, 004_, etc. — dernier numero utilise : 027)
 - Procedures stockees dans `sql/`
 - Les imports passent par `import_jobs` + `import_details` pour le suivi ligne par ligne
 
@@ -119,4 +119,5 @@ python3 docs/eval_dataset.py --n 10                                          # B
 - L'integration SharePoint utilise NTLM pour l'authentification
 - Le cache d'export a un TTL de 5 minutes (frontend et backend)
 - Les tables SAP dans `raw_data` ne doivent jamais etre modifiees directement
+- **Module Maintenance (etats sauvegardes / rechargement SAP)** : `POST /api/v1/maintenance/reload` avec `mode=merge` preserve le travail utilisateur (lignes `source='MANUAL'` ou `updated_by IS NOT NULL`) via `clean_data.load_maintenance_object_merge()` ; `mode=reset` appelle la procedure destructive d'origine. Un snapshot automatique precede toujours l'operation. Un seul job maintenance a la fois (index unique + verrou consultatif `778812`) ; les ecrans maintenance renvoient 409 pendant. `sql/maintenance/compile.sh` contient un `DROP TABLE CASCADE` : ne jamais le lancer entierement sur une base en service. Doc : `docs/README_MIGRATION_IH02.md` §8quater
 - **Assistant IA** : ne jamais elargir le prompt systeme sans retirer ailleurs (`num_ctx=4096` sature -> troncature des regles SAP critiques + hallucinations). Apres redeploiement/changement de prompt, laisser ~8-10 min de chauffe sans solliciter l'assistant (eviter de spammer "reessayer" sur un timeout, ca casse le keep-warm). Ollama doit ecouter sur `127.0.0.1` (ne pas exposer le port 11434)

@@ -375,6 +375,100 @@ multi-werks + le werks), ce qui impacte aussi l'affichage de l'ecran.
 de reference SAP ; edition ecran rare ; l'ecran ne montre que la BOM preferee).
 Aucun rebasage prevu tant que ce besoin ne se materialise pas.
 
+## 8quater. Etats sauvegardes, restauration et rechargement SAP (livre le 2026-07-27)
+
+La strategie de fusion decrite en §3.2 (`DO UPDATE` seulement si `updated_by IS NULL`)
+etait documentee mais **non implementee** : la seule procedure existante
+(`load_maintenance_object()`) supprime toutes les lignes `source='SAP'` et
+detruisait donc le travail saisi dans l'UI. Trois besoins utilisateurs sont
+desormais couverts : **sauvegarder un etat**, **le restaurer**, **recharger depuis SAP**.
+
+### Base de donnees
+
+| Objet | Role |
+|---|---|
+| schema `snapshots` | copies de tables (`snapshots.s<id>_<schema>_<table>`, creees a la volee) |
+| `public.maintenance_snapshots` | metadonnees d'un etat (nom, type, volumes, auteur) |
+| `public.maintenance_jobs` | suivi des operations longues ; index unique partiel `uq_maintenance_jobs_one_active` = **un seul job a la fois** |
+| FK de `maintenance_object` | passees en `DEFERRABLE INITIALLY IMMEDIATE` : indispensable pour reinserer une copie en conservant les `id` |
+
+Migration : `migrations/027_create_maintenance_snapshots.sql` (idempotente).
+
+### Perimetre d'un snapshot
+
+`clean_data.maintenance_object` **+** les tables `raw_data` encore ecrites en direct
+par les ecrans Hierarchie / Equipements / Articles : `iflot, iflotx, iflos, iloa,
+equi, eqkt, equz, mara, makt` (cf. `SNAPSHOT_TABLES`). Les `id` sont conserves et
+les colonnes appariees **par nom** — une migration ajoutant une colonne n'invalide
+pas les snapshots anterieurs.
+
+### Modes de rechargement
+
+- **Fusion** (`load_maintenance_object_merge()`, nouvelle procedure) : une ligne est
+  **protegee** des que `source='MANUAL'` OU `updated_by IS NOT NULL`. Elle n'est ni
+  mise a jour, ni deplacee, ni supprimee. Les autres lignes SAP sont rafraichies et
+  les nouveautes ajoutees. Les `id` etant conserves, les rattachements manuels
+  restent valides et les lignes MANUAL ne sont plus emportees par le
+  `ON DELETE CASCADE` (ce que le mode FULL ne garantit pas).
+  Les objets disparus de SAP ne sont supprimes que s'ils n'ont **aucun enfant** ;
+  sinon ils sont marques `attributes->>'sap_missing' = 'true'` et comptes en rejets.
+- **Reinitialisation** : `load_maintenance_object()` inchangee (comportement destructif d'origine).
+
+Dans les deux cas un snapshot `AUTO_PRE_RELOAD` est pris **avant** toute modification.
+
+### Chaine complete
+
+`snapshot auto` → `extraction SAP` (optionnelle, tables de `MAINTENANCE_SAP_TABLES`)
+→ `reconstruction` (merge ou reset) → `alimenter_equipment_functional()` +
+`load_equipment_object_spare('FULL')`.
+
+⚠️ **Limite a connaitre** : le mode Fusion ne protege que `maintenance_object`.
+Une **re-extraction** ecrase les tables `raw_data`, donc les editions faites depuis
+les ecrans Equipements et Articles. Le snapshot automatique est le filet de securite ;
+l'avertissement est affiche dans le dialogue de rechargement.
+
+### API (`/api/v1/maintenance`, toutes les routes sous `@jwt_required()`)
+
+```
+POST   /snapshots                 { name, description }
+GET    /snapshots
+DELETE /snapshots/<id>
+POST   /snapshots/<id>/restore    -> 202 { job }
+POST   /reload                    { mode: merge|reset, with_extraction: bool } -> 202 { job }
+GET    /jobs | /jobs/<id> | /jobs/active
+```
+
+Pendant un job `RESTORE`/`RELOAD`, les blueprints `ih02_hierarchy_mo`,
+`maintenance_hierarchy` et `maintenance_articles` renvoient **409** sur toute
+methode mutante (hook `before_request` → `api.maintenance_snapshots.active_job_conflict`).
+
+### Fichiers
+
+```
+migrations/027_create_maintenance_snapshots.sql
+sql/maintenance/proc_load_maintenance_object_merge.sql
+backend/services/maintenance_snapshot_service.py
+backend/services/maintenance_reload_service.py
+backend/api/maintenance_snapshots.py
+backend/tests/test_maintenance_snapshot_service.py
+backend/tests/test_maintenance_reload_api.py
+frontend/src/services/maintenanceSnapshotService.ts
+frontend/src/components/maintenance/{SnapshotManagerDialog,ReloadSapDialog,MaintenanceJobBanner}.tsx
+```
+
+### Points d'attention exploitation
+
+- L'etat des jobs est **persiste en base** (pas un dict memoire) : indispensable avec
+  `gunicorn -w 4`, sinon le polling tombe 3 fois sur 4 sur le mauvais worker.
+- Un verrou consultatif PostgreSQL (cle `778812`) protege l'execution ; un job reste
+  `RUNNING` sans verrou plus de 2 minutes est considere orphelin (redemarrage du
+  conteneur) et bascule en `ERROR`, sans quoi l'index unique bloquerait toute operation.
+- `sql/maintenance/compile.sh` lance `create_maintenance_object.sql` qui fait un
+  `DROP TABLE ... CASCADE` : **ne pas** lancer le script entier sur une base en service,
+  compiler uniquement `proc_load_maintenance_object_merge.sql`.
+- Les snapshots automatiques se purgent via `cleanup_auto_snapshots(keep=5)` (a cabler
+  sur un cron si le volume devient genant).
+
 ## 9. Benefices attendus
 
 - `raw_data` strictement lecture seule (conformite convention projet).

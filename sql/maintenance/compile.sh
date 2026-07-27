@@ -66,11 +66,17 @@ echo ""
 errors=0
 
 # Liste des fichiers dans l'ordre d'exécution
+# ⚠️ ATTENTION : create_maintenance_object.sql fait un DROP TABLE ... CASCADE.
+#   Lancer ce script en entier REINITIALISE la table (toutes les modifications
+#   saisies dans l'UI sont perdues). Sur une base deja en service, compiler
+#   uniquement le fichier voulu, par exemple :
+#     PGPASSWORD=... psql -h ... -f proc_load_maintenance_object_merge.sql
 files=(
     # --- Table unique ecran IH02 (maintenance_object) ---
-    "create_maintenance_object.sql"        # DDL de la table unique
-    "proc_load_maintenance_object.sql"     # procedure de chargement (a CALL ensuite)
-    "recreate_v_fl_nomenclature.sql"       # vue compat (sur maintenance_object)
+    "create_maintenance_object.sql"          # DDL de la table unique (DROP + CREATE !)
+    "proc_load_maintenance_object.sql"       # chargement FULL (ecrase les lignes SAP)
+    "proc_load_maintenance_object_merge.sql" # chargement MERGE (preserve le travail UI)
+    "recreate_v_fl_nomenclature.sql"         # vue compat (sur maintenance_object)
     # --- Procedures existantes (dependent de v_fl_nomenclature) ---
     "alimenter_equipment_functional.sql"
     "proc_load_equipment_spare_structure.sql"

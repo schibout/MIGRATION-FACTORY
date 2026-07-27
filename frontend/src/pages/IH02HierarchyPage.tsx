@@ -5,6 +5,7 @@ import {
   Business as BusinessIcon,
   ChevronRight as ChevronRightIcon,
   Close as CloseIcon,
+  CloudSync as CloudSyncIcon,
   Delete as DeleteIcon,
   FileDownload as DownloadIcon,
   DragIndicator as DragIcon,
@@ -15,6 +16,7 @@ import {
   Folder as FolderIcon,
   FolderOpen as FolderOpenIcon,
   Handyman as HandymanIcon,
+  History as HistoryIcon,
   Info as InfoIcon,
   LocationOn as LocationIcon,
   Refresh as RefreshIcon,
@@ -63,6 +65,10 @@ import {
 } from '@mui/material';
 import React, { useCallback, useEffect, useState } from 'react';
 import api from '../services/api';
+import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
+import ReloadSapDialog from '../components/maintenance/ReloadSapDialog';
+import SnapshotManagerDialog from '../components/maintenance/SnapshotManagerDialog';
+import { MaintenanceJob } from '../services/maintenanceSnapshotService';
 
 interface LocationNode {
   row_id: string;
@@ -329,6 +335,14 @@ const IH02HierarchyPage: React.FC = () => {
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
 
+  // Etats sauvegardes / rechargement SAP
+  const [snapshotDialogOpen, setSnapshotDialogOpen] = useState(false);
+  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
+  const [trackedJobId, setTrackedJobId] = useState<number | null>(null);
+  // Pendant une restauration/rechargement, le backend refuse les ecritures (409) :
+  // on desactive aussi les actions cote UI pour eviter les erreurs inutiles.
+  const [jobActive, setJobActive] = useState(false);
+
   const [draggedNode, setDraggedNode] = useState<TreeNode | null>(null);
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
   const [pendingDrop, setPendingDrop] = useState<{ source: LocationNode; target: LocationNode } | null>(null);
@@ -420,6 +434,36 @@ const IH02HierarchyPage: React.FC = () => {
     loadStats();
     loadWorkCenters();
   }, [loadRootNodes, loadStats, loadWorkCenters]);
+
+  /** Fin d'une restauration / d'un rechargement : l'arbre en memoire est perime. */
+  const handleJobFinished = useCallback((job: MaintenanceJob) => {
+    setTrackedJobId(null);
+    if (job.status === 'DONE') {
+      setLoadedChildren({});
+      setLoadedEqChildren({});
+      setLoadedBom({});
+      setLoadedArticleBom({});
+      setExpandedNodes({});
+      setSelectedNode(null);
+      setDetailedLocation(null);
+      setDetailedEquipment(null);
+      loadRootNodes();
+      loadStats();
+      setSnackbar({
+        open: true,
+        severity: 'success',
+        message: job.job_type === 'RELOAD'
+          ? 'Rechargement depuis SAP terminé.'
+          : 'État restauré.',
+      });
+    } else {
+      setSnackbar({
+        open: true,
+        severity: 'error',
+        message: job.error_message ?? "L'opération a échoué.",
+      });
+    }
+  }, [loadRootNodes, loadStats]);
 
   const loadChildren = async (node: LocationNode) => {
     const key = getNodeKey(node);
@@ -1929,6 +1973,26 @@ const IH02HierarchyPage: React.FC = () => {
         <Button
           variant="outlined"
           size="small"
+          startIcon={<HistoryIcon />}
+          onClick={() => setSnapshotDialogOpen(true)}
+          sx={{ mr: 1 }}
+        >
+          États sauvegardés
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          color="secondary"
+          startIcon={<CloudSyncIcon />}
+          onClick={() => setReloadDialogOpen(true)}
+          disabled={jobActive}
+          sx={{ mr: 1 }}
+        >
+          Recharger depuis SAP
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
           startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
           onClick={(e) => setExportAnchorEl(e.currentTarget)}
           disabled={exporting}
@@ -1952,6 +2016,25 @@ const IH02HierarchyPage: React.FC = () => {
         </Menu>
         <IconButton onClick={() => { loadRootNodes(); loadStats(); }} disabled={loading}><RefreshIcon /></IconButton>
       </Box>
+
+      <MaintenanceJobBanner
+        jobId={trackedJobId}
+        onFinished={handleJobFinished}
+        onActiveChange={setJobActive}
+      />
+
+      <SnapshotManagerDialog
+        open={snapshotDialogOpen}
+        onClose={() => setSnapshotDialogOpen(false)}
+        onRestoreStarted={(job) => setTrackedJobId(job.id)}
+        jobActive={jobActive}
+      />
+
+      <ReloadSapDialog
+        open={reloadDialogOpen}
+        onClose={() => setReloadDialogOpen(false)}
+        onStarted={(job) => setTrackedJobId(job.id)}
+      />
 
       {stats && (
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>

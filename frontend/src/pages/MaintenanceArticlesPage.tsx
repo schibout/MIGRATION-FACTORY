@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import {
   Box,
   Paper,
@@ -692,6 +693,9 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
           <RefreshIcon />
         </IconButton>
       </Box>
+
+      {/* Restauration / rechargement SAP : ces donnees sont reecrites pendant l'operation */}
+      <MaintenanceJobBanner onFinished={() => loadArticles()} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
