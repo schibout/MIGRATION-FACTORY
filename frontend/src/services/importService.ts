@@ -113,23 +113,42 @@ class ImportService {
     }
 
     /**
-     * Récupérer les détails ligne par ligne d'un import
+     * Récupérer les détails ligne par ligne d'un import.
+     *
+     * Le contrat backend differe de celui des autres endpoints et ne l'etait pas
+     * cote appelant, ce qui rendait l'onglet « Détails » vide en permanence :
+     *   - il attend `page` a partir de 1 (et non 0) et `page_size` (et non
+     *     `per_page`) — l'ancien code envoyait `per_page`, ignore, d'ou une
+     *     taille de page toujours a 100 ;
+     *   - il repond `{details, pagination:{page, page_size, total, total_pages}}`
+     *     sans champ `success` — la page testait `response.success`, toujours
+     *     `undefined`, et n'affectait donc jamais les lignes recues.
+     * On adapte ici pour exposer la meme forme que les autres reponses.
      */
     async getJobLineDetails(
-        jobUuid: string, 
+        jobUuid: string,
         pagination?: PaginationParams
     ): Promise<ImportDetailsResponse> {
         try {
             const params = new URLSearchParams();
-            if (pagination) {
-                if (pagination.page) params.append('page', pagination.page.toString());
-                if (pagination.per_page) params.append('per_page', pagination.per_page.toString());
-                if (pagination.sort_by) params.append('sort_by', pagination.sort_by);
-                if (pagination.sort_order) params.append('sort_order', pagination.sort_order);
-            }
+            const page = pagination?.page ?? 1;
+            const pageSize = pagination?.per_page ?? 25;
+            params.append('page', String(page));
+            params.append('page_size', String(pageSize));
+            if (pagination?.sort_by) params.append('sort_by', pagination.sort_by);
+            if (pagination?.sort_order) params.append('sort_order', pagination.sort_order);
 
             const response = await api.get(`${this.baseUrl}/jobs/${jobUuid}/details?${params.toString()}`);
-            return response.data;
+            const payload = response.data ?? {};
+            const meta = payload.pagination ?? {};
+
+            return {
+                success: true,
+                data: payload.details ?? payload.data ?? [],
+                total: meta.total ?? payload.total ?? 0,
+                page: meta.page ?? page,
+                per_page: meta.page_size ?? pageSize,
+            };
         } catch (error: any) {
             console.error('Erreur détails lignes:', error);
             return {

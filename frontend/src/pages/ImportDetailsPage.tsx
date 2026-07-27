@@ -22,16 +22,12 @@ import {
     LinearProgress,
     Link,
     Tab,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Tabs,
     Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { DataTable } from '../components/table';
+import type { DataTableColumn } from '../components/table';
 import { useNavigate, useParams } from 'react-router-dom';
 
 // Types et services
@@ -79,6 +75,9 @@ const ImportDetailsPage: React.FC = () => {
     const [tabValue, setTabValue] = useState(0);
     const [detailsPage, setDetailsPage] = useState(0);
     const [detailsRowsPerPage, setDetailsRowsPerPage] = useState(25);
+    // Nombre total de lignes de l'import : sans lui, impossible d'afficher une
+    // pagination utilisable (l'ecran etait bloque sur les 1res lignes).
+    const [detailsTotal, setDetailsTotal] = useState(0);
 
     // Charger les données du job
     useEffect(() => {
@@ -99,12 +98,14 @@ const ImportDetailsPage: React.FC = () => {
                 }
 
                 // Charger les détails ligne par ligne
+                // (le service attend une page a partir de 1, l'etat est a partir de 0)
                 const detailsResponse = await importService.getJobLineDetails(jobUuid, {
-                    page: detailsPage,
+                    page: detailsPage + 1,
                     per_page: detailsRowsPerPage
                 });
                 if (detailsResponse.success) {
                     setDetails(detailsResponse.data);
+                    setDetailsTotal(detailsResponse.total);
                 }
 
                 // Charger les logs
@@ -234,6 +235,62 @@ const ImportDetailsPage: React.FC = () => {
     const formatDateTime = (dateString: string) => {
         return new Date(dateString).toLocaleString('fr-FR');
     };
+
+    // Le backend expose `original_data` ; `row_data` est conserve en repli pour
+    // rester compatible avec l'ancienne forme de reponse.
+    const rowPayload = (detail: ImportDetail) =>
+        JSON.stringify(
+            (detail as unknown as Record<string, unknown>).original_data ?? detail.row_data ?? {},
+        );
+
+    const detailColumns: DataTableColumn<ImportDetail>[] = useMemo(
+        () => [
+            { key: 'row_number', label: 'Ligne', width: 90, align: 'right', mono: true, sortable: false },
+            {
+                key: 'status',
+                label: 'Statut',
+                width: 110,
+                render: (d) => (
+                    <Chip
+                        size="small"
+                        label={d.status === 'success' ? 'Succès' : 'Erreur'}
+                        color={d.status === 'success' ? 'success' : 'error'}
+                    />
+                ),
+                csvValue: (d) => (d.status === 'success' ? 'Succès' : 'Erreur'),
+            },
+            {
+                key: 'row_data',
+                label: 'Données',
+                mono: true,
+                ellipsisMaxWidth: 420,
+                render: (d) => rowPayload(d),
+                csvValue: (d) => rowPayload(d),
+            },
+            {
+                key: 'error_message',
+                label: 'Erreur',
+                ellipsisMaxWidth: 320,
+                render: (d) =>
+                    d.error_message ? (
+                        <Typography variant="body2" color="error" noWrap title={d.error_message}>
+                            {d.error_message}
+                        </Typography>
+                    ) : (
+                        '—'
+                    ),
+            },
+            {
+                key: 'processed_at',
+                label: 'Traité le',
+                width: 170,
+                mono: true,
+                render: (d) => (d.processed_at ? formatDateTime(d.processed_at) : '—'),
+            },
+        ],
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [],
+    );
 
     // Formatage de la durée
     const formatDuration = (startDate?: string, endDate?: string) => {
@@ -547,74 +604,29 @@ const ImportDetailsPage: React.FC = () => {
             <Card>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                     <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-                        <Tab label={`Détails des lignes (${details.length})`} />
+                        {/* Le compteur affiche le TOTAL, pas la page courante. */}
+                        <Tab label={`Détails des lignes (${detailsTotal.toLocaleString('fr-FR')})`} />
                         <Tab label={`Logs (${logs.length})`} />
                     </Tabs>
                 </Box>
 
                 <TabPanel value={tabValue} index={0}>
-                    {/* Table des détails */}
-                    <TableContainer>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Ligne</TableCell>
-                                    <TableCell>Statut</TableCell>
-                                    <TableCell>Données</TableCell>
-                                    <TableCell>Erreur</TableCell>
-                                    <TableCell>Traité le</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {details.map((detail) => (
-                                    <TableRow key={detail.id}>
-                                        <TableCell>{detail.row_number}</TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                size="small"
-                                                label={detail.status === 'success' ? 'Succès' : 'Erreur'}
-                                                color={detail.status === 'success' ? 'success' : 'error'}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography 
-                                                variant="body2" 
-                                                sx={{ 
-                                                    fontFamily: 'monospace',
-                                                    fontSize: '0.75rem',
-                                                    maxWidth: 300,
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap'
-                                                }}
-                                                title={JSON.stringify(detail.row_data)}
-                                            >
-                                                {JSON.stringify(detail.row_data)}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            {detail.error_message ? (
-                                                <Typography variant="body2" color="error">
-                                                    {detail.error_message}
-                                                </Typography>
-                                            ) : '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {formatDateTime(detail.processed_at)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-
-                    {details.length === 0 && (
-                        <Box sx={{ p: 4, textAlign: 'center' }}>
-                            <Typography variant="body2" color="text.secondary">
-                                Aucun détail de ligne disponible
-                            </Typography>
-                        </Box>
-                    )}
+                    <DataTable<ImportDetail>
+                        columns={detailColumns}
+                        rows={details}
+                        getRowKey={(d, i) => d.id ?? `${d.row_number}-${i}`}
+                        loading={loading}
+                        emptyLabel="Aucun détail de ligne disponible"
+                        pagination={{
+                            page: detailsPage,
+                            pageSize: detailsRowsPerPage,
+                            total: detailsTotal,
+                            onPageChange: setDetailsPage,
+                            onPageSizeChange: setDetailsRowsPerPage,
+                        }}
+                        toolbar={{ csvExport: { filePrefix: 'lignes_import' } }}
+                        maxHeight="calc(100vh - 480px)"
+                    />
                 </TabPanel>
 
                 <TabPanel value={tabValue} index={1}>

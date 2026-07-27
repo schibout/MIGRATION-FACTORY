@@ -184,10 +184,9 @@ const IfsDataTable = ({
     );
   }
 
-  const headerBgColor = '#1a237e';
-  const headerTextColor = 'white';
-  const rowEvenBgColor = '#e8eaf6';
-  const rowOddBgColor = '#ffffff';
+  // Palette claire en dur supprimee (#1a237e / #e8eaf6 / #ffffff / #000000) :
+  // ce tableau s'affichait en blanc au milieu de l'application sombre.
+  // En-tete, zebrage, survol et couleurs de texte viennent du theme.
 
   return (
     <Box sx={{ width: '100%', overflowX: 'auto' }}>
@@ -225,15 +224,6 @@ const IfsDataTable = ({
             py: 0.5,
             fontSize: '0.8rem',
             fontWeight: 'bold',
-            color: '#1a237e',
-            borderColor: '#1a237e',
-            backgroundColor: '#fff',
-            '&:hover': {
-              backgroundColor: '#e3eafc',
-              borderColor: '#1a237e',
-              color: '#111a60'
-            },
-            boxShadow: '0 2px 4px rgba(26,35,126,0.08)'
           }}
         >
           Colonnes à afficher
@@ -252,41 +242,24 @@ const IfsDataTable = ({
         <Table stickyHeader aria-label="données IFS">
           <TableHead>
             <TableRow>
-              <TableCell 
+              {/* Colonnes figees a gauche : le fond doit rester opaque (herite
+                  du theme, MuiTableCell.head) sinon les lignes defilent au
+                  travers. */}
+              <TableCell
                 padding="checkbox"
-                sx={{ 
-                  backgroundColor: headerBgColor, 
-                  position: 'sticky',
-                  left: 0,
-                  zIndex: 3
-                }}
+                sx={{ position: 'sticky', left: 0, zIndex: 3 }}
               >
                 <Checkbox
                   indeterminate={selectedRows.length > 0 && selectedRows.length < data.rows.length}
                   checked={selectAll}
                   onChange={handleSelectAll}
-                  sx={{
-                    color: headerTextColor,
-                    '&.Mui-checked': {
-                      color: headerTextColor,
-                    },
-                    '&.MuiCheckbox-indeterminate': {
-                      color: headerTextColor,
-                    }
-                  }}
                 />
               </TableCell>
-              
-              <TableCell 
+
+              <TableCell
                 align="center"
-                sx={{ 
+                sx={{
                   width: '120px',
-                  fontWeight: 'bold', 
-                  backgroundColor: headerBgColor, 
-                  color: headerTextColor,
-                  py: 1,
-                  px: 0.5,
-                  fontSize: '0.875rem',
                   position: 'sticky',
                   left: '48px',
                   zIndex: 3
@@ -294,39 +267,19 @@ const IfsDataTable = ({
               >
                 Actions
               </TableCell>
-              
+
               {data.columns.filter(col => visibleColumns.includes(col.name)).map((column) => (
                 <TableCell
                   key={column.name}
                   align="left"
-                  sx={{ 
-                    fontWeight: 'bold', 
-                    backgroundColor: headerBgColor, 
-                    color: headerTextColor,
-                    py: 1,
-                    px: 1,
-                    fontSize: '0.875rem',
-                    minWidth: '120px'
-                  }}
-                  onClick={() => handleSort(column.name)}
+                  sx={{ minWidth: '120px' }}
                 >
+                  {/* Le tri est porte par le TableSortLabel seul : le poser aussi
+                      sur la cellule le declenchait deux fois par clic. */}
                   <TableSortLabel
                     active={currentSortField === column.name}
                     direction={currentSortField === column.name ? currentSortDirection : 'asc'}
-                    sx={{
-                      '&.MuiTableSortLabel-root': {
-                        color: headerTextColor,
-                      },
-                      '&.MuiTableSortLabel-root:hover': {
-                        color: 'rgba(255, 255, 255, 0.8)',
-                      },
-                      '&.Mui-active': {
-                        color: headerTextColor,
-                      },
-                      '& .MuiTableSortLabel-icon': {
-                        color: `${headerTextColor} !important`,
-                      },
-                    }}
+                    onClick={() => handleSort(column.name)}
                   >
                     {column.label}
                   </TableSortLabel>
@@ -341,36 +294,31 @@ const IfsDataTable = ({
                 key={index}
                 hover
                 selected={isRowSelected(row)}
-                sx={{ 
-                  backgroundColor: index % 2 === 0 ? rowEvenBgColor : rowOddBgColor,
-                  height: '32px',
-                  '&.Mui-selected, &.Mui-selected:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.15),
-                  }
-                }}
+                sx={{ height: '32px' }}
               >
-                <TableCell 
+                <TableCell
                   padding="checkbox"
-                  sx={{ 
+                  sx={{
                     position: 'sticky',
                     left: 0,
                     zIndex: 2,
                     py: 0.25,
-                    backgroundColor: isRowSelected(row) 
+                    // Cellule figee : fond OPAQUE obligatoire. Le zebrage du
+                    // theme etant un voile translucide, on le reproduit ici
+                    // par-dessus une base opaque pour garder la continuite.
+                    backgroundColor: isRowSelected(row)
                       ? alpha(theme.palette.primary.main, 0.15)
-                      : (index % 2 === 0 ? rowEvenBgColor : rowOddBgColor)
+                      : theme.palette.background.paper,
+                    ...(!isRowSelected(row) && index % 2 !== 0 && {
+                      backgroundImage:
+                        'linear-gradient(rgba(255,255,255,0.025), rgba(255,255,255,0.025))',
+                    }),
                   }}
                 >
                   <Checkbox
                     checked={isRowSelected(row)}
                     onChange={(event) => handleSelectRow(event, row)}
                     size="small"
-                    sx={{
-                      color: '#1a237e',
-                      '&.Mui-checked': {
-                        color: '#1a237e',
-                      }
-                    }}
                   />
                 </TableCell>
                 
@@ -382,52 +330,49 @@ const IfsDataTable = ({
                     left: '48px',
                     zIndex: 2,
                     py: 0.25,
-                    backgroundColor: isRowSelected(row) 
+                    // Meme regle que la colonne cases a cocher : base opaque +
+                    // voile de zebrage reproduit.
+                    backgroundColor: isRowSelected(row)
                       ? alpha(theme.palette.primary.main, 0.15)
-                      : (index % 2 === 0 ? rowEvenBgColor : rowOddBgColor)
+                      : theme.palette.background.paper,
+                    ...(!isRowSelected(row) && index % 2 !== 0 && {
+                      backgroundImage:
+                        'linear-gradient(rgba(255,255,255,0.025), rgba(255,255,255,0.025))',
+                    }),
                   }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
                     <Tooltip title="Voir">
-                      <IconButton 
+                      <IconButton
                         size="small"
+                        color="primary"
                         onClick={() => handleView(row)}
-                        sx={{ 
-                          color: '#1a237e',
-                          p: 0.25,
-                          '&:hover': { bgcolor: alpha('#1a237e', 0.08) }
-                        }}
+                        sx={{ p: 0.25 }}
                       >
                         <ViewIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    
+
                     {onEdit && (
                       <Tooltip title="Modifier">
-                        <IconButton 
+                        <IconButton
                           size="small"
+                          color="primary"
                           onClick={() => handleEdit(row)}
-                          sx={{ 
-                            color: '#1976d2',
-                            p: 0.25,
-                            '&:hover': { bgcolor: alpha('#1976d2', 0.08) }
-                          }}
+                          sx={{ p: 0.25 }}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     )}
-                    
+
                     {onDelete && (
                       <Tooltip title="Supprimer">
-                        <IconButton 
+                        <IconButton
                           size="small"
+                          color="error"
                           onClick={() => handleDelete(row)}
-                          sx={{ 
-                            color: '#d32f2f',
-                            p: 0.25,
-                            '&:hover': { bgcolor: alpha('#d32f2f', 0.08) }
-                          }}
+                          sx={{ p: 0.25 }}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
@@ -440,25 +385,22 @@ const IfsDataTable = ({
                   <TableCell
                     key={column.name}
                     align="left"
-                    sx={{ 
+                    sx={{
                       py: 0.5,
                       px: 1,
-                      fontSize: '0.875rem',
-                      color: '#000000',
-                      backgroundColor: isRowSelected(row) 
+                      backgroundColor: isRowSelected(row)
                         ? alpha(theme.palette.primary.main, 0.15)
                         : 'inherit'
                     }}
                   >
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
+                    <Typography
+                      variant="body2"
+                      sx={{
                         fontSize: '0.8rem',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         maxWidth: '200px',
-                        color: '#000000'
                       }}
                     >
                       {row[column.name] !== null && row[column.name] !== undefined 
@@ -477,9 +419,10 @@ const IfsDataTable = ({
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          p: 1, 
-          borderTop: '1px solid #e0e0e0',
-          backgroundColor: '#f5f5f5' 
+          p: 1,
+          borderTop: 1,
+          borderColor: 'divider',
+          backgroundColor: 'background.default'
         }}>
           <TablePagination
             rowsPerPageOptions={[10, 25, 50, 100]}
@@ -491,23 +434,6 @@ const IfsDataTable = ({
             onRowsPerPageChange={handleChangeRowsPerPage}
             labelDisplayedRows={({ from, to, count }) => `${from}-${to} sur ${count}`}
             labelRowsPerPage="Lignes par page:"
-            sx={{
-              '.MuiTablePagination-select': {
-                fontWeight: 'bold',
-                color: '#1a237e'
-              },
-              '.MuiTablePagination-displayedRows': {
-                fontWeight: 'bold',
-                color: '#1a237e'
-              },
-              '.MuiTablePagination-selectLabel': {
-                fontWeight: 'bold',
-                color: '#1a237e'
-              },
-              '.MuiTablePagination-actions': {
-                color: '#1a237e'
-              }
-            }}
           />
         </Box>
       </TableContainer>

@@ -20,14 +20,10 @@ import {
     Dialog,
     DialogContent,
     DialogTitle,
-    FormControl,
     IconButton,
     InputAdornment,
-    InputLabel,
-    MenuItem,
-    Pagination,
+    TablePagination,
     Paper,
-    Select,
     Table,
     TableBody,
     TableCell,
@@ -544,39 +540,31 @@ const SapDataExplorerPage: React.FC = () => {
                         )}
                     </TableContainer>
 
-                    {/* Pagination */}
-                    {pagination && pagination.totalPages > 1 && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                            <FormControl size="small" sx={{ minWidth: 120 }}>
-                                <InputLabel>Lignes</InputLabel>
-                                <Select
-                                    value={pageSize}
-                                    label="Lignes"
-                                    onChange={(e) => {
-                                        setPageSize(Number(e.target.value));
-                                        setCurrentPage(1);
-                                    }}
-                                >
-                                    <MenuItem value={25}>25</MenuItem>
-                                    <MenuItem value={50}>50</MenuItem>
-                                    <MenuItem value={100}>100</MenuItem>
-                                    <MenuItem value={200}>200</MenuItem>
-                                </Select>
-                            </FormControl>
-
-                            <Pagination
-                                count={pagination.totalPages}
-                                page={currentPage}
-                                onChange={(_, page) => setCurrentPage(page)}
-                                color="primary"
-                                showFirstButton
-                                showLastButton
-                            />
-
-                            <Typography variant="body2" color="text.secondary">
-                                Page {currentPage} sur {pagination.totalPages}
-                            </Typography>
-                        </Box>
+                    {/* Pagination — meme composant que partout ailleurs dans
+                        l'application (TablePagination, libelles FR). L'ancienne
+                        version n'apparaissait qu'a partir de 2 pages, ce qui
+                        masquait aussi le choix du nombre de lignes.
+                        Attention : l'API numerote les pages a partir de 1,
+                        TablePagination a partir de 0 — d'ou les +1/-1. */}
+                    {pagination && (
+                        <TablePagination
+                            component="div"
+                            count={pagination.totalRows ?? -1}
+                            page={Math.max(0, currentPage - 1)}
+                            rowsPerPage={pageSize}
+                            rowsPerPageOptions={[25, 50, 100, 200]}
+                            onPageChange={(_, page) => setCurrentPage(page + 1)}
+                            onRowsPerPageChange={(e) => {
+                                setPageSize(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            labelRowsPerPage="Lignes par page :"
+                            labelDisplayedRows={({ from, to, count }) =>
+                                `${from.toLocaleString('fr-FR')}–${to.toLocaleString('fr-FR')} sur ${
+                                    count === -1 ? '?' : count.toLocaleString('fr-FR')
+                                }`
+                            }
+                        />
                     )}
                 </>
             )}

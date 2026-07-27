@@ -344,10 +344,16 @@ const Layout = () => {
         component="main"
         sx={{
           flexGrow: 1,
+          // Enfant flex : sans minWidth 0 il refuse de retrecir sous la largeur
+          // de son contenu, donc un tableau large pousse <main> hors viewport et
+          // overflowX le coupait en silence (colonnes inatteignables).
+          // Avec minWidth 0, les TableContainer defilent en interne ; 'auto' ne
+          // sert plus que de filet pour les pages qui n'en ont pas.
+          minWidth: 0,
           width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
           maxWidth: '100%',
-          overflowX: 'hidden',
+          overflowX: 'auto',
           position: 'relative'
         }}
       >

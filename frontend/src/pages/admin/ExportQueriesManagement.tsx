@@ -30,17 +30,13 @@ import {
   Select,
   Snackbar,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
+import { DataTable } from '../../components/table';
+import type { DataTableColumn, SortDirection } from '../../components/table';
 import type { ExportQuery } from '../../services/exportService';
 import * as exportService from '../../services/exportService';
 
@@ -57,6 +53,11 @@ interface FormData {
 const ExportQueriesManagement: React.FC = () => {
   const [queries, setQueries] = useState<ExportQuery[]>([]);
   const [loading, setLoading] = useState(true);
+  // Tri et pagination cote client : la page charge tout le referentiel d'un bloc.
+  const [sortBy, setSortBy] = useState('table_name');
+  const [sortDir, setSortDir] = useState<SortDirection>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [openDialog, setOpenDialog] = useState(false);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedQuery, setSelectedQuery] = useState<ExportQuery | null>(null);
@@ -240,6 +241,126 @@ const ExportQueriesManagement: React.FC = () => {
     return matchesCategory && matchesSearch;
   });
 
+  // Toutes les requetes sont deja chargees : le tri et la pagination se font
+  // donc ici, et la DataTable ne recoit que la tranche a afficher.
+  const sortedQueries = useMemo(() => {
+    const rows = [...filteredQueries];
+    rows.sort((a, b) => {
+      const av = (a as unknown as Record<string, unknown>)[sortBy];
+      const bv = (b as unknown as Record<string, unknown>)[sortBy];
+      if (av === bv) return 0;
+      if (av === null || av === undefined) return 1;
+      if (bv === null || bv === undefined) return -1;
+      const cmp =
+        typeof av === 'boolean' && typeof bv === 'boolean'
+          ? Number(av) - Number(bv)
+          : String(av).localeCompare(String(bv), 'fr', { numeric: true });
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return rows;
+  }, [filteredQueries, sortBy, sortDir]);
+
+  const pagedQueries = useMemo(
+    () => sortedQueries.slice(page * pageSize, page * pageSize + pageSize),
+    [sortedQueries, page, pageSize],
+  );
+
+  const columns: DataTableColumn<ExportQuery>[] = useMemo(
+    () => [
+      {
+        key: 'table_name',
+        label: 'Nom de la table',
+        sortable: true,
+        mono: true,
+        width: 200,
+      },
+      {
+        key: 'table_schema',
+        label: 'Schéma',
+        sortable: true,
+        width: 110,
+        render: (q) => (
+          <Chip
+            label={q.table_schema}
+            size="small"
+            color={q.table_schema === 'public' ? 'primary' : 'default'}
+          />
+        ),
+      },
+      {
+        key: 'display_name',
+        label: "Nom d'affichage",
+        sortable: true,
+        ellipsisMaxWidth: 260,
+      },
+      {
+        key: 'category',
+        label: 'Catégorie',
+        sortable: true,
+        width: 140,
+        render: (q) => <Chip label={q.category} size="small" variant="outlined" />,
+      },
+      {
+        key: 'is_active',
+        label: 'Statut',
+        sortable: true,
+        width: 100,
+        render: (q) => (
+          <Chip
+            label={q.is_active ? 'Actif' : 'Inactif'}
+            size="small"
+            color={q.is_active ? 'success' : 'default'}
+          />
+        ),
+        csvValue: (q) => (q.is_active ? 'Actif' : 'Inactif'),
+      },
+      {
+        key: 'updated_at',
+        label: 'Modifié le',
+        sortable: true,
+        width: 180,
+        render: (q) => (
+          <>
+            <Typography variant="body2" color="text.secondary">
+              {formatDate(q.updated_at)}
+            </Typography>
+            <Typography variant="caption" color="text.disabled">
+              par {q.updated_by}
+            </Typography>
+          </>
+        ),
+      },
+      {
+        key: 'actions',
+        label: 'Actions',
+        align: 'center',
+        width: 130,
+        csvValue: () => '',
+        render: (q) => (
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Tooltip title="Voir">
+              <IconButton size="small" onClick={() => handleViewQuery(q)}>
+                <ViewIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Modifier">
+              <IconButton size="small" onClick={() => handleOpenDialog(q)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Supprimer">
+              <IconButton size="small" color="error" onClick={() => handleDelete(q)}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   return (
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -298,103 +419,33 @@ const ExportQueriesManagement: React.FC = () => {
 
       <Card>
         <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Nom de la Table</TableCell>
-                  <TableCell>Schéma</TableCell>
-                  <TableCell>Nom d'Affichage</TableCell>
-                  <TableCell>Catégorie</TableCell>
-                  <TableCell>Statut</TableCell>
-                  <TableCell>Modifié le</TableCell>
-                  <TableCell align="center">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      Chargement...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredQueries.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      {queries.length === 0 ? 'Aucune requête configurée' : 'Aucun résultat ne correspond aux filtres'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredQueries.map((query) => (
-                    <TableRow key={query.id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {query.table_name}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={query.table_schema}
-                          size="small"
-                          color={query.table_schema === 'public' ? 'primary' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell>{query.display_name}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={query.category}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={query.is_active ? 'Actif' : 'Inactif'}
-                          size="small"
-                          color={query.is_active ? 'success' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(query.updated_at)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          par {query.updated_by}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Voir">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleViewQuery(query)}
-                          >
-                            <ViewIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Modifier">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenDialog(query)}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Supprimer">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDelete(query)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable<ExportQuery>
+            columns={columns}
+            rows={pagedQueries}
+            getRowKey={(q) => q.id}
+            loading={loading}
+            emptyLabel={
+              queries.length === 0
+                ? 'Aucune requête configurée'
+                : 'Aucun résultat ne correspond aux filtres'
+            }
+            sortBy={sortBy}
+            sortDir={sortDir}
+            onSortChange={(key, dir) => {
+              setSortBy(key);
+              setSortDir(dir);
+              setPage(0);
+            }}
+            pagination={{
+              page,
+              pageSize,
+              total: sortedQueries.length,
+              onPageChange: setPage,
+              onPageSizeChange: setPageSize,
+            }}
+            toolbar={{ csvExport: { filePrefix: 'requetes_export' } }}
+            maxHeight="calc(100vh - 420px)"
+          />
         </CardContent>
       </Card>
 

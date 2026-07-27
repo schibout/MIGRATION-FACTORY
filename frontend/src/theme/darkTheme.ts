@@ -71,7 +71,13 @@ export const darkTheme = createTheme({
         },
       },
     },
+    // ── Tableaux « console de données » ──────────────────────────────────
+    // Densité, zébrage, hover et en-tête sticky définis ICI une fois pour
+    // toutes : les 45 fichiers de tableaux en héritent sans modification.
     MuiTable: {
+      defaultProps: {
+        size: 'small', // densité globale (~34px/ligne au lieu de ~53px)
+      },
       styleOverrides: {
         root: {
           backgroundColor: '#2c3649',
@@ -80,13 +86,54 @@ export const darkTheme = createTheme({
     },
     MuiTableCell: {
       styleOverrides: {
+        root: {
+          padding: '6px 12px',
+        },
         head: {
           fontWeight: 600,
-          color: '#ffffff',
+          fontSize: '0.72rem',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          whiteSpace: 'nowrap',
+          color: '#b0b8c8',
+          // Fond OPAQUE obligatoire : avec stickyHeader, les lignes défilent
+          // sous l'en-tête ; un fond translucide les laisserait transparaître.
           backgroundColor: '#1e2738',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.14)',
         },
         body: {
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+        },
+      },
+    },
+    // Zébrage/hover portés par MuiTableBody et non MuiTableRow : une règle sur
+    // MuiTableRow s'appliquerait aussi aux lignes du thead.
+    MuiTableBody: {
+      styleOverrides: {
+        root: {
+          '& .MuiTableRow-root:nth-of-type(even)': {
+            backgroundColor: 'rgba(255, 255, 255, 0.025)',
+          },
+          // Déclaré après le zébrage pour gagner à spécificité égale.
+          '& .MuiTableRow-root:hover': {
+            backgroundColor: 'rgba(77, 139, 240, 0.08)',
+          },
+          '& .MuiTableRow-root.Mui-selected': {
+            backgroundColor: 'rgba(77, 139, 240, 0.16)',
+          },
+          '& .MuiTableRow-root.Mui-selected:hover': {
+            backgroundColor: 'rgba(77, 139, 240, 0.22)',
+          },
+        },
+      },
+    },
+    MuiTablePagination: {
+      styleOverrides: {
+        root: {
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        },
+        toolbar: {
+          minHeight: 44,
         },
       },
     },

@@ -9,23 +9,17 @@ import {
     Box,
     Button,
     Chip,
-    CircularProgress,
     IconButton,
     InputAdornment,
     LinearProgress,
     Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TablePagination,
-    TableRow,
     TextField,
     Tooltip,
     Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { DataTable } from '../components/table';
+import type { DataTableColumn } from '../components/table';
 import { useNavigate } from 'react-router-dom';
 import { projectService, SharePointProject } from '../services/projectService';
 
@@ -101,16 +95,7 @@ const SharePointProjectsPage: React.FC = () => {
         return () => clearTimeout(timer);
     }, [search]);
 
-    // Gestion du changement de page
-    const handleChangePage = (event: unknown, newPage: number) => {
-        setPage(newPage);
-    };
-
-    // Gestion du changement de lignes par page
-    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);
-    };
+    // (pagination pilotee directement par la DataTable via setPage/setRowsPerPage)
 
     // Obtenir la couleur du statut
     const getStatusColor = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
@@ -147,6 +132,181 @@ const SharePointProjectsPage: React.FC = () => {
         if (!dateString) return '-';
         return new Date(dateString).toLocaleDateString('fr-FR');
     };
+
+    // 14 colonnes : les 8 premieres suffisent au quotidien, les autres sont
+    // masquees par defaut et reactivables via le menu « Colonnes ».
+    const projectColumns: DataTableColumn<SharePointProject>[] = useMemo(
+        () => [
+            { key: 'sharepoint_id', label: 'ID', width: 80, mono: true },
+            {
+                key: 'code',
+                label: 'Code',
+                width: 120,
+                mono: true,
+                render: (p) => p.code || '—',
+            },
+            {
+                key: 'title',
+                label: 'Titre',
+                width: 260,
+                ellipsisMaxWidth: 300,
+                render: (p) => (
+                    <Tooltip title={p.description || p.title || ''}>
+                        <Typography
+                            variant="body2"
+                            sx={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                color: 'primary.main',
+                            }}
+                        >
+                            {p.title || '—'}
+                        </Typography>
+                    </Tooltip>
+                ),
+                csvValue: (p) => p.title || '',
+            },
+            {
+                key: 'project_number',
+                label: 'Numéro',
+                width: 120,
+                mono: true,
+                render: (p) => p.project_number || '—',
+            },
+            {
+                key: 'global_status',
+                label: 'Statut',
+                width: 130,
+                render: (p) => (
+                    <Chip
+                        label={p.global_status || 'N/A'}
+                        color={getStatusColor(p.global_status)}
+                        size="small"
+                    />
+                ),
+            },
+            {
+                key: 'phase_text',
+                label: 'Phase',
+                width: 150,
+                ellipsisMaxWidth: 180,
+                render: (p) => p.phase_text || '—',
+            },
+            {
+                key: 'percent_completed',
+                label: 'Avancement',
+                width: 150,
+                render: (p) => (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <LinearProgress
+                            variant="determinate"
+                            value={(p.percent_completed || 0) * 100}
+                            sx={{ flexGrow: 1, height: 6, borderRadius: 3 }}
+                        />
+                        <Typography variant="caption" sx={{ minWidth: 34, textAlign: 'right' }}>
+                            {p.percent_completed ? `${(p.percent_completed * 100).toFixed(0)}%` : '0%'}
+                        </Typography>
+                    </Box>
+                ),
+                csvValue: (p) =>
+                    p.percent_completed ? `${(p.percent_completed * 100).toFixed(0)}%` : '0%',
+            },
+            {
+                key: 'budget_total_sap',
+                label: 'Budget SAP',
+                width: 140,
+                align: 'right',
+                mono: true,
+                render: (p) => formatCurrency(p.budget_total_sap),
+            },
+            {
+                key: 'health',
+                label: 'Santé',
+                width: 110,
+                align: 'center',
+                defaultHidden: true,
+                render: (p) => (
+                    <Chip
+                        label={p.health || 'N/A'}
+                        color={getIndicatorColor(p.health)}
+                        size="small"
+                        variant="outlined"
+                    />
+                ),
+            },
+            {
+                key: 'planning',
+                label: 'Planning',
+                width: 110,
+                align: 'center',
+                defaultHidden: true,
+                render: (p) => (
+                    <Chip
+                        label={p.planning || 'N/A'}
+                        color={getIndicatorColor(p.planning)}
+                        size="small"
+                        variant="outlined"
+                    />
+                ),
+            },
+            {
+                key: 'cost',
+                label: 'Coût',
+                width: 110,
+                align: 'center',
+                defaultHidden: true,
+                render: (p) => (
+                    <Chip
+                        label={p.cost || 'N/A'}
+                        color={getIndicatorColor(p.cost)}
+                        size="small"
+                        variant="outlined"
+                    />
+                ),
+            },
+            {
+                key: 'sector',
+                label: 'Secteur',
+                width: 140,
+                defaultHidden: true,
+                render: (p) => p.sector || '—',
+            },
+            {
+                key: 'imported_at',
+                label: 'Date import',
+                width: 130,
+                mono: true,
+                defaultHidden: true,
+                render: (p) => formatDate(p.imported_at),
+            },
+            {
+                key: 'actions',
+                label: 'Actions',
+                width: 90,
+                align: 'center',
+                csvValue: () => '',
+                render: (p) => (
+                    <Tooltip title="Voir les détails">
+                        <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={(e) => {
+                                // La ligne entiere est deja cliquable : on evite
+                                // le double declenchement.
+                                e.stopPropagation();
+                                navigate(`/projets/detail/${p.sharepoint_id}`);
+                            }}
+                        >
+                            <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                ),
+            },
+        ],
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [],
+    );
 
     return (
         <Box sx={{ p: 3 }}>
@@ -197,167 +357,31 @@ const SharePointProjectsPage: React.FC = () => {
                 />
             </Paper>
 
-            <Paper>
-                {importing && <LinearProgress />}
-                
-                <TableContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>ID</TableCell>
-                                <TableCell>Code</TableCell>
-                                <TableCell>Titre</TableCell>
-                                <TableCell>Numéro</TableCell>
-                                <TableCell>Statut</TableCell>
-                                <TableCell>Phase</TableCell>
-                                <TableCell align="right">Avancement</TableCell>
-                                <TableCell align="center">Santé</TableCell>
-                                <TableCell align="center">Planning</TableCell>
-                                <TableCell align="center">Coût</TableCell>
-                                <TableCell>Secteur</TableCell>
-                                <TableCell align="right">Budget SAP</TableCell>
-                                <TableCell>Date Import</TableCell>
-                                <TableCell align="center">Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={14} align="center" sx={{ py: 5 }}>
-                                        <CircularProgress />
-                                        <Typography sx={{ mt: 2 }}>Chargement des projets...</Typography>
-                                    </TableCell>
-                                </TableRow>
-                            ) : projects.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={14} align="center" sx={{ py: 5 }}>
-                                        <Typography color="text.secondary">
-                                            Aucun projet trouvé. Cliquez sur "Importer depuis SharePoint" pour commencer.
-                                        </Typography>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                projects.map((project) => (
-                                    <TableRow
-                                        key={project.id}
-                                        hover
-                                        onClick={() => navigate(`/projets/detail/${project.sharepoint_id}`)}
-                                        sx={{ cursor: 'pointer' }}
-                                    >
-                                        <TableCell>{project.sharepoint_id}</TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2" fontWeight="medium">
-                                                {project.code || '-'}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Tooltip title={project.description || ''}>
-                                                <Typography 
-                                                    variant="body2" 
-                                                    sx={{ 
-                                                        maxWidth: 300, 
-                                                        overflow: 'hidden', 
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap',
-                                                        color: 'primary.main',
-                                                        textDecoration: 'underline',
-                                                        '&:hover': { color: 'primary.dark' }
-                                                    }}
-                                                >
-                                                    {project.title || '-'}
-                                                </Typography>
-                                            </Tooltip>
-                                        </TableCell>
-                                        <TableCell>{project.project_number || '-'}</TableCell>
-                                        <TableCell>
-                                            <Chip 
-                                                label={project.global_status || 'N/A'} 
-                                                color={getStatusColor(project.global_status)}
-                                                size="small"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2" fontSize="0.85rem">
-                                                {project.phase_text || '-'}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <LinearProgress 
-                                                    variant="determinate" 
-                                                    value={project.percent_completed * 100 || 0}
-                                                    sx={{ flexGrow: 1, height: 6, borderRadius: 3 }}
-                                                />
-                                                <Typography variant="body2" fontSize="0.85rem" minWidth={40}>
-                                                    {project.percent_completed ? `${(project.percent_completed * 100).toFixed(0)}%` : '0%'}
-                                                </Typography>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Chip 
-                                                label={project.health || 'N/A'} 
-                                                color={getIndicatorColor(project.health)}
-                                                size="small"
-                                                variant="outlined"
-                                            />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Chip 
-                                                label={project.planning || 'N/A'} 
-                                                color={getIndicatorColor(project.planning)}
-                                                size="small"
-                                                variant="outlined"
-                                            />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Chip 
-                                                label={project.cost || 'N/A'} 
-                                                color={getIndicatorColor(project.cost)}
-                                                size="small"
-                                                variant="outlined"
-                                            />
-                                        </TableCell>
-                                        <TableCell>{project.sector || '-'}</TableCell>
-                                        <TableCell align="right">
-                                            <Typography variant="body2" fontWeight="medium">
-                                                {formatCurrency(project.budget_total_sap)}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2" fontSize="0.85rem">
-                                                {formatDate(project.imported_at)}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Tooltip title="Voir les détails">
-                                                <IconButton 
-                                                    size="small" 
-                                                    color="primary"
-                                                    onClick={() => navigate(`/projets/detail/${project.sharepoint_id}`)}
-                                                >
-                                                    <VisibilityIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+            {importing && <LinearProgress sx={{ mb: 1 }} />}
 
-                <TablePagination
-                    component="div"
-                    count={totalProjects}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    rowsPerPage={rowsPerPage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    rowsPerPageOptions={[25, 50, 100]}
-                    labelRowsPerPage="Lignes par page:"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} sur ${count}`}
-                />
-            </Paper>
+            <DataTable<SharePointProject>
+                columns={projectColumns}
+                rows={projects}
+                getRowKey={(p) => p.id}
+                loading={loading}
+                emptyLabel={'Aucun projet trouvé. Cliquez sur « Importer depuis SharePoint » pour commencer.'}
+                onRowClick={(p) => navigate(`/projets/detail/${p.sharepoint_id}`)}
+                pagination={{
+                    page,
+                    pageSize: rowsPerPage,
+                    total: totalProjects,
+                    onPageChange: setPage,
+                    onPageSizeChange: setRowsPerPage,
+                    pageSizeOptions: [25, 50, 100],
+                }}
+                // 14 colonnes : le menu permet d'alleger l'affichage, et la
+                // largeur minimale fait defiler DANS le tableau plutot que de
+                // pousser la page (les dernieres colonnes etaient inaccessibles).
+                toolbar={{ columnVisibility: true, csvExport: { filePrefix: 'projets_sharepoint' } }}
+                minTableWidth={1700}
+                maxHeight="calc(100vh - 300px)"
+            />
+
         </Box>
     );
 };

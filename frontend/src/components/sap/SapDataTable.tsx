@@ -32,7 +32,6 @@ import {
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  FilterList as FilterListIcon,
   Close as CloseIcon,
   Add as AddIcon,
   Refresh as RefreshIcon,
@@ -300,13 +299,11 @@ const SapDataTable = ({
   };
 
   const visibleColsList = data.columns.filter((col) => visibleColumns.includes(col.name));
-  const headerBgColor = '#1976d2';
-  const headerTextColor = 'white';
-  const rowEvenBgColor = '#ffffff';
-  const rowOddBgColor = '#f8f9fa';
-  const textColor = '#212529';
-  const borderColor = '#dee2e6';
-  const hoverColor = '#e3f2fd';
+  // Ce composant portait une palette CLAIRE en dur (#ffffff, #1976d2, #212529…)
+  // dans une application sombre : le tableau formait un rectangle blanc au
+  // milieu du fond #1e2738. En-tete, zebrage et survol viennent desormais du
+  // theme (voir darkTheme.ts) ; il ne reste ici que la bordure.
+  const borderColor = theme.palette.divider;
 
   return (
     <div style={{ width: '100%' }}>
@@ -344,12 +341,7 @@ const SapDataTable = ({
               </InputAdornment>
             ),
             sx: {
-              bgcolor: 'white',
               borderRadius: 1,
-              '& .MuiInputBase-input': {
-                color: '#212529 !important',
-                WebkitTextFillColor: '#212529 !important',
-              },
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: borderColor,
               },
@@ -455,8 +447,8 @@ const SapDataTable = ({
         <Box sx={{ 
           mt: 2, 
           p: 2.5, 
-          bgcolor: '#f8f9fa', 
-          borderRadius: 2, 
+          bgcolor: 'background.default',
+          borderRadius: 2,
           border: '1px solid',
           borderColor: borderColor,
           boxShadow: 1,
@@ -479,7 +471,6 @@ const SapDataTable = ({
                   value={selectedColumn}
                   onChange={handleColumnChange}
                   label="Colonne"
-                  sx={{ bgcolor: 'white' }}
                 >
                   {data.columns.map(column => (
                     <MenuItem key={column.name} value={column.name}>
@@ -503,15 +494,7 @@ const SapDataTable = ({
                     addFilter();
                   }
                 }}
-                sx={{
-                  width: '100%',
-                  bgcolor: 'white',
-                  '& .MuiInputBase-input': {
-                    color: '#212529 !important',
-                    WebkitTextFillColor: '#212529 !important',
-                  },
-                  '& .MuiInputLabel-root': { color: '#495057' },
-                }}
+                sx={{ width: '100%' }}
               />
             </Grid>
 
@@ -640,28 +623,14 @@ const SapDataTable = ({
                   <TableCell
                     key={column.name}
                     align="left"
-                    sx={{
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      backgroundColor: headerBgColor,
-                      color: headerTextColor,
-                      borderBottom: 'none',
-                      py: 1.5,
-                      px: 2,
-                      minWidth: '120px',
-                      whiteSpace: 'nowrap',
-                    }}
+                    // Style d'en-tete (majuscules, fond opaque, bordure) herite
+                    // du theme : ne rester ici que la largeur minimale.
+                    sx={{ minWidth: '120px' }}
                   >
                     <TableSortLabel
                       active={currentSortField === column.name}
                       direction={currentSortField === column.name ? currentSortDirection : 'asc'}
                       onClick={() => handleSort(column.name)}
-                      sx={{
-                        color: `${headerTextColor} !important`,
-                        '& .MuiTableSortLabel-icon': {
-                          color: `${headerTextColor} !important`,
-                        },
-                      }}
                     >
                       {column.label || column.name}
                     </TableSortLabel>
@@ -671,26 +640,11 @@ const SapDataTable = ({
             </TableHead>
             <TableBody>
               {displayedRows.map((row, rowIndex) => (
-                <TableRow
-                  key={rowIndex}
-                  sx={{
-                    backgroundColor: rowIndex % 2 === 0 ? rowEvenBgColor : rowOddBgColor,
-                    '&:hover': {
-                      backgroundColor: hoverColor,
-                    },
-                  }}
-                >
+                {/* Zebrage et survol viennent du theme (MuiTableBody) : les
+                    redefinir ici superposerait deux fonds. */}
+                <TableRow key={rowIndex}>
                   {visibleColsList.map((column) => (
-                    <TableCell
-                      key={`${rowIndex}-${column.name}`}
-                      sx={{
-                        color: textColor,
-                        fontSize: '0.875rem',
-                        py: 1,
-                        px: 2,
-                        borderColor: borderColor,
-                      }}
-                    >
+                    <TableCell key={`${rowIndex}-${column.name}`}>
                       {row[column.name] !== null && row[column.name] !== undefined
                         ? String(row[column.name])
                         : ''}
