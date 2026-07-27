@@ -4,6 +4,13 @@
  *
  * Restaurer est destructif pour l'etat courant — mais reversible : le backend
  * sauvegarde automatiquement l'etat courant (AUTO_PRE_RESTORE) avant d'ecraser.
+ *
+ * Design — un etat sauvegarde n'a de sens que dans le temps (« ou en etais-je
+ * mardi ? »). L'historique se lit donc comme une CHRONOLOGIE et non comme une
+ * liste : rail vertical, horodatage en chasse fixe en tete de ligne. Les etats
+ * nommes par l'utilisateur (puce pleine) se distinguent des sauvegardes
+ * automatiques prises par le systeme (puce creuse), sans les cacher : ce sont
+ * elles qui rendent les operations annulables.
  */
 import {
   Alert,
@@ -14,21 +21,19 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogContentText,
   DialogTitle,
-  Divider,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
   Stack,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
+import HistoryIcon from '@mui/icons-material/History';
 import RestoreIcon from '@mui/icons-material/Restore';
 import SaveIcon from '@mui/icons-material/Save';
+import ShieldIcon from '@mui/icons-material/GppGood';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -42,6 +47,7 @@ import {
   restoreSnapshot,
   snapshotKindLabel,
 } from '../../services/maintenanceSnapshotService';
+import { Metric, Panel, RailMarker, SectionLabel, formatDateTime } from './maintenanceUi';
 
 interface Props {
   open: boolean;
@@ -52,15 +58,13 @@ interface Props {
   jobActive?: boolean;
 }
 
-const formatDate = (iso: string | null): string =>
-  iso ? new Date(iso).toLocaleString('fr-FR') : '—';
-
 const SnapshotManagerDialog: React.FC<Props> = ({
   open,
   onClose,
   onRestoreStarted,
   jobActive = false,
 }) => {
+  const theme = useTheme();
   const [snapshots, setSnapshots] = useState<MaintenanceSnapshot[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +138,8 @@ const SnapshotManagerDialog: React.FC<Props> = ({
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle>États sauvegardés</DialogTitle>
+        <DialogTitle sx={{ pb: 1 }}>États sauvegardés</DialogTitle>
+
         <DialogContent dividers>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -142,152 +147,241 @@ const SnapshotManagerDialog: React.FC<Props> = ({
             </Alert>
           )}
 
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Enregistrer l'état actuel
-          </Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
-            <TextField
-              size="small"
-              label="Nom de l'état"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={saving || jobActive}
-              sx={{ flex: 1 }}
-            />
-            <TextField
-              size="small"
-              label="Description (facultatif)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={saving || jobActive}
-              sx={{ flex: 2 }}
-            />
-            <Button
-              variant="contained"
-              startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-              onClick={handleCreate}
-              disabled={saving || jobActive || !name.trim()}
-            >
-              Enregistrer
-            </Button>
-          </Stack>
-          <Typography variant="caption" color="text.secondary">
-            Copie l'arborescence IH02, les équipements et les articles dans leur état actuel.
-          </Typography>
+          {/* ── Zone de capture ── */}
+          <SectionLabel sx={{ mb: 1 }}>Enregistrer l'état actuel</SectionLabel>
+          <Panel accent="primary">
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <TextField
+                size="small"
+                label="Nom de l'état"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreate();
+                }}
+                disabled={saving || jobActive}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                size="small"
+                label="Description (facultatif)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={saving || jobActive}
+                sx={{ flex: 2 }}
+              />
+              <Button
+                variant="contained"
+                startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+                onClick={handleCreate}
+                disabled={saving || jobActive || !name.trim()}
+              >
+                Enregistrer
+              </Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Copie l'arborescence IH02, les équipements et les articles dans leur état actuel.
+            </Typography>
+          </Panel>
 
-          <Divider sx={{ my: 2 }} />
-
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Historique
-          </Typography>
+          {/* ── Chronologie des points de restauration ── */}
+          <SectionLabel sx={{ mt: 2.5, mb: 1.5 }}>Historique</SectionLabel>
 
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
               <CircularProgress size={28} />
             </Box>
           ) : snapshots.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-              Aucun état sauvegardé pour l'instant.
-            </Typography>
+            <Box sx={{ textAlign: 'center', py: 5, px: 2 }}>
+              <HistoryIcon sx={{ fontSize: 34, color: 'text.disabled', mb: 1 }} />
+              <Typography variant="body2" color="text.secondary">
+                Aucun état sauvegardé pour l'instant.
+              </Typography>
+              <Typography variant="caption" color="text.disabled">
+                Enregistrez-en un avant une session de modifications importante : vous pourrez y
+                revenir à tout moment.
+              </Typography>
+            </Box>
           ) : (
-            <List dense>
-              {snapshots.map((snapshot) => (
-                <ListItem
-                  key={snapshot.id}
-                  divider
-                  secondaryAction={
-                    <Stack direction="row" spacing={1}>
-                      <Tooltip title="Restaurer cet état">
-                        <span>
-                          <IconButton
-                            edge="end"
-                            color="primary"
-                            onClick={() => setPendingRestore(snapshot)}
-                            disabled={
-                              jobActive || busyId === snapshot.id || snapshot.status !== 'READY'
-                            }
+            <Box>
+              {snapshots.map((snapshot, index) => {
+                const isLast = index === snapshots.length - 1;
+                const auto = snapshot.kind !== 'MANUAL';
+                const busy = busyId === snapshot.id;
+                const failed = snapshot.status === 'FAILED';
+
+                return (
+                  <Box
+                    key={snapshot.id}
+                    sx={{
+                      display: 'flex',
+                      gap: 1.25,
+                      '@keyframes snap-in': {
+                        from: { opacity: 0, transform: 'translateY(-2px)' },
+                        to: { opacity: 1, transform: 'none' },
+                      },
+                      animation: 'snap-in .3s ease both',
+                      animationDelay: `${Math.min(index, 8) * 40}ms`,
+                    }}
+                  >
+                    <RailMarker
+                      state={failed ? 'error' : 'done'}
+                      isLast={isLast}
+                      hollow={auto}
+                    />
+
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        pb: isLast ? 0.5 : 2,
+                        // La rangee d'actions n'apparait qu'au survol : l'historique
+                        // reste calme tant qu'on ne cherche pas a agir.
+                        '&:hover .snapshot-actions, &:focus-within .snapshot-actions': {
+                          opacity: 1,
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Metric sx={{ color: 'text.disabled', fontSize: '0.75rem' }}>
+                            {formatDateTime(snapshot.created_at)}
+                          </Metric>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.75,
+                              flexWrap: 'wrap',
+                              mt: 0.25,
+                            }}
                           >
-                            {busyId === snapshot.id ? (
-                              <CircularProgress size={20} />
-                            ) : (
-                              <RestoreIcon />
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: auto ? 400 : 600, color: auto ? 'text.secondary' : 'text.primary' }}
+                            >
+                              {snapshot.name}
+                            </Typography>
+                            {auto && (
+                              <Tooltip title={snapshotKindLabel(snapshot.kind)}>
+                                <ShieldIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                              </Tooltip>
                             )}
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                      <Tooltip title="Supprimer">
-                        <span>
-                          <IconButton
-                            edge="end"
-                            onClick={() => handleDelete(snapshot)}
-                            disabled={jobActive || busyId === snapshot.id}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </Stack>
-                  }
-                >
-                  <ListItemText
-                    primary={
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {snapshot.name}
-                        </Typography>
-                        {snapshot.kind !== 'MANUAL' && (
-                          <Chip
-                            size="small"
-                            variant="outlined"
-                            label={snapshotKindLabel(snapshot.kind)}
-                          />
-                        )}
-                        {snapshot.status !== 'READY' && (
-                          <Chip
-                            size="small"
-                            color={snapshot.status === 'FAILED' ? 'error' : 'default'}
-                            label={snapshot.status === 'FAILED' ? 'Échec' : 'En cours'}
-                          />
-                        )}
-                      </Stack>
-                    }
-                    secondary={
-                      <>
-                        {formatDate(snapshot.created_at)}
-                        {snapshot.created_by ? ` — ${snapshot.created_by}` : ''}
-                        {` — ${snapshot.total_rows.toLocaleString('fr-FR')} lignes`}
-                        {` (${formatBytes(snapshot.size_bytes)})`}
-                        {snapshot.description ? ` — ${snapshot.description}` : ''}
-                      </>
-                    }
-                  />
-                </ListItem>
-              ))}
-            </List>
+                            {failed && <Chip size="small" color="error" label="Échec" />}
+                            {snapshot.status === 'CREATING' && (
+                              <Chip size="small" label="En cours" />
+                            )}
+                          </Box>
+
+                          {snapshot.description && (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              {snapshot.description}
+                            </Typography>
+                          )}
+
+                          <Box sx={{ display: 'flex', gap: 1.5, mt: 0.5, flexWrap: 'wrap' }}>
+                            <Metric sx={{ color: 'text.disabled', fontSize: '0.75rem' }}>
+                              {snapshot.total_rows.toLocaleString('fr-FR')} lignes
+                            </Metric>
+                            <Metric sx={{ color: 'text.disabled', fontSize: '0.75rem' }}>
+                              {formatBytes(snapshot.size_bytes)}
+                            </Metric>
+                            {snapshot.created_by && (
+                              <Typography variant="caption" color="text.disabled">
+                                {snapshot.created_by}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+
+                        <Stack
+                          direction="row"
+                          spacing={0.5}
+                          className="snapshot-actions"
+                          sx={{
+                            opacity: { xs: 1, md: busy ? 1 : 0 },
+                            transition: 'opacity .15s',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Tooltip title="Restaurer cet état">
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => setPendingRestore(snapshot)}
+                                disabled={jobActive || busy || snapshot.status !== 'READY'}
+                                aria-label={`Restaurer ${snapshot.name}`}
+                              >
+                                {busy ? <CircularProgress size={18} /> : <RestoreIcon fontSize="small" />}
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title="Supprimer">
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDelete(snapshot)}
+                                disabled={jobActive || busy}
+                                aria-label={`Supprimer ${snapshot.name}`}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </Stack>
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
           )}
         </DialogContent>
+
         <DialogActions>
           <Button onClick={onClose}>Fermer</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={!!pendingRestore} onClose={() => setPendingRestore(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>Restaurer « {pendingRestore?.name} » ?</DialogTitle>
+      {/* ── Confirmation de restauration ── */}
+      <Dialog
+        open={!!pendingRestore}
+        onClose={() => setPendingRestore(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ pb: 1 }}>Restaurer « {pendingRestore?.name} » ?</DialogTitle>
         <DialogContent>
-          <DialogContentText component="div">
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              Toutes les modifications faites depuis cette sauvegarde seront remplacées par
-              l'état du {formatDate(pendingRestore?.created_at ?? null)}.
+          <Typography variant="body2" color="text.secondary">
+            Les données maintenance reviendront à leur état du{' '}
+            <Metric sx={{ color: 'text.primary' }}>
+              {formatDateTime(pendingRestore?.created_at ?? null)}
+            </Metric>
+            . Toutes les modifications faites depuis seront remplacées.
+          </Typography>
+
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mt: 2,
+              p: 1.5,
+              borderRadius: 1,
+              backgroundColor: alpha(theme.palette.secondary.main, 0.09),
+            }}
+          >
+            <ShieldIcon sx={{ fontSize: 18, color: theme.palette.secondary.main }} />
+            <Typography variant="caption" color="text.secondary">
+              L'état actuel sera sauvegardé avant la restauration : vous pourrez revenir en
+              arrière.
             </Typography>
-            <Alert severity="info">
-              L'état actuel sera automatiquement sauvegardé avant la restauration : vous
-              pourrez revenir en arrière.
-            </Alert>
-          </DialogContentText>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPendingRestore(null)}>Annuler</Button>
-          <Button variant="contained" color="primary" onClick={confirmRestore}>
+          <Button variant="contained" startIcon={<RestoreIcon />} onClick={confirmRestore}>
             Restaurer
           </Button>
         </DialogActions>

@@ -1,5 +1,10 @@
-import axios from 'axios';
-import { API_URL } from '../config';
+// Passe par l'instance axios centrale (base relative /api/v1) et non par une URL
+// absolue vers le port 5000 : la page etant servie sur le port 3000, un appel
+// direct au backend est cross-origin et le navigateur bloque la reponse
+// (ERR_NETWORK, faute d'en-tete Access-Control-Allow-Origin). En relatif, la
+// requete est same-origin et recupere au passage le jeton JWT et le refresh
+// automatique portes par les intercepteurs de ./api.
+import api from './api';
 
 // Interface pour les vues SAP
 export interface SapView {
@@ -65,7 +70,7 @@ export interface FilterOptions {
 export const getSapViews = async (scope?: string): Promise<SapView[]> => {
   try {
     const params = scope ? { scope } : {};
-    const response = await axios.get(`${API_URL}/data/sap-views`, { params });
+    const response = await api.get('/data/sap-views', { params });
     return response.data;
   } catch (error) {
     console.error('Erreur lors de la récupération des vues SAP:', error);
@@ -76,7 +81,7 @@ export const getSapViews = async (scope?: string): Promise<SapView[]> => {
 // Récupérer les colonnes d'une vue
 export const getViewColumns = async (viewName: string): Promise<ViewColumn[]> => {
   try {
-    const response = await axios.get(`${API_URL}/data/sap-views/${viewName}/columns`);
+    const response = await api.get(`/data/sap-views/${viewName}/columns`);
     return response.data;
   } catch (error) {
     console.error(`Erreur lors de la récupération des colonnes pour la vue ${viewName}:`, error);
@@ -116,7 +121,7 @@ export const getViewData = async (
 
     console.log('Paramètres de requête complets:', params);
     
-    const response = await axios.get(`${API_URL}/data/sap-views/${viewName}/data`, { params });
+    const response = await api.get(`/data/sap-views/${viewName}/data`, { params });
     
     // Log de la réponse de l'API
     console.log(`Réponse du serveur pour ${viewName}:`, {

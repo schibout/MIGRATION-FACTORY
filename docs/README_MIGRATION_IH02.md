@@ -466,8 +466,12 @@ frontend/src/components/maintenance/{SnapshotManagerDialog,ReloadSapDialog,Maint
 - `sql/maintenance/compile.sh` lance `create_maintenance_object.sql` qui fait un
   `DROP TABLE ... CASCADE` : **ne pas** lancer le script entier sur une base en service,
   compiler uniquement `proc_load_maintenance_object_merge.sql`.
-- Les snapshots automatiques se purgent via `cleanup_auto_snapshots(keep=5)` (a cabler
-  sur un cron si le volume devient genant).
+- **Volumetrie** : un snapshot copie ~1,7 M lignes pour **~370 Mo** (mesure du 2026-07-27) —
+  `raw_data.iloa` pese a lui seul 196 Mo / 1,1 M lignes, `clean_data.maintenance_object`
+  74 Mo, `raw_data.makt` 52 Mo. La purge est automatique en fin de job reussi : seuls les
+  **3 derniers snapshots automatiques** sont conserves (`MAINTENANCE_AUTO_SNAPSHOT_KEEP`) ;
+  les snapshots nommes par l'utilisateur ne sont jamais purges. Surveiller l'espace disque,
+  le serveur heberge aussi Ollama.
 
 ## 9. Benefices attendus
 

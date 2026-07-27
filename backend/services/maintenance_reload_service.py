@@ -29,6 +29,7 @@ Enchainement d'un rechargement (``RELOAD``) :
 
 import json
 import logging
+import os
 import threading
 import time
 
@@ -56,6 +57,10 @@ MAINTENANCE_SAP_TABLES = [
 # Duree maximale d'attente de l'extraction SAP avant abandon du job.
 EXTRACTION_TIMEOUT_SECONDS = 3600
 EXTRACTION_POLL_SECONDS = 10
+
+# Nombre de snapshots AUTOMATIQUES conserves (les snapshots nommes par
+# l'utilisateur ne sont jamais purges). Un snapshot pese ~370 Mo.
+AUTO_SNAPSHOT_RETENTION = int(os.environ.get('MAINTENANCE_AUTO_SNAPSHOT_KEEP', '3'))
 
 
 class JobConflictError(RuntimeError):
@@ -344,6 +349,14 @@ def _execute(job_id):
 
             _finish(job_id)
             logger.info(f"✅ Job maintenance #{job_id} ({job_type}) termine.")
+
+            # Chaque operation cree un snapshot de securite (~370 Mo : maintenance_object
+            # + les tables raw_data, dont iloa). Sans purge, l'espace disque du serveur
+            # partage avec Ollama se remplirait silencieusement.
+            try:
+                snapshots.cleanup_auto_snapshots(keep=AUTO_SNAPSHOT_RETENTION)
+            except Exception as e:
+                logger.warning(f"Purge des snapshots automatiques impossible : {e}")
 
         except Exception as e:
             logger.error(f"❌ Job maintenance #{job_id} en echec : {e}")
