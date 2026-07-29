@@ -23,6 +23,7 @@ CREATE OR REPLACE FUNCTION clean_data.alimenter_manuf_part_attribute_phl()
 AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
+    v_count_orphans INTEGER := 0;
     v_start_time TIMESTAMP;
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
@@ -108,11 +109,27 @@ BEGIN
 
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
 
+    -- Purge des orphelins.
+    -- Cette table n'est vidée par personne : le chargeur PHL insère en APPEND
+    -- (garde NOT EXISTS) alors que alimenter_inventory_part() fait un TRUNCATE
+    -- de la table parente à chaque run. Les lignes d'un run précédent dont
+    -- l'article n'est plus dans inventory_part survivaient donc indéfiniment et
+    -- étaient rejetées au chargement IFS.
+    DELETE FROM clean_data.manuf_part_attribute m
+    WHERE NOT EXISTS (
+        SELECT 1 FROM clean_data.inventory_part ip
+        WHERE ip.contract = m.contract
+          AND ip.part_no  = m.part_no
+    );
+
+    GET DIAGNOSTICS v_count_orphans = ROW_COUNT;
+
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
 
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Alimentation MANUF_PART_ATTRIBUTE (PHL) terminee avec succes';
+    RAISE NOTICE 'Lignes orphelines supprimees (sans inventory_part): %', v_count_orphans;
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Lignes inserees: %', v_count_inserted;
     RAISE NOTICE 'Duree d''execution: %', v_duration;

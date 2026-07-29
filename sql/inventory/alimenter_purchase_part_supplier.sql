@@ -140,7 +140,20 @@ BEGIN
         -- Article et fournisseur non vides
         AND TRIM(eina.matnr) != ''
         AND TRIM(eina.lifnr) != ''
-        
+        -- L'article doit exister dans purchase_part (table parente du lien) :
+        -- la presence dans ifs_article_maitre ne suffit pas, purchase_part
+        -- applique ses propres filtres. Sans ce garde, le lien est rejete au
+        -- chargement IFS faute d'article d'achat.
+        AND EXISTS (
+            SELECT 1 FROM clean_data.purchase_part pp
+            WHERE pp.part_no = SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25)
+              AND pp.contract = CASE
+                    WHEN eine.ekorg = '9200' THEN 'SJ'
+                    WHEN eine.ekorg = '9000' THEN 'CS'
+                    ELSE 'SJ'
+                  END
+        )
+
     ORDER BY contract, part_no, vendor_no;
     
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;

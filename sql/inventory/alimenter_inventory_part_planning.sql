@@ -85,7 +85,10 @@ BEGIN
             WHEN marc.werks = '9200' THEN 'SJ'
             ELSE 'SJ'
         END as contract,
-        SUBSTRING(LTRIM(mara.matnr, '0'), 1, 25) as part_no,
+        -- TRIM indispensable : inventory_part construit son part_no avec
+        -- TRIM(LTRIM(...)). Sans lui, tout matnr avec un espace de fin donnait
+        -- une cle differente => ligne de planification orpheline.
+        SUBSTRING(TRIM(LTRIM(mara.matnr, '0')), 1, 25) as part_no,
         
         -- Dates
         CURRENT_TIMESTAMP as last_activity_date,
@@ -158,16 +161,37 @@ BEGIN
         'I' as sched_capacity_db
         
     FROM raw_data.mara mara
-    INNER JOIN raw_data.marc marc 
+    INNER JOIN raw_data.marc marc
         ON mara.matnr = marc.matnr
-    
-    WHERE 
+        AND marc.mandt = '700'
+
+    WHERE
+        -- Mandant SAP, comme alimenter_inventory_part(). Sans ce filtre, un meme
+        -- article present dans plusieurs mandants produisait plusieurs lignes
+        -- pour la meme cle (contract, part_no).
+        mara.mandt = '700'
         -- Filtrer uniquement les articles stockables
-        mara.mtart IN ('ERSA', 'HIBE', 'ROH', 'HALB', 'FERT')
-        AND marc.werks IN ('9200', '9100', '9000')  -- Sites Trimet
+        AND mara.mtart IN ('ERSA', 'HIBE', 'ROH', 'HALB', 'FERT')
+        -- Sites Trimet : meme perimetre que alimenter_inventory_part().
+        -- 9100 retire : il retombait sur le contract 'SJ' par defaut et
+        -- fabriquait des cles (SJ, part_no) en doublon de celles du site 9200.
+        AND marc.werks IN ('9200', '9000')
         AND mara.lvorm IS NULL   -- Non supprimés
         AND TRIM(mara.matnr) != ''
-        
+        -- Aucune ligne de planification sans son inventory_part : c'est la
+        -- garantie structurelle contre les orphelins rejetes au chargement IFS.
+        -- alimenter_inventory_part() est toujours appelee avant cette fonction
+        -- (cf. etl_modules/etl_inventory_part.py).
+        AND EXISTS (
+            SELECT 1 FROM clean_data.inventory_part ip
+            WHERE ip.part_no = SUBSTRING(TRIM(LTRIM(mara.matnr, '0')), 1, 25)
+              AND ip.contract = CASE
+                    WHEN marc.werks = '9000' THEN 'CS'
+                    WHEN marc.werks = '9200' THEN 'SJ'
+                    ELSE 'SJ'
+                  END
+        )
+
     ORDER BY contract, part_no;
     
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
