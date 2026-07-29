@@ -14,6 +14,12 @@ BEGIN
     
     -- Vider la table cible avant insertion
     TRUNCATE TABLE clean_data.purchase_part_supplier RESTART IDENTITY;
+
+    -- Statistiques a jour avant le EXISTS sur purchase_part : cette table est
+    -- rechargee dans la meme transaction et n'a aucun index. Sans ANALYZE, le
+    -- planificateur la croit vide et part en nested loop (cf. meme piege dans
+    -- alimenter_inventory_part_planning()).
+    ANALYZE clean_data.purchase_part;
     RAISE NOTICE 'Table purchase_part_supplier vidée';
     
     -- Insertion des relations article-fournisseur depuis SAP (EINA/EINE)

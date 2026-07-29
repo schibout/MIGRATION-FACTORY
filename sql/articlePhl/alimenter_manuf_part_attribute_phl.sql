@@ -115,6 +115,11 @@ BEGIN
     -- de la table parente à chaque run. Les lignes d'un run précédent dont
     -- l'article n'est plus dans inventory_part survivaient donc indéfiniment et
     -- étaient rejetées au chargement IFS.
+    -- Statistiques a jour avant l'anti-join (inventory_part est rechargee dans
+    -- la meme transaction et n'a aucun index) : sans cela le planificateur
+    -- choisit une nested loop au lieu d'un hash anti-join.
+    ANALYZE clean_data.inventory_part;
+
     DELETE FROM clean_data.manuf_part_attribute m
     WHERE NOT EXISTS (
         SELECT 1 FROM clean_data.inventory_part ip

@@ -16,6 +16,15 @@ BEGIN
     -- Vider la table cible avant insertion
     TRUNCATE TABLE clean_data.invent_part_plan RESTART IDENTITY;
     RAISE NOTICE 'Table invent_part_plan vidée';
+
+    -- INDISPENSABLE avant le EXISTS sur inventory_part ci-dessous.
+    -- inventory_part vient d'etre TRUNCATE puis rechargee par
+    -- alimenter_inventory_part() dans LA MEME transaction : ses statistiques
+    -- annoncent donc une table vide. Sans cet ANALYZE, le planificateur choisit
+    -- une nested loop et, la table n'ayant aucun index, la fonction part sur
+    -- ~24 000 x 18 000 comparaisons (plusieurs dizaines de minutes).
+    -- Avec des statistiques a jour il choisit un hash semi-join (quelques s).
+    ANALYZE clean_data.inventory_part;
     
     -- Insertion des données de planification depuis SAP
     INSERT INTO clean_data.invent_part_plan (
