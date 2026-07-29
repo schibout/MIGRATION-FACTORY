@@ -7,8 +7,11 @@ import csv
 import zipfile
 from datetime import datetime, date
 import os
+from urllib.parse import quote_plus
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
+
+from config.database import get_etl_db_params
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -38,18 +41,25 @@ class ExportService:
         self.table_display_names = {}
         self._cache_loaded = False
         
-        # Configuration de connexion PostgreSQL (même méthode que les modules ETL)
-        self.pg_host = os.environ.get("PG_HOST", "localhost")
-        self.pg_port = os.environ.get("PG_PORT", "5432")
-        self.pg_database = os.environ.get("PG_DATABASE", "sap_migration_db")
-        self.pg_user = os.environ.get("PG_USER", "postgres")
-        self.pg_password = os.environ.get("PG_PASSWORD", "trimet2025")
-        
+        # Configuration de connexion PostgreSQL : source UNIQUE des identifiants
+        # (get_etl_db_params -> get_db_params). Ne PAS remettre de défaut
+        # "localhost" ici : docker-compose ne transmet pas PG_HOST au conteneur,
+        # et localhost y désigne le conteneur lui-même, pas le serveur PostgreSQL.
+        db_params = get_etl_db_params()
+        self.pg_host = db_params['host']
+        self.pg_port = db_params['port']
+        self.pg_database = db_params['database']
+        self.pg_user = db_params['user']
+        self.pg_password = db_params['password']
+
         # Log des paramètres de connexion (sans le mot de passe)
         logger.info(f"🔧 Configuration de connexion: {self.pg_user}@{self.pg_host}:{self.pg_port}/{self.pg_database}")
-        
+
         # Construction de la chaîne de connexion PostgreSQL
-        self.postgres_connection_string = f"postgresql://{self.pg_user}:{self.pg_password}@{self.pg_host}:{self.pg_port}/{self.pg_database}"
+        self.postgres_connection_string = (
+            f"postgresql://{quote_plus(self.pg_user)}:{quote_plus(self.pg_password)}"
+            f"@{self.pg_host}:{self.pg_port}/{self.pg_database}"
+        )
         
         # Création du moteur avec des paramètres optimisés pour Docker
         try:
