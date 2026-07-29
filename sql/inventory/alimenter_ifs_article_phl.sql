@@ -47,8 +47,18 @@ BEGIN
         phl."CLASSIF TYPE PROD." AS type_article,
         phl."CLASSIF TYPE PROD._2" AS libelle_type_article,
         SUBSTRING(phl."GP PRINCP ARTICLE", 1, 20) AS groupe_article,
-        COALESCE(NULLIF(phl."U/M", ''), 'PCE') AS unite_base,
-        COALESCE(NULLIF(phl."U/M", ''), 'PCE') AS unite_commande,
+        -- U/M via transcodification UOM (meme logique que les tables IFS filles),
+        -- sinon unite brute PHL. C'est la table de transco qui porte T -> KG.
+        COALESCE(
+            public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
+            NULLIF(TRIM(phl."U/M"), ''),
+            'PCE'
+        ) AS unite_base,
+        COALESCE(
+            public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
+            NULLIF(TRIM(phl."U/M"), ''),
+            'PCE'
+        ) AS unite_commande,
         phl."TRACABILITE LOTS" AS avec_gestion_lot,
         phl."REGLE DE SERIE" AS profils_serie_list,
         0 AS nombre_centres_actifs,
@@ -65,7 +75,8 @@ BEGIN
         phl."STATUT" AS statut_utilisation,
         'FR' AS langue,
         SUBSTRING(phl."N. ARTICLE", 1, 25) AS codification_id
-    FROM raw_data.phl_article phl
+    -- Source dedoublonnee (cf. sql/articlePhl/v_phl_article_retenu.sql)
+    FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       AND phl."NUMERO" IS NOT NULL

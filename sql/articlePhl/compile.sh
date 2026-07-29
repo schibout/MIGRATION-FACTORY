@@ -57,9 +57,11 @@ echo ""
 errors=0
 
 # Liste des fichiers dans l'ordre d'exécution.
-# part_catalog en premier (table de base référencée par EXISTS), puis les tables filles,
+# La vue de dédoublonnage en premier (toutes les fonctions lisent dessus),
+# puis part_catalog (table de base référencée par EXISTS), puis les tables filles,
 # puis l'orchestrateur (qui les appelle dans le bon ordre à l'exécution).
 files=(
+    "v_phl_article_retenu.sql"
     "alimenter_part_catalog_phl.sql"
     "alimenter_inventory_part_phl.sql"
     "alimenter_sales_part_phl.sql"

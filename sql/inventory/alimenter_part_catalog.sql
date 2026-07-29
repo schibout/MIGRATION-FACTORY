@@ -65,7 +65,11 @@ BEGIN
         'NOT CONFIGURED' as configurable_db,
         'NOT_ALLOW_COND_CODE' as condition_code_usage_db,
         'NO_SUBLOTS' as sub_lot_rule_db,
-        'ONE_LOT' as lot_quantity_rule_db,
+        -- Allow Many Lots per Production Order : actif des que l'article est suivi en lot
+        CASE
+            WHEN va.avec_gestion_lot = 'OUI' THEN 'MULTI_LOTS'
+            ELSE 'ONE_LOT'
+        END as lot_quantity_rule_db,
         'NOT POSITION PART' as position_part_db,
         'FALSE' as catch_unit_enabled_db,
         'TRACKING_OFF' as multilevel_tracking_db,

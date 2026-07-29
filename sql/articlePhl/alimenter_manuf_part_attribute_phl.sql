@@ -78,7 +78,7 @@ BEGIN
         'TRUE'     as issue_planned_scrap_db,         -- True
         'FALSE'    as adjust_on_op_qty_deviation_db,  -- False
         'FALSE'    as issue_overreported_qty_db,      -- False
-        'FALSE'    as plan_manuf_sup_on_due_date_db,  -- False
+        'TRUE'     as plan_manuf_sup_on_due_date_db,  -- Plan Manufacturing Supply on Due Date : active pour tous
         'FALSE'    as ship_dirty_db,                  -- False
         'FALSE'    as auto_replace_alt_comp_db,       -- False
         'TRUE'     as consider_lead_time_db,          -- True
@@ -86,7 +86,8 @@ BEGIN
         0 as component_scrap,
         0 as shrinkage_factor
 
-    FROM raw_data.phl_article phl
+    -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
+    FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       -- Articles fabriques uniquement : produits finis (F) et intermediaires (I)

@@ -138,7 +138,8 @@ BEGIN
         NULL::text as objid,
         NULL::text as std_name_id
 
-    FROM raw_data.phl_article phl
+    -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
+    FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       -- Exclure les articles de production : produits finis (STATUT=F) et intermediaires (STATUT=I)

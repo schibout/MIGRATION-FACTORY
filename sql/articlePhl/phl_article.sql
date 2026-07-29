@@ -21,6 +21,10 @@
 -- A executer par Samir (acces production en lecture seule).
 -- =====================================================================
 
+-- La vue de dedoublonnage depend de cette table : la supprimer d'abord,
+-- puis rejouer v_phl_article_retenu.sql apres le CREATE TABLE ci-dessous.
+DROP VIEW IF EXISTS raw_data.v_phl_article_retenu;
+
 DROP TABLE IF EXISTS raw_data.phl_article;
 
 CREATE TABLE raw_data.phl_article (

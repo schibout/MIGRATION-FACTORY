@@ -126,7 +126,8 @@ BEGIN
         'FR' as country_of_origin,
         NULL as statistical_code
 
-    FROM raw_data.phl_article phl
+    -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
+    FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       -- L'article doit exister dans part_catalog (table de base)
