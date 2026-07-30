@@ -1165,12 +1165,33 @@ const IH02HierarchyPage: React.FC = () => {
       const msg = resp.data?.message || 'Poste technique mis à jour';
       setSnackbar({ open: true, message: msg, severity: 'success' });
       setEditMode(false);
-      // L'identifiant affiché (code) ou le parent a changé -> recharger l'arbre.
-      // node_id (sap_key) reste immuable : les clés d'état restent valides.
-      if (editLocationData.code !== (detailedLocation.display_name || detailedLocation.node_id)
-          || editLocationData.parent_node_id !== (detailedLocation.parent_node_id ?? '')) {
+      const renomme = editLocationData.code !== (detailedLocation.display_name || detailedLocation.node_id);
+      const deplace = editLocationData.parent_node_id !== (detailedLocation.parent_node_id ?? '');
+
+      if (deplace) {
+        // Le noeud change de place : l'arbre en memoire n'est plus valable.
+        // On repart d'un arbre replie -- vider loadedChildren SANS reinitialiser
+        // expandedNodes laisserait des branches marquees ouvertes mais vides.
         setLoadedChildren({});
+        setLoadedEqChildren({});
+        setExpandedNodes({});
         loadRootNodes();
+      } else if (renomme) {
+        // Seul le libelle change : sap_key (donc les cles d'etat) est immuable.
+        // On corrige le noeud sur place, ce qui preserve l'arborescence depliee.
+        const cle = detailedLocation.node_id;
+        const nouveauCode = editLocationData.code;
+        const patch = (n: LocationNode): LocationNode =>
+          n.node_id === cle ? { ...n, display_name: nouveauCode } : n;
+
+        setRootNodes((prev) => prev.map(patch));
+        setLoadedChildren((prev) => {
+          const next: LoadedChildren = {};
+          Object.entries(prev).forEach(([k, v]) => {
+            next[k] = { ...v, locations: v.locations.map(patch) };
+          });
+          return next;
+        });
       }
       loadLocationDetails(detailedLocation);
     } catch (err: any) {
