@@ -394,13 +394,36 @@ desormais couverts : **sauvegarder un etat**, **le restaurer**, **recharger depu
 
 Migration : `migrations/027_create_maintenance_snapshots.sql` (idempotente).
 
-### Perimetre d'un snapshot
+### Perimetre d'un snapshot (recentre le 2026-07-30)
 
-`clean_data.maintenance_object` **+** les tables `raw_data` encore ecrites en direct
-par les ecrans Hierarchie / Equipements / Articles : `iflot, iflotx, iflos, iloa,
-equi, eqkt, equz, mara, makt` (cf. `SNAPSHOT_TABLES`). Les `id` sont conserves et
-les colonnes appariees **par nom** — une migration ajoutant une colonne n'invalide
-pas les snapshots anterieurs.
+**7 tables** (`SNAPSHOT_TABLES`), pour ~88 Mo contre ~380 Mo auparavant :
+
+| Table | Role |
+|---|---|
+| `clean_data.maintenance_object` | table applicative de l'ecran IH02 |
+| `clean_data.equipment_functional` | export IFS : objets fonctionnels |
+| `clean_data.equipment_object_spare` | export IFS : pieces de rechange par objet |
+| `clean_data.equipment_spare_structure` | export IFS : kit -> composants |
+| `raw_data.equi` / `eqkt` / `equz` | equipements — l'ecran Equipements y ecrit encore |
+
+Les `id` sont conserves et les colonnes appariees **par nom** — une migration
+ajoutant une colonne n'invalide pas les snapshots anterieurs.
+
+**Retirees du perimetre** : `iflot`, `iflotx`, `iflos`, `iloa`, `mara`, `makt`
+(247 Mo, dont `iloa` 198 Mo a elle seule). C'est de la source SAP
+re-extractible, et l'ecran IH02 n'y ecrit plus depuis la bascule (§8quinquies).
+
+⚠️ **Contrepartie assumee** : une restauration ne rend plus les saisies faites
+dans les ecrans **Maintenance Hierarchie** (`iflot`/`iflotx`/`iloa`) et
+**Articles** (`mara`/`makt`), et une extraction SAP devient **irreversible
+depuis l'application** pour les postes techniques et les articles. Ces ecrans
+sont consideres en voie d'abandon au profit d'IH02.
+
+Les snapshots pris **avant** ce recentrage restent integralement restaurables :
+la restauration itere sur `RESTORABLE_TABLES` (perimetre courant +
+`LEGACY_SNAPSHOT_TABLES`) et rend donc les copies qu'ils contiennent encore.
+La suppression d'un snapshot efface ses copies par motif `s<id>_%`, sans se
+fier a la liste : aucune copie orpheline apres le changement.
 
 ### Modes de rechargement
 
@@ -444,7 +467,13 @@ lieu de vider l'ecran. Le nombre de postes ecartes et purges est trace dans
 
 `snapshot auto` → `extraction SAP` (optionnelle, tables de `MAINTENANCE_SAP_TABLES`)
 → `reconstruction` (merge ou reset) → `alimenter_equipment_functional()` +
-`load_equipment_object_spare('FULL')`.
+`load_equipment_object_spare('FULL')` + `load_equipment_spare_structure('FULL')`.
+
+L'ordre des trois dernieres est contraint : `load_equipment_spare_structure` lit
+`equipment_object_spare`, elle doit donc suivre celle qui l'alimente. Cette
+troisieme procedure existait en base mais n'etait **appelee nulle part** avant le
+2026-07-30 : l'export « Structure des pieces de rechange » restait fige sur un
+etat ancien apres chaque rechargement, sans que rien ne le signale.
 
 ⚠️ **Limite a connaitre** : le mode Fusion ne protege que `maintenance_object`.
 Une **re-extraction** ecrase les tables `raw_data`, donc les editions faites depuis

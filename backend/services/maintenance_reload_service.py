@@ -494,7 +494,8 @@ def _set_progress(job_id, progress):
 
 def _refresh_downstream(job_id, progress):
     """
-    Recalcule les tables IFS derivees de maintenance_object.
+    Recalcule les tables IFS derivees de maintenance_object :
+    equipment_functional, equipment_object_spare et equipment_spare_structure.
     Un echec ici n'invalide pas le rechargement : il est signale mais le job
     reste en succes (les donnees sources sont bien a jour).
     """
@@ -504,6 +505,9 @@ def _refresh_downstream(job_id, progress):
             with conn.cursor() as cur:
                 cur.execute("SELECT clean_data.alimenter_equipment_functional()")
                 cur.execute("CALL clean_data.load_equipment_object_spare('FULL')")
+                # Ordre contraint : cette procedure lit equipment_object_spare,
+                # elle doit donc suivre celle qui l'alimente.
+                cur.execute("CALL clean_data.load_equipment_spare_structure('FULL')")
             conn.commit()
         _step(job_id, "Tables IFS derivees a jour", min(99, progress + 10))
     except Exception as e:

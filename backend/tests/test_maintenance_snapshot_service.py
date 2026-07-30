@@ -97,14 +97,37 @@ def _patch_conn(conn):
 # --------------------------------------------------------------------------- #
 # Perimetre et nommage
 # --------------------------------------------------------------------------- #
-def test_perimetre_couvre_maintenance_object_et_les_tables_raw_editables():
+def test_perimetre_couvre_clean_data_et_les_equipements():
+    """Perimetre recentre le 2026-07-30 : clean_data + les equipements raw."""
     tables = dict.fromkeys(f"{s}.{t}" for s, t in svc.SNAPSHOT_TABLES)
-    # L'ecran IH02 : table applicative principale
-    assert 'clean_data.maintenance_object' in tables
-    # Les ecrans Hierarchie / Equipements / Articles ecrivent encore dans raw_data
-    for table in ('raw_data.iflot', 'raw_data.iflotx', 'raw_data.equi',
-                  'raw_data.eqkt', 'raw_data.mara', 'raw_data.makt'):
+    # Table applicative de l'ecran IH02 et les trois livrables IFS qui en derivent
+    for table in ('clean_data.maintenance_object',
+                  'clean_data.equipment_functional',
+                  'clean_data.equipment_object_spare',
+                  'clean_data.equipment_spare_structure'):
         assert table in tables, f"{table} doit etre snapshotee"
+    # L'ecran Equipements ecrit encore la : ces tables restent protegees
+    for table in ('raw_data.equi', 'raw_data.eqkt', 'raw_data.equz'):
+        assert table in tables, f"{table} doit etre snapshotee"
+
+
+def test_perimetre_exclut_les_grosses_tables_sap_re_extractibles():
+    """iloa pesait a elle seule 198 Mo sur ~380 Mo de snapshot."""
+    tables = dict.fromkeys(f"{s}.{t}" for s, t in svc.SNAPSHOT_TABLES)
+    for table in ('raw_data.iflot', 'raw_data.iflotx', 'raw_data.iflos',
+                  'raw_data.iloa', 'raw_data.mara', 'raw_data.makt'):
+        assert table not in tables, f"{table} ne doit plus etre snapshotee"
+
+
+def test_les_tables_retirees_restent_restaurables():
+    """Un snapshot anterieur au recentrage doit continuer a les rendre."""
+    restaurables = dict.fromkeys(f"{s}.{t}" for s, t in svc.RESTORABLE_TABLES)
+    for table in ('raw_data.iflot', 'raw_data.iflotx', 'raw_data.iflos',
+                  'raw_data.iloa', 'raw_data.mara', 'raw_data.makt'):
+        assert table in restaurables, f"{table} doit rester restaurable"
+    # Et la liste de restauration englobe evidemment le perimetre courant
+    for entry in svc.SNAPSHOT_TABLES:
+        assert entry in svc.RESTORABLE_TABLES
 
 
 def test_maintenance_object_est_restauree_en_premier():
@@ -205,8 +228,7 @@ def _restore_conn(nb_tables):
 
 def test_restauration_differe_les_contraintes_et_purge_avant_insertion():
     snap = {'id': 3, 'name': 'Etat du 12/07', 'status': 'READY', 'created_at': None}
-    nb_tables = len(svc.SNAPSHOT_TABLES)
-    conn = _restore_conn(nb_tables)
+    conn = _restore_conn(len(svc.RESTORABLE_TABLES))
 
     with patch.object(svc, 'get_snapshot', return_value=snap), _patch_conn(conn):
         svc.restore_snapshot(3, user='samir', auto_backup=False)
@@ -225,7 +247,7 @@ def test_restauration_differe_les_contraintes_et_purge_avant_insertion():
 def test_restauration_recale_les_sequences():
     """Les id sont reinseres tels quels : la sequence doit suivre."""
     snap = {'id': 3, 'name': 'x', 'status': 'READY', 'created_at': None}
-    conn = _restore_conn(len(svc.SNAPSHOT_TABLES))
+    conn = _restore_conn(len(svc.RESTORABLE_TABLES))
 
     with patch.object(svc, 'get_snapshot', return_value=snap), _patch_conn(conn):
         svc.restore_snapshot(3, auto_backup=False)
@@ -235,7 +257,7 @@ def test_restauration_recale_les_sequences():
 
 def test_restauration_prend_une_sauvegarde_de_securite_par_defaut():
     snap = {'id': 3, 'name': 'x', 'status': 'READY', 'created_at': None}
-    conn = _restore_conn(len(svc.SNAPSHOT_TABLES))
+    conn = _restore_conn(len(svc.RESTORABLE_TABLES))
 
     with patch.object(svc, 'get_snapshot', return_value=snap), _patch_conn(conn), \
             patch.object(svc, 'create_snapshot', return_value={'id': 99}) as create:
@@ -250,7 +272,7 @@ def test_restauration_apparie_les_colonnes_par_nom():
     """Une colonne ajoutee apres coup ne doit pas invalider les vieux snapshots."""
     snap = {'id': 3, 'name': 'x', 'status': 'READY', 'created_at': None}
     results = []
-    for _ in range(len(svc.SNAPSHOT_TABLES)):
+    for _ in range(len(svc.RESTORABLE_TABLES)):
         results += [
             (True,), (True,),
             [('id',), ('code',)],                  # copie : 2 colonnes

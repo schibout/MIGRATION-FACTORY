@@ -36,20 +36,42 @@ logger = logging.getLogger(__name__)
 SNAPSHOT_SCHEMA = 'snapshots'
 
 # Tables couvertes par un snapshot maintenance, dans l'ordre de restauration.
-# clean_data.maintenance_object d'abord (table applicative principale), puis les
-# tables SAP encore editables depuis l'UI.
+#
+# Perimetre recentre sur clean_data le 2026-07-30 : l'ecran IH02 est passe sur
+# la table unique, et raw_data redevient de la source SAP re-extractible. Ne
+# sont conservees de raw_data que equi/eqkt/equz, qui portent encore les saisies
+# de l'ecran Equipements et pesent 3 Mo a elles trois.
+#
+# Retirees (247 Mo, dont iloa 198 Mo a elle seule) : iflot, iflotx, iflos, iloa,
+# mara, makt. CONSEQUENCE ASSUMEE : une restauration ne rend plus les saisies
+# faites dans les ecrans Maintenance Hierarchie (iflot/iflotx/iloa) et Articles
+# (mara/makt), et une extraction SAP devient irreversible depuis l'application
+# pour les postes techniques et les articles. Ces ecrans sont consideres en voie
+# d'abandon au profit d'IH02.
 SNAPSHOT_TABLES = [
-    ('clean_data', 'maintenance_object'),
+    ('clean_data', 'maintenance_object'),          # table applicative principale
+    ('clean_data', 'equipment_functional'),        # export IFS : objets fonctionnels
+    ('clean_data', 'equipment_object_spare'),      # export IFS : pieces de rechange
+    ('clean_data', 'equipment_spare_structure'),   # export IFS : kit -> composants
+    ('raw_data', 'equi'),     # equipements
+    ('raw_data', 'eqkt'),     # libelles equipements
+    ('raw_data', 'equz'),     # periodes equipements
+]
+
+# Tables sorties du perimetre le 2026-07-30 : elles ne sont plus copiees, mais
+# restent RESTAURABLES si un snapshot anterieur en contient une copie. Sans
+# cette liste, un ancien snapshot cesserait silencieusement de les rendre.
+LEGACY_SNAPSHOT_TABLES = [
     ('raw_data', 'iflot'),    # postes techniques
     ('raw_data', 'iflotx'),   # libelles postes techniques
     ('raw_data', 'iflos'),    # structure / strno
     ('raw_data', 'iloa'),     # donnees de localisation
-    ('raw_data', 'equi'),     # equipements
-    ('raw_data', 'eqkt'),     # libelles equipements
-    ('raw_data', 'equz'),     # periodes equipements
     ('raw_data', 'mara'),     # articles
     ('raw_data', 'makt'),     # libelles articles
 ]
+
+# La creation itere sur SNAPSHOT_TABLES, la restauration sur celle-ci.
+RESTORABLE_TABLES = SNAPSHOT_TABLES + LEGACY_SNAPSHOT_TABLES
 
 VALID_KINDS = ('MANUAL', 'AUTO_PRE_RESTORE', 'AUTO_PRE_RELOAD')
 
@@ -262,7 +284,10 @@ def restore_snapshot(snapshot_id, user=None, auto_backup=True):
                 cur.execute("SET CONSTRAINTS ALL DEFERRED")
 
                 targets = []
-                for schema, table in SNAPSHOT_TABLES:
+                # RESTORABLE_TABLES et non SNAPSHOT_TABLES : un snapshot pris
+                # avant le recentrage du perimetre contient des copies de tables
+                # qu'on ne sauvegarde plus, et il doit continuer a les rendre.
+                for schema, table in RESTORABLE_TABLES:
                     copy_name = _copy_table_name(snapshot_id, schema, table)
                     if not _table_exists(cur, SNAPSHOT_SCHEMA, copy_name):
                         continue
