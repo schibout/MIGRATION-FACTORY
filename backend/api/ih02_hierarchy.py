@@ -1453,7 +1453,8 @@ def move_bom_item():
                            p.object_type AS parent_type, p.code AS parent_code
                     FROM {MO} b
                     LEFT JOIN {MO} p ON p.id = b.parent_id
-                    WHERE b.object_type = 'BOM_ITEM' AND b.sap_key = %s
+                    WHERE b.object_type = 'BOM_ITEM' AND b.is_active
+                      AND b.sap_key = %s
                     LIMIT 1""",
                 [bom_key],
             )

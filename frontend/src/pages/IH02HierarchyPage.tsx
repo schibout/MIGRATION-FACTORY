@@ -60,7 +60,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import api from '../services/api';
 import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import MaintenanceActions from '../components/maintenance/MaintenanceActions';
@@ -389,6 +389,10 @@ const IH02HierarchyPage: React.FC = () => {
   const [pendingDrop, setPendingDrop] = useState<{ source: LocationNode; target: LocationNode } | null>(null);
   const [dropConfirmLoading, setDropConfirmLoading] = useState(false);
   const [draggedBom, setDraggedBom] = useState<DraggedBom | null>(null);
+  // Les evenements HTML5 drag/drop ne declenchent pas tous un rendu React entre
+  // dragstart et drop. La ref est donc la source fiable pour le depot ; l'etat
+  // reste utilise pour le retour visuel de la cible.
+  const draggedBomRef = useRef<DraggedBom | null>(null);
   const [pendingBomDrop, setPendingBomDrop] = useState<PendingBomDrop | null>(null);
 
   const [workCenters, setWorkCenters] = useState<WorkCenter[]>([]);
@@ -853,7 +857,7 @@ const IH02HierarchyPage: React.FC = () => {
     const targetKey = getNodeKey(targetNode);
     // Un poste technique accepte deux choses : un autre poste, ou une ligne
     // de nomenclature (qui vient alors s'y rattacher).
-    if (draggedBom) {
+    if (draggedBomRef.current) {
       e.dataTransfer.dropEffect = 'move';
       setDropTargetKey(targetKey);
       return;
@@ -875,8 +879,9 @@ const IH02HierarchyPage: React.FC = () => {
     setDropTargetKey(null);
 
     // Depot d'une ligne de nomenclature sur un poste technique
-    if (draggedBom) {
-      const drag = draggedBom;
+    if (draggedBomRef.current) {
+      const drag = draggedBomRef.current;
+      draggedBomRef.current = null;
       setDraggedBom(null);
       if (drag.mode === 'fl' && drag.sourceKey === targetNode.node_id) {
         // Sans ce retour, l'absence de reaction est indiscernable d'une panne.
@@ -934,6 +939,7 @@ const IH02HierarchyPage: React.FC = () => {
 
   const handleDragEnd = () => {
     setDraggedNode(null);
+    draggedBomRef.current = null;
     setDraggedBom(null);
     setDropTargetKey(null);
   };
@@ -942,9 +948,17 @@ const IH02HierarchyPage: React.FC = () => {
 
   const handleBomDragStart = (e: React.DragEvent, drag: DraggedBom) => {
     e.stopPropagation();
-    // Sans bom_key (backend anterieur a cette fonctionnalite) la ligne n'est
-    // pas identifiable : on n'amorce pas un deplacement qui echouerait.
-    if (!drag.comp.bom_key) return;
+    // Sans bom_key, le backend actuellement deploye ne sait pas identifier la
+    // ligne. On le signale plutot que de laisser un glisser-deposer inerte.
+    if (!drag.comp.bom_key) {
+      setSnackbar({
+        open: true,
+        severity: 'error',
+        message: 'Cette ligne ne peut pas etre deplacee : le serveur ne fournit pas son identifiant de nomenclature.',
+      });
+      return;
+    }
+    draggedBomRef.current = drag;
     setDraggedBom(drag);
     setDraggedNode(null);
     e.dataTransfer.effectAllowed = 'move';
@@ -954,7 +968,7 @@ const IH02HierarchyPage: React.FC = () => {
   // Une ligne d'article accepte le depot d'une autre ligne : celle-ci vient
   // alors se rattacher a l'article de la ligne cible (nomenclature matiere).
   const handleBomDragOver = (e: React.DragEvent, pathKey: string) => {
-    if (!draggedBom) return;
+    if (!draggedBomRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
@@ -962,11 +976,12 @@ const IH02HierarchyPage: React.FC = () => {
   };
 
   const handleBomDrop = (e: React.DragEvent, cible: BomComponent) => {
-    if (!draggedBom) return;
+    if (!draggedBomRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     setDropTargetKey(null);
-    const drag = draggedBom;
+    const drag = draggedBomRef.current;
+    draggedBomRef.current = null;
     setDraggedBom(null);
     // Sur elle-meme : geste sans intention, on ignore en silence.
     if (drag.comp.bom_key === cible.bom_key) return;
@@ -1542,7 +1557,7 @@ const IH02HierarchyPage: React.FC = () => {
           })}
           sx={{
             display: 'flex', alignItems: 'center', py: 0.5, px: 1,
-            pl: depth * 3 + 6, borderRadius: 1, cursor: 'pointer',
+            pl: depth * 3 + 6, borderRadius: 1, cursor: 'grab',
             backgroundColor: isBomDropTarget
               ? alpha(theme.palette.success.main, 0.3)
               : isBomSelected ? alpha(theme.palette.success.main, 0.15) : 'transparent',
@@ -1552,6 +1567,9 @@ const IH02HierarchyPage: React.FC = () => {
             '&:hover': { backgroundColor: alpha(theme.palette.success.main, isBomSelected ? 0.2 : 0.06) },
           }}
         >
+          <Tooltip title="Glisser cet article vers un poste technique ou un autre article">
+            <DragIcon fontSize="small" sx={{ mr: 0.5, opacity: 0.45, cursor: 'grab', fontSize: '0.9rem' }} />
+          </Tooltip>
           {hasChildren ? (
             <IconButton
               size="small"
