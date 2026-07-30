@@ -26,8 +26,6 @@ from .maintenance_snapshots import maintenance_snapshots_blueprint
 from .data_browser import data_browser_blueprint
 from .sap_data_explorer import sap_data_explorer_blueprint
 from .ih02_hierarchy import ih02_hierarchy_blueprint
-from .ih02_hierarchy_mo import ih02_hierarchy_mo_blueprint
-from config.settings import Config
 from .backup import backup_blueprint
 from .settings import settings_blueprint
 from .ai_assistant import ai_blueprint
@@ -68,13 +66,8 @@ def register_blueprints(app):
     app.register_blueprint(maintenance_snapshots_blueprint, url_prefix=f'{API_PREFIX}/maintenance')
     app.register_blueprint(data_browser_blueprint, url_prefix=f'{API_PREFIX}/data-browser')
     app.register_blueprint(sap_data_explorer_blueprint, url_prefix=f'{API_PREFIX}/sap-data-explorer')
-    # Ecran IH02 : bascule table unique via le flag IH02_USE_MAINTENANCE_OBJECT
-    if getattr(Config, 'IH02_USE_MAINTENANCE_OBJECT', False):
-        app.logger.info("IH02 : backend table unique (clean_data.maintenance_object)")
-        app.register_blueprint(ih02_hierarchy_mo_blueprint, url_prefix=f'{API_PREFIX}/ih02-hierarchy')
-    else:
-        app.logger.info("IH02 : backend historique (raw_data)")
-        app.register_blueprint(ih02_hierarchy_blueprint, url_prefix=f'{API_PREFIX}/ih02-hierarchy')
+    # Ecran IH02 : table unique clean_data.maintenance_object (raw_data en lecture seule)
+    app.register_blueprint(ih02_hierarchy_blueprint, url_prefix=f'{API_PREFIX}/ih02-hierarchy')
     app.register_blueprint(backup_blueprint, url_prefix=f'{API_PREFIX}/backup')
     app.register_blueprint(settings_blueprint, url_prefix=f'{API_PREFIX}/settings')
     app.register_blueprint(ai_blueprint, url_prefix=f'{API_PREFIX}/ai')

@@ -497,6 +497,62 @@ frontend/src/components/maintenance/{SnapshotManagerDialog,ReloadSapDialog,Maint
   les snapshots nommes par l'utilisateur ne sont jamais purges. Surveiller l'espace disque,
   le serveur heberge aussi Ollama.
 
+## 8quinquies. Bascule effectuee (2026-07-30)
+
+L'ecran `/maintenance/ih02` est desormais servi **uniquement** par
+`clean_data.maintenance_object`. Le plan de bascule §6 est clos : il n'y a plus
+de flag ni d'ancien backend.
+
+### Pourquoi la bascule n'avait jamais eu lieu
+
+`IH02_USE_MAINTENANCE_OBJECT` valait bien `true` dans le `.env`, mais la variable
+**n'a jamais figure dans le bloc `environment:` de `docker-compose.yml`** : elle
+n'etait donc pas injectee dans le conteneur, et `Config` lisait la valeur par
+defaut `false`. La bascule etait configuree sans pouvoir prendre effet. Le flag
+ayant ete supprime, ce mode de panne disparait.
+
+Trois symptomes en decoulaient, tous corriges par la bascule :
+
+| Symptome | Cause |
+|---|---|
+| Le code d'un poste n'etait pas modifiable | l'`update-location` historique ignore silencieusement le champ `code` envoye par le frontend |
+| Le renommage d'un article renvoyait 404 | `/article-master` n'existe que cote table unique |
+| La section Tracabilite restait vide | l'ancien backend ne renvoyait pas `source` / `updated_by` / `updated_at` |
+
+### Ce qui a change
+
+- Suppression de `backend/api/ih02_hierarchy.py` (ancien backend, ~1 750 lignes)
+  et renommage de `ih02_hierarchy_mo.py` en `ih02_hierarchy.py`.
+- Suppression du flag `IH02_USE_MAINTENANCE_OBJECT` (`config/settings.py`) et de
+  l'enregistrement conditionnel (`api/__init__.py`).
+- `migrations/028_unique_code_maintenance_object.sql` : index unique
+  `uq_mo_code_sibling` sur `(object_type, parent_id, code)` — voir §8bis-2.
+- Aucune modification frontend : ses 28 appels correspondent exactement aux
+  routes disponibles.
+
+### Unicite du code
+
+Le code etant modifiable, l'unicite est garantie **en base** et non plus par un
+`SELECT` en Python (deux renommages simultanes pouvaient creer un doublon). La
+regle est **« code unique parmi les freres »** : `(object_type, parent_id, code)`
+avec `NULLS NOT DISTINCT` (indispensable : racines et articles ont tous
+`parent_id IS NULL`), sur les seules lignes actives, **hors `BOM_ITEM`** — un
+article se repete legitimement dans une nomenclature a des positions
+differentes (17 480 cas constates). Les quatre routes concernees
+(`update-location`, `add-node`, `move-node`, `article-master`) interceptent la
+violation d'index et renvoient un **409** avec un message explicite.
+
+Un renommage est **isole** : les descendants gardent leur code. Renommer `T110`
+en `T900` laisse donc `T110-M220` inchange.
+
+### Limite connue : deux sources de verite
+
+L'ecran IH02 n'ecrit plus dans `raw_data`, mais les ecrans **Equipements** et
+**Articles** continuent de le faire (`api/maintenance_hierarchy.py`,
+`api/maintenance_articles.py`). Consequence concrete : une designation d'article
+modifiee depuis l'ecran Articles n'apparait dans IH02 qu'apres un rechargement en
+mode fusion. A traiter dans un second temps.
+
 ## 9. Benefices attendus
 
 - `raw_data` strictement lecture seule (conformite convention projet).

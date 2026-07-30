@@ -62,12 +62,6 @@ class Config:
     # Niveaux de log
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-    # Ecran IH02 (/maintenance/ih02) : bascule table unique clean_data.maintenance_object
-    #   true  -> nouveau backend (ih02_hierarchy_mo, table unique editable dans clean_data)
-    #   false -> ancien backend (ih02_hierarchy, ecrit directement dans raw_data)
-    # Rollback = repasser a false (l'ancien code relit raw_data intact).
-    IH02_USE_MAINTENANCE_OBJECT = os.getenv("IH02_USE_MAINTENANCE_OBJECT", "false").lower() == "true"
-
     # Assistant IA (Ollama local + rôle PostgreSQL lecture seule)
     OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b")
