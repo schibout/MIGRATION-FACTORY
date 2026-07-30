@@ -11,12 +11,15 @@
 #   2. Analyse du diff (ancien HEAD -> nouveau HEAD).
 #   3. Par service, on décide :
 #        - REBUILD  (docker-compose build + up --force-recreate)
-#             si dépendances/Dockerfile modifiés (requirements.txt, package.json…)
+#             si la config d'IMAGE a changé : requirements.txt, package.json,
+#             Dockerfile, .dockerignore, docker-compose.yml.
 #        - RESTART  (docker-compose up -d --force-recreate, SANS rebuild)
-#             si seul le code a changé — le code est monté en volume
-#             (./backend:/app, ./frontend:/workspace/frontend), une recréation
-#             suffit à recharger le code Python / relire le code servi par Vite.
+#             si seul le code ou la config d'EXÉCUTION a changé — tout est monté
+#             en volume (./backend:/app, ./frontend:/workspace/frontend), une
+#             recréation suffit à recharger le code Python / le code servi par Vite.
 #   Redis n'est jamais redéployé (image officielle, aucun code applicatif).
+#   Hors périmètre, signalés mais jamais appliqués : migrations/ et nginx/
+#   (nginx tourne sur l'hôte, pas dans docker-compose).
 #
 # Options :
 #   --build          Forcer le REBUILD des deux services (ignore le diff).
@@ -108,6 +111,25 @@ info "=== 2/3 Analyse des changements ==="
 
 # Helper : le diff contient-il au moins un chemin matchant le motif regex ?
 matches() { echo "$CHANGED" | grep -qE "$1"; }
+# Helper : lister les chemins du diff qui matchent (pour tracer la décision).
+matched_files() { echo "$CHANGED" | grep -E "$1" | sed 's/^/    /'; }
+
+# --- Fichiers de configuration : deux familles, deux traitements ---
+# Toute la config n'exige pas un rebuild, parce que le code ET sa config vivent
+# dans un volume monté (./backend:/app, ./frontend:/workspace/frontend) :
+#
+#   * config d'IMAGE -> REBUILD. Elle est cuite dans l'image (dépendances
+#     installées, Dockerfile) ou dans la définition du service
+#     (docker-compose.yml) : seul un build/une recréation la prend en compte.
+#   * config d'EXÉCUTION -> RESTART. Elle est lue au démarrage du process depuis
+#     le volume (vite.config.ts, tsconfig*.json, backend/config/*.py) :
+#     reconstruire l'image ne changerait rien de plus qu'un redémarrage.
+#
+# docker-compose.yml est classé côté image pour les DEUX services : il porte le
+# bloc build: autant que les variables d'environnement et les volumes.
+IMAGE_CFG_BACKEND='^(backend/(requirements[^/]*\.txt|Dockerfile)|\.dockerignore|docker-compose\.ya?ml)$'
+IMAGE_CFG_FRONTEND='^(frontend/(package(-lock)?\.json|Dockerfile)|\.dockerignore|docker-compose\.ya?ml)$'
+RUNTIME_CFG='^(frontend/(vite\.config\.[jt]s|tsconfig[^/]*\.json)|backend/config/.*\.py)$'
 
 BACKEND_ACTION="none"    # none | restart | rebuild
 FRONTEND_ACTION="none"
@@ -117,39 +139,41 @@ if [ "$FORCE_BUILD" = true ] || [ -z "$CHANGED" ]; then
   BACKEND_ACTION="rebuild"
   FRONTEND_ACTION="rebuild"
 else
-  # docker-compose.yml : touche la définition des deux services -> recréer les deux.
-  COMPOSE_CHANGED=false
-  matches '^docker-compose\.ya?ml$' && COMPOSE_CHANGED=true
-
   # --- Backend ---
-  if matches '^backend/'; then
-    if matches '^backend/(requirements\.txt|Dockerfile)$'; then
-      BACKEND_ACTION="rebuild"   # dépendances Python / image modifiées
-    else
-      BACKEND_ACTION="restart"   # code seul (monté en volume)
-    fi
+  if matches "$IMAGE_CFG_BACKEND"; then
+    BACKEND_ACTION="rebuild"     # dépendances Python / image / définition du service
+    info "[backend] config d'image modifiée -> REBUILD :"
+    matched_files "$IMAGE_CFG_BACKEND"
+  elif matches '^backend/'; then
+    BACKEND_ACTION="restart"     # code ou config d'exécution (montés en volume)
   fi
 
   # --- Frontend ---
-  if matches '^frontend/'; then
-    if matches '^frontend/(package(-lock)?\.json|Dockerfile)$'; then
-      FRONTEND_ACTION="rebuild"  # dépendances npm / image modifiées
-    else
-      FRONTEND_ACTION="restart"  # code seul (servi depuis le volume par Vite)
-    fi
+  if matches "$IMAGE_CFG_FRONTEND"; then
+    FRONTEND_ACTION="rebuild"    # dépendances npm / image / définition du service
+    info "[frontend] config d'image modifiée -> REBUILD :"
+    matched_files "$IMAGE_CFG_FRONTEND"
+  elif matches '^frontend/'; then
+    FRONTEND_ACTION="restart"    # code ou config d'exécution (servis depuis le volume)
   fi
 
-  # Un changement de compose force au minimum une recréation des deux services.
-  if [ "$COMPOSE_CHANGED" = true ]; then
-    [ "$BACKEND_ACTION" = "none" ]  && BACKEND_ACTION="restart"
-    [ "$FRONTEND_ACTION" = "none" ] && FRONTEND_ACTION="restart"
-    info "docker-compose.yml modifié -> recréation des services concernés."
+  # Trace : une config d'exécution a changé, un simple restart la recharge.
+  if matches "$RUNTIME_CFG"; then
+    info "Config d'exécution modifiée (relue au démarrage, pas de rebuild nécessaire) :"
+    matched_files "$RUNTIME_CFG"
+  fi
+
+  # Nginx tourne sur l'HÔTE, pas dans docker-compose : hors de portée de ce script.
+  if matches '^nginx/'; then
+    warn "Config nginx modifiée — À APPLIQUER MANUELLEMENT SUR L'HÔTE :"
+    matched_files '^nginx/'
+    warn "Ex. : sudo cp nginx/<fichier>.conf /etc/nginx/conf.d/ && sudo nginx -t && sudo nginx -s reload"
   fi
 
   # Migrations SQL : jamais jouées automatiquement (risque). On alerte seulement.
   if matches '^migrations/'; then
     warn "Des migrations ont changé — À JOUER MANUELLEMENT (non automatisé ici) :"
-    echo "$CHANGED" | grep -E '^migrations/' | sed 's/^/    /'
+    matched_files '^migrations/'
     warn "Ex. : PGPASSWORD=... psql -h 10.190.100.58 -U postgres -d sap_migration_db -f migrations/XXX.sql"
   fi
 fi
