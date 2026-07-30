@@ -2,6 +2,16 @@
 -- PROCEDURE : raw_data.sp_keep_only_t_hierarchy
 -- Supprime tous les postes techniques sauf 'T' et ses descendants.
 -- Tables impactees : iflot, iflotx, iflo, iflos
+--
+-- /!\ OBSOLETE — NE PLUS UTILISER.
+--   Cette procedure SUPPRIME dans raw_data, ce que la regle du projet
+--   interdit (les tables SAP sont en lecture seule) : la donnee ecartee est
+--   perdue jusqu'a la prochaine extraction complete.
+--   Le filtrage se fait desormais A L'IMPORT, sans toucher raw_data, via le
+--   parametre p_root_tplnr (defaut 'T') de :
+--     - clean_data.load_maintenance_object(p_root_tplnr)        (mode reset)
+--     - clean_data.load_maintenance_object_merge(p_root_tplnr)  (mode fusion)
+--   Conservee uniquement pour l'historique.
 -- =====================================================================
 
 DROP PROCEDURE IF EXISTS raw_data.sp_keep_only_t_hierarchy(text);

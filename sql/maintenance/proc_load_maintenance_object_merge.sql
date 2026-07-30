@@ -20,6 +20,15 @@
 -- lignes MANUAL rattachees a un noeud SAP ne sont pas emportees par le
 -- ON DELETE CASCADE (ce que le mode FULL ne garantit pas).
 --
+-- PERIMETRE (p_root_tplnr, defaut 'T') : seuls la racine demandee et ses
+--   descendants (chaine tplma) sont importes, et les postes techniques SAP
+--   hors perimetre deja presents sont SUPPRIMES (purge stricte : meme
+--   modifies via l'UI). C'est le seul moyen de garantir "uniquement T et ses
+--   enfants" a l'ecran, un residu d'extraction precedente etant absent du
+--   staging et donc conserve indefiniment par la regle sap_missing ci-dessous.
+--   Exception a la purge : les creations utilisateur (source='MANUAL').
+--   raw_data n'est jamais modifie (filtre a la lecture).
+--
 -- Disparitions cote SAP : une ligne non protegee absente de SAP n'est
 -- reellement supprimee que si elle n'a AUCUN enfant (sinon le CASCADE
 -- detruirait potentiellement du travail utilisateur). Les autres sont
@@ -29,11 +38,20 @@
 -- (pg_temp.mo_stg) qui porte les liens par CLE SAP et non par id.
 -- =============================================================
 
-CREATE OR REPLACE PROCEDURE clean_data.load_maintenance_object_merge()
+-- L'ancienne signature sans argument doit disparaitre : sinon CALL
+-- load_maintenance_object_merge() serait ambigu entre les deux surcharges.
+DROP PROCEDURE IF EXISTS clean_data.load_maintenance_object_merge();
+
+CREATE OR REPLACE PROCEDURE clean_data.load_maintenance_object_merge(
+    p_root_tplnr TEXT DEFAULT 'T'
+)
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_proc        CONSTANT VARCHAR := 'load_maintenance_object_merge';
+    v_nb_scope    BIGINT := 0;   -- postes techniques dans le perimetre retenu
+    v_nb_iflot    BIGINT := 0;   -- postes techniques presents dans raw_data.iflot
+    v_nb_purge    BIGINT := 0;   -- postes SAP supprimes car hors perimetre
     v_start_ts    TIMESTAMP := CLOCK_TIMESTAMP();
     v_log_id      BIGINT;
     v_err_msg     TEXT;
@@ -58,6 +76,37 @@ BEGIN
 
     RAISE NOTICE '[%] Lignes protegees (travail utilisateur) : %',
         TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), v_nb_prot;
+
+    -- =============================================================
+    -- PERIMETRE : la racine demandee + ses descendants (tplma), calcule en
+    -- LECTURE SEULE sur raw_data. UNION (et non UNION ALL) : dedoublonne,
+    -- ce qui garantit l'arret meme si les donnees SAP ont un cycle tplma.
+    -- =============================================================
+    DROP TABLE IF EXISTS pg_temp.fl_scope;
+    CREATE TEMP TABLE fl_scope (tplnr TEXT PRIMARY KEY);
+
+    WITH RECURSIVE scope AS (
+        SELECT i.tplnr FROM raw_data.iflot i WHERE i.tplnr = p_root_tplnr
+        UNION
+        SELECT c.tplnr FROM raw_data.iflot c JOIN scope s ON c.tplma = s.tplnr
+    )
+    INSERT INTO fl_scope (tplnr) SELECT tplnr FROM scope;
+
+    SELECT COUNT(*) INTO v_nb_scope FROM fl_scope;
+
+    -- Racine introuvable : on echoue AVANT la purge de perimetre, qui sinon
+    -- supprimerait tous les postes techniques SAP.
+    IF v_nb_scope = 0 THEN
+        RAISE EXCEPTION 'Racine "%" introuvable dans raw_data.iflot : fusion annulee', p_root_tplnr;
+    END IF;
+
+    ANALYZE fl_scope;
+
+    SELECT COUNT(*) INTO v_nb_iflot FROM raw_data.iflot;
+
+    RAISE NOTICE '[%] Perimetre "%": % postes techniques retenus sur % (% ecartes)',
+        TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), p_root_tplnr,
+        v_nb_scope, v_nb_iflot, v_nb_iflot - v_nb_scope;
 
     -- =============================================================
     -- STAGING : reconstruction de l'image SAP courante, liens par cle SAP
@@ -125,6 +174,7 @@ BEGIN
             'mandt',     i.mandt
         ))
     FROM raw_data.iflot i
+    JOIN fl_scope sc ON sc.tplnr = i.tplnr          -- perimetre : racine + descendants
     LEFT JOIN raw_data.iflos  s  ON s.tplnr  = i.tplnr AND s.mandt = i.mandt
     LEFT JOIN raw_data.iflotx xf ON xf.tplnr = i.tplnr AND xf.mandt = i.mandt AND xf.spras = 'F'
     LEFT JOIN raw_data.iflotx xe ON xe.tplnr = i.tplnr AND xe.mandt = i.mandt AND xe.spras = 'E'
@@ -469,6 +519,55 @@ BEGIN
     GET DIAGNOSTICS v_tmp = ROW_COUNT;  v_nb_upd := v_nb_upd + v_tmp;
 
     -- =============================================================
+    -- PURGE DE PERIMETRE : ne conserver que la racine et ses descendants.
+    --
+    -- Necessaire EN PLUS du filtre a la lecture : un residu d'extraction
+    -- precedente (autre indicateur de structure, ex. racine 'S') est absent
+    -- du staging, donc jamais rafraichi — et la regle "disparu de SAP mais a
+    -- des enfants" ci-dessous le conserverait indefiniment en le marquant
+    -- seulement sap_missing. Sans cette purge, l'ecran cumule les structures.
+    --
+    -- Purge STRICTE (choix explicite) : un poste SAP hors perimetre est
+    -- supprime MEME si l'utilisateur l'a modifie — c'est la seule facon de
+    -- garantir "uniquement la racine et ses enfants" a l'ecran. La regle de
+    -- protection updated_by ne s'applique donc pas ici ; le snapshot
+    -- automatique pris avant chaque rechargement reste le filet de securite.
+    -- Les creations utilisateur (source='MANUAL') sont conservees.
+    -- Seuls les FUNC_LOC sont supprimes : leurs nomenclatures et equipements
+    -- rattaches suivent via ON DELETE CASCADE. Les ARTICLE (hors arbre) et
+    -- les EQUIPMENT sans poste porteur ne sont pas concernes.
+    -- =============================================================
+    IF NOT EXISTS (
+        SELECT 1 FROM clean_data.maintenance_object
+        WHERE object_type = 'FUNC_LOC' AND sap_key = p_root_tplnr
+    ) THEN
+        RAISE EXCEPTION
+            'Racine "%" absente de clean_data apres fusion : purge de perimetre annulee',
+            p_root_tplnr;
+    END IF;
+
+    WITH RECURSIVE keep AS (
+        SELECT id FROM clean_data.maintenance_object
+        WHERE object_type = 'FUNC_LOC' AND sap_key = p_root_tplnr
+        UNION
+        SELECT c.id
+        FROM clean_data.maintenance_object c
+        JOIN keep k ON c.parent_id = k.id
+    )
+    DELETE FROM clean_data.maintenance_object d
+    WHERE d.object_type = 'FUNC_LOC'
+      AND d.source = 'SAP'
+      AND NOT EXISTS (SELECT 1 FROM keep WHERE keep.id = d.id);
+
+    GET DIAGNOSTICS v_nb_purge = ROW_COUNT;
+
+    IF v_nb_purge > 0 THEN
+        RAISE NOTICE '[%] Purge hors perimetre "%": % postes techniques supprimes '
+                     '(descendants emportes par CASCADE)',
+            TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), p_root_tplnr, v_nb_purge;
+    END IF;
+
+    -- =============================================================
     -- DISPARITIONS COTE SAP (lignes non protegees absentes du staging)
     --   - sans enfant           -> suppression reelle
     --   - avec enfants          -> conservees + marquees 'sap_missing'
@@ -506,6 +605,7 @@ BEGIN
     GET DIAGNOSTICS v_nb_missing = ROW_COUNT;
 
     DROP TABLE IF EXISTS pg_temp.mo_stg;
+    DROP TABLE IF EXISTS pg_temp.fl_scope;
 
     -- =============================================================
     -- Cloture du log
@@ -515,20 +615,22 @@ BEGIN
         status      = CASE WHEN v_nb_missing > 0 THEN 'WARNING' ELSE 'SUCCESS' END,
         nb_inserted = v_nb_ins,
         nb_updated  = v_nb_upd,
-        nb_deleted  = v_nb_del,
+        nb_deleted  = v_nb_del + v_nb_purge,
         nb_rejected = v_nb_missing,
         message     = FORMAT(
-            'Duree: %s s | ajoutes: %s | rafraichis: %s | supprimes: %s | '
+            'Duree: %s s | perimetre: %s (%s postes) | ajoutes: %s | rafraichis: %s | '
+            'supprimes: %s | purges hors perimetre: %s | '
             'disparus SAP conserves (ont des enfants): %s | '
             'lignes protegees (travail utilisateur): %s',
             EXTRACT(EPOCH FROM (CLOCK_TIMESTAMP() - v_start_ts))::INTEGER,
-            v_nb_ins, v_nb_upd, v_nb_del, v_nb_missing, v_nb_prot)
+            p_root_tplnr, v_nb_scope,
+            v_nb_ins, v_nb_upd, v_nb_del, v_nb_purge, v_nb_missing, v_nb_prot)
     WHERE id = v_log_id;
 
-    RAISE NOTICE '[%] == Fin % — ajoutes:% rafraichis:% supprimes:% '
+    RAISE NOTICE '[%] == Fin % — ajoutes:% rafraichis:% supprimes:% purges:% '
                  'disparus-conserves:% proteges:% (duree %s s)',
         TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), v_proc,
-        v_nb_ins, v_nb_upd, v_nb_del, v_nb_missing, v_nb_prot,
+        v_nb_ins, v_nb_upd, v_nb_del, v_nb_purge, v_nb_missing, v_nb_prot,
         EXTRACT(EPOCH FROM (CLOCK_TIMESTAMP() - v_start_ts))::INTEGER;
 
 EXCEPTION WHEN OTHERS THEN
@@ -541,13 +643,15 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-COMMENT ON PROCEDURE clean_data.load_maintenance_object_merge IS
+COMMENT ON PROCEDURE clean_data.load_maintenance_object_merge(TEXT) IS
 'Rechargement NON destructif de clean_data.maintenance_object depuis raw_data.
  Preserve integralement les lignes touchees par l''utilisateur (source=MANUAL
  ou updated_by IS NOT NULL) : ni mises a jour, ni deplacees, ni supprimees.
  Rafraichit les autres lignes SAP et ajoute les nouveautes, en conservant les
- id internes (donc les rattachements manuels). Pendant non destructif de
- clean_data.load_maintenance_object(). Appel :
+ id internes (donc les rattachements manuels). SEULE exception a la protection :
+ la purge de perimetre, qui supprime les postes techniques SAP hors de
+ p_root_tplnr (defaut ''T'') et de ses descendants, meme modifies. Pendant non
+ destructif de clean_data.load_maintenance_object(). Appel :
  CALL clean_data.load_maintenance_object_merge();';
 
 -- =============================================================

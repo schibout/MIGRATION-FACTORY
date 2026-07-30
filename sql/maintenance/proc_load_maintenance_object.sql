@@ -10,6 +10,14 @@
 --   AVANT la bascule. Apres la bascule, la table devient la source de verite
 --   (ne plus recharger, ou fusionner via updated_by IS NULL).
 --
+-- PERIMETRE (p_root_tplnr, defaut 'T') : seuls la racine demandee et ses
+--   descendants (chaine tplma) sont importes. raw_data reste INTACT — le
+--   filtre est applique a la lecture, contrairement a l'ancien
+--   raw_data.sp_keep_only_t_hierarchy() qui supprimait dans les tables SAP.
+--   Les BOM de postes techniques suivent automatiquement (elles sont jointes
+--   sur les FUNC_LOC charges). Si la racine est introuvable, la procedure
+--   echoue au lieu d'importer zero poste.
+--
 -- 5 passes ordonnees (les FK parent imposent l'ordre) :
 --   1. FUNC_LOC          (postes techniques, sans parent)
 --   2. resolution parent FUNC_LOC (tplma -> id)
@@ -22,11 +30,19 @@
 --   soft delete ne se fait que via l'UI (DELETE -> is_active=false).
 -- =============================================================
 
-CREATE OR REPLACE PROCEDURE clean_data.load_maintenance_object()
+-- L'ancienne signature sans argument doit disparaitre : sinon CALL
+-- load_maintenance_object() serait ambigu entre les deux surcharges.
+DROP PROCEDURE IF EXISTS clean_data.load_maintenance_object();
+
+CREATE OR REPLACE PROCEDURE clean_data.load_maintenance_object(
+    p_root_tplnr TEXT DEFAULT 'T'
+)
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_proc        CONSTANT VARCHAR := 'load_maintenance_object';
+    v_nb_scope    BIGINT := 0;   -- postes techniques dans le perimetre retenu
+    v_nb_iflot    BIGINT := 0;   -- postes techniques presents dans raw_data.iflot
     v_start_ts    TIMESTAMP := CLOCK_TIMESTAMP();
     v_log_id      BIGINT;
     v_err_msg     TEXT;
@@ -47,6 +63,38 @@ BEGIN
 
     -- Purge des seules lignes issues de SAP (preserve source='MANUAL')
     DELETE FROM clean_data.maintenance_object WHERE source = 'SAP';
+
+    -- ============================================================
+    -- PERIMETRE : la racine demandee + ses descendants (tplma).
+    -- Calcule en LECTURE SEULE sur raw_data : les tables SAP ne sont pas
+    -- touchees. UNION (et non UNION ALL) : dedoublonne, ce qui garantit
+    -- l'arret meme si les donnees SAP contiennent un cycle tplma.
+    -- ============================================================
+    DROP TABLE IF EXISTS pg_temp.fl_scope;
+    CREATE TEMP TABLE fl_scope (tplnr TEXT PRIMARY KEY);
+
+    WITH RECURSIVE scope AS (
+        SELECT i.tplnr FROM raw_data.iflot i WHERE i.tplnr = p_root_tplnr
+        UNION
+        SELECT c.tplnr FROM raw_data.iflot c JOIN scope s ON c.tplma = s.tplnr
+    )
+    INSERT INTO fl_scope (tplnr) SELECT tplnr FROM scope;
+
+    SELECT COUNT(*) INTO v_nb_scope FROM fl_scope;
+
+    -- Sans ce garde-fou, une racine mal orthographiee viderait l'ecran en
+    -- silence (0 poste importe apres le DELETE ci-dessus).
+    IF v_nb_scope = 0 THEN
+        RAISE EXCEPTION 'Racine "%" introuvable dans raw_data.iflot : import annule', p_root_tplnr;
+    END IF;
+
+    ANALYZE fl_scope;
+
+    SELECT COUNT(*) INTO v_nb_iflot FROM raw_data.iflot;
+
+    RAISE NOTICE '[%] Perimetre "%": % postes techniques retenus sur % (% ecartes)',
+        TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), p_root_tplnr,
+        v_nb_scope, v_nb_iflot, v_nb_iflot - v_nb_scope;
 
     -- ============================================================
     -- PASSE 1 : FUNC_LOC (postes techniques) sans parent
@@ -86,6 +134,7 @@ BEGIN
         )),
         'SAP'
     FROM raw_data.iflot i
+    JOIN fl_scope sc ON sc.tplnr = i.tplnr          -- perimetre : racine + descendants
     LEFT JOIN raw_data.iflos  s  ON s.tplnr  = i.tplnr AND s.mandt = i.mandt
     LEFT JOIN raw_data.iflotx xf ON xf.tplnr = i.tplnr AND xf.mandt = i.mandt AND xf.spras = 'F'
     LEFT JOIN raw_data.iflotx xe ON xe.tplnr = i.tplnr AND xe.mandt = i.mandt AND xe.spras = 'E'
@@ -320,6 +369,8 @@ BEGIN
     RAISE NOTICE '[%] Passe 5 BOM_ITEM (T+M) : %',
         TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), v_nb_bom;
 
+    DROP TABLE IF EXISTS pg_temp.fl_scope;
+
     -- ============================================================
     -- Cloture du log
     -- ============================================================
@@ -349,17 +400,22 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-COMMENT ON PROCEDURE clean_data.load_maintenance_object IS
+COMMENT ON PROCEDURE clean_data.load_maintenance_object(TEXT) IS
 'Charge clean_data.maintenance_object depuis raw_data (iflot/iflos/iflotx/iflo,
  itob/equz/crhd/crtx, mara/makt, tpst/stko/stpo, mast/stpo). 5 passes :
  FUNC_LOC, parents FL, EQUIPMENT+parents, ARTICLE, BOM_ITEM (T puis M).
- Supprime uniquement source=SAP (preserve MANUAL). Idempotent (parents
+ N''importe que p_root_tplnr (defaut ''T'') et ses descendants ; raw_data reste
+ intact. Supprime uniquement source=SAP (preserve MANUAL). Idempotent (parents
  resolus par sap_key). Appel : CALL clean_data.load_maintenance_object();';
 
 -- =============================================================
 -- EXEMPLES
---   CALL clean_data.load_maintenance_object();
+--   CALL clean_data.load_maintenance_object();        -- perimetre 'T'
+--   CALL clean_data.load_maintenance_object('T1');    -- autre racine
 --   SELECT object_type, COUNT(*) FROM clean_data.maintenance_object GROUP BY 1;
+--   -- Doit renvoyer une seule ligne (la racine) :
+--   SELECT sap_key FROM clean_data.maintenance_object
+--     WHERE object_type='FUNC_LOC' AND parent_id IS NULL;
 --   SELECT * FROM clean_data.etl_log
 --     WHERE procedure_name='load_maintenance_object' ORDER BY start_ts DESC LIMIT 5;
 -- =============================================================

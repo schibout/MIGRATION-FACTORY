@@ -416,6 +416,30 @@ pas les snapshots anterieurs.
 
 Dans les deux cas un snapshot `AUTO_PRE_RELOAD` est pris **avant** toute modification.
 
+### Perimetre d'import : une seule structure (ajoute le 2026-07-30)
+
+Les deux procedures prennent un parametre `p_root_tplnr` (**defaut `'T'`**) et
+n'importent que cette racine et ses descendants (chaine `tplma`). `raw_data` n'est
+**jamais** modifie : le filtre est applique a la lecture. L'ancienne procedure
+`raw_data.sp_keep_only_t_hierarchy()`, qui supprimait dans les tables SAP, est de
+ce fait **obsolete**.
+
+Motif : l'ecran cumulait deux arborescences (12 624 postes sous `T` **+** 10 725
+sous `S`, residu d'une extraction anterieure). Un filtre a l'insertion ne suffit
+pas — un residu est absent du staging, donc jamais rafraichi, et la regle
+« disparu de SAP mais a des enfants » le conservait indefiniment en le marquant
+`sap_missing`. Le mode fusion applique donc en plus une **purge de perimetre**.
+
+⚠️ La purge est **stricte** : un poste technique `source='SAP'` hors perimetre est
+supprime **meme si l'utilisateur l'a modifie** — c'est la seule facon de garantir
+« uniquement `T` et ses enfants » a l'ecran. C'est la **seule exception** a la
+regle de protection `updated_by`. Les creations utilisateur (`source='MANUAL'`)
+sont epargnees ; les nomenclatures et equipements rattaches a un poste purge
+partent via `ON DELETE CASCADE`. Le snapshot `AUTO_PRE_RELOAD` reste le filet.
+Si la racine est introuvable dans `raw_data.iflot`, la procedure **echoue** au
+lieu de vider l'ecran. Le nombre de postes ecartes et purges est trace dans
+`clean_data.etl_log`.
+
 ### Chaine complete
 
 `snapshot auto` → `extraction SAP` (optionnelle, tables de `MAINTENANCE_SAP_TABLES`)
