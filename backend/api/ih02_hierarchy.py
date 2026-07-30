@@ -1145,6 +1145,7 @@ def get_fl_bom(tplnr):
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             cursor.execute(f"""
                 SELECT
+                    b.sap_key  AS bom_key,
                     fl.sap_key AS tplnr,
                     fl.code    AS tplnr_display,
                     COALESCE(fl.designation, fl.code) AS fl_designation,
@@ -1220,6 +1221,7 @@ def get_article_bom(matnr):
                 return jsonify({'success': True, 'data': [], 'total': 0, 'matnr': norm}), 200
             cursor.execute(f"""
                 SELECT
+                    b.sap_key AS bom_key,
                     b.attributes->>'stlnr' AS stlnr,
                     b.attributes->>'stlal' AS stlal,
                     b.attributes->>'stlkn' AS stlkn,
@@ -1408,6 +1410,113 @@ def update_article_bom_component():
             return jsonify({'success': True, 'message': 'Composant nomenclature matière mis à jour'}), 200
     except Exception as e:
         current_app.logger.error(f'Erreur update BOM article IH02: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@ih02_hierarchy_blueprint.route('/move-bom-item', methods=['PUT'])
+def move_bom_item():
+    """Deplace une ligne de nomenclature sous un autre porteur.
+
+    Ce qui bouge n'est PAS la fiche article (partagee entre tous ses
+    emplacements) mais la ligne BOM_ITEM qui la rattache a un porteur :
+    un poste technique (stlty='T') ou un article parent (stlty='M').
+
+    Meme comportement que /move-node pour un poste technique : on change
+    parent_id, on pose updated_by, les identifiants SAP restent intacts.
+
+    UNE exception, indispensable : attributes.stlty est realigne sur la nature
+    du nouveau parent. stlty discrimine les deux mondes dans la vue d'export
+    v_fl_nomenclature ET dans les endpoints de lecture ; une ligne deplacee
+    d'un monde a l'autre sans ce realignement ne correspondrait a aucun filtre
+    et disparaitrait de l'ecran comme des exports, sans erreur.
+    Le prefixe 'T:'/'M:' de sap_key n'est pas touche : il n'est construit qu'au
+    chargement et aucun code ne le relit -> il reste trace de l'origine.
+    """
+    try:
+        data = request.get_json() or {}
+        bom_key = (data.get('bom_key') or '').strip()
+        parent_type = (data.get('new_parent_type') or '').strip().upper()
+        parent_key = (data.get('new_parent_key') or '').strip()
+
+        if not bom_key or not parent_key:
+            return jsonify({'success': False, 'error': 'bom_key et new_parent_key requis'}), 400
+        if parent_type not in ('FUNC_LOC', 'ARTICLE'):
+            return jsonify({'success': False,
+                            'error': "new_parent_type doit valoir 'FUNC_LOC' ou 'ARTICLE'"}), 400
+
+        user = _current_user()
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+            cursor.execute(
+                f"""SELECT b.id, b.parent_id, b.ref_object_id, b.code,
+                           p.object_type AS parent_type, p.code AS parent_code
+                    FROM {MO} b
+                    LEFT JOIN {MO} p ON p.id = b.parent_id
+                    WHERE b.object_type = 'BOM_ITEM' AND b.sap_key = %s
+                    LIMIT 1""",
+                [bom_key],
+            )
+            ligne = cursor.fetchone()
+            if not ligne:
+                return jsonify({'success': False, 'error': 'Ligne de nomenclature introuvable'}), 404
+
+            # L'article est normalise comme partout ailleurs (18 zeros a gauche)
+            cible_key = _normalize_sap_matnr(parent_key) if parent_type == 'ARTICLE' else parent_key
+            cible_id = _resolve_id(cursor, parent_type, cible_key)
+            if cible_id is None:
+                return jsonify({'success': False,
+                                'error': f'Destination "{parent_key}" introuvable'}), 404
+
+            if cible_id == ligne['parent_id']:
+                return jsonify({'success': False,
+                                'error': 'La ligne est deja rattachee a cette destination'}), 400
+
+            # Anti-cycle : rattacher la ligne referencant l'article A sous
+            # l'article P cree l'arete P -> A. Il y a cycle si P est deja
+            # atteignable depuis A en descendant la nomenclature matiere.
+            if parent_type == 'ARTICLE' and ligne['ref_object_id'] is not None:
+                cursor.execute(f"""
+                    WITH RECURSIVE sous_arbre AS (
+                        SELECT %s::bigint AS art_id
+                        UNION
+                        SELECT b.ref_object_id
+                        FROM {MO} b
+                        JOIN sous_arbre s ON b.parent_id = s.art_id
+                        WHERE b.object_type = 'BOM_ITEM' AND b.is_active
+                          AND b.ref_object_id IS NOT NULL
+                    )
+                    SELECT 1 FROM sous_arbre WHERE art_id = %s LIMIT 1
+                """, [ligne['ref_object_id'], cible_id])
+                if cursor.fetchone():
+                    return jsonify({
+                        'success': False,
+                        'error': "Impossible : la destination fait déjà partie de la nomenclature de cet article",
+                    }), 400
+
+            nouveau_stlty = 'T' if parent_type == 'FUNC_LOC' else 'M'
+            cursor.execute(
+                f"""UPDATE {MO}
+                    SET parent_id  = %s,
+                        attributes = attributes || %s::jsonb,
+                        updated_by = %s
+                    WHERE id = %s""",
+                [cible_id, json.dumps({'stlty': nouveau_stlty}), user, ligne['id']],
+            )
+            conn.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'"{ligne["code"]}" déplacé sous "{parent_key}"',
+                'data': {
+                    'bom_key': bom_key,
+                    'from': {'type': ligne['parent_type'], 'key': ligne['parent_code']},
+                    'to': {'type': parent_type, 'key': parent_key},
+                    'stlty': nouveau_stlty,
+                },
+            }), 200
+    except Exception as e:
+        current_app.logger.error(f'Erreur déplacement ligne BOM IH02: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

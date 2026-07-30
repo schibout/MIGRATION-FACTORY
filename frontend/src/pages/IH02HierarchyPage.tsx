@@ -214,6 +214,10 @@ interface LoadedEquipmentChildren {
 }
 
 interface BomComponent {
+  // Cle unique de la LIGNE de nomenclature (sap_key du BOM_ITEM).
+  // Seule poignee fiable pour la deplacer : (stlnr, stlkn) n'est pas unique
+  // d'un monde a l'autre.
+  bom_key?: string;
   tplnr?: string;
   posnr: string;
   idnrk: string;
@@ -243,6 +247,22 @@ interface SelectedBom {
 
 interface LoadedBom {
   [tplnr: string]: BomComponent[];
+}
+
+// Glisser-deposer d'une LIGNE de nomenclature (et non de la fiche article,
+// qui est partagee entre tous ses emplacements).
+interface DraggedBom {
+  comp: BomComponent;
+  mode: 'fl' | 'article';
+  sourceKey: string;   // tplnr porteur (mode 'fl') ou idnrk du parent (mode 'article')
+  label: string;
+}
+
+interface PendingBomDrop {
+  drag: DraggedBom;
+  targetType: 'FUNC_LOC' | 'ARTICLE';
+  targetKey: string;
+  targetLabel: string;
 }
 
 // Nomenclature matière d'un article (BOM stlty='M'), indexée par idnrk complet
@@ -368,6 +388,8 @@ const IH02HierarchyPage: React.FC = () => {
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
   const [pendingDrop, setPendingDrop] = useState<{ source: LocationNode; target: LocationNode } | null>(null);
   const [dropConfirmLoading, setDropConfirmLoading] = useState(false);
+  const [draggedBom, setDraggedBom] = useState<DraggedBom | null>(null);
+  const [pendingBomDrop, setPendingBomDrop] = useState<PendingBomDrop | null>(null);
 
   const [workCenters, setWorkCenters] = useState<WorkCenter[]>([]);
 
@@ -572,7 +594,11 @@ const IH02HierarchyPage: React.FC = () => {
       setLoadingArticleBom((prev) => ({ ...prev, [idnrk]: true }));
       const resp = await api.get(`/ih02-hierarchy/article-bom/${encodeURIComponent(idnrk)}`);
       if (resp.data.success) {
-        setLoadedArticleBom((prev) => ({ ...prev, [idnrk]: resp.data.data || [] }));
+        const comps: BomComponent[] = resp.data.data || [];
+        setLoadedArticleBom((prev) => ({ ...prev, [idnrk]: comps }));
+        // Sans ca, le chevron d'expansion reste fige apres un deplacement
+        // (ajout ou retrait d'un composant).
+        setArticleBomCounts((prev) => ({ ...prev, [idnrk]: comps.length }));
       }
     } catch (err) {
       console.error('Erreur chargement BOM article:', err);
@@ -824,10 +850,16 @@ const IH02HierarchyPage: React.FC = () => {
   const handleDragOver = (e: React.DragEvent, targetNode: LocationNode) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!draggedNode) return;
-    const dragKey = getNodeKey(draggedNode);
     const targetKey = getNodeKey(targetNode);
-    if (dragKey === targetKey) return;
+    // Un poste technique accepte deux choses : un autre poste, ou une ligne
+    // de nomenclature (qui vient alors s'y rattacher).
+    if (draggedBom) {
+      e.dataTransfer.dropEffect = 'move';
+      setDropTargetKey(targetKey);
+      return;
+    }
+    if (!draggedNode) return;
+    if (getNodeKey(draggedNode) === targetKey) return;
     e.dataTransfer.dropEffect = 'move';
     setDropTargetKey(targetKey);
   };
@@ -841,6 +873,21 @@ const IH02HierarchyPage: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     setDropTargetKey(null);
+
+    // Depot d'une ligne de nomenclature sur un poste technique
+    if (draggedBom) {
+      const drag = draggedBom;
+      setDraggedBom(null);
+      if (drag.mode === 'fl' && drag.sourceKey === targetNode.node_id) return;
+      setPendingBomDrop({
+        drag,
+        targetType: 'FUNC_LOC',
+        targetKey: targetNode.node_id,
+        targetLabel: targetNode.display_name || targetNode.node_id,
+      });
+      return;
+    }
+
     if (!draggedNode || !isLocation(draggedNode)) {
       setDraggedNode(null);
       return;
@@ -879,7 +926,84 @@ const IH02HierarchyPage: React.FC = () => {
 
   const handleDragEnd = () => {
     setDraggedNode(null);
+    setDraggedBom(null);
     setDropTargetKey(null);
+  };
+
+  // --- Glisser-deposer d'une ligne de nomenclature ---
+
+  const handleBomDragStart = (e: React.DragEvent, drag: DraggedBom) => {
+    e.stopPropagation();
+    // Sans bom_key (backend anterieur a cette fonctionnalite) la ligne n'est
+    // pas identifiable : on n'amorce pas un deplacement qui echouerait.
+    if (!drag.comp.bom_key) return;
+    setDraggedBom(drag);
+    setDraggedNode(null);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', drag.comp.bom_key || '');
+  };
+
+  // Une ligne d'article accepte le depot d'une autre ligne : celle-ci vient
+  // alors se rattacher a l'article de la ligne cible (nomenclature matiere).
+  const handleBomDragOver = (e: React.DragEvent, pathKey: string) => {
+    if (!draggedBom) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTargetKey(pathKey);
+  };
+
+  const handleBomDrop = (e: React.DragEvent, cible: BomComponent) => {
+    if (!draggedBom) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTargetKey(null);
+    const drag = draggedBom;
+    setDraggedBom(null);
+    // Sur elle-meme, ou deja rattachee a cet article : rien a faire.
+    if (drag.comp.bom_key === cible.bom_key) return;
+    if (drag.mode === 'article' && drag.sourceKey === cible.idnrk) return;
+    setPendingBomDrop({
+      drag,
+      targetType: 'ARTICLE',
+      targetKey: cible.idnrk,
+      targetLabel: cible.matnr_short || cible.idnrk,
+    });
+  };
+
+  const confirmBomDrop = async () => {
+    if (!pendingBomDrop) return;
+    const { drag, targetType, targetKey, targetLabel } = pendingBomDrop;
+    setDropConfirmLoading(true);
+    try {
+      await api.put('/ih02-hierarchy/move-bom-item', {
+        bom_key: drag.comp.bom_key,
+        new_parent_type: targetType,
+        new_parent_key: targetKey,
+      });
+      setSnackbar({
+        open: true,
+        message: `"${drag.label}" déplacé sous "${targetLabel}"`,
+        severity: 'success',
+      });
+      // Recharger uniquement les deux nomenclatures concernees : l'arbre reste
+      // deplie (cf. le repli corrige au renommage).
+      if (drag.mode === 'fl') await loadBom(drag.sourceKey, true);
+      else await loadArticleBom(drag.sourceKey, true);
+      if (targetType === 'FUNC_LOC') await loadBom(targetKey, true);
+      else await loadArticleBom(targetKey, true);
+      // Le panneau de details pointait peut-etre la ligne deplacee
+      if (selectedBom?.comp.bom_key === drag.comp.bom_key) setSelectedBom(null);
+    } catch (err: any) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || 'Erreur lors du déplacement',
+        severity: 'error',
+      });
+    } finally {
+      setDropConfirmLoading(false);
+      setPendingBomDrop(null);
+    }
   };
 
   const openBulkEdit = async (node: LocationNode) => {
@@ -1187,8 +1311,9 @@ const IH02HierarchyPage: React.FC = () => {
         setRootNodes((prev) => prev.map(patch));
         setLoadedChildren((prev) => {
           const next: LoadedChildren = {};
-          Object.entries(prev).forEach(([k, v]) => {
-            next[k] = { ...v, locations: v.locations.map(patch) };
+          Object.keys(prev).forEach((k) => {
+            const branche = prev[k];
+            next[k] = { ...branche, locations: branche.locations.map(patch) };
           });
           return next;
         });
@@ -1378,10 +1503,21 @@ const IH02HierarchyPage: React.FC = () => {
     const children = loadedArticleBom[comp.idnrk];
 
     const isBomSelected = selectedBom?.pathKey === pathKey;
+    const isBomDropTarget = !!draggedBom && dropTargetKey === pathKey;
 
     return (
       <Box key={pathKey}>
         <Box
+          draggable
+          onDragStart={(e) => handleBomDragStart(e, {
+            comp, mode,
+            sourceKey: mode === 'fl' ? (comp.tplnr || '') : (parentIdnrk || ''),
+            label: comp.matnr_short || comp.idnrk,
+          })}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleBomDragOver(e, pathKey)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleBomDrop(e, comp)}
           onClick={() => selectBomComponent({
             comp, mode, pathKey,
             tplnr: mode === 'fl' ? (comp.tplnr || '') : undefined,
@@ -1390,8 +1526,12 @@ const IH02HierarchyPage: React.FC = () => {
           sx={{
             display: 'flex', alignItems: 'center', py: 0.5, px: 1,
             pl: depth * 3 + 6, borderRadius: 1, cursor: 'pointer',
-            backgroundColor: isBomSelected ? alpha(theme.palette.success.main, 0.15) : 'transparent',
-            borderLeft: isBomSelected ? `3px solid ${theme.palette.success.main}` : '3px solid transparent',
+            backgroundColor: isBomDropTarget
+              ? alpha(theme.palette.success.main, 0.3)
+              : isBomSelected ? alpha(theme.palette.success.main, 0.15) : 'transparent',
+            borderLeft: isBomDropTarget
+              ? `3px solid ${theme.palette.success.dark}`
+              : isBomSelected ? `3px solid ${theme.palette.success.main}` : '3px solid transparent',
             '&:hover': { backgroundColor: alpha(theme.palette.success.main, isBomSelected ? 0.2 : 0.06) },
           }}
         >
@@ -2164,6 +2304,30 @@ const IH02HierarchyPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setPendingDrop(null)} disabled={dropConfirmLoading}>Annuler</Button>
           <Button onClick={confirmDrop} variant="contained" disabled={dropConfirmLoading}
+            startIcon={dropConfirmLoading ? <CircularProgress size={16} /> : undefined}>
+            Confirmer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation deplacement d'une ligne de nomenclature */}
+      <Dialog open={!!pendingBomDrop} onClose={() => setPendingBomDrop(null)}>
+        <DialogTitle>Confirmer le déplacement</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Déplacer l'article <strong>{pendingBomDrop?.drag.label}</strong> sous{' '}
+            <strong>{pendingBomDrop?.targetLabel}</strong> ?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {pendingBomDrop?.targetType === 'FUNC_LOC'
+              ? 'La ligne rejoint la nomenclature de ce poste technique.'
+              : 'La ligne rejoint la nomenclature matière de cet article.'}
+            {' '}La fiche article, partagée avec ses autres emplacements, n'est pas modifiée.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingBomDrop(null)} disabled={dropConfirmLoading}>Annuler</Button>
+          <Button onClick={confirmBomDrop} variant="contained" disabled={dropConfirmLoading}
             startIcon={dropConfirmLoading ? <CircularProgress size={16} /> : undefined}>
             Confirmer
           </Button>

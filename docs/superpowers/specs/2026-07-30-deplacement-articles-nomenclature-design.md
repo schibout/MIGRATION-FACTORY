@@ -56,7 +56,9 @@ ne le relit** (vérifié). Il devient une trace de l'origine.
 
 ### Modifications additives
 
-`GET /bom/<tplnr>` et `GET /article-bom/<matnr>` renvoient en plus `sap_key`.
+`GET /bom/<tplnr>` et `GET /article-bom/<matnr>` renvoient en plus `bom_key`
+(le `sap_key` de la ligne ; nommé ainsi côté API pour ne pas le confondre avec
+`idnrk`, qui est le `sap_key` de l'article).
 
 C'est le seul identifiant stable et unique d'une ligne (contrainte
 `uq_mo_type_key`). Le couple `(stlnr, stlkn)` actuellement utilisé par
@@ -68,7 +70,7 @@ pas servir de poignée de déplacement.
 ```
 PUT /api/v1/ih02-hierarchy/move-bom-item
 {
-  "sap_key":         "T:00001234:01:0010",
+  "bom_key":         "T:00001234:01:0010",
   "new_parent_type": "FUNC_LOC" | "ARTICLE",
   "new_parent_key":  "T110-M220"        // tplnr, ou idnrk si ARTICLE
 }
@@ -76,7 +78,7 @@ PUT /api/v1/ih02-hierarchy/move-bom-item
 
 Traitement :
 
-1. Résoudre la ligne par `(object_type='BOM_ITEM', sap_key)` → 404 sinon.
+1. Résoudre la ligne par `(object_type='BOM_ITEM', sap_key = bom_key)` → 404 sinon.
 2. Résoudre le parent cible par `(new_parent_type, new_parent_key)` → 404 sinon.
 3. Si la cible est un `ARTICLE` : refuser un cycle (voir ci-dessous) → 400.
 4. `UPDATE` : `parent_id`, `attributes.stlty` (`'T'` ou `'M'`), `updated_by`.
