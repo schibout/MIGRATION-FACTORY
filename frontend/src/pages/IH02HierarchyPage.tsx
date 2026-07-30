@@ -878,7 +878,15 @@ const IH02HierarchyPage: React.FC = () => {
     if (draggedBom) {
       const drag = draggedBom;
       setDraggedBom(null);
-      if (drag.mode === 'fl' && drag.sourceKey === targetNode.node_id) return;
+      if (drag.mode === 'fl' && drag.sourceKey === targetNode.node_id) {
+        // Sans ce retour, l'absence de reaction est indiscernable d'une panne.
+        setSnackbar({
+          open: true,
+          severity: 'error',
+          message: `"${drag.label}" est déjà dans la nomenclature de "${targetNode.display_name || targetNode.node_id}"`,
+        });
+        return;
+      }
       setPendingBomDrop({
         drag,
         targetType: 'FUNC_LOC',
@@ -960,9 +968,18 @@ const IH02HierarchyPage: React.FC = () => {
     setDropTargetKey(null);
     const drag = draggedBom;
     setDraggedBom(null);
-    // Sur elle-meme, ou deja rattachee a cet article : rien a faire.
+    // Sur elle-meme : geste sans intention, on ignore en silence.
     if (drag.comp.bom_key === cible.bom_key) return;
-    if (drag.mode === 'article' && drag.sourceKey === cible.idnrk) return;
+    // Deja rattachee a cet article : on le dit, sans quoi l'absence de
+    // reaction est indiscernable d'une panne.
+    if (drag.mode === 'article' && drag.sourceKey === cible.idnrk) {
+      setSnackbar({
+        open: true,
+        severity: 'error',
+        message: `"${drag.label}" est déjà dans la nomenclature de "${cible.matnr_short || cible.idnrk}"`,
+      });
+      return;
+    }
     setPendingBomDrop({
       drag,
       targetType: 'ARTICLE',
