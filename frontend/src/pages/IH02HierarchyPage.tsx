@@ -1740,9 +1740,6 @@ const IH02HierarchyPage: React.FC = () => {
             <Grid item xs={6}><DetailField label="Niveau hiérarchique" value={[910, 920, 930, 940, 950, 960, 970, 980][Math.min(node.level, 7)]} /></Grid>
             <Grid item xs={6}><DetailField label="Identifiant structuré (STRNO)" value={e ? v('code') : (node.display_name || node.node_id)} monospace editing={e} fieldKey="code" onFieldChange={onLocationFieldChange} /></Grid>
             <Grid item xs={6}><DetailField label="Parent" value={e ? v('parent_node_id') : (node.display_parent || node.parent_node_id)} monospace editing={e && node.level > 0} fieldKey="parent_node_id" onFieldChange={onLocationFieldChange} /></Grid>
-            {!e && node.node_id !== (node.display_name || node.node_id) && (
-              <Grid item xs={12}><DetailField label="Clé technique SAP (TPLNR)" value={node.node_id} monospace /></Grid>
-            )}
             <Grid item xs={6}><DetailField label="Art / Type construction" value={v('art_type_construction')} editing={e} fieldKey="art_type_construction" onFieldChange={onLocationFieldChange} /></Grid>
             {(e || (node.quantite && parseFloat(String(node.quantite)) > 0)) && (
               <>
