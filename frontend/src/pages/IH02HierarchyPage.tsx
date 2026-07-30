@@ -87,7 +87,7 @@ interface LocationNode {
   equipment_count?: number;
   parent_node_id?: string | null;
   node_type: 'location';
-  // Traçabilité (table unique maintenance_object ; absent avec l'ancien backend)
+  // Tracabilite renvoyee par l'API (non affichee : masquee a la demande)
   source?: string | null;
   updated_by?: string | null;
   updated_at?: string | null;
@@ -180,7 +180,7 @@ interface EquipmentDetails {
   gewrk: string | null;
   arbpl: string | null;
   poste_travail_texte: string | null;
-  // Traçabilité (table unique maintenance_object ; absent avec l'ancien backend)
+  // Tracabilite renvoyee par l'API (non affichee : masquee a la demande)
   source?: string | null;
   updated_by?: string | null;
   updated_at?: string | null;
@@ -1793,19 +1793,6 @@ const IH02HierarchyPage: React.FC = () => {
                 <DetailField label="Poste responsable" value={node.poste_travail_resp_maintenance ? `${node.poste_travail_resp_maintenance} - ${node.poste_resp_texte || ''}` : undefined} monospace />
               )}
             </Grid>
-            {!e && (node.source || node.updated_by || node.updated_at) && (
-              <>
-                <Grid item xs={12} sx={{ mt: 1 }}>
-                  <Typography variant="subtitle2" sx={{ color: theme.palette.text.secondary, fontWeight: 600, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <InfoIcon fontSize="small" /> Traçabilité
-                  </Typography>
-                  <Divider />
-                </Grid>
-                <Grid item xs={4}><DetailField label="Origine" value={node.source === 'MANUAL' ? 'Créé/modifié dans l\'application' : 'Chargé depuis SAP'} /></Grid>
-                <Grid item xs={4}><DetailField label="Modifié par" value={node.updated_by} /></Grid>
-                <Grid item xs={4}><DetailField label="Dernière modification" value={node.updated_at} /></Grid>
-              </>
-            )}
           </Grid>
         </Box>
       </Box>
@@ -1874,9 +1861,6 @@ const IH02HierarchyPage: React.FC = () => {
                   <Grid item xs={6}><DetailField label="Créé par" value={eq.cree_par} /></Grid>
                   <Grid item xs={6}><DetailField label="Date modification" value={eq.date_modification} /></Grid>
                   <Grid item xs={6}><DetailField label="Modifié par" value={eq.modifie_par} /></Grid>
-                  <Grid item xs={6}><DetailField label="Origine (app)" value={eq.source === 'MANUAL' ? 'Application' : eq.source ? 'SAP' : undefined} /></Grid>
-                  <Grid item xs={6}><DetailField label="Modifié (app) par" value={eq.updated_by} /></Grid>
-                  <Grid item xs={6}><DetailField label="Modifié (app) le" value={eq.updated_at} /></Grid>
                 </>
               )}
             </Grid>
