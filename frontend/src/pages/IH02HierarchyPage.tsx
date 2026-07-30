@@ -113,6 +113,30 @@ interface EquipmentNode {
 
 type TreeNode = LocationNode | EquipmentNode;
 
+// Porteur d'un article trouvé par la recherche : poste technique (nomenclature
+// stlty='T') ou article parent (nomenclature matière stlty='M').
+interface ArticleUsage {
+  node_type: 'location' | 'article';
+  designation: string;
+  // node_type = 'location'
+  row_id?: string;
+  node_id?: string;
+  display_name?: string;
+  level?: number;
+  // node_type = 'article'
+  idnrk?: string;
+  matnr_short?: string;
+}
+
+interface ArticleResult {
+  idnrk: string;
+  matnr_short: string;
+  designation: string;
+  material_type: string | null;
+  usage_count: number;
+  used_in: ArticleUsage[];
+}
+
 interface EquipmentDetails {
   equnr: string;
   equnr_short: string;
@@ -313,8 +337,11 @@ const IH02HierarchyPage: React.FC = () => {
   const [loadingNodes, setLoadingNodes] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ locations: LocationNode[]; equipment: EquipmentNode[] } | null>(null);
+  const [searchResults, setSearchResults] = useState<{ locations: LocationNode[]; equipment: EquipmentNode[]; articles: ArticleResult[] } | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  // Articles dont on a déplié la liste des porteurs (postes techniques / articles)
+  const [expandedSearchArticle, setExpandedSearchArticle] = useState<Record<string, boolean>>({});
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [detailedLocation, setDetailedLocation] = useState<LocationNode | null>(null);
   const [detailedEquipment, setDetailedEquipment] = useState<EquipmentDetails | null>(null);
@@ -758,20 +785,31 @@ const IH02HierarchyPage: React.FC = () => {
         (async () => {
           try {
             setSearchLoading(true);
+            setSearchError(null);
             const response = await api.get(`/ih02-hierarchy/search?q=${encodeURIComponent(searchQuery)}`);
             if (response.data.success) {
               const locs = (response.data.data.locations || []).map((n: any) => ({ ...n, node_type: 'location' }));
               const eqs = (response.data.data.equipment || []).map((n: any) => ({ ...n, node_type: 'equipment' }));
-              setSearchResults({ locations: locs, equipment: eqs });
+              const arts: ArticleResult[] = response.data.data.articles || [];
+              setSearchResults({ locations: locs, equipment: eqs, articles: arts });
+              setExpandedSearchArticle({});
+            } else {
+              setSearchResults(null);
+              setSearchError(response.data.error || 'La recherche a échoué');
             }
-          } catch (err) {
+          } catch (err: any) {
+            // Sans ce report, une erreur serveur laissait la zone vide sans message :
+            // indiscernable d'une recherche sans résultat.
             console.error('Erreur recherche:', err);
+            setSearchResults(null);
+            setSearchError(err.response?.data?.error || 'Erreur lors de la recherche');
           } finally {
             setSearchLoading(false);
           }
         })();
       } else {
         setSearchResults(null);
+        setSearchError(null);
       }
     }, 300);
     return () => clearTimeout(timer);
@@ -1519,9 +1557,73 @@ const IH02HierarchyPage: React.FC = () => {
     );
   };
 
+  // Un article n'est pas un noeud de l'arbre : on liste ses porteurs (postes
+  // techniques / articles parents), cliquables pour ouvrir leur fiche.
+  const renderArticleResult = (art: ArticleResult) => {
+    const isExpanded = !!expandedSearchArticle[art.idnrk];
+    const carriers = art.used_in || [];
+
+    return (
+      <Box key={`search-art-${art.idnrk}`} sx={{ mb: 0.5 }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', py: 1, px: 2, cursor: carriers.length ? 'pointer' : 'default', borderRadius: 1, backgroundColor: alpha(theme.palette.background.paper, 0.5), '&:hover': { backgroundColor: alpha(theme.palette.success.main, 0.1) } }}
+          onClick={() => carriers.length && setExpandedSearchArticle((prev) => ({ ...prev, [art.idnrk]: !isExpanded }))}
+        >
+          {carriers.length > 0
+            ? (isExpanded ? <ExpandMoreIcon fontSize="small" sx={{ mr: 0.5 }} /> : <ChevronRightIcon fontSize="small" sx={{ mr: 0.5 }} />)
+            : <Box sx={{ width: 24 }} />}
+          <BomIcon fontSize="small" sx={{ color: theme.palette.success.main, mr: 1.5 }} />
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, mr: 2 }}>
+            {art.matnr_short || art.idnrk}
+          </Typography>
+          <Typography variant="body2" sx={{ flex: 1 }}>{art.designation}</Typography>
+          {art.material_type && <Chip size="small" label={art.material_type} sx={{ ml: 1, height: 20, fontSize: '0.65rem' }} />}
+          <Chip
+            size="small"
+            label={art.usage_count > 0 ? `${art.usage_count} emplacement(s)` : 'non rattaché'}
+            color={art.usage_count > 0 ? 'success' : 'default'}
+            variant="outlined"
+            sx={{ ml: 1, height: 20, fontSize: '0.65rem' }}
+          />
+        </Box>
+
+        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+          {carriers.map((p, i) => p.node_type === 'location' ? (
+            <Box
+              key={`art-use-${art.idnrk}-loc-${p.row_id}-${i}`}
+              sx={{ display: 'flex', alignItems: 'center', py: 0.75, pl: 7, pr: 2, cursor: 'pointer', borderRadius: 1, '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.1) } }}
+              onClick={() => selectNode({ ...p, node_type: 'location' } as unknown as LocationNode)}
+            >
+              <LocationIcon fontSize="small" sx={{ color: getLevelColor(p.level ?? 0), mr: 1.5 }} />
+              <Chip size="small" label={`Niv. ${p.level ?? 0}`} sx={{ mr: 1, height: 20, fontSize: '0.7rem' }} />
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, mr: 2 }}>
+                {p.display_name || p.node_id}
+              </Typography>
+              <Typography variant="body2" sx={{ flex: 1 }} color="text.secondary">{p.designation}</Typography>
+            </Box>
+          ) : (
+            <Box
+              key={`art-use-${art.idnrk}-art-${p.idnrk}-${i}`}
+              sx={{ display: 'flex', alignItems: 'center', py: 0.75, pl: 7, pr: 2 }}
+            >
+              <BomIcon fontSize="small" sx={{ color: theme.palette.success.main, mr: 1.5 }} />
+              <Chip size="small" label="Article parent" sx={{ mr: 1, height: 20, fontSize: '0.65rem' }} />
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, mr: 2 }}>
+                {p.matnr_short || p.idnrk}
+              </Typography>
+              <Typography variant="body2" sx={{ flex: 1 }} color="text.secondary">{p.designation}</Typography>
+            </Box>
+          ))}
+        </Collapse>
+      </Box>
+    );
+  };
+
   const renderSearchResults = () => {
+    if (searchError) return <Alert severity="error" sx={{ mt: 2 }}>{searchError}</Alert>;
     if (!searchResults) return null;
-    const total = searchResults.locations.length + searchResults.equipment.length;
+    const articles = searchResults.articles || [];
+    const total = searchResults.locations.length + searchResults.equipment.length + articles.length;
     if (total === 0) return <Alert severity="info" sx={{ mt: 2 }}>Aucun résultat pour "{searchQuery}"</Alert>;
 
     return (
@@ -1565,6 +1667,17 @@ const IH02HierarchyPage: React.FC = () => {
             {eq.poste_technique && <Chip size="small" label={eq.poste_technique} sx={{ ml: 1, height: 20, fontSize: '0.65rem' }} />}
           </Box>
         ))}
+
+        {articles.length > 0 && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <BomIcon fontSize="small" sx={{ color: theme.palette.success.main }} /> Articles ({articles.length})
+            </Typography>
+          </>
+        )}
+
+        {articles.map((art) => renderArticleResult(art))}
       </Box>
     );
   };
@@ -2017,7 +2130,7 @@ const IH02HierarchyPage: React.FC = () => {
           <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
             <TextField
               fullWidth size="small"
-              placeholder="Rechercher un poste technique ou équipement..."
+              placeholder="Rechercher un poste technique, un équipement ou un article..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{ startAdornment: <InputAdornment position="start">{searchLoading ? <CircularProgress size={20} /> : <SearchIcon />}</InputAdornment> }}

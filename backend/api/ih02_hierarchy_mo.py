@@ -390,10 +390,96 @@ def search_nodes():
             """, [pattern, pattern, pattern, pattern])
             equipment_results = cursor.fetchall()
 
+            # Articles (pieces de rechange). Ils ne sont pas des noeuds de l'arbre :
+            # on renvoie pour chacun ses porteurs (postes techniques via BOM stlty='T',
+            # articles parents via BOM stlty='M') pour permettre la navigation.
+            cursor.execute(f"""
+                WITH matched AS (
+                    SELECT a.id, a.sap_key, a.code, a.designation, a.type_code
+                    FROM {MO} a
+                    WHERE a.object_type = 'ARTICLE' AND a.is_active
+                      AND (a.sap_key ILIKE %s OR a.code ILIKE %s OR a.designation ILIKE %s)
+                    ORDER BY a.code
+                    LIMIT 50
+                )
+                SELECT
+                    m.sap_key AS idnrk,
+                    m.code    AS matnr_short,
+                    COALESCE(m.designation, m.code) AS designation,
+                    m.type_code AS material_type,
+                    COALESCE(c.n, 0) AS usage_count,
+                    COALESCE(u.used_in, '[]'::json) AS used_in
+                FROM matched m
+                LEFT JOIN LATERAL (
+                    SELECT COUNT(DISTINCT b.parent_id) AS n
+                    FROM {MO} b
+                    WHERE b.object_type = 'BOM_ITEM' AND b.is_active
+                      AND b.ref_object_id = m.id
+                ) c ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT json_agg(s.j) AS used_in FROM (
+                        SELECT DISTINCT ON (p.id)
+                            CASE WHEN p.object_type = 'FUNC_LOC' THEN
+                                json_build_object(
+                                    'node_type', 'location',
+                                    'row_id', p.sap_key, 'node_id', p.sap_key,
+                                    'display_name', p.code,
+                                    'designation', COALESCE(p.designation, p.code),
+                                    'level', 0)
+                            ELSE
+                                json_build_object(
+                                    'node_type', 'article',
+                                    'idnrk', p.sap_key, 'matnr_short', p.code,
+                                    'designation', COALESCE(p.designation, p.code))
+                            END AS j
+                        FROM {MO} b
+                        JOIN {MO} p ON p.id = b.parent_id
+                        WHERE b.object_type = 'BOM_ITEM' AND b.is_active
+                          AND b.ref_object_id = m.id
+                        ORDER BY p.id, p.code
+                        LIMIT 25
+                    ) s
+                ) u ON TRUE
+                ORDER BY m.code
+            """, [pattern, pattern, pattern])
+            article_results = cursor.fetchall()
+
+            # Profondeur reelle des postes techniques porteurs (remontee parent_id,
+            # batchee : le CTE descendant complet coute ~170 ms par appel).
+            carrier_keys = sorted({
+                p['row_id']
+                for a in article_results
+                for p in (a['used_in'] or [])
+                if p.get('node_type') == 'location'
+            })
+            if carrier_keys:
+                cursor.execute(f"""
+                    WITH RECURSIVE up AS (
+                        SELECT id, parent_id, id AS root_of, 0 AS lvl
+                        FROM {MO}
+                        WHERE object_type = 'FUNC_LOC' AND sap_key = ANY(%s)
+                        UNION ALL
+                        SELECT m.id, m.parent_id, up.root_of, up.lvl + 1
+                        FROM {MO} m JOIN up ON m.id = up.parent_id
+                    )
+                    SELECT o.sap_key, MAX(up.lvl) AS lvl
+                    FROM up JOIN {MO} o ON o.id = up.root_of
+                    GROUP BY o.sap_key
+                """, [carrier_keys])
+                levels = {r['sap_key']: r['lvl'] for r in cursor.fetchall()}
+                for a in article_results:
+                    for p in (a['used_in'] or []):
+                        if p.get('node_type') == 'location':
+                            p['level'] = levels.get(p['row_id'], 0)
+
             return jsonify({
                 'success': True,
-                'data': {'locations': location_results, 'equipment': equipment_results},
-                'total': len(location_results) + len(equipment_results),
+                'data': {
+                    'locations': location_results,
+                    'equipment': equipment_results,
+                    'articles': article_results,
+                },
+                'total': len(location_results) + len(equipment_results) + len(article_results),
             }), 200
     except Exception as e:
         current_app.logger.error(f"Erreur recherche IH02(MO): {e}")
