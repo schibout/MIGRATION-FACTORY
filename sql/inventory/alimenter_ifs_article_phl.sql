@@ -50,11 +50,13 @@ BEGIN
         -- U/M via transcodification UOM (meme logique que les tables IFS filles),
         -- sinon unite brute PHL. C'est la table de transco qui porte T -> KG.
         COALESCE(
+            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
             NULLIF(TRIM(phl."U/M"), ''),
             'PCE'
         ) AS unite_base,
         COALESCE(
+            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
             NULLIF(TRIM(phl."U/M"), ''),
             'PCE'

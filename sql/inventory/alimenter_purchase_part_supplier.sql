@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION clean_data.alimenter_purchase_part_supplier()
-RETURNS void
-LANGUAGE plpgsql
+ RETURNS void
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
@@ -14,7 +14,6 @@ BEGIN
     
     -- Vider la table cible avant insertion
     TRUNCATE TABLE clean_data.purchase_part_supplier RESTART IDENTITY;
-
     -- Statistiques a jour avant le EXISTS sur purchase_part : cette table est
     -- rechargee dans la meme transaction et n'a aucun index. Sans ANALYZE, le
     -- planificateur la croit vide et part en nested loop (cf. meme piege dans
@@ -136,7 +135,6 @@ BEGIN
     INNER JOIN clean_data.supplier_info_general sig
         ON LTRIM(sig.supplier_legacy_sap_id, '0') = LTRIM(eina.lifnr, '0')
         AND sig.is_deleted = FALSE
-
     WHERE
         -- Filtrer sur les organisations d'achat Trimet
         eine.ekorg IN ('9200', '9000')
@@ -159,7 +157,6 @@ BEGIN
                     ELSE 'SJ'
                   END
         )
-
     ORDER BY contract, part_no, vendor_no;
     
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
@@ -190,18 +187,5 @@ EXCEPTION
         
         RAISE;
 END;
-$function$;
-
-COMMENT ON FUNCTION clean_data.alimenter_purchase_part_supplier() IS 
-'Alimente la table PURCHASE_PART_SUPPLIER depuis les fiches info achat SAP (EINA/EINE).
-Sources SAP:
-- EINA: Fiche info achat - données générales (matnr, lifnr, meins)
-- EINE: Fiche info achat - données organisation (ekorg, waers)
-Règles:
-- CONTRACT: 9200=SJ, 9000=CS
-- VENDOR_NO: nouveau supplier_id IFS (600xxx) mappe depuis EINA.LIFNR via
-  supplier_info_general.supplier_legacy_sap_id (les fournisseurs sont renumerotes 600000+)
-- BUY_UNIT_MEAS: EINA.MEINS
-- CURRENCY_CODE: EINE.WAERS
-- STATUS_CODE: 2
-- Une ligne par couple article/fournisseur';
+$function$
+;

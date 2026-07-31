@@ -66,6 +66,7 @@ BEGIN
         SUBSTRING(TRIM(COALESCE(NULLIF(phl."DESCRIPTION", ''), phl."DESCRIPTION LANGUE", phl."N. ARTICLE")), 1, 200) as catalog_desc,
         -- SALES_UNIT_MEAS: U/M PHL via transcodification UOM (SAP->IFS), sinon unite brute
         SUBSTRING(COALESCE(
+            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
             NULLIF(TRIM(phl."U/M"), ''),
             'PCS'
@@ -83,6 +84,7 @@ BEGIN
         1 as inverted_conv_factor,
         1 as price_conv_factor,
         SUBSTRING(COALESCE(
+            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
             NULLIF(TRIM(phl."U/M"), ''),
             'PCS'

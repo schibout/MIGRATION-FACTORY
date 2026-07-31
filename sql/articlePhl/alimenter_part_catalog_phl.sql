@@ -45,6 +45,7 @@ BEGIN
         -- unit_code: U/M via transcodification UOM (SAP->IFS), sinon unite d'entree
         -- (meme logique que clean_data.alimenter_part_catalog())
         SUBSTRING(COALESCE(
+            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
             NULLIF(TRIM(phl."U/M"), ''),
             'PCE'

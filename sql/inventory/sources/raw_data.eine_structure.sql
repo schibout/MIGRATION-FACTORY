@@ -1,0 +1,82 @@
+-- ============================================================================
+-- Table eine
+-- Schema: raw_data
+-- Role dans le module INVENTORY: SOURCE (lecture seule)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS raw_data.eine (
+    mandt VARCHAR(20) NOT NULL,
+    infnr VARCHAR(20) NOT NULL,
+    ekorg VARCHAR(20) NOT NULL,
+    esokz VARCHAR(20) NOT NULL,
+    werks VARCHAR(20) NOT NULL,
+    loekz VARCHAR(20),
+    erdat VARCHAR(20),
+    ernam VARCHAR(20),
+    ekgrp VARCHAR(20),
+    waers VARCHAR(20),
+    bonus VARCHAR(20),
+    mgbon VARCHAR(20),
+    minbm VARCHAR(20),
+    norbm VARCHAR(20),
+    aplfz VARCHAR(20),
+    uebto VARCHAR(20),
+    uebtk VARCHAR(20),
+    untto VARCHAR(20),
+    angnr VARCHAR(20),
+    angdt VARCHAR(20),
+    anfnr VARCHAR(20),
+    anfps VARCHAR(20),
+    abskz VARCHAR(20),
+    amodv VARCHAR(20),
+    amodb VARCHAR(20),
+    amobm VARCHAR(20),
+    amobw VARCHAR(20),
+    amoam VARCHAR(20),
+    amoaw VARCHAR(20),
+    amors VARCHAR(20),
+    bstyp VARCHAR(20),
+    ebeln VARCHAR(20),
+    ebelp VARCHAR(20),
+    datlb VARCHAR(20),
+    netpr VARCHAR(20),
+    peinh VARCHAR(20),
+    bprme VARCHAR(20),
+    prdat VARCHAR(20),
+    bpumz VARCHAR(20),
+    bpumn VARCHAR(20),
+    mtxno VARCHAR(20),
+    webre VARCHAR(20),
+    effpr VARCHAR(20),
+    ekkol VARCHAR(20),
+    sktof VARCHAR(20),
+    kzabs VARCHAR(20),
+    mwskz VARCHAR(20),
+    bwtar VARCHAR(20),
+    ebonu VARCHAR(20),
+    evers VARCHAR(20),
+    exprf VARCHAR(20),
+    bstae VARCHAR(20),
+    meprf VARCHAR(20),
+    inco1 VARCHAR(20),
+    inco2 VARCHAR(28),
+    xersn VARCHAR(20),
+    ebon2 VARCHAR(20),
+    ebon3 VARCHAR(20),
+    ebonf VARCHAR(20),
+    mhdrz VARCHAR(20),
+    verid VARCHAR(20),
+    bstma VARCHAR(20),
+    rdprf VARCHAR(20),
+    megru VARCHAR(20),
+    j_1bnbm VARCHAR(20),
+    iprkz VARCHAR(20),
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+-- Contraintes
+ALTER TABLE raw_data.eine ADD CONSTRAINT eine_pkey PRIMARY KEY (mandt, infnr, ekorg, esokz, werks);
+
+-- Index
+CREATE UNIQUE INDEX eine_pkey ON raw_data.eine USING btree (mandt, infnr, ekorg, esokz, werks);

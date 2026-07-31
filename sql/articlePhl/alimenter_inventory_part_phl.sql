@@ -57,7 +57,8 @@ BEGIN
         frequency_class_db,
         avail_activity_status_db,
         abc_class,
-        hsn_sac_code
+        hsn_sac_code,
+        c_spire_code
     )
     SELECT DISTINCT ON (TRIM(phl."N. ARTICLE"))
         -- CONTRACT: SJ (Saint-Jean) pour tous les PHL
@@ -69,6 +70,7 @@ BEGIN
         SUBSTRING(TRIM(COALESCE(NULLIF(phl."DESCRIPTION", ''), phl."DESCRIPTION LANGUE", phl."N. ARTICLE")), 1, 200) as description,
         -- UNIT_MEAS: U/M via transcodification UOM (SAP->IFS), sinon unite d'entree
         SUBSTRING(COALESCE(
+            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
             NULLIF(TRIM(phl."U/M"), ''),
             'PCE'
@@ -109,7 +111,9 @@ BEGIN
         'VERY SLOW MOVER' as frequency_class_db,
         'CHANGED' as avail_activity_status_db,
         NULL as abc_class,
-        NULL as hsn_sac_code
+        NULL as hsn_sac_code,
+        -- C_SPIRE_CODE: constante 'S' pour les articles PHL
+        'S' as c_spire_code
 
     -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
     FROM raw_data.v_phl_article_retenu phl

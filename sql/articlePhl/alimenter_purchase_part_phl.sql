@@ -94,6 +94,7 @@ BEGIN
         NULL::date as qc_date,
         -- DEFAULT_BUY_UNIT_MEAS: U/M PHL via transcodification UOM (SAP->IFS)
         SUBSTRING(COALESCE(
+            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
             NULLIF(TRIM(phl."U/M"), ''),
             'PCE'

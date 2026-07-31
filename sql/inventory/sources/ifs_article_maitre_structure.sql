@@ -1,13 +1,13 @@
 -- ============================================================================
 -- Table ifs_article_maitre
--- Schéma: clean_data
--- Table principale pour stocker les articles IFS
+-- Schema: clean_data
+-- Role dans le module INVENTORY: CIBLE (TRUNCATE + INSERT)
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS clean_data.ifs_article_maitre (
-    numero_article VARCHAR(20),
+    numero_article VARCHAR(30),
     designation VARCHAR(255),
-    designation_courte VARCHAR(40),
+    designation_courte VARCHAR(200),
     ancien_numero VARCHAR(20),
     type_article VARCHAR(20),
     libelle_type_article TEXT,
@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS clean_data.ifs_article_maitre (
     date_modification VARCHAR(20),
     modificateur VARCHAR(20),
     langue VARCHAR(20),
-    codification_id VARCHAR(25)
+    codification_id VARCHAR(25),
+    new_transco VARCHAR(30)
 );
-
-COMMENT ON TABLE clean_data.ifs_article_maitre IS 'Table des articles maîtres pour migration vers IFS';
