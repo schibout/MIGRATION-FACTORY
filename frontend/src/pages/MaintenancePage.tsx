@@ -4,6 +4,7 @@ import {
   Build as EquipmentIcon,
   Engineering as IH02Icon,
   Inventory2 as ArticleIcon,
+  Handyman as PeToolsIcon,
   Layers as LayersIcon,
   SettingsBackupRestore as BackupIcon,
 } from '@mui/icons-material';
@@ -34,6 +35,14 @@ const cards = [
     icon: ArticleIcon,
     color: 'primary' as const,
     tag: 'MARA',
+  },
+  {
+    title: 'Gammes préventives (PE Tools)',
+    description: 'Filtrer, exporter et modifier les gammes de maintenance préventive : plans, fréquences et charges.',
+    path: '/maintenance/pe-tools',
+    icon: PeToolsIcon,
+    color: 'success' as const,
+    tag: 'PE TOOLS',
   },
   {
     title: 'Sauvegardes & restauration',
