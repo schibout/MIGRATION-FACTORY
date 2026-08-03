@@ -1,13 +1,17 @@
 -- Alimentation de INVENTORY_PART pour les articles PHL (source: raw_data.phl_article)
 -- INSERT en append : s'execute APRES alimenter_inventory_part() et alimenter_part_catalog_phl().
 -- contract = SJ (les PHL n'ont pas d'usine SAP). Defauts identiques a la version SAP.
+-- Version rechargee depuis clean_data (pg_get_functiondef) le 2026-07-31.
 
 CREATE OR REPLACE FUNCTION clean_data.alimenter_inventory_part_phl()
-RETURNS void
-LANGUAGE plpgsql
+ RETURNS void
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
+    v_count_updated INTEGER := 0;
+    v_count_updated_part_catalog INTEGER := 0;
+    v_count_updated_manuf_part_attribute INTEGER := 0;
     v_start_time TIMESTAMP;
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
@@ -20,8 +24,45 @@ BEGIN
         contract,
         part_no,
         description,
+        description_copy,
+        part_cat_lang_description,
+        note_text,
         unit_meas,
         part_status,
+        std_name_id,
+        part_product_code,
+        part_product_family,
+        prime_commodity,
+        accounting_group,
+        type_code,
+        supply_code,
+        cust_warranty_id,
+        sup_warranty_id,
+        avail_activity_status,
+        avail_activity_status_db,
+        part_catalog_configurable,
+        part_catalog_configurable_db,
+        input_unit_meas_group_id,
+        type_designation,
+        customs_stat_no,
+        statistical_code,
+        oe_alloc_assign_flag,
+        oe_alloc_assign_flag_db,
+        c_diameter,
+        c_alloy_code,
+        c_alloy_serie_code,
+        c_family_code,
+        c_epaisseur_brut,
+        c_longueur_brut,
+        c_largeur_brut,
+        c_commercial_weight,
+        c_forme_code,
+        c_sawing_code,
+        c_load_standard_code,
+        c_spire_code,
+        storage_weight_requirement,
+        storage_volume_requirement,
+        intrastat_conv_factor,
         planner_buyer,
         asset_class,
         country_of_origin,
@@ -37,7 +78,6 @@ BEGIN
         cycle_period,
         qty_calc_rounding,
         zero_cost_flag_db,
-        oe_alloc_assign_flag_db,
         onhand_analysis_flag_db,
         shortage_flag_db,
         forecast_consumption_flag_db,
@@ -55,27 +95,64 @@ BEGIN
         reset_config_std_cost_db,
         lifecycle_stage_db,
         frequency_class_db,
-        avail_activity_status_db,
         abc_class,
         hsn_sac_code,
-        c_spire_code
+        company,
+        create_date
     )
     SELECT DISTINCT ON (TRIM(phl."N. ARTICLE"))
-        -- CONTRACT: SJ (Saint-Jean) pour tous les PHL
         'SJ' as contract,
-
-        -- PART_NO: N. ARTICLE = cle des articles PHL
         SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as part_no,
-
         SUBSTRING(TRIM(COALESCE(NULLIF(phl."DESCRIPTION", ''), phl."DESCRIPTION LANGUE", phl."N. ARTICLE")), 1, 200) as description,
-        -- UNIT_MEAS: U/M via transcodification UOM (SAP->IFS), sinon unite d'entree
+        SUBSTRING(TRIM(COALESCE(NULLIF(phl."DESCRIPTION", ''), phl."DESCRIPTION LANGUE", phl."N. ARTICLE")), 1, 200) as description_copy,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."DESCRIPTION LANGUE", '')), 1, 200), '') as part_cat_lang_description,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."TEXTE INFO", '')), 1, 2000), '') as note_text,
         SUBSTRING(COALESCE(
-            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
-            public.get_transcodification('UOM', NULLIF(UPPER(TRIM(phl."U/M")), '')),
+            public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), ''), 'LEGACY', 'IFS'),
             NULLIF(TRIM(phl."U/M"), ''),
             'PCE'
         ), 1, 10) as unit_meas,
         'A' as part_status,
+        NULLIF(NULLIF(TRIM(COALESCE(phl."ID NOM STD", '')), ''), '0')::numeric as std_name_id,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."NUM PRODUIT", '')), 1, 5), '') as part_product_code,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as part_product_family,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."GP PRINCP ARTICLE", '')), 1, 5), '') as prime_commodity,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."CLASSIF TYPE PROD.", '')), 1, 5), '') as accounting_group,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."ARTICLE POSITION", '')), 1, 4000), '') as type_code,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."RECEPT./SORTIE", '')), 1, 4000), '') as supply_code,
+        NULLIF(NULLIF(TRIM(COALESCE(phl."ID GARANTIE CLIENT", '')), ''), '0')::numeric as cust_warranty_id,
+        NULLIF(NULLIF(TRIM(COALESCE(phl."GARANTIE FOURNI.", '')), ''), '0')::numeric as sup_warranty_id,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."AUTORISE CD COND", '')), 1, 4000), '') as avail_activity_status,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."AUTORISE CD COND_2", '')), 1, 9), '') as avail_activity_status_db,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."CONFIGURABLE", '')), 1, 4000), '') as part_catalog_configurable,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."CONFIGURABLE_2", '')), 1, 20), '') as part_catalog_configurable_db,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."ENTREE ID GP U/M", '')), 1, 30), '') as input_unit_meas_group_id,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."N.DESSIN TECHN.", '')), 1, 25), '') as type_designation,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."CODE CEST", '')), 1, 15), '') as customs_stat_no,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."CODE FCI", '')), 1, 15), '') as statistical_code,
+        CASE UPPER(TRIM(COALESCE(phl."ARR.BC NUM SORTIS", 'FALSE')))
+            WHEN 'TRUE' THEN 'RESERVE ORDER ENTRY'
+            ELSE 'NOT RESERVE ORDER ENTRY'
+        END as oe_alloc_assign_flag,
+        CASE UPPER(TRIM(COALESCE(phl."ARR.BC NUM SORTIS_2", 'FALSE')))
+            WHEN 'TRUE' THEN 'Y'
+            ELSE 'N'
+        END as oe_alloc_assign_flag_db,
+        NULLIF(REPLACE(TRIM(COALESCE(phl."DIAMETRE", '')), ',', '.'), '')::numeric as c_diameter,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."SERIE ALL", '')), 1, 4), '') as c_alloy_serie_code,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
+        NULLIF(REPLACE(TRIM(COALESCE(phl."EPAISSEUR", '')), ',', '.'), '')::numeric as c_epaisseur_brut,
+        NULLIF(REPLACE(TRIM(COALESCE(phl."LONGUEUR", '')), ',', '.'), '')::numeric as c_longueur_brut,
+        NULLIF(REPLACE(TRIM(COALESCE(phl."LARGEUR", '')), ',', '.'), '')::numeric as c_largeur_brut,
+        NULLIF(REPLACE(TRIM(COALESCE(phl."POIDS COMMERCIAL", '')), ',', '.'), '')::numeric as c_commercial_weight,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."FORME", '')), 1, 25), '') as c_forme_code,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."SCIAGE", '')), 1, 2), '') as c_sawing_code,
+        NULLIF(SUBSTRING(TRIM(COALESCE(phl."NORME CHARGE", '')), 1, 3), '') as c_load_standard_code,
+        'S' as c_spire_code,
+        NULLIF(REPLACE(TRIM(COALESCE(phl."POIDS NET", '')), ',', '.'), '')::numeric as storage_weight_requirement,
+        NULLIF(REPLACE(TRIM(COALESCE(phl."VOLUME NET", '')), ',', '.'), '')::numeric as storage_volume_requirement,
+        NULLIF(REPLACE(TRIM(COALESCE(phl."FACTEUR CHARGEMENT", '')), ',', '.'), '')::numeric as intrastat_conv_factor,
         '*' as planner_buyer,
         'S' as asset_class,
         NULL as country_of_origin,
@@ -91,7 +168,6 @@ BEGIN
         0 as cycle_period,
         0 as qty_calc_rounding,
         'Y' as zero_cost_flag_db,
-        'N' as oe_alloc_assign_flag_db,
         'N' as onhand_analysis_flag_db,
         'Y' as shortage_flag_db,
         'FORECAST' as forecast_consumption_flag_db,
@@ -109,24 +185,18 @@ BEGIN
         'FALSE' as reset_config_std_cost_db,
         'DEVELOPMENT' as lifecycle_stage_db,
         'VERY SLOW MOVER' as frequency_class_db,
-        'CHANGED' as avail_activity_status_db,
         NULL as abc_class,
         NULL as hsn_sac_code,
-        -- C_SPIRE_CODE: constante 'S' pour les articles PHL
-        'S' as c_spire_code
-
-    -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
+        'SJM' as company,
+        CURRENT_TIMESTAMP as create_date
     FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
-      -- Ne garder que les produits finis (STATUT=F) et intermediaires (STATUT=I)
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
-      -- L'article doit exister dans part_catalog (table de base)
       AND EXISTS (
           SELECT 1 FROM clean_data.part_catalog pc
           WHERE pc.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       )
-      -- Ne pas dupliquer une ligne (contract, part_no) deja presente
       AND NOT EXISTS (
           SELECT 1 FROM clean_data.inventory_part ip
           WHERE ip.contract = 'SJ'
@@ -136,6 +206,98 @@ BEGIN
 
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
 
+    WITH src AS (
+        SELECT DISTINCT ON (TRIM(phl."N. ARTICLE"))
+            SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as part_no,
+            SUBSTRING(COALESCE(
+                public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), ''), 'LEGACY', 'IFS'),
+                NULLIF(TRIM(phl."U/M"), ''),
+                'PCE'
+            ), 1, 10) as unit_meas,
+            NULLIF(REPLACE(TRIM(COALESCE(phl."DIAMETRE", '')), ',', '.'), '')::numeric as c_diameter,
+            NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
+            NULLIF(SUBSTRING(TRIM(COALESCE(phl."SERIE ALL", '')), 1, 4), '') as c_alloy_serie_code,
+            NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
+            NULLIF(REPLACE(TRIM(COALESCE(phl."EPAISSEUR", '')), ',', '.'), '')::numeric as c_epaisseur_brut,
+            NULLIF(REPLACE(TRIM(COALESCE(phl."LONGUEUR", '')), ',', '.'), '')::numeric as c_longueur_brut,
+            NULLIF(REPLACE(TRIM(COALESCE(phl."LARGEUR", '')), ',', '.'), '')::numeric as c_largeur_brut,
+            NULLIF(REPLACE(TRIM(COALESCE(phl."POIDS COMMERCIAL", '')), ',', '.'), '')::numeric as c_commercial_weight,
+            NULLIF(SUBSTRING(TRIM(COALESCE(phl."FORME", '')), 1, 25), '') as c_forme_code,
+            NULLIF(SUBSTRING(TRIM(COALESCE(phl."SCIAGE", '')), 1, 2), '') as c_sawing_code,
+            NULLIF(SUBSTRING(TRIM(COALESCE(phl."NORME CHARGE", '')), 1, 3), '') as c_load_standard_code,
+            'S' as c_spire_code,
+            NULLIF(REPLACE(TRIM(COALESCE(phl."POIDS NET", '')), ',', '.'), '')::numeric as storage_weight_requirement,
+            NULLIF(REPLACE(TRIM(COALESCE(phl."VOLUME NET", '')), ',', '.'), '')::numeric as storage_volume_requirement,
+            NULLIF(REPLACE(TRIM(COALESCE(phl."FACTEUR CHARGEMENT", '')), ',', '.'), '')::numeric as intrastat_conv_factor
+        FROM raw_data.v_phl_article_retenu phl
+        WHERE phl."N. ARTICLE" IS NOT NULL
+          AND TRIM(phl."N. ARTICLE") != ''
+          AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
+        ORDER BY TRIM(phl."N. ARTICLE")
+    )
+    UPDATE clean_data.inventory_part ip
+    SET unit_meas = src.unit_meas,
+        c_diameter = src.c_diameter,
+        c_alloy_code = src.c_alloy_code,
+        c_alloy_serie_code = src.c_alloy_serie_code,
+        c_family_code = src.c_family_code,
+        c_epaisseur_brut = src.c_epaisseur_brut,
+        c_longueur_brut = src.c_longueur_brut,
+        c_largeur_brut = src.c_largeur_brut,
+        c_commercial_weight = src.c_commercial_weight,
+        c_forme_code = src.c_forme_code,
+        c_sawing_code = src.c_sawing_code,
+        c_load_standard_code = src.c_load_standard_code,
+        c_spire_code = src.c_spire_code,
+        storage_weight_requirement = src.storage_weight_requirement,
+        storage_volume_requirement = src.storage_volume_requirement,
+        intrastat_conv_factor = src.intrastat_conv_factor
+    FROM src
+    WHERE ip.contract = 'SJ'
+      AND ip.part_no = src.part_no
+      AND (ip.unit_meas, ip.c_diameter, ip.c_alloy_code, ip.c_alloy_serie_code, ip.c_family_code,
+           ip.c_epaisseur_brut, ip.c_longueur_brut, ip.c_largeur_brut, ip.c_commercial_weight,
+           ip.c_forme_code, ip.c_sawing_code, ip.c_load_standard_code, ip.c_spire_code,
+           ip.storage_weight_requirement, ip.storage_volume_requirement, ip.intrastat_conv_factor)
+          IS DISTINCT FROM
+          (src.unit_meas, src.c_diameter, src.c_alloy_code, src.c_alloy_serie_code, src.c_family_code,
+           src.c_epaisseur_brut, src.c_longueur_brut, src.c_largeur_brut, src.c_commercial_weight,
+           src.c_forme_code, src.c_sawing_code, src.c_load_standard_code, src.c_spire_code,
+           src.storage_weight_requirement, src.storage_volume_requirement, src.intrastat_conv_factor);
+
+    GET DIAGNOSTICS v_count_updated = ROW_COUNT;
+
+    -- PHL : forcer "Allow Many Lots per Production Order" a True
+    -- Champ IFS PART_CATALOG.LOT_QUANTITY_RULE_DB = MULTI_LOTS.
+    UPDATE clean_data.part_catalog pc
+    SET lot_quantity_rule_db = 'MULTI_LOTS',
+        lot_quantity_rule = 'Many Lots Per Production Order'
+    FROM raw_data.v_phl_article_retenu phl
+    WHERE pc.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
+      AND phl."N. ARTICLE" IS NOT NULL
+      AND TRIM(phl."N. ARTICLE") != ''
+      AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
+      AND (pc.lot_quantity_rule_db, pc.lot_quantity_rule)
+          IS DISTINCT FROM ('MULTI_LOTS', 'Many Lots Per Production Order');
+
+    GET DIAGNOSTICS v_count_updated_part_catalog = ROW_COUNT;
+
+    -- PHL : forcer "Plan Manufacturing Supply on Due Date" a True
+    -- Champs IFS MANUF_PART_ATTRIBUTE.PLAN_MANUF_SUP_ON_DUE_DATE_DB et libelle = TRUE.
+    UPDATE clean_data.manuf_part_attribute mpa
+    SET plan_manuf_sup_on_due_date_db = 'TRUE',
+        plan_manuf_sup_on_due_date = 'TRUE'
+    FROM raw_data.v_phl_article_retenu phl
+    WHERE mpa.contract = 'SJ'
+      AND mpa.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
+      AND phl."N. ARTICLE" IS NOT NULL
+      AND TRIM(phl."N. ARTICLE") != ''
+      AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
+      AND (mpa.plan_manuf_sup_on_due_date_db, mpa.plan_manuf_sup_on_due_date)
+          IS DISTINCT FROM ('TRUE', 'TRUE');
+
+    GET DIAGNOSTICS v_count_updated_manuf_part_attribute = ROW_COUNT;
+
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
 
@@ -143,6 +305,9 @@ BEGIN
     RAISE NOTICE 'Alimentation INVENTORY_PART (PHL) terminee avec succes';
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Articles PHL inseres: %', v_count_inserted;
+    RAISE NOTICE 'Articles PHL mis a jour (champs custom): %', v_count_updated;
+    RAISE NOTICE 'PART_CATALOG PHL mis a jour (Allow Many Lots per Production Order): %', v_count_updated_part_catalog;
+    RAISE NOTICE 'MANUF_PART_ATTRIBUTE PHL mis a jour (Plan Manufacturing Supply on Due Date): %', v_count_updated_manuf_part_attribute;
     RAISE NOTICE 'Duree d''execution: %', v_duration;
     RAISE NOTICE '====================================================';
 
