@@ -37,7 +37,8 @@ const ApiConfiguration: React.FC = () => {
   
   // État pour les configurations API
   const [apiConfig, setApiConfig] = useState({
-    baseUrl: API_URL.replace('/api/v1', ''),
+    // L'API est servie sur la meme origine que le frontend (reverse proxy nginx).
+    baseUrl: window.location.origin,
     timeout: 30000,
     retryAttempts: 3,
     enableLogging: true,

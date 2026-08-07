@@ -1,29 +1,30 @@
 ##
-# You should look at the following URL's in order to grasp a solid understanding
-# of Nginx configuration files in order to fully unleash the power of Nginx.
-# https://www.nginx.com/resources/wiki/start/
-# https://www.nginx.com/resources/wiki/start/topics/tutorials/config_pitfalls/
-# https://wiki.debian.org/Nginx/DirectoryStructure
+# /etc/nginx/sites-available/default
 #
-# In most cases, administrators will remove this file from sites-enabled/ and
-# leave it as reference inside of sites-available where it will continue to be
-# updated by the nginx packaging team.
+# Portail d'accueil statique (/var/www/html/index.html).
 #
-# This file will automatically load configuration files provided by other
-# applications, such as Drupal or Wordpress. These applications will be made
-# available underneath a path with that package name, such as /drupal8.
+# Il repond sur PLUSIEURS ports pour que les anciens signets tombent dessus :
+#   :80    (default_server)
+#   :3000  (ancien port du frontend Vite ; le conteneur est desormais binde sur
+#           127.0.0.1:3100, ce port hote est donc libre pour nginx)
+#   :8080  -> servi par migration-factory-8080.conf (meme contenu, vhost separe)
 #
-# Please see /usr/share/doc/nginx-doc/examples/ for more detailed examples.
+# Quel que soit le chemin demande, on renvoie la page d'accueil.
+#
+# L'application Migration Factory est servie par nginx sur le port 8081
+# (voir migration-factory.conf).
 ##
 
-# Default server configuration
-#
 server {
 	listen 80 default_server;
 	listen [::]:80 default_server;
+	listen 3000;
+	listen [::]:3000;
+
 	root /var/www/html;
 	index index.html index.htm index.nginx-debian.html;
 	server_name _;
+
 	# Rediriger TOUTES les requêtes vers index.html
 	location / {
 		# Toujours servir index.html, quelle que soit l'URL demandée

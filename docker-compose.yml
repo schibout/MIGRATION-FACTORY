@@ -58,9 +58,10 @@ services:
       - migration-network
     extra_hosts:
       - "db:${DB_HOST:-10.190.100.58}"
-    # Exposer le port 5000 pour l'accès externe
+    # Port bindé sur la loopback uniquement : l'accès externe passe par le nginx
+    # de l'hôte (http://10.190.100.58:8081/api/), plus par le port 5000 en direct.
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -92,8 +93,13 @@ services:
       dockerfile: Dockerfile
     container_name: migration-app-frontend
     restart: unless-stopped
+    # Port bindé sur la loopback uniquement : l'application est servie par le
+    # nginx de l'hôte sur http://10.190.100.58:8081/ (nginx/sites-available/migration-factory.conf).
+    # Côté hôte on prend 3100 et non 3000 : le port 3000 est repris par nginx pour
+    # servir le portail d'accueil (anciens signets). Dans le conteneur, Vite écoute
+    # toujours sur 3000.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3100:3000"
     depends_on:
       backend:
         condition: service_healthy

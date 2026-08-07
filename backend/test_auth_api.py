@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BASE_URL = "http://10.190.100.58:5000/api/v1"
+BASE_URL = "http://10.190.100.58:8081/api/v1"
 LOGIN_URL = f"{BASE_URL}/auth/login"
 IMPORT_TYPES_URL = f"{BASE_URL}/import-types"
 
@@ -20,7 +20,7 @@ def test_connection():
     """Test de connexion de base"""
     try:
         # Test de santé du backend
-        response = requests.get("http://10.190.100.58:5000/health", timeout=5)
+        response = requests.get("http://10.190.100.58:8081/health", timeout=5)
         print(f"✅ Backend Health: OK (Status: {response.status_code})")
         
         # Test de l'API auth/me
@@ -190,7 +190,7 @@ def main():
     print("=" * 60)
     print(f"⏰ Test effectué le: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"🌐 URL de base: {BASE_URL}")
-    print(f"🔗 Backend URL: http://10.190.100.58:5000")
+    print(f"🔗 Backend URL: http://10.190.100.58:8081 (via nginx)")
     
     # Test de connexion
     if not test_connection():

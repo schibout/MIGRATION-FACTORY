@@ -19,7 +19,13 @@ DOCKERFILE_PATH="./frontend/Dockerfile"
 BUILD_CONTEXT="./frontend"
 IMAGE_NAME="migration-factory-frontend"
 TAG="latest"
-FRONTEND_PORT="3000"   # doit correspondre au mapping de ports du docker-compose.yml
+# Port HOTE du conteneur frontend (docker-compose : 127.0.0.1:3100 -> 3000).
+# Le port hote 3000 est pris par nginx, qui y sert le portail d'accueil.
+FRONTEND_PORT="3100"
+# Le conteneur n'est binde que sur la loopback : l'acces reseau passe par le
+# nginx de l'hote. On teste donc la sante en loopback, mais on affiche cette
+# URL publique a l'utilisateur.
+PUBLIC_URL="http://10.190.100.58:8081/"
 
 # Fonction pour afficher les messages
 log_info() {
@@ -154,7 +160,7 @@ start_container() {
     if docker ps -q -f name=$CONTAINER_NAME | grep -q .; then
         log_success "Conteneur frontend démarré avec succès"
         log_info "Nom du conteneur: $CONTAINER_NAME"
-        log_info "URL: http://10.190.100.58:$FRONTEND_PORT"
+        log_info "URL: $PUBLIC_URL (via nginx)"
     else
         log_error "Échec du démarrage du conteneur"
         docker logs $CONTAINER_NAME
@@ -191,7 +197,7 @@ start_dev_mode() {
     # Vérifier le statut
     if docker ps -q -f name=$CONTAINER_NAME | grep -q .; then
         log_success "Conteneur frontend démarré en mode développement"
-        log_info "Frontend accessible sur: http://10.190.100.58:$FRONTEND_PORT"
+        log_info "Frontend accessible sur: $PUBLIC_URL (via nginx)"
         log_info "Les fichiers sont synchronisés - modifications en temps réel"
         log_info "Pour voir les logs: docker logs -f $CONTAINER_NAME"
     else
@@ -229,7 +235,7 @@ clean_docker() {
 test_frontend() {
     log_info "Test d'accès au frontend..."
     
-    local url="http://10.190.100.58:$FRONTEND_PORT"
+    local url="http://127.0.0.1:$FRONTEND_PORT"
     local max_attempts=30
     local attempt=1
     
@@ -389,7 +395,7 @@ main() {
     
     echo ""
     log_success "=== Déploiement terminé avec succès ==="
-    log_info "Frontend accessible sur: http://10.190.100.58:$FRONTEND_PORT"
+    log_info "Frontend accessible sur: $PUBLIC_URL (via nginx)"
     log_info "Pour voir les logs: $0 -l"
     log_info "Pour redémarrer: $0 -r"
     log_info "Pour arrêter: $0 -s"
