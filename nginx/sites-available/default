@@ -25,9 +25,22 @@ server {
 	index index.html index.htm index.nginx-debian.html;
 	server_name _;
 
-	# Rediriger TOUTES les requêtes vers index.html
-	location / {
-		# Toujours servir index.html, quelle que soit l'URL demandée
+	# La RACINE affiche le portail.
+	location = / {
 		try_files /index.html =404;
+	}
+
+	# Tout AUTRE chemin appartient a l'application : on redirige vers le vhost
+	# 8081 en conservant le chemin et la query string. Cela rattrape les anciens
+	# signets (ex. http://10.190.100.58:3000/login -> http://10.190.100.58:8081/login).
+	#
+	# On ne peut PAS servir l'app directement ici : son routeur React utilise "/"
+	# comme dashboard et renvoie tout chemin inconnu vers "/" (App.tsx) — le
+	# dashboard tomberait sur le portail. La redirection evite ce conflit.
+	#
+	# 302 (et non 301) : non mise en cache de facon permanente par le navigateur,
+	# on peut donc changer le port de l'app sans laisser des clients bloques.
+	location / {
+		return 302 http://$host:8081$request_uri;
 	}
 }
