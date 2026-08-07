@@ -167,4 +167,5 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur dans alimenter_comm_method: %', SQLERRM;
 END;
-$function$;
+$function$
+;

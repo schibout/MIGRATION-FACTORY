@@ -79,4 +79,5 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur lors de l''alimentation payment way per identity: %', SQLERRM;
 END;
-$function$;
+$function$
+;

@@ -106,11 +106,10 @@ BEGIN
     RAISE NOTICE 'Répartition par pays: FR=%, Autres=%', 
                  (SELECT COUNT(*) FROM clean_data.supplier_info_general WHERE country = 'FR'),
                  (SELECT COUNT(*) FROM clean_data.supplier_info_general WHERE country != 'FR');
-
     RETURN v_records_inserted;
-
 EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur dans alimenter_supplier_info_general: %', SQLERRM;
 END;
-$function$;
+$function$
+;

@@ -140,4 +140,5 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur lors de l''alimentation supplier tax info depuis vue fournisseurs: %', SQLERRM;
 END;
-$function$;
+$function$
+;

@@ -254,4 +254,5 @@ EXCEPTION
             0 as pay_count,
             INTERVAL '0' as execution_time;
 END;
-$function$;
+$function$
+;

@@ -253,4 +253,5 @@ EXCEPTION
         DROP TABLE IF EXISTS temp_identity_pay_info;
         RAISE EXCEPTION 'Erreur lors de l''INSERT identity pay info: %', SQLERRM;
 END;
-$procedure$;
+$procedure$
+;

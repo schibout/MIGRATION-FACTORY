@@ -120,4 +120,5 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur lors de l''alimentation supplier delivery tax code: %', SQLERRM;
 END;
-$function$;
+$function$
+;

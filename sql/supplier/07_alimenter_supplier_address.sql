@@ -111,4 +111,5 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur dans alimenter_supplier_address: %', SQLERRM;
 END;
-$function$;
+$function$
+;

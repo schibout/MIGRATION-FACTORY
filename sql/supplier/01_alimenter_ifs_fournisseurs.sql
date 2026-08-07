@@ -5,7 +5,6 @@ AS $function$
 BEGIN
    -- Vider et réinsérer
    TRUNCATE TABLE clean_data.ifs_fournisseurs;
-
    -- Insérer données de base depuis selection_fournisseurs (source principale)
    -- avec enrichissement depuis les tables SAP (LEFT JOIN)
    INSERT INTO clean_data.ifs_fournisseurs (company,
@@ -69,7 +68,17 @@ BEGIN
       COALESCE(NULLIF(TRIM(sf.telephone_2), ''), NULLIF(TRIM(sf.telephone_3), ''), a.telf2) as telephone_2,
       
       -- Date création: uniquement SAP
-      CASE WHEN a.erdat IS NOT NULL AND a.erdat != '' THEN TO_DATE(a.erdat, 'YYYYMMDD') ELSE sf.date_import::date END as date_creation_sap,
+      -- lfa1.erdat est stocké en texte : selon l'extraction il arrive au format
+      -- SAP brut (YYYYMMDD) ou déjà normalisé en ISO (YYYY-MM-DD). On teste le
+      -- format avant conversion, sinon TO_DATE(...,'YYYYMMDD') plante sur l'ISO
+      -- ("date/time field value out of range"). Format inattendu -> fallback import.
+      CASE
+          WHEN TRIM(COALESCE(a.erdat, '')) ~ '^[0-9]{8}$' AND TRIM(a.erdat) <> '00000000'
+              THEN TO_DATE(TRIM(a.erdat), 'YYYYMMDD')
+          WHEN TRIM(COALESCE(a.erdat, '')) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+              THEN TO_DATE(TRIM(a.erdat), 'YYYY-MM-DD')
+          ELSE sf.date_import::date
+      END as date_creation_sap,
       
       -- Destinataire paiement: uniquement SAP
       sap_data.destinataire_paiement,
@@ -103,7 +112,6 @@ BEGIN
        GROUP BY m.ekorg, m.zterm, m.inco1, m.inco2
        LIMIT 1
    ) sap_data ON TRUE;
-
    /*-- Mettre à jour les KPI
    UPDATE clean_data.ifs_fournisseurs
    SET
@@ -134,9 +142,8 @@ BEGIN
          AND e.shkzg = 'S'
          AND e.budat IS NOT NULL
    );
-
    UPDATE clean_data.ifs_fournisseurs SET date_maj = CURRENT_TIMESTAMP;*/
-
    RAISE NOTICE 'Table IFS_fournisseurs alimentée avec succès';
 END;
-$function$;
+$function$
+;

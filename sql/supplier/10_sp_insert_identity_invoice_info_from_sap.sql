@@ -214,4 +214,5 @@ EXCEPTION
         DROP TABLE IF EXISTS temp_identity_invoice_info;
         RAISE EXCEPTION 'Erreur lors de l''INSERT identity invoice info avec banque: %', SQLERRM;
 END;
-$procedure$;
+$procedure$
+;

@@ -19,6 +19,7 @@ BEGIN
         buyer_code,
         currency_code,
         supp_grp,
+        supplier_group,
         additional_cost_amount,
         cr_check_db,
         discount,
@@ -65,6 +66,7 @@ BEGIN
         '*' as buyer_code,
         COALESCE(f.devise_principale, 'EUR') as currency_code,
         'DEFAULT' as supp_grp,
+        'EXTERNAL' as supplier_group,
         0 as additional_cost_amount,
         'Y' as cr_check_db,
         0 as discount,
@@ -134,4 +136,5 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur lors de l''insertion supplier: %', SQLERRM;
 END;
-$procedure$;
+$procedure$
+;

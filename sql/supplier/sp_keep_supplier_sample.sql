@@ -2,10 +2,8 @@
 -- Procédure pour garder un échantillon de N fournisseurs (défaut: 200)
 -- Supprime les données des autres fournisseurs dans toutes les tables liées
 -- ============================================================================
-CREATE OR REPLACE PROCEDURE clean_data.sp_keep_supplier_sample(
-    p_sample_size INTEGER DEFAULT 200
-)
-LANGUAGE plpgsql
+CREATE OR REPLACE PROCEDURE clean_data.sp_keep_supplier_sample(IN p_sample_size integer DEFAULT 200)
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_start_time TIMESTAMP;

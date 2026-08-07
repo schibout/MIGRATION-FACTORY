@@ -79,4 +79,5 @@ EXCEPTION
             0 as total_inserted,
             INTERVAL '0' as execution_time;
 END;
-$function$;
+$function$
+;
