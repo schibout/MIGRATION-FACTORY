@@ -25,7 +25,8 @@ BEGIN
     --      restreint aux projets de clean_data.project_base (INNER JOIN).
     --      activity_no via transcodif 'Activity' du code ASAP déduit du
     --      libellé (P3 bis -> P3bis -> 0035-P3, P3 Ters -> P3ter -> 0036-P3).
-    --      Dates depuis raw_data.sharepoint_porte (+ fallback dates de la vue).
+    --      Dates depuis raw_data.sharepoint_porte pour les gates principaux
+    --      (+ fallback dates de la vue, seule source pour les bis/ter).
     --   2) CFV : inchangé — CFV1/2/3 depuis raw_data.sharepoint_projets
     --      (état conception / mise en service / achèvement ≠ 'pas nécessaire (NA)').
     --
@@ -75,26 +76,42 @@ BEGIN
         SELECT
             pb.project_id,
             1            AS bloc,
-            v.gate       AS tri,
-            -- 1 activité par GATE PRINCIPAL (gate P3 -> 003-P3), plus par milestone bis/ter
+            v.gate_key   AS tri,
+            -- 1 activité par (gate, variante) : P3 -> 003-P3, P3 bis -> 0035-P3,
+            -- P3 Ters -> 0036-P3 (via transcodif 'Activity' sur la clé ASAP normalisée)
             COALESCE(
-                public.get_transcodification('Activity', v.gate, 'ASAP', 'IFS'),
-                v.gate
+                public.get_transcodification('Activity', v.gate_key, 'ASAP', 'IFS'),
+                v.gate_key
             ) AS activity_no,
-            'Porte ' || v.gate AS description,
+            'Porte ' || COALESCE(NULLIF(TRIM(v.porte_libelle), ''), v.gate_key) AS description,
             COALESCE(pm_user.person_id, pb.manager) AS activity_responsible,
             COALESCE(spo.date_debut, v.date_baseline)::DATE                 AS early_start,
             COALESCE(spo.date_fin, v.date_prevue, v.date_realisee)::DATE    AS early_finish,
             NULL::NUMERIC AS task_id
         FROM (
-            -- 1 seul milestone par (projet, gate) : on préfère le milestone principal
-            -- (porte_libelle = gate), sinon le plus récent -> évite les doublons d'activity_no
-            -- quand un gate a plusieurs milestones (P3 / P3 bis / P3 Ters).
-            SELECT DISTINCT ON (SUBSTRING(vd.project_number, 1, 10), vd.gate) vd.*
-            FROM clean_data.v_portes_detail vd
-            ORDER BY SUBSTRING(vd.project_number, 1, 10), vd.gate,
-                     CASE WHEN vd.porte_libelle = vd.gate THEN 0 ELSE 1 END,
-                     vd.date_etat_source DESC NULLS LAST
+            -- 1 seul milestone par (projet, CLÉ ASAP) : la clé intègre la variante
+            -- bis/ter déduite du libellé, donc P3 et P3 bis donnent 2 activités
+            -- distinctes. Au sein d'une même clé on préfère le milestone dont le
+            -- libellé = la clé, sinon le plus récent -> pas de doublon d'activity_no.
+            SELECT DISTINCT ON (SUBSTRING(x.project_number, 1, 10), x.gate_key) x.*
+            FROM (
+                SELECT vd.*,
+                       -- Normalisation du libellé (casse, espaces, ponctuation, pluriel
+                       -- "Ters") -> clé ASAP : 'P3', 'P3bis', 'P3ter'.
+                       -- Les libellés hors nomenclature (P3.2, "P4 batch 2", "P2/P3"...)
+                       -- retombent sur le gate principal.
+                       CASE
+                           WHEN regexp_replace(lower(COALESCE(vd.porte_libelle, '')), '[^a-z0-9]', '', 'g')
+                                ~ ('^' || lower(vd.gate) || 'bis')   THEN vd.gate || 'bis'
+                           WHEN regexp_replace(lower(COALESCE(vd.porte_libelle, '')), '[^a-z0-9]', '', 'g')
+                                ~ ('^' || lower(vd.gate) || 'ters?') THEN vd.gate || 'ter'
+                           ELSE vd.gate
+                       END AS gate_key
+                FROM clean_data.v_portes_detail vd
+            ) x
+            ORDER BY SUBSTRING(x.project_number, 1, 10), x.gate_key,
+                     CASE WHEN x.porte_libelle = x.gate_key THEN 0 ELSE 1 END,
+                     x.date_etat_source DESC NULLS LAST
         ) v
         JOIN clean_data.project_base pb
             ON pb.project_id = SUBSTRING(v.project_number, 1, 10)
@@ -103,9 +120,14 @@ BEGIN
         -- Responsable : person_id directement depuis raw_data.sharepoint_users (chef de projet = pm_id)
         LEFT JOIN raw_data.sharepoint_users pm_user
             ON pm_user.sharepoint_user_id = sp.pm_id
+        -- Dates SAP/SharePoint : raw_data.sharepoint_porte ne connaît que les gates
+        -- principaux (P0..P6). On ne l'applique donc PAS aux variantes bis/ter, sinon
+        -- elles hériteraient des dates de la porte principale -> pour elles, on garde
+        -- les dates propres du milestone (baseline / prévue / réalisée).
         LEFT JOIN raw_data.sharepoint_porte spo
             ON SUBSTRING(spo.numero_projet, 1, 10) = pb.project_id
            AND spo.porte = v.gate
+           AND v.gate_key = v.gate
 
         UNION ALL
 
@@ -200,4 +222,4 @@ EXCEPTION
 
         RAISE;
 END;
-$function$;
+$function$

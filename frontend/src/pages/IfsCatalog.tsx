@@ -40,6 +40,8 @@ import {
   TableSortLabel,
   Tabs,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography
 } from '@mui/material';
@@ -127,7 +129,10 @@ const IfsCatalog: React.FC = () => {
 
   // Onglet Catalogue
   const [entities, setEntities] = useState<IfsCatalogEntity[]>([]);
+  const [searchMode, setSearchMode] = useState<'entity' | 'field'>('entity');
   const [entitySearch, setEntitySearch] = useState('');
+  const [fieldResults, setFieldResults] = useState<IfsCatalogField[]>([]);
+  const [searchingFields, setSearchingFields] = useState(false);
   const [themeFilter, setThemeFilter] = useState('');
   const [entityFields, setEntityFields] = useState<Record<string, IfsCatalogField[]>>({});
   const [loadingFields, setLoadingFields] = useState<Record<string, boolean>>({});
@@ -183,6 +188,7 @@ const IfsCatalog: React.FC = () => {
     setEntitySearch('');
     setThemeFilter('');
     setFieldSearch('');
+    setFieldResults([]);
     setRules([]);
     setRulesLoaded(false);
     setRuleEntityFilter('');
@@ -220,6 +226,29 @@ const IfsCatalog: React.FC = () => {
     }
   }, [tab, selectedLot, rulesLoaded, stats]);
 
+  // Recherche par champ : appel backend (transverse à toutes les entités) avec anti-rebond
+  useEffect(() => {
+    if (searchMode !== 'field' || !selectedLot) return;
+    const term = entitySearch.trim();
+    if (term.length < 2) {
+      setFieldResults([]);
+      setSearchingFields(false);
+      return;
+    }
+    let cancelled = false;
+    setSearchingFields(true);
+    const handle = setTimeout(() => {
+      ifsCatalogService.searchFields(selectedLot === ALL_LOTS ? '' : selectedLot, term)
+        .then((data) => { if (!cancelled) setFieldResults(data); })
+        .catch((error) => {
+          console.error('Erreur lors de la recherche de champs:', error);
+          if (!cancelled) setFieldResults([]);
+        })
+        .finally(() => { if (!cancelled) setSearchingFields(false); });
+    }, 350);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [searchMode, entitySearch, selectedLot]);
+
   const entityKey = (e: IfsCatalogEntity) => `${e.lot_id ?? ''}::${e.entity}`;
 
   const handleOpenEntity = async (e: IfsCatalogEntity) => {
@@ -237,6 +266,21 @@ const IfsCatalog: React.FC = () => {
         setLoadingFields((prev) => ({ ...prev, [key]: false }));
       }
     }
+  };
+
+  // Depuis un résultat de recherche par champ : ouvre l'entité et pointe sur le champ
+  const handleOpenFieldResult = async (field: IfsCatalogField) => {
+    const entity =
+      entities.find((e) => e.entity === field.entity && (e.lot_id ?? '') === (field.lot_id ?? '')) ||
+      entities.find((e) => e.entity === field.entity) || {
+        entity: field.entity,
+        lot_id: field.lot_id,
+        theme: deriveTheme(field.entity),
+        nb_fields: 0, nb_in_scope: 0, nb_mandatory: 0,
+        nb_defaults: 0, nb_enums: 0, nb_references: 0, nb_pk: 0,
+      };
+    await handleOpenEntity(entity);
+    setFieldSearch(field.field_name);
   };
 
   const openFieldEditor = (field: IfsCatalogField) => {
@@ -330,6 +374,18 @@ const IfsCatalog: React.FC = () => {
       return true;
     });
 
+  // Thème (domaine métier) par entité, pour filtrer/colorer les résultats de champs
+  const themeOf = (entityName: string, lotId?: string) =>
+    entities.find((e) => e.entity === entityName && (!lotId || (e.lot_id ?? '') === lotId))?.theme
+    ?? deriveTheme(entityName);
+
+  const filteredFieldResults = fieldResults.filter((f) => {
+    if (inScopeOnly && !f.in_scope) return false;
+    if (mandatoryOnly && !f.mandatory) return false;
+    if (themeFilter && themeOf(f.entity, f.lot_id) !== themeFilter) return false;
+    return true;
+  });
+
   const filteredRules = rules.filter((r) =>
     (!ruleEntityFilter || r.entity === ruleEntityFilter) &&
     (!ruleTypeFilter || r.rule === ruleTypeFilter)
@@ -407,10 +463,21 @@ const IfsCatalog: React.FC = () => {
         <>
           <Card sx={{ mb: 2 }}>
             <CardContent sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={searchMode}
+                onChange={(_e, v) => v && setSearchMode(v)}
+              >
+                <ToggleButton value="entity">Entité</ToggleButton>
+                <ToggleButton value="field">Champ</ToggleButton>
+              </ToggleButtonGroup>
               <TextField
                 size="small"
                 sx={{ flexGrow: 1, minWidth: 220 }}
-                placeholder="Rechercher une entité..."
+                placeholder={searchMode === 'entity'
+                  ? 'Rechercher une entité...'
+                  : 'Rechercher un champ (nom, libellé, référence, commentaire)...'}
                 value={entitySearch}
                 onChange={(e) => setEntitySearch(e.target.value)}
                 InputProps={{
@@ -419,6 +486,11 @@ const IfsCatalog: React.FC = () => {
                       <SearchIcon />
                     </InputAdornment>
                   ),
+                  endAdornment: searchingFields ? (
+                    <InputAdornment position="end">
+                      <CircularProgress size={16} />
+                    </InputAdornment>
+                  ) : undefined,
                 }}
               />
               <FormControl size="small" sx={{ minWidth: 190 }}>
@@ -454,11 +526,125 @@ const IfsCatalog: React.FC = () => {
                 onClick={() => setMandatoryOnly(!mandatoryOnly)}
               />
               <Typography variant="body2" color="text.secondary">
-                {filteredEntities.length} entité(s)
+                {searchMode === 'entity'
+                  ? `${filteredEntities.length} entité(s)`
+                  : `${filteredFieldResults.length} champ(s)`}
               </Typography>
             </CardContent>
           </Card>
 
+          {searchMode === 'field' ? (
+            <Paper>
+              {entitySearch.trim().length < 2 ? (
+                <Box sx={{ p: 4, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Saisissez au moins 2 caractères pour rechercher un champ dans toutes les entités.
+                  </Typography>
+                </Box>
+              ) : (
+                <TableContainer sx={{ maxHeight: '65vh' }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        {showLotColumn && <TableCell width="8%">Lot</TableCell>}
+                        <TableCell width="18%">Entité</TableCell>
+                        <TableCell width="18%">Champ</TableCell>
+                        <TableCell width="16%">Libellé</TableCell>
+                        <TableCell width="12%">Type</TableCell>
+                        <TableCell width="14%">Propriétés</TableCell>
+                        <TableCell width="14%">Réf. LOV / Commentaire</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredFieldResults.map((field) => (
+                        <TableRow
+                          key={field.catalog_id}
+                          hover
+                          onClick={() => handleOpenFieldResult(field)}
+                          sx={{ cursor: 'pointer', ...(field.in_scope ? {} : { opacity: 0.5 }) }}
+                        >
+                          {showLotColumn && (
+                            <TableCell>
+                              <Chip label={field.lot_id} size="small" variant="outlined" />
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            <Chip
+                              label={field.entity}
+                              size="small"
+                              variant="outlined"
+                              sx={{
+                                fontFamily: 'monospace',
+                                color: themeColor(themeOf(field.entity, field.lot_id)),
+                                borderColor: themeColor(themeOf(field.entity, field.lot_id)),
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 600 }}>
+                              {field.field_name}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontSize="0.8rem">
+                              {field.field_label_fr || '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={field.data_length ? `${field.data_type}(${field.data_length})` : field.data_type || '-'}
+                              size="small"
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                              {field.primary_key && (
+                                <Tooltip title="Clé primaire">
+                                  <KeyIcon fontSize="small" color="warning" />
+                                </Tooltip>
+                              )}
+                              {field.mandatory && (
+                                <Chip label="Obligatoire" size="small" color="error" variant="outlined" />
+                              )}
+                              {!field.in_scope && <Chip label="Hors scope" size="small" variant="outlined" />}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {field.reference && (
+                              <Typography variant="body2" fontSize="0.8rem">{field.reference}</Typography>
+                            )}
+                            {field.comments && field.comments !== 'vide' && (
+                              <Tooltip title={field.comments}>
+                                <Typography
+                                  variant="body2"
+                                  fontSize="0.75rem"
+                                  color="text.secondary"
+                                  sx={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                >
+                                  {field.comments}
+                                </Typography>
+                              </Tooltip>
+                            )}
+                            {!field.reference && !field.comments && '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!searchingFields && filteredFieldResults.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={showLotColumn ? 7 : 6} align="center" sx={{ p: 3 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Aucun champ ne correspond à cette recherche.
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Paper>
+          ) : (
           <Paper>
             <TableContainer>
               <Table>
@@ -545,6 +731,7 @@ const IfsCatalog: React.FC = () => {
               </Table>
             </TableContainer>
           </Paper>
+          )}
         </>
       )}
 

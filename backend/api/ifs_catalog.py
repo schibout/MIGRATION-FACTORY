@@ -173,6 +173,59 @@ def get_catalog_entity_fields(entity):
         return jsonify({"error": f"Erreur lors de la récupération des champs de l'entité {entity}"}), 500
 
 
+@ifs_catalog_blueprint.route('/ifs-catalog/fields/search', methods=['GET'])
+@jwt_required()
+def search_catalog_fields():
+    """Recherche transverse de champs (toutes entités d'un lot).
+
+    Cherche le terme dans field_name, field_label_fr, entity, reference et
+    comments. Alimente le mode "Rechercher par champ" de la page Catalogue IFS.
+    """
+    try:
+        lot_id = (request.args.get("lot") or "").strip()
+        term = (request.args.get("q") or "").strip()
+        if len(term) < 2:
+            return jsonify([]), 200
+        try:
+            limit = min(max(int(request.args.get("limit") or 500), 1), 2000)
+        except (TypeError, ValueError):
+            limit = 500
+
+        query = f"""
+            SELECT {', '.join(FIELD_COLUMNS)}
+            FROM public.ifs_field_catalog
+            WHERE (:lot_id = '' OR lot_id = :lot_id)
+              AND (
+                    field_name              ILIKE :pattern
+                 OR COALESCE(field_label_fr, '') ILIKE :pattern
+                 OR entity                  ILIKE :pattern
+                 OR COALESCE(reference, '') ILIKE :pattern
+                 OR COALESCE(comments, '')  ILIKE :pattern
+              )
+            ORDER BY
+                CASE WHEN field_name ILIKE :prefix THEN 0 ELSE 1 END,
+                entity, sort_order NULLS LAST, field_name
+            LIMIT :limit
+        """
+        data_service = get_data_service()
+        with data_service.engine.connect() as connection:
+            result = connection.execute(text(query), {
+                "lot_id": lot_id,
+                "pattern": f"%{term}%",
+                "prefix": f"{term}%",
+                "limit": limit,
+            })
+            fields = []
+            for row in _rows_to_dicts(result):
+                row["enumeration_values"] = _parse_enum(row["enumeration_values"])
+                row["loaded_at"] = row["loaded_at"].isoformat() if row["loaded_at"] else None
+                fields.append(row)
+            return jsonify(fields), 200
+    except SQLAlchemyError as e:
+        current_app.logger.error(f"Erreur SQL lors de la recherche de champs du catalogue IFS: {str(e)}")
+        return jsonify({"error": "Erreur lors de la recherche de champs"}), 500
+
+
 # Colonnes de curation modifiables via l'UI (décisions d'atelier : mapping,
 # libellés, defaults...). La structure (data_type, sql_type, primary_key, lot_id,
 # entity, field_name) reste pilotée par le classeur de spec et n'est PAS éditable ici.

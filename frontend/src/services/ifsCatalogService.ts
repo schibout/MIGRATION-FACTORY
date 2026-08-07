@@ -109,6 +109,17 @@ class IfsCatalogService {
     }
   }
 
+  // Recherche transverse d'un champ dans toutes les entités du lot
+  async searchFields(lot: string, q: string): Promise<IfsCatalogField[]> {
+    try {
+      const response = await api.get('/data/ifs-catalog/fields/search', { params: { lot, q } });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la recherche de champs du catalogue IFS:', error);
+      throw error;
+    }
+  }
+
   // Domaine métier (thème) choisi manuellement pour une entité
   async updateEntityTheme(entity: string, lot: string, theme: string): Promise<{ lot_id: string; entity: string; theme: string }> {
     try {
