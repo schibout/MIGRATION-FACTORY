@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portail Applications // 10.190.100.58</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:        #070a0f;
+  --ink-2:      #0c111a;
+  --panel:      #10151f;
+  --panel-2:    #141b27;
+  --line:       #1e2733;
+  --line-soft:  #182029;
+  --text:       #e4ecf5;
+  --muted:      #7c8ba0;
+  --muted-2:    #566274;
+  --amber:      #f2b53c;
+  --green:      #46e08a;
+  --sky:        #4ec3f7;
+  --violet:     #9d8bf5;
+  --teal:       #33d6c0;
+  --orange:     #ff8b52;
+  --gold:       #e6c15a;
+  --mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { color-scheme: dark; }
+
+body {
+  font-family: var(--sans);
+  color: var(--text);
+  background: var(--ink);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Blueprint grid + atmospheric glow */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(900px 500px at 78% -8%, rgba(242,181,60,0.10), transparent 60%),
+    radial-gradient(1100px 700px at 8% 4%, rgba(78,195,247,0.08), transparent 55%),
+    linear-gradient(180deg, var(--ink-2), var(--ink) 60%);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(120,150,190,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,150,190,0.045) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse 120% 90% at 50% 0%, #000 40%, transparent 100%);
+  pointer-events: none;
+}
+
+.shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 34px 26px 60px;
+}
+
+/* ---- Top command bar ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.brandmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.brandmark .glyph {
+  color: var(--amber);
+  font-size: 15px;
+}
+.cursor {
+  display: inline-block;
+  width: 8px; height: 15px;
+  background: var(--amber);
+  margin-left: 2px;
+  translate: 0 2px;
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0; } }
+.topbar .meta { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+.topbar .meta b { color: var(--text); font-weight: 500; }
+.live { color: var(--green); }
+
+/* ---- Hero ---- */
+.hero {
+  padding: 52px 4px 40px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 34px;
+}
+.kicker {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kicker::before {
+  content: "";
+  width: 34px; height: 1px;
+  background: var(--amber);
+  opacity: 0.6;
+}
+.hero h1 {
+  font-size: clamp(2.4rem, 6vw, 4.1rem);
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.hero h1 .accent { color: var(--amber); }
+.hero p {
+  margin-top: 20px;
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+/* ---- Telemetry strip ---- */
+.telemetry {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 44px;
+}
+.tcell {
+  background: var(--panel);
+  padding: 16px 18px;
+}
+.tcell .label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin-bottom: 6px;
+}
+.tcell .value {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(70,224,138,0.6);
+  animation: pulse 2.2s infinite;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(70,224,138,0.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(70,224,138,0); }
+  100% { box-shadow: 0 0 0 0 rgba(70,224,138,0); }
+}
+
+/* ---- Section heading ---- */
+.section-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.section-label .count { color: var(--amber); }
+.section-label .rule { flex: 1; height: 1px; background: var(--line); }
+
+/* ---- App grid ---- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.card {
+  --accent: var(--amber);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 190px;
+  padding: 22px 22px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, var(--panel), var(--panel-2));
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: transform .28s cubic-bezier(.2,.7,.2,1), border-color .28s, box-shadow .28s;
+  opacity: 0;
+  transform: translateY(14px);
+  animation: rise .55s cubic-bezier(.2,.7,.2,1) forwards;
+}
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+.card::before {           /* top accent line */
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.55;
+  transition: opacity .28s;
+}
+.card::after {            /* corner glow on hover */
+  content: "";
+  position: absolute;
+  top: -40%; right: -30%;
+  width: 55%; height: 80%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 26%, transparent), transparent);
+  opacity: 0;
+  transition: opacity .35s;
+  pointer-events: none;
+}
+.card:hover {
+  transform: translateY(-6px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: 0 18px 40px -18px rgba(0,0,0,0.8),
+              0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.card:hover::before { opacity: 1; }
+.card:hover::after  { opacity: 1; }
+
+.card .idx {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted-2);
+  letter-spacing: 1px;
+}
+.card .icon {
+  font-size: 26px;
+  margin: 8px 0 12px;
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent));
+}
+.card h3 {
+  font-size: 1.16rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.card p {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  flex: 1;
+}
+.card .foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: color-mix(in srgb, var(--accent) 85%, white);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  padding: 4px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.arrow {
+  font-family: var(--mono);
+  color: var(--muted);
+  transition: transform .28s, color .28s;
+}
+.card:hover .arrow { transform: translateX(4px); color: var(--accent); }
+
+/* Featured card spans wide */
+.card.featured { grid-column: 1 / -1; }
+@media (min-width: 720px) {
+  .card.featured {
+    grid-column: span 2;
+    flex-direction: row;
+    align-items: flex-end;
+    min-height: 150px;
+  }
+  .card.featured .body { flex: 1; }
+  .card.featured .icon { font-size: 34px; }
+  .card.featured h3 { font-size: 1.5rem; }
+  .card.featured .foot { flex-direction: column; align-items: flex-end; gap: 12px; border: none; padding: 0; min-width: 140px; }
+}
+
+/* ---- Footer ---- */
+.foot-note {
+  margin-top: 50px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted-2);
+}
+.foot-note a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted-2); }
+.foot-note a:hover { color: var(--amber); border-color: var(--amber); }
+
+@media (max-width: 560px) {
+  .shell { padding: 22px 16px 44px; }
+  .hero { padding: 34px 0 28px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Command bar -->
+  <div class="topbar">
+    <div class="brandmark">
+      <span class="glyph">◆</span> PORTAIL<span style="color:var(--muted-2)">::</span>APPLICATIONS<span class="cursor"></span>
+    </div>
+    <div class="meta">
+      <span>host <b>FRSJMTAL1</b></span>
+      <span>net <b>10.190.100.58</b></span>
+      <span class="live">● online</span>
+      <span id="clock"></span>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="kicker">Serveur interne · IT Department</div>
+    <h1>Console des <span class="accent">services</span><br>&amp; applications</h1>
+    <p>Point d'accès unique aux applications hébergées sur le serveur. Chaque service redirige vers son écran d'authentification. Sélectionnez une brique ci-dessous.</p>
+  </header>
+
+  <!-- Telemetry -->
+  <div class="telemetry">
+    <div class="tcell">
+      <div class="label">Statut</div>
+      <div class="value"><span class="dot"></span> Opérationnel</div>
+    </div>
+    <div class="tcell">
+      <div class="label">Adresse IP</div>
+      <div class="value">10.190.100.58</div>
+    </div>
+    <div class="tcell">
+      <div class="label">Services actifs</div>
+      <div class="value" id="svc-count">4</div>
+    </div>
+    <div class="tcell">
+      <div class="label">Session</div>
+      <div class="value" id="uptime">00:00:00</div>
+    </div>
+    <div class="tcell">
+      <div class="label">Date</div>
+      <div class="value" id="today"></div>
+    </div>
+  </div>
+
+  <!-- Services -->
+  <div class="section-label">
+    <span>// Services disponibles</span>
+    <span class="count">[04]</span>
+    <span class="rule"></span>
+  </div>
+
+  <div class="grid">
+
+    <a href="http://10.190.100.58:3000/login" class="card featured" target="_blank" rel="noopener" style="--accent: var(--amber); animation-delay:.02s">
+      <div class="body">
+        <div class="idx">01 · SERVICE PRINCIPAL</div>
+        <div class="icon">🏭</div>
+        <h3>Migration Factory</h3>
+        <p>Migration et transformation de données SAP → IFS. Cœur de la plateforme.</p>
+      </div>
+      <div class="foot">
+        <span class="badge">:3000</span>
+        <span class="arrow">access →</span>
+      </div>
+    </a>
+
+    <a href="http://10.190.100.58:3000/assistant-ia" class="card" target="_blank" rel="noopener" style="--accent: var(--violet); animation-delay:.10s">
+      <div class="idx">02</div>
+      <div class="icon">🤖</div>
+      <h3>Assistant IA</h3>
+      <p>Questions en français → génération et exécution de SQL (SAP → IFS).</p>
+      <div class="foot"><span class="badge">/assistant-ia</span><span class="arrow">→</span></div>
+    </a>
+
+    <a href="http://10.190.100.58:3001" class="card" target="_blank" rel="noopener" style="--accent: var(--teal); animation-delay:.16s">
+      <div class="idx">03</div>
+      <div class="icon">💬</div>
+      <h3>Open WebUI</h3>
+      <p>Interface de chat pour les modèles Ollama (qwen2.5-coder, bge-m3).</p>
+      <div class="foot"><span class="badge">:3001</span><span class="arrow">→</span></div>
+    </a>
+
+    <a href="http://10.190.100.58:9120" class="card" target="_blank" rel="noopener" style="--accent: var(--gold); animation-delay:.22s">
+      <div class="idx">04 · AGENT IA</div>
+      <div class="icon">🪽</div>
+      <h3>Hermes Dashboard</h3>
+      <p>Agent IA Hermes (Nous Research) — clés API, profils et gateways (Telegram, Discord…).</p>
+      <div class="foot"><span class="badge">:9120 🔒 auth</span><span class="arrow">→</span></div>
+    </a>
+
+  </div>
+
+  <div class="foot-note">
+    <span>© 2026 · Serveur interne · IT Department</span>
+    <span>support · <a href="mailto:it@interne.local">équipe IT</a> · nginx / debian</span>
+  </div>
+
+</div>
+
+<script>
+  const pad = n => String(n).padStart(2, '0');
+
+  const clockEl  = document.getElementById('clock');
+  const todayEl  = document.getElementById('today');
+  const uptimeEl = document.getElementById('uptime');
+  const start = Date.now();
+
+  function tick() {
+    const now = new Date();
+    clockEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const s = Math.floor((Date.now() - start) / 1000);
+    uptimeEl.textContent = `${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;
+  }
+  todayEl.textContent = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+  tick();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>
