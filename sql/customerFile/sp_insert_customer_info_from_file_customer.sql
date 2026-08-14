@@ -1,6 +1,6 @@
--- Procédure pour insérer les informations clients depuis raw_data.file_customer
+-- Procédure pour insérer les informations clients depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
 -- Transposition de sp_insert_customer_info_from_sap : la table maître ifs_customer
--- est remplacée par une CTE sur raw_data.file_customer (liste explicite des clients).
+-- est remplacée par une CTE sur clean_data.v_customer_source (fichier + clients PHL absents du fichier) (liste explicite des clients).
 -- Le fichier est la source faisant autorité (données corrigées) -> les COALESCE
 -- préfèrent le fichier puis retombent sur les tables SAP.
 -- Alimente clean_data.CUSTOMER_INFO avec TRUNCATE + INSERT.
@@ -48,15 +48,15 @@ BEGIN
         BUSINESS_CLASSIFICATION,
         DATE_OF_REGISTRATION,
         MAIN_REPRESENTATIVE,
-        cf$_legacy_customer_as400_mn,
-        cf$_legacy_customer_sap_id
+        cf_legacy_customer_as400_mn,
+        cf_legacy_customer_sap_id
     )
     WITH fc AS (
-        SELECT f.*,
-            COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) AS customer_id,
-            COALESCE(NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''), '1') AS address_id
-        FROM raw_data.file_customer f
-        WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) IS NOT NULL
+        -- Source unifiee : fichier + clients PHL absents du fichier.
+        -- customer_id et address_id sont deja calcules par la vue.
+        SELECT *
+        FROM clean_data.v_customer_source
+        WHERE customer_id IS NOT NULL
     )
     SELECT DISTINCT ON (fc.customer_id)
         fc.customer_id as CUSTOMER_ID,
@@ -69,27 +69,27 @@ BEGIN
         ) as CREATION_DATE,
         COALESCE(NULLIF(TRIM(fc.tax_number_1),''), TRIM(k.STCD1), TRIM(k.STCD2)) as ASSOCIATION_NO,
         fc.customer_id as PARTY,
-        'FALSE' as DEFAULT_DOMAIN,
+        COALESCE(fc.phl_client_default_domain, 'FALSE') as DEFAULT_DOMAIN,
         NULL as DEFAULT_LANGUAGE,
         public.get_transcodification('LANGUAGE', COALESCE(fc.language, k.SPRAS)) as DEFAULT_LANGUAGE_DB,
         NULL as COUNTRY,
         -- Certains codes pays SAP (ex: 'SZ') n'existent pas dans IFS → NULL pour éviter ORA-20111 IsoCountry.NOTEXIST
-        CASE WHEN COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1) IN ('SZ') THEN NULL
-             ELSE COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1)
+        CASE WHEN public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1)) IN ('SZ') THEN NULL
+             ELSE public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1))
         END as COUNTRY_DB,
         'Customer' as PARTY_TYPE,
         'CUSTOMER' as PARTY_TYPE_DB,
         NULL as CORPORATE_FORM,
         COALESCE(NULLIF(TRIM(fc.vat_number),''), k.STCEG) as IDENTIFIER_REFERENCE,
         '' as IDENTIFIER_REF_VALIDATION,
-        '' as IDENTIFIER_REF_VALIDATION_DB,
+        COALESCE(fc.phl_identifier_ref_validation_db, '') as IDENTIFIER_REF_VALIDATION_DB,
         NULL as PICTURE_ID,
         'False' as ONE_TIME,
-        'FALSE' as ONE_TIME_DB,
+        COALESCE(fc.phl_one_time_db, 'FALSE') as ONE_TIME_DB,
         null as CUSTOMER_CATEGORY,
-        'CUSTOMER' as CUSTOMER_CATEGORY_DB,
+        COALESCE(fc.phl_customer_category_db, 'CUSTOMER') as CUSTOMER_CATEGORY_DB,
         'FALSE' as B2B_CUSTOMER,
-        'FALSE' as B2B_CUSTOMER_DB,
+        COALESCE(fc.phl_b2b_customer_db, 'FALSE') as B2B_CUSTOMER_DB,
         NULL as CUSTOMER_TAX_USAGE_TYPE,
         NULL as BUSINESS_CLASSIFICATION,
         COALESCE(
@@ -99,8 +99,15 @@ BEGIN
             ELSE NULL END
         ) as DATE_OF_REGISTRATION,
         NULL as MAIN_REPRESENTATIVE,
-        SUBSTRING(COALESCE(NULLIF(TRIM(fc.name_1),''), TRIM(k.NAME1)), 1, 50) as cf$_legacy_customer_as400_mn,
-        fc.kunnr as cf$_legacy_customer_sap_id
+        -- Identifiants legacy : conserves tels quels, y compris apres la
+        -- renumerotation (sp_renumber_all_customer_ids_file n'y touche plus).
+        -- as400 = code client PHL resolu par clean_data.get_legacy_as400_id
+        --         (recherche par n° SAP, repli par nom). PAS de repli sur
+        --         l'identifiant du fichier : sans correspondance PHL, on laisse
+        --         vide plutot que d'y stocker un identifiant qui n'est pas un code AS400.
+        -- sap   = identifiant SAP du fichier (kunnr, NULL si le client n'existe pas dans SAP)
+        clean_data.get_legacy_as400_id(fc.kunnr, fc.name_1) as cf_legacy_customer_as400_mn,
+        fc.kunnr as cf_legacy_customer_sap_id
     FROM fc  -- TABLE MAÎTRE (file_customer)
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

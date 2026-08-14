@@ -49,8 +49,8 @@ BEGIN
         BUSINESS_CLASSIFICATION,
         DATE_OF_REGISTRATION,
         MAIN_REPRESENTATIVE,
-        cf$_legacy_customer_as400_mn,
-        cf$_legacy_customer_sap_id
+        cf_legacy_customer_as400_mn,
+        cf_legacy_customer_sap_id
     )
     SELECT DISTINCT ON (ifs.customer_number)
         ifs.customer_number as CUSTOMER_ID,
@@ -93,8 +93,8 @@ BEGIN
             ifs.created_on
         ) as DATE_OF_REGISTRATION,
         NULL as MAIN_REPRESENTATIVE,
-        SUBSTRING(COALESCE(TRIM(k.NAME1), ifs.name_1), 1, 50) as cf$_legacy_customer_as400_mn,
-        ifs.customer_number as cf$_legacy_customer_sap_id
+        SUBSTRING(COALESCE(TRIM(k.NAME1), ifs.name_1), 1, 50) as cf_legacy_customer_as400_mn,
+        ifs.customer_number as cf_legacy_customer_sap_id
     FROM clean_data.ifs_customer ifs  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k 
         ON ifs.customer_number = k.KUNNR

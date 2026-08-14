@@ -66,15 +66,19 @@ BEGIN
 
     RAISE NOTICE 'Mise à jour des tables en cascade...';
 
-    -- 1. Mettre à jour customer_info (customer_id + legacy as400 avec old_customer_id)
+    -- 1. Mettre à jour customer_info (customer_id uniquement)
+    --    Les identifiants legacy (cf_legacy_customer_as400_mn = id client du fichier,
+    --    cf_legacy_customer_sap_id = kunnr) sont posés par
+    --    sp_insert_customer_info_from_file_customer et ne doivent PAS être réécrits ici :
+    --    sinon un second passage de la renumérotation y stocke l'id déjà renuméroté
+    --    et la trace de l'identifiant d'origine est perdue.
     UPDATE clean_data.customer_info ci
-    SET customer_id = m.new_customer_id,
-        cf$_legacy_customer_as400_mn = m.old_customer_id
+    SET customer_id = m.new_customer_id
     FROM temp_customer_id_mapping_file m
     WHERE ci.customer_id = m.old_customer_id;
     GET DIAGNOSTICS v_total_updated = ROW_COUNT;
     v_counter := v_counter + v_total_updated;
-    RAISE NOTICE '  ✓ customer_info: % lignes mises à jour (customer_id + legacy as400)', v_total_updated;
+    RAISE NOTICE '  ✓ customer_info: % lignes mises à jour (customer_id)', v_total_updated;
 
     -- 2. Mettre à jour customer_info_address
     UPDATE clean_data.customer_info_address cia

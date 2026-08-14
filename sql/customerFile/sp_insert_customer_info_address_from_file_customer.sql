@@ -1,5 +1,5 @@
 -- Procédure pour insérer les adresses clients depuis le fichier file_customer
--- Cette procédure extrait les données d'adresses clients du fichier (raw_data.file_customer)
+-- Cette procédure extrait les données d'adresses clients du fichier (clean_data.v_customer_source (fichier + clients PHL absents du fichier))
 -- enrichies par les tables SAP (KNA1, ADRC) et les transforme
 -- pour alimenter la table CUSTOMER_INFO_ADDRESS avec TRUNCATE + INSERT
 -- La source pilote est le fichier file_customer ; les valeurs du fichier sont prioritaires
@@ -49,17 +49,21 @@ BEGIN
         JURISDICTION_CODE
     )
     WITH fc AS (
-        SELECT f.*,
-            COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) AS customer_id,
-            COALESCE(NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''), '1') AS address_id
-        FROM raw_data.file_customer f
-        WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) IS NOT NULL
+        -- Source unifiee : fichier + clients PHL absents du fichier.
+        -- customer_id et address_id sont deja calcules par la vue.
+        SELECT *
+        FROM clean_data.v_customer_source
+        WHERE customer_id IS NOT NULL
     )
     SELECT DISTINCT ON (fc.customer_id, fc.address_id)
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
-        COALESCE(NULLIF(TRIM(fc.name_1),''), TRIM(k.NAME1)) as NAME,
-        COALESCE(CONCAT_WS(' ', fc.street, fc.postal_code), CONCAT_WS(' ', TRIM(a.STREET), TRIM(a.HOUSE_NUM1))) as ADDRESS,
+        -- Cote PHL, client_adresse_phl fournit deja l'adresse au format IFS :
+        -- on la prend telle quelle plutot que de la reconstruire.
+        COALESCE(NULLIF(TRIM(fc.phl_addr_name),''), NULLIF(TRIM(fc.name_1),''), TRIM(k.NAME1)) as NAME,
+        COALESCE(NULLIF(TRIM(fc.phl_address),''),
+                 CONCAT_WS(' ', fc.street, fc.postal_code),
+                 CONCAT_WS(' ', TRIM(a.STREET), TRIM(a.HOUSE_NUM1))) as ADDRESS,
         NULL as EAN_LOCATION,
         COALESCE(
             CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END,
@@ -70,21 +74,22 @@ BEGIN
         NULL as VALID_TO,
         fc.customer_id as PARTY,
         COALESCE(
+            NULLIF(TRIM(fc.phl_address_lov),''),
             CONCAT_WS(', ', fc.street, fc.city, fc.postal_code),
             CONCAT_WS(', ', TRIM(a.STREET), TRIM(a.CITY1), TRIM(a.POST_CODE1))
         ) as ADDRESS_LOV,
-        CASE
-            WHEN fc.bukrs IS NOT NULL THEN 'TRUE'
-            ELSE 'FALSE'
-        END as DEFAULT_DOMAIN,
+        COALESCE(
+            fc.phl_default_domain,
+            CASE WHEN fc.bukrs IS NOT NULL THEN 'TRUE' ELSE 'FALSE' END
+        ) as DEFAULT_DOMAIN,
         COALESCE(NULLIF(TRIM(fc.country),''), t_country.LANDX) as COUNTRY,
-        COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1) as COUNTRY_DB,
+        public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1)) as COUNTRY_DB,
         'Customer' as PARTY_TYPE,
-        'CUSTOMER' as PARTY_TYPE_DB,
+        COALESCE(NULLIF(TRIM(fc.phl_party_type_db),''), 'CUSTOMER') as PARTY_TYPE_DB,
         NULL as SECONDARY_CONTACT,
         NULL as PRIMARY_CONTACT,
         COALESCE(SUBSTRING(fc.street, 1, 35), SUBSTRING(TRIM(a.STREET), 1, 35)) as ADDRESS1,
-        COALESCE(SUBSTRING(TRIM(a.HOUSE_NUM1), 1, 35), '') as ADDRESS2,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.phl_address2),''), 1, 35), SUBSTRING(TRIM(a.HOUSE_NUM1), 1, 35), '') as ADDRESS2,
         COALESCE(TRIM(a.HOUSE_NUM2), '') as ADDRESS3,
         COALESCE(TRIM(a.LOCATION), '') as ADDRESS4,
         COALESCE(TRIM(a.BUILDING), '') as ADDRESS5,

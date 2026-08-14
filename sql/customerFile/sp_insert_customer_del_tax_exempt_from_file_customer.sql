@@ -1,5 +1,5 @@
--- Procédure pour insérer les exemptions fiscales de livraison clients depuis raw_data.file_customer
--- Utilise raw_data.file_customer (CTE fc) comme table maître
+-- Procédure pour insérer les exemptions fiscales de livraison clients depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
+-- Utilise clean_data.v_customer_source (fichier + clients PHL absents du fichier) (CTE fc) comme table maître
 
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_del_tax_exempt_from_file_customer()
 LANGUAGE plpgsql
@@ -32,19 +32,19 @@ BEGIN
         CERTIFICATE_AMOUNT
     )
     WITH fc AS (
-        SELECT f.*,
-            COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) AS customer_id,
-            COALESCE(NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''), '1') AS address_id
-        FROM raw_data.file_customer f
-        WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) IS NOT NULL
+        -- Source unifiee : fichier + clients PHL absents du fichier.
+        -- customer_id et address_id sont deja calcules par la vue.
+        SELECT *
+        FROM clean_data.v_customer_source
+        WHERE customer_id IS NOT NULL
     )
-    SELECT DISTINCT ON (fc.customer_id, fc.address_id, COALESCE(k.LAND1, fc.country, 'FR'), COALESCE(NULLIF(TRIM(fc.vat_number),''), NULLIF(TRIM(fc.tax_number_1),''), NULLIF(TRIM(fc.tax_number_2),''), 'NO_CERT'))
+    SELECT DISTINCT ON (fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')), COALESCE(NULLIF(TRIM(fc.vat_number),''), NULLIF(TRIM(fc.tax_number_1),''), NULLIF(TRIM(fc.tax_number_2),''), 'NO_CERT'))
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
         'TRIMET' as COMPANY,
-        COALESCE(k.LAND1, fc.country, 'FR') as SUPPLY_COUNTRY,
+        public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as SUPPLY_COUNTRY,
         SUBSTRING(COALESCE(NULLIF(TRIM(fc.vat_number),''), NULLIF(TRIM(fc.tax_number_1),''), NULLIF(TRIM(fc.tax_number_2),''), 'NO_CERT'), 1, 20) as TAX_EXEMPTION_CERT_NO,
-        SUBSTRING(COALESCE(k.LAND1, fc.country, 'FR'), 1, 100) as CERTIFICATION_JURISDICTION,
+        SUBSTRING(public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')), 1, 100) as CERTIFICATION_JURISDICTION,
         CASE WHEN fc.created_on ~ '^[0-9]{8}$'
             THEN TO_TIMESTAMP(fc.created_on, 'YYYYMMDD')
             ELSE NULL END as CERTIFICATION_DATE,
@@ -58,7 +58,7 @@ BEGIN
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR
         AND (k.LOEVM IS NULL OR k.LOEVM = '')
-    ORDER BY fc.customer_id, fc.address_id, COALESCE(k.LAND1, fc.country, 'FR'), COALESCE(NULLIF(TRIM(fc.vat_number),''), NULLIF(TRIM(fc.tax_number_1),''), NULLIF(TRIM(fc.tax_number_2),''), 'NO_CERT');
+    ORDER BY fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')), COALESCE(NULLIF(TRIM(fc.vat_number),''), NULLIF(TRIM(fc.tax_number_1),''), NULLIF(TRIM(fc.tax_number_2),''), 'NO_CERT');
 
     GET DIAGNOSTICS v_processed_count = ROW_COUNT;
 

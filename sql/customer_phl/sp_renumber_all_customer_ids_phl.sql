@@ -69,7 +69,7 @@ BEGIN
     -- 1. Mettre à jour customer_info (customer_id + legacy as400 avec old_customer_id)
     UPDATE clean_data.customer_info ci
     SET customer_id = m.new_customer_id,
-        cf$_legacy_customer_as400_mn = m.old_customer_id
+        cf_legacy_customer_as400_mn = m.old_customer_id
     FROM temp_customer_id_mapping_phl m
     WHERE ci.customer_id = m.old_customer_id;
     GET DIAGNOSTICS v_total_updated = ROW_COUNT;

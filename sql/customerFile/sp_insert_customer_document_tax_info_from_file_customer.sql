@@ -1,5 +1,5 @@
--- Procédure pour insérer les informations fiscales document clients depuis raw_data.file_customer
--- Utilise raw_data.file_customer (CTE fc) comme table maître
+-- Procédure pour insérer les informations fiscales document clients depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
+-- Utilise clean_data.v_customer_source (fichier + clients PHL absents du fichier) (CTE fc) comme table maître
 
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_document_tax_info_from_file_customer()
 LANGUAGE plpgsql
@@ -33,20 +33,20 @@ BEGIN
         TAX_OFFICE_ID
     )
     WITH fc AS (
-        SELECT f.*,
-            COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) AS customer_id,
-            COALESCE(NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''), '1') AS address_id
-        FROM raw_data.file_customer f
-        WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) IS NOT NULL
+        -- Source unifiee : fichier + clients PHL absents du fichier.
+        -- customer_id et address_id sont deja calcules par la vue.
+        SELECT *
+        FROM clean_data.v_customer_source
+        WHERE customer_id IS NOT NULL
     )
-    SELECT DISTINCT ON (fc.customer_id, fc.address_id, COALESCE(k.LAND1, fc.country, 'FR'))
+    SELECT DISTINCT ON (fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')))
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
         'TRIMET' as COMPANY,
         NULL as SUPPLY_COUNTRY,
-        COALESCE(k.LAND1, fc.country, 'FR') as SUPPLY_COUNTRY_DB,
+        public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as SUPPLY_COUNTRY_DB,
         NULL as DELIVERY_COUNTRY,
-        COALESCE(k.LAND1, fc.country, 'FR') as DELIVERY_COUNTRY_DB,
+        public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as DELIVERY_COUNTRY_DB,
         NULL as TAX_ID_TYPE,
         UPPER(COALESCE(NULLIF(TRIM(fc.vat_number),''), k.STCEG, k.STCD1)) as VAT_NO,  -- IFS exige le format majuscule
         NULL as VALIDATED_DATE,
@@ -59,7 +59,7 @@ BEGIN
     LEFT JOIN raw_data.T005T t_country
         ON COALESCE(k.LAND1, fc.country) = t_country.LAND1
         AND t_country.SPRAS = 'F'
-    ORDER BY fc.customer_id, fc.address_id, COALESCE(k.LAND1, fc.country, 'FR');
+    ORDER BY fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR'));
 
     -- Compter les enregistrements insérés
     GET DIAGNOSTICS v_count = ROW_COUNT;

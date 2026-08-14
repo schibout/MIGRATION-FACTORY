@@ -79,8 +79,8 @@ BEGIN
         business_classification,
         date_of_registration,
         main_representative,
-        "cf$_legacy_customer_as400_mn" as cfs_legacy_customer_as400_mn,
-        "cf$_legacy_customer_sap_id" as cfs_legacy_customer_sap_id,
+        cf_legacy_customer_as400_mn as cfs_legacy_customer_as400_mn,
+        cf_legacy_customer_sap_id as cfs_legacy_customer_sap_id,
         NOW() as created_at,
         NOW() as updated_at
     FROM clean_data.customer_info;

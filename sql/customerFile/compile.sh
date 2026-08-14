@@ -67,6 +67,9 @@ errors=0
 
 # Liste des fichiers dans l'ordre d'exécution
 files=(
+    # Fonctions et vues : doivent exister AVANT les procedures qui les utilisent
+    "fn_get_legacy_as400_id.sql"
+    "v_customer_source.sql"
     "sp_insert_customer_info_from_file_customer.sql"
     "sp_insert_customer_info_cfv_from_file_customer.sql"
     "sp_insert_customer_info_address_from_file_customer.sql"

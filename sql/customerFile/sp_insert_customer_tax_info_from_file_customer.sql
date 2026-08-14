@@ -1,5 +1,5 @@
--- Procédure pour insérer les informations fiscales clients depuis raw_data.file_customer
--- Utilise raw_data.file_customer (CTE fc) comme table maître
+-- Procédure pour insérer les informations fiscales clients depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
+-- Utilise clean_data.v_customer_source (fichier + clients PHL absents du fichier) (CTE fc) comme table maître
 
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_tax_info_from_file_customer()
 LANGUAGE plpgsql
@@ -52,11 +52,11 @@ BEGIN
         COMPONENT_A_IDENTITY
     )
     WITH fc AS (
-        SELECT f.*,
-            COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) AS customer_id,
-            COALESCE(NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''), '1') AS address_id
-        FROM raw_data.file_customer f
-        WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) IS NOT NULL
+        -- Source unifiee : fichier + clients PHL absents du fichier.
+        -- customer_id et address_id sont deja calcules par la vue.
+        SELECT *
+        FROM clean_data.v_customer_source
+        WHERE customer_id IS NOT NULL
     )
     SELECT DISTINCT ON (fc.customer_id, fc.address_id)
         fc.customer_id as CUSTOMER_ID,
