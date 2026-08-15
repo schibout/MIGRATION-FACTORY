@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_V1 } from '../basePath';
 
 // Types
 export interface Role {
@@ -21,7 +22,7 @@ export interface RoleUpdateData {
 }
 
 // API base URL
-const API_URL = '/api/v1/roles';
+const API_URL = `${API_V1}/roles`;
 
 // Service methods
 const roleService = {

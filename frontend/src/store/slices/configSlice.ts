@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { withBase } from '../../basePath';
 
 export interface Connection {
   id: string;
@@ -50,7 +51,7 @@ const initialState: ConfigState = {
 export const fetchConnections = createAsyncThunk(
   'config/fetchConnections',
   async () => {
-    const response = await axios.get('/api/config/connections');
+    const response = await axios.get(withBase('/api/config/connections'));
     return response.data;
   }
 );
@@ -63,12 +64,12 @@ export const saveConnection = createAsyncThunk(
       if (connection.id) {
         // Update existing connection
         response = await axios.put(
-          `/api/config/connections/${connection.id}`,
+          withBase(`/api/config/connections/${connection.id}`),
           connection
         );
       } else {
         // Create new connection
-        response = await axios.post('/api/config/connections', connection);
+        response = await axios.post(withBase('/api/config/connections'), connection);
       }
       return response.data;
     } catch (err: any) {
@@ -80,7 +81,7 @@ export const saveConnection = createAsyncThunk(
 export const fetchTableMappings = createAsyncThunk(
   'config/fetchTableMappings',
   async () => {
-    const response = await axios.get('/api/config/mapping');
+    const response = await axios.get(withBase('/api/config/mapping'));
     return response.data;
   }
 );
@@ -93,12 +94,12 @@ export const saveTableMapping = createAsyncThunk(
       if (mapping.id) {
         // Update existing mapping
         response = await axios.put(
-          `/api/config/mapping/${mapping.id}`,
+          withBase(`/api/config/mapping/${mapping.id}`),
           mapping
         );
       } else {
         // Create new mapping
-        response = await axios.post('/api/config/mapping', mapping);
+        response = await axios.post(withBase('/api/config/mapping'), mapping);
       }
       return response.data;
     } catch (err: any) {

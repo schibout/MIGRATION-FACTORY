@@ -1,4 +1,5 @@
 import api from './api';
+import { API_V1 } from '../basePath';
 
 // =====================================================
 // Service Assistant Hermes — chat streaming SSE.
@@ -9,7 +10,7 @@ import api from './api';
 // reste côté backend (proxy /hermes/chat) : rien de sensible ne transite ici.
 // =====================================================
 
-const API_BASE = '/api/v1';
+const API_BASE = API_V1;
 
 export interface HermesApiMessage {
   role: 'user' | 'assistant' | 'system';

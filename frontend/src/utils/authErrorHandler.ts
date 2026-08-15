@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import { withBase } from '../basePath';
 
 export interface AuthErrorHandlerOptions {
   setError?: (error: string) => void;
@@ -28,7 +29,7 @@ export const handleAuthError = (
 
     // Rediriger vers la page de connexion si demandé
     if (redirectToLogin) {
-      window.location.href = '/login';
+      window.location.href = withBase('/login');
     }
 
     return true; // Erreur d'auth gérée

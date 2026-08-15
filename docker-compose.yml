@@ -56,6 +56,12 @@ services:
       - ${BACKUP_DIR:-./backups}:/backups:rw
     networks:
       - migration-network
+      # Reseau du conteneur "hermes" (cree par l'installeur Hermes, hors de ce
+      # compose). Sans ce rattachement, la page /hermes ne peut pas joindre
+      # l'agent : son port 8642 n'est publie que sur la loopback de l'hote et
+      # les bridges Docker sont isoles entre eux. Avec, le backend l'atteint par
+      # son nom de service -> HERMES_API_URL=http://hermes:8642/v1.
+      - hermes-net
     extra_hosts:
       - "db:${DB_HOST:-10.190.100.58}"
     # Port bindé sur la loopback uniquement : l'accès externe passe par le nginx
@@ -108,13 +114,23 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - API_URL=http://backend:5000
+      # Prefixe de deploiement lu par vite.config.ts (option `base`) et relaye
+      # au code via import.meta.env.BASE_URL (frontend/src/basePath.ts).
+      # Doit correspondre EXACTEMENT au prefixe servi par le nginx de l'hote,
+      # slash final compris : '/app4/'. Mettre '/' pour revenir a la racine.
+      - APP_BASE=${APP_BASE:-/}
+      # Port vu par le NAVIGATEUR pour le WebSocket HMR (80 derriere le nginx
+      # de l'hote). Vide = comportement Vite par defaut (acces direct au 3100).
+      - HMR_CLIENT_PORT=${HMR_CLIENT_PORT:-}
       - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-false}
       - WATCHPACK_POLLING=${WATCHPACK_POLLING:-false}
     volumes:
       - ./frontend:/workspace/frontend:rw
       - /workspace/frontend/node_modules
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      # Sous un prefixe, Vite ne sert plus rien a la racine : la sonde doit viser
+      # ${APP_BASE}, sinon le conteneur est declare unhealthy en permanence.
+      test: ["CMD-SHELL", "curl -f http://localhost:3000${APP_BASE:-/} || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -124,6 +140,12 @@ networks:
   migration-network:
     driver: bridge
     name: migration-network
+
+  # Reseau appartenant au deploiement Hermes : declare "external" pour que ce
+  # compose s'y rattache sans jamais le creer ni le supprimer.
+  hermes-net:
+    external: true
+    name: hermes-net
 
 volumes:
   redis-data:

@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-// Configuration de base - Utilise l'URL relative pour la production
-const API_PATH = '/api/v1';
+import { API_V1, withBase } from '../basePath';
+
+// Configuration de base - URL relative, prefixee par le chemin de deploiement
+// (cf. src/basePath.ts) : '/api/v1' a la racine, '/app4/api/v1' derriere nginx.
+const API_PATH = API_V1;
 
 // Création d'une instance axios avec la configuration de base
 const api = axios.create({
@@ -84,8 +87,9 @@ const forceLogout = (): void => {
   localStorage.removeItem('token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user');
-  if (window.location.pathname !== '/login') {
-    window.location.href = '/login';
+  const loginUrl = withBase('/login');
+  if (window.location.pathname !== loginUrl) {
+    window.location.href = loginUrl;
   }
 };
 

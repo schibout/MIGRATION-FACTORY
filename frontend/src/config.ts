@@ -1,7 +1,10 @@
 // Configuration de base — URL relative : l'application est servie derrière le
-// nginx de l'hôte (http://10.190.100.58/), qui route /api/ vers le backend.
-// Aucune URL absolue avec port : le port 5000 n'est plus exposé au réseau.
-const API_PATH = '/api/v1';
+// nginx de l'hôte, qui route <base>/api/ vers le backend. Aucune URL absolue
+// avec port : le port 5000 n'est pas exposé au réseau. Le préfixe de
+// déploiement (/app4 derrière le point d'entrée unique) vient de basePath.ts.
+import { API_V1 } from './basePath';
+
+const API_PATH = API_V1;
 
 // URL de l'API, relative à l'origine courante (même valeur que api.ts)
 export const API_URL = API_PATH;

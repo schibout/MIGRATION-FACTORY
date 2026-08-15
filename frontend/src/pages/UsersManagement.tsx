@@ -37,6 +37,7 @@ import {
   Typography,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
+import { withBase } from '../basePath';
 import api from '../services/api';
 import { handleAuthError, isTokenValid, tryMultipleEndpoints } from '../utils/authErrorHandler';
 
@@ -128,7 +129,7 @@ const UsersManagement: React.FC = () => {
       if (!isTokenValid()) {
         setError('Session expirée. Veuillez vous reconnecter.');
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = withBase('/login');
         return;
       }
       
@@ -170,7 +171,7 @@ const UsersManagement: React.FC = () => {
         if (firstError.response?.status === 401) {
           setError('Session expirée. Veuillez vous reconnecter.');
           localStorage.clear();
-          window.location.href = '/login';
+          window.location.href = withBase('/login');
           return;
         }
         // Si l'endpoint /users échoue, essayer /auth/users
@@ -191,7 +192,7 @@ const UsersManagement: React.FC = () => {
       if (err.response?.status === 401) {
         setError('Session expirée. Veuillez vous reconnecter.');
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = withBase('/login');
       } else if (err.response?.status === 403) {
         setError('Vous n\'avez pas les permissions nécessaires pour créer un utilisateur.');
       } else {
@@ -220,7 +221,7 @@ const UsersManagement: React.FC = () => {
         if (firstError.response?.status === 401) {
           setError('Session expirée. Veuillez vous reconnecter.');
           localStorage.clear();
-          window.location.href = '/login';
+          window.location.href = withBase('/login');
           return;
         }
         // Si l'endpoint /users échoue, essayer /auth/users
@@ -238,7 +239,7 @@ const UsersManagement: React.FC = () => {
       if (err.response?.status === 401) {
         setError('Session expirée. Veuillez vous reconnecter.');
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = withBase('/login');
       } else if (err.response?.status === 403) {
         setError('Vous n\'avez pas les permissions nécessaires pour modifier cet utilisateur.');
       } else {
@@ -258,7 +259,7 @@ const UsersManagement: React.FC = () => {
         if (firstError.response?.status === 401) {
           setError('Session expirée. Veuillez vous reconnecter.');
           localStorage.clear();
-          window.location.href = '/login';
+          window.location.href = withBase('/login');
           return;
         }
         // Si l'endpoint /users échoue, essayer /auth/users
@@ -273,7 +274,7 @@ const UsersManagement: React.FC = () => {
       if (err.response?.status === 401) {
         setError('Session expirée. Veuillez vous reconnecter.');
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = withBase('/login');
       } else if (err.response?.status === 403) {
         setError('Vous n\'avez pas les permissions nécessaires pour supprimer cet utilisateur.');
       } else {
