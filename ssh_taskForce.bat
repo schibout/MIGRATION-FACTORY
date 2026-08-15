@@ -15,7 +15,7 @@ set SSH_PORT=65002
 REM Cle privee utilisee pour ce serveur (ed25519, sans passphrase)
 REM L'ancienne cle RSA reste acceptee par le serveur : en cas de souci,
 REM remettre  set SSH_KEY=C:\Users\admin\.ssh\id_ovh_rsa
-set SSH_KEY=C:\Users\samir.chibout\.ssh\prospectAi
+set SSH_KEY=C:\Users\admin\.ssh\prospectAi
 
 REM ==============================
 REM Tunnels locaux
