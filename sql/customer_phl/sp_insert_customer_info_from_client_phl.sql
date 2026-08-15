@@ -42,15 +42,15 @@ BEGIN
         business_classification,
         date_of_registration,
         main_representative,
-        cf_legacy_customer_as400_mn,
-        cf_legacy_customer_sap_id
+        cf$_legacy_customer_as400_mn,
+        cf$_legacy_customer_sap_id
     )
     SELECT DISTINCT ON (cp.customer_id)
         cp.customer_id as customer_id,
         cp.name as name,
         cp.creation_date as creation_date,
         cp.association_no as association_no,
-        cp.numero_sap as party,
+        cp.party as party,
         cp.default_domain as default_domain,
         cp.default_language as default_language,
         cp.default_language_db as default_language_db,
@@ -73,8 +73,8 @@ BEGIN
         cp.business_classification as business_classification,
         cp.date_of_registration as date_of_registration,
         NULL as main_representative,
-        cp.customer_id as cf_legacy_customer_as400_mn,
-        cp.numero_sap as cf_legacy_customer_sap_id
+        NULL as cf$_legacy_customer_as400_mn,
+        NULL as cf$_legacy_customer_sap_id
     FROM raw_data.client_phl cp
     WHERE cp.customer_id IS NOT NULL
     ORDER BY cp.customer_id, cp.id;

@@ -11,11 +11,11 @@ BEGIN
     TRUNCATE TABLE clean_data.cus_ident_invoice_info;
     RAISE NOTICE 'Table cus_ident_invoice_info vidée';
     WITH fc AS (
-        -- Source unifiee : fichier + clients PHL absents du fichier.
-        -- customer_id et address_id sont deja calcules par la vue.
-        SELECT *
-        FROM clean_data.v_customer_source
-        WHERE customer_id IS NOT NULL
+        SELECT f.*,
+            COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) AS customer_id,
+            COALESCE(NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''), '1') AS address_id
+        FROM raw_data.file_customer f
+        WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) IS NOT NULL
     )
     INSERT INTO clean_data.cus_ident_invoice_info (
         company,

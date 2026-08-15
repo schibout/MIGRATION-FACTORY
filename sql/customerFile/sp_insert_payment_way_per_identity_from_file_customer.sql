@@ -1,4 +1,4 @@
--- Procédure pour insérer les moyens de paiement par identité depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
+-- Procédure pour insérer les moyens de paiement par identité depuis raw_data.file_customer
 -- Aligne sur la structure RÉELLE de clean_data.payment_way_per_identity (modèle PHL) :
 -- colonnes created_timestamp/updated_timestamp/created_by/updated_by/is_deleted
 -- (et NON valid_from/valid_to/is_active de la version SAP, absentes de la table).
@@ -21,11 +21,10 @@ BEGIN
     RAISE NOTICE 'Table payment_way_per_identity vidée';
 
     WITH fc AS (
-        -- Source unifiee : fichier + clients PHL absents du fichier.
-        -- customer_id et address_id sont deja calcules par la vue.
-        SELECT *
-        FROM clean_data.v_customer_source
-        WHERE customer_id IS NOT NULL
+        SELECT f.*,
+            COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) AS customer_id
+        FROM raw_data.file_customer f
+        WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs),''), NULLIF(TRIM(f.num_corrige),''), TRIM(f.kunnr)) IS NOT NULL
     )
     INSERT INTO clean_data.payment_way_per_identity (
         company,
