@@ -2,10 +2,16 @@
 """
 api/hermes.py — Proxy streaming vers l'agent Hermes (Nous Research).
 
-Hermes expose une API OpenAI-compatible (POST {HERMES_API_URL}/chat/completions,
-Bearer {HERMES_API_KEY}) sur le même serveur. Ce blueprint relaie le chat en
-STREAMING SSE de bout en bout : la clé API ne quitte JAMAIS le backend — le
-frontend appelle ce proxy avec son JWT Migration Factory habituel.
+Hermes expose une API OpenAI-compatible (Bearer {HERMES_API_KEY}) sur le même
+serveur. Ce blueprint relaie le chat en STREAMING SSE de bout en bout : la clé
+API ne quitte JAMAIS le backend — le frontend appelle ce proxy avec son JWT
+Migration Factory habituel.
+
+Ciblage de l'agent : le profil vit dans l'URL, `<racine>/p/{HERMES_PROFILE}/v1/
+chat/completions`, jamais dans le champ `model` du corps (cf.
+docs/APPEL_HERMES_PROFIL.md). HERMES_PROFILE vide -> agent Hermes par défaut et
+URL historique `{HERMES_API_URL}/chat/completions`. Le gateway doit servir le
+profil (`gateway.multiplex_profiles`), sinon toute route /p/… répond 404.
 
 Contrat côté frontend :
     POST /api/v1/hermes/chat  (JWT requis)
@@ -101,11 +107,17 @@ def _ensure_schema():
 
 def _hermes_config() -> dict:
     """Lecture dynamique (DB system_config > env > défaut) — même pattern que
-    external_llm_service : la clé/URL se changent sans redémarrage."""
+    external_llm_service : la clé/URL/profil se changent sans redémarrage."""
     timeout = get_config_int('HERMES_TIMEOUT_SECONDS', 300)
     return {
         'base_url': (get_config('HERMES_API_URL', 'http://10.190.100.58:8642/v1') or '').rstrip('/'),
         'api_key': get_config('HERMES_API_KEY', '') or '',
+        # Profil = l'agent ciblé sur le gateway (segment /p/<profil>/ de l'URL).
+        # Défaut VIDE -> agent Hermes par défaut et URL historique : le profil
+        # s'active explicitement (Paramètres > Profil Hermes), et se désactive en
+        # vidant le champ. Un défaut non vide rendrait cette bascule impossible,
+        # get_config traitant « valeur vide » comme « non configuré ».
+        'profile': (get_config('HERMES_PROFILE', '') or '').strip().strip('/'),
         # read timeout = silence max ENTRE deux chunks SSE, pas la durée totale.
         'read_timeout': (timeout if timeout > 0 else None),
     }
@@ -117,6 +129,30 @@ def _hermes_origin(cfg: dict) -> str:
     (qui retirerait des caractères, pas un segment)."""
     p = urlsplit(cfg['base_url'])
     return urlunsplit((p.scheme, p.netloc, '', '', ''))
+
+
+def _chat_url(cfg: dict) -> str:
+    """URL de complétion, profil compris.
+
+    Le profil se sélectionne UNIQUEMENT par l'URL — `<racine>/p/<profil>/v1/…` —
+    jamais par le champ `model` du corps : le gateway renvoie `model` tel quel et
+    ne sélectionne rien, si bien qu'un profil ciblé par `model` donne un 404.
+    Profil vide -> agent par défaut, URL historique `<base_url>/chat/completions`.
+    """
+    profil = (cfg.get('profile') or '').strip().strip('/')
+    if not profil:
+        return f"{cfg['base_url']}/chat/completions"
+    return f"{_hermes_origin(cfg)}/p/{profil}/v1/chat/completions"
+
+
+def _erreur_404(cfg: dict) -> str:
+    """Message de diagnostic d'un 404 amont : la cause dépend du ciblage."""
+    profil = (cfg.get('profile') or '').strip()
+    if profil:
+        return (f"Profil Hermes « {profil} » inconnu du gateway (404). "
+                f"Vérifiez HERMES_PROFILE et que le gateway sert bien ce profil "
+                f"(gateway.multiplex_profiles activé sur le profil par défaut).")
+    return "Endpoint Hermes introuvable (404) : vérifiez HERMES_API_URL."
 
 
 def _proxy(method: str, url: str, cfg: dict, json_body=None):
@@ -142,7 +178,13 @@ def _proxy(method: str, url: str, cfg: dict, json_body=None):
     try:
         payload = r.json()
     except ValueError:
-        payload = {'raw': r.text[:2000]}
+        # Réponse non-JSON = page d'erreur d'un intermédiaire (nginx, gateway) :
+        # on ne la recopie pas au client, elle peut porter des détails internes.
+        logger.warning("Réponse Hermes non-JSON (%s %s, HTTP %s) : %s",
+                       method, url, r.status_code, r.text[:300])
+        payload = {'success': False,
+                   'error': f'Réponse Hermes illisible (HTTP {r.status_code}). '
+                            f'Détail dans les journaux du backend.'}
     return jsonify(payload), r.status_code
 
 
@@ -184,7 +226,10 @@ def chat():
                                  "d'environnement)."}), 500
 
     payload = {
-        'model': 'hermes-agent',   # champ cosmétique côté Hermes (cf. hermes.md)
+        # Champ cosmétique : Hermes le renvoie tel quel et ne sélectionne rien
+        # (c'est /p/<profil>/ dans l'URL qui choisit l'agent). On y met le nom du
+        # profil par convention, pour que les journaux du gateway soient lisibles.
+        'model': cfg.get('profile') or 'hermes-agent',
         'messages': _build_messages(raw_messages, instructions),
         'stream': stream,
     }
@@ -196,7 +241,7 @@ def chat():
 
     try:
         upstream = requests.post(
-            f"{cfg['base_url']}/chat/completions",
+            _chat_url(cfg),
             json=payload, headers=headers, stream=stream,
             timeout=(10, cfg['read_timeout']),
         )
@@ -212,11 +257,21 @@ def chat():
         upstream.close()
         return jsonify({'success': False,
                         'error': 'Authentification refusée par Hermes — vérifiez HERMES_API_KEY.'}), 502
+    if upstream.status_code == 404:
+        # Cas le plus fréquent au branchement d'un profil : le corps amont
+        # ("404: Not Found") n'apprend rien, on renvoie le diagnostic utile.
+        upstream.close()
+        logger.warning("Hermes 404 sur %s", _chat_url(cfg))
+        return jsonify({'success': False, 'error': _erreur_404(cfg)}), 502
     if upstream.status_code != 200:
-        extrait = upstream.text[:300]
+        # Le corps amont peut porter l'URL interne, la clé ou une trace : il part
+        # au journal, jamais au client. Le statut, lui, est utile et sans risque.
+        statut = upstream.status_code
+        logger.warning("Hermes a répondu HTTP %s : %s", statut, upstream.text[:300])
         upstream.close()
         return jsonify({'success': False,
-                        'error': f'Hermes a répondu HTTP {upstream.status_code} : {extrait}'}), 502
+                        'error': f'Hermes a répondu HTTP {statut}. '
+                                 f'Détail dans les journaux du backend.'}), 502
 
     if not stream:
         try:
@@ -502,21 +557,33 @@ def execute_job(job_id):
     # 2) Exécuter le prompt (non-stream) -> texte.
     try:
         cr = requests.post(
-            f"{cfg['base_url']}/chat/completions",
-            json={'model': 'hermes-agent', 'messages': [{'role': 'user', 'content': prompt}], 'stream': False},
+            _chat_url(cfg),
+            json={'model': cfg.get('profile') or 'hermes-agent',
+                  'messages': [{'role': 'user', 'content': prompt}], 'stream': False},
             headers=headers, timeout=(10, cfg['read_timeout']),
         )
     except requests.exceptions.Timeout:
         return jsonify({'success': False, 'error': "L'agent n'a pas répondu à temps."}), 504
     except requests.exceptions.RequestException as e:
         return jsonify({'success': False, 'error': f'Agent injoignable : {e}'}), 502
+    if cr.status_code == 404:
+        return jsonify({'success': False, 'error': _erreur_404(cfg)}), 502
     if cr.status_code != 200:
+        # Corps amont au journal uniquement (cf. chat()).
+        logger.warning("Exécution job %s refusée par Hermes (HTTP %s) : %s",
+                       job_id, cr.status_code, cr.text[:200])
         return jsonify({'success': False,
-                        'error': f'Exécution refusée (HTTP {cr.status_code}) : {cr.text[:200]}'}), 502
+                        'error': f'Exécution refusée (HTTP {cr.status_code}). '
+                                 f'Détail dans les journaux du backend.'}), 502
     try:
         text = str(cr.json()['choices'][0]['message']['content'] or '')
     except (KeyError, IndexError, ValueError, TypeError):
         return jsonify({'success': False, 'error': 'Réponse de l’agent inexploitable.'}), 502
+    if not text.strip():
+        # Un contenu vide est une erreur, pas un résultat : le stocker ferait
+        # apparaître un job « ok » sans contenu dans l'onglet Résultats.
+        logger.warning("Job %s : réponse vide de l'agent", job_id)
+        return jsonify({'success': False, 'error': 'L’agent a renvoyé une réponse vide.'}), 502
 
     # 3) Stocker (best-effort : on renvoie le résultat même si le stockage échoue).
     result = {'id': None, 'job_id': str(job_id), 'job_name': job_name,

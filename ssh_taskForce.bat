@@ -6,7 +6,7 @@ REM ==============================
 REM Configuration
 REM ==============================
 
-set SERVER_IP=37.187.157.56
+set SERVER_IP=217.182.174.226
 set SSH_USER=ubuntu
 
 REM Le SSH du serveur OVH ecoute sur 65002, pas sur 22
@@ -15,7 +15,7 @@ set SSH_PORT=65002
 REM Cle privee utilisee pour ce serveur (ed25519, sans passphrase)
 REM L'ancienne cle RSA reste acceptee par le serveur : en cas de souci,
 REM remettre  set SSH_KEY=C:\Users\admin\.ssh\id_ovh_rsa
-set SSH_KEY=C:\Users\samir.chibout\.ssh\id_ed25519
+set SSH_KEY=C:\Users\samir.chibout\.ssh\prospectAi
 
 REM ==============================
 REM Tunnels locaux

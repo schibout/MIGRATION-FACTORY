@@ -1,0 +1,25 @@
+# Surcharges LOCALES (poste Windows) — non destinees au serveur.
+#
+# NON UTILISE par le deploiement local actuel : sur ce poste le registre Docker
+# Hub coupe le telechargement des blobs (EOF a repetition), la stack tourne donc
+# en natif (venv + Vite, cf. start_local.ps1). Ce fichier est conserve car il
+# corrige les deux points qui empechent le compose du serveur de demarrer sous
+# Windows, le jour ou Docker redevient utilisable :
+#
+# 1) extra_hosts : le compose de base declare `db:${DB_HOST}`, or extra_hosts
+#    exige une ADRESSE IP. Sous Docker Desktop, DB_HOST doit valoir
+#    `host.docker.internal` (un nom) pour joindre le tunnel SSH ouvert sur la
+#    loopback de l'hote -> creation du conteneur refusee. On supprime l'entree :
+#    aucun code n'utilise l'alias `db`, la connexion passe par DB_HOST.
+# 2) depends_on : le healthcheck backend ne peut pas passer tant que le tunnel
+#    SSH n'est pas ouvert ; le frontend n'attend donc que son demarrage.
+#
+# Pour repasser sur Docker : dans .env, mettre DB_HOST=host.docker.internal
+# (DB_PORT reste 5433) et REDIS_URL=redis://redis:6379/0.
+services:
+  backend:
+    extra_hosts: !reset null
+
+  frontend:
+    depends_on: !override
+      - backend

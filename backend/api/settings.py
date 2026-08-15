@@ -106,6 +106,11 @@ SETTINGS_CATALOG = [
     {'key': 'HERMES_API_URL',              'category': 'ai', 'label': 'URL API Hermes (OpenAI-compatible)',   'type': 'url',      'secret': False, 'default': 'http://10.190.100.58:8642/v1', 'requires_restart': False},
     {'key': 'HERMES_API_KEY',              'category': 'ai', 'label': 'Clé API Hermes',                       'type': 'password', 'secret': True,  'default': '',                            'requires_restart': False},
     {'key': 'HERMES_TIMEOUT_SECONDS',      'category': 'ai', 'label': 'Timeout Hermes (s)',                   'type': 'number',   'secret': False, 'default': '300',                         'requires_restart': False},
+    # Profil = agent cible sur le gateway, insere dans l'URL (/p/<profil>/v1/...).
+    # Defaut vide = agent Hermes par defaut (comportement historique) : n'activer
+    # un profil qu'une fois le gateway configure pour le servir
+    # (gateway.multiplex_profiles), sinon toute route /p/... repond 404.
+    {'key': 'HERMES_PROFILE',              'category': 'ai', 'label': "Profil Hermes (ex. migration ; vide = agent par défaut)", 'type': 'text', 'secret': False, 'default': '',        'requires_restart': False},
 ]
 
 

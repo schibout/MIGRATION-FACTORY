@@ -217,6 +217,143 @@ def test_agent_status_agrege_capabilities_et_health(client):
     assert data['capabilities'] == caps and data['health'] == health
 
 
+# --------------------------------------------------------------------------- #
+# Ciblage du profil Hermes (/p/<profil>/v1/...)
+#
+# Le profil est selectionne par l'URL, jamais par le champ "model" du corps :
+# cibler le profil par "model" renvoie un 404 (cf. docs/APPEL_HERMES_PROFIL.md).
+# --------------------------------------------------------------------------- #
+_CFG_PROFIL = {'base_url': 'http://hermes.test/v1', 'api_key': 'k-test',
+               'read_timeout': 300, 'profile': 'migration'}
+
+
+def test_chat_url_insere_le_profil_avant_v1():
+    assert (hermes_module._chat_url(_CFG_PROFIL)
+            == 'http://hermes.test/p/migration/v1/chat/completions')
+
+
+def test_chat_url_sans_profil_garde_l_url_historique():
+    cfg = dict(_CFG_PROFIL, profile='')
+    assert hermes_module._chat_url(cfg) == 'http://hermes.test/v1/chat/completions'
+
+
+def test_chat_url_tolere_un_profil_absent_de_la_config():
+    # Config heritee (sans clef 'profile') : on ne casse pas l'appel par defaut.
+    assert hermes_module._chat_url(_CFG_OK) == 'http://hermes.test/v1/chat/completions'
+
+
+def test_chat_poste_sur_l_url_du_profil(client):
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(body={'ok': True})) as post:
+        r = client.post('/api/v1/hermes/chat', json={
+            'messages': [{'role': 'user', 'content': 'x'}], 'stream': False})
+    assert r.status_code == 200
+    assert post.call_args.args[0] == 'http://hermes.test/p/migration/v1/chat/completions'
+
+
+def test_model_porte_le_nom_du_profil(client):
+    # Champ decoratif : sert a rendre les journaux du gateway lisibles.
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(body={'ok': True})) as post:
+        client.post('/api/v1/hermes/chat', json={
+            'messages': [{'role': 'user', 'content': 'x'}], 'stream': False})
+    assert post.call_args.kwargs['json']['model'] == 'migration'
+
+
+def test_corps_limite_a_trois_clefs(client):
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(body={'ok': True})) as post:
+        client.post('/api/v1/hermes/chat', json={
+            'messages': [{'role': 'user', 'content': 'x'}], 'stream': False})
+    assert set(post.call_args.kwargs['json']) == {'model', 'messages', 'stream'}
+
+
+def test_profil_inconnu_renvoie_502_avec_diagnostic(client):
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(status=404, text='404: Not Found')):
+        r = client.post('/api/v1/hermes/chat',
+                        json={'messages': [{'role': 'user', 'content': 'x'}]})
+    assert r.status_code == 502
+    erreur = r.get_json()['error']
+    assert 'migration' in erreur and 'HERMES_PROFILE' in erreur
+
+
+def test_404_sans_profil_pointe_vers_l_url(client):
+    cfg = dict(_CFG_PROFIL, profile='')
+    with patch.object(hermes_module, '_hermes_config', return_value=cfg), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(status=404, text='404: Not Found')):
+        r = client.post('/api/v1/hermes/chat',
+                        json={'messages': [{'role': 'user', 'content': 'x'}]})
+    assert r.status_code == 502
+    assert 'HERMES_API_URL' in r.get_json()['error']
+
+
+def test_execute_job_utilise_aussi_l_url_du_profil(client):
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'get',
+                      return_value=_upstream(body={'job': {'name': 'J', 'prompt': 'fais x'}})), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(status=502, text='amont hs')) as post:
+        client.post('/api/v1/hermes/jobs/job_1/execute')
+    assert post.call_args.args[0] == 'http://hermes.test/p/migration/v1/chat/completions'
+
+
+# --------------------------------------------------------------------------- #
+# Etancheite : un corps d'erreur amont peut contenir l'URL interne, la cle ou
+# une trace. Il part au journal, jamais dans la reponse client.
+# --------------------------------------------------------------------------- #
+_FUITE = "Traceback: connect http://hermes-interne:8642 Bearer sk-secret-42"
+
+
+def test_corps_d_erreur_amont_ne_fuit_pas_au_client(client):
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(status=500, text=_FUITE)):
+        r = client.post('/api/v1/hermes/chat',
+                        json={'messages': [{'role': 'user', 'content': 'x'}]})
+    assert r.status_code == 502
+    erreur = r.get_json()['error']
+    assert 'sk-secret-42' not in erreur and 'hermes-interne' not in erreur
+    assert '500' in erreur  # le statut reste, il est utile et non sensible
+
+
+def test_execute_job_corps_d_erreur_amont_ne_fuit_pas(client):
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'get',
+                      return_value=_upstream(body={'job': {'name': 'J', 'prompt': 'p'}})), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(status=500, text=_FUITE)):
+        r = client.post('/api/v1/hermes/jobs/job_1/execute')
+    assert r.status_code == 502
+    assert 'sk-secret-42' not in r.get_json()['error']
+
+
+def test_proxy_reponse_non_json_ne_relaie_pas_le_corps(client):
+    reponse = _upstream(status=502, text=_FUITE)
+    reponse.json.side_effect = ValueError('pas du JSON')
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'request', return_value=reponse):
+        r = client.get('/api/v1/hermes/jobs')
+    assert 'sk-secret-42' not in r.get_data(as_text=True)
+
+
+def test_execute_job_reponse_vide_renvoie_502(client):
+    # Un contenu vide est une erreur, pas un resultat a stocker.
+    vide = {'choices': [{'message': {'content': '   '}}]}
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
+         patch.object(hermes_module.requests, 'get',
+                      return_value=_upstream(body={'job': {'name': 'J', 'prompt': 'p'}})), \
+         patch.object(hermes_module.requests, 'post',
+                      return_value=_upstream(body=vide)):
+        r = client.post('/api/v1/hermes/jobs/job_1/execute')
+    assert r.status_code == 502
+
+
 def test_stream_relaye_octets_et_entetes_sse(client):
     upstream = _upstream()
     chunks = [b'data: {"choices":[{"delta":{"content":"Bon"}}]}\n\n',
