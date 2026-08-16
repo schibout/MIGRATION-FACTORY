@@ -60,6 +60,7 @@ importfichiers/*.csv
 docs/files.zip
 docs/catalogIfs/*.zip
 *.dump
+*.dump.gz
 *.sqlite
 *.sqlite3
 # Fichiers uploades / generes au runtime (backend Flask)

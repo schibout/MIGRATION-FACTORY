@@ -1,288 +1,464 @@
-# Appeler Hermès avec un profil
+# Hermes dans Migration Factory — appel par profil
 
-> **À lire comme une consigne d'implémentation, pas comme un récit.**
-> Tu es l'agent chargé de brancher une application sur Hermès Agent en ciblant un
-> profil nommé. Ce document contient le contrat exact, les pièges qui font perdre
-> une demi-journée, et une implémentation de référence déjà en production.
-> Implémentation vivante : [hermes_adapter.py](backend/src/klinicos/modules/ai/infrastructure/hermes_adapter.py).
-> Variante Node/Express du même contrat : [APPEL_HERMES.md](docs/api/APPEL_HERMES.md).
+Ce document décrit l'intégration réellement déployée et testée entre Migration
+Factory et Hermes Agent : appel du profil `migration`, proxy Flask, streaming
+SSE, authentification, endpoints, déploiement et incidents rencontrés.
 
----
+## 1. Principe fondamental
 
-## 1. Ce que tu dois produire
+Migration Factory ne choisit ni le fournisseur ni le modèle LLM. L'application
+sélectionne uniquement le profil Hermes dans l'URL :
 
-Un **adaptateur serveur unique** — un seul fichier parle à Hermès — qui :
+```text
+POST /p/migration/v1/chat/completions
+```
 
-1. construit l'URL `<racine>/p/<profil>/v1/chat/completions` ;
-2. envoie `{model, messages, stream:false}` en POST JSON ;
-3. lit la réponse dans `choices[0].message.content` ;
-4. traduit tout échec en code générique, sans jamais renvoyer au client l'URL
-   interne, la clé, le corps d'erreur d'Hermès ou une stack trace ;
-5. lit son URL, son profil et sa clé dans l'environnement — jamais en dur, jamais
-   dans un bundle navigateur.
+Le profil `migration` gère ensuite :
 
-Le navigateur ne connaît ni Hermès, ni le profil, ni la clé. Il parle à ton
-backend, ton backend parle à Hermès.
+- fournisseur et modèle principal ;
+- modèles auxiliaires et mélange d'agents ;
+- persona, outils, skills et MCP ;
+- authentification du fournisseur ;
+- mémoire et paramètres d'exécution Hermes.
 
----
+Le corps envoyé par Migration Factory ne contient donc pas de champ `model` :
 
-## 2. Le contrat HTTP, exactement
+```json
+{
+  "messages": [
+    {"role": "user", "content": "Liste les tables fournisseurs SAP"}
+  ],
+  "stream": true
+}
+```
 
-### Requête
+`"model": "migration"` ne sélectionne pas le profil. Seul le segment
+`/p/migration/` de l'URL le fait.
+
+## 2. Architecture
+
+```text
+Navigateur
+  POST /app4/api/v1/hermes/chat
+  JWT Migration Factory
+        |
+        v
+Backend Flask — backend/api/hermes.py
+  - valide messages/instructions
+  - construit /p/migration/v1/chat/completions
+  - ajoute la clé Hermes côté serveur
+        |
+        v
+Gateway Hermes — conteneur hermes:8642
+  - charge le profil migration
+  - choisit modèle, fournisseur, outils et MCP
+        |
+        v
+Fournisseur LLM choisi par Hermes
+        |
+        v
+Flux SSE relayé jusqu'au navigateur
+```
+
+La clé Hermes ne quitte jamais le backend. Le navigateur connaît uniquement le
+JWT Migration Factory.
+
+Fichiers concernés :
+
+- `backend/api/hermes.py` : proxy, historique, jobs et statut ;
+- `backend/api/__init__.py` : route `/api/v1/hermes` ;
+- `backend/api/settings.py` : paramètres Hermes ;
+- `frontend/src/services/hermesService.ts` : appel et parseur SSE ;
+- `frontend/src/store/slices/hermesChatSlice.ts` : état Redux ;
+- `frontend/src/pages/HermesChat.tsx` : écran `/hermes` ;
+- `backend/tests/test_hermes_api.py` : tests backend.
+
+## 3. Configuration Migration Factory
+
+```dotenv
+HERMES_API_URL=http://hermes:8642/v1
+HERMES_PROFILE=migration
+HERMES_API_KEY=<API_SERVER_KEY du profil/gateway Hermes>
+HERMES_TIMEOUT_SECONDS=300
+```
+
+Ordre de résolution :
+
+1. `public.system_config` ;
+2. environnement du backend ;
+3. valeur par défaut du code.
+
+La base est prioritaire. Une ancienne clé dans `system_config` peut donc écraser
+une clé correcte dans `.env`. `CONFIG_ENV_PRIORITY` permet une surcharge locale
+explicite, conformément à `backend/services/config_service.py`.
+
+`HERMES_API_URL` contient `/v1`, mais pas `/p/migration`. Le backend construit :
+
+```text
+http://hermes:8642/p/migration/v1/chat/completions
+```
+
+Ne jamais committer `.env`, une clé Hermes, un token fournisseur ou `auth.json`.
+
+## 4. Appels de conversation
+
+### 4.1 Navigateur vers Migration Factory
 
 ```http
-POST http://127.0.0.1:8642/p/klinicos/v1/chat/completions
+POST /api/v1/hermes/chat
+Authorization: Bearer <JWT Migration Factory>
 Content-Type: application/json
-Authorization: Bearer <HERMES_API_KEY>      ← en-tête omis si la clé est vide
 ```
 
 ```json
 {
-  "model": "klinicos",
   "messages": [
-    { "role": "system",    "content": "<persona imposée par le serveur>" },
-    { "role": "user",      "content": "Bonjour" },
-    { "role": "assistant", "content": "…" }
+    {"role": "user", "content": "Quelles sont les tables fournisseurs SAP ?"}
   ],
-  "stream": false
+  "instructions": "Réponds en français.",
+  "stream": true
 }
 ```
 
-Clés facultatives, ajoutées **seulement si configurées** : `max_tokens`,
-`temperature`. Une variable d'environnement vide signifie *absente du corps*,
-pas *valeur par défaut*.
+- `messages` est obligatoire et non vide ;
+- rôles acceptés : `user`, `assistant`, `system` ;
+- `instructions` est facultatif et devient l'unique message `system` en tête ;
+- `stream` vaut `true` par défaut ;
+- tout l'historique est renvoyé à chaque tour (API stateless).
 
-Rôles acceptés : `system`, `user`, `assistant`, `tool`. Le rôle `tool` est
-utilisé ici en texte libre (`"Result of search_slots:\n…"`), sans
-`tool_call_id` : Hermès n'exige pas le protocole outils d'OpenAI.
+### 4.2 Backend vers Hermes
 
-### Réponse
+```http
+POST http://hermes:8642/p/migration/v1/chat/completions
+Authorization: Bearer <HERMES_API_KEY>
+Content-Type: application/json
+Accept: text/event-stream
+```
 
 ```json
-{ "choices": [ { "message": { "content": "…" } } ] }
+{
+  "messages": [
+    {"role": "system", "content": "Réponds en français."},
+    {"role": "user", "content": "Quelles sont les tables fournisseurs SAP ?"}
+  ],
+  "stream": true
+}
 ```
 
-Tout le reste est ignoré. Un `content` absent, non-textuel ou vide est une
-erreur, pas une réponse.
+Le backend ne doit ajouter ni `model`, ni `provider`, ni clé fournisseur.
 
----
+### 4.3 Réponse non-streaming
 
-## 3. Les trois pièges — c'est la partie qui compte
+```json
+{
+  "choices": [
+    {
+      "message": {"role": "assistant", "content": "..."},
+      "finish_reason": "stop"
+    }
+  ]
+}
+```
 
-**Piège 1 — le profil est dans l'URL, pas dans `model`.**
-`/p/<profil>/` est ce qui sélectionne l'agent. Le champ `model` du corps est
-décoratif : Hermès le renvoie tel quel et ne sélectionne rien. Cibler le profil
-par `model` donne un **404**. Par convention on met quand même le nom du profil
-dans `model` pour que les journaux soient lisibles.
+Le contenu se lit dans `choices[0].message.content`.
 
-**Piège 2 — le corps validé ne contient que trois clés.**
-`model`, `messages`, `stream:false`. N'ajoute rien « pour faire bien » : c'est la
-forme vérifiée à la main contre le vrai service.
+### 4.4 Réponse streaming SSE
 
-**Piège 3 — sans message système, tu obtiens l'agent Hermès générique.**
-Le profil par défaut se présente comme un agent système et **propose d'exécuter
-des commandes shell** à qui le lui demande gentiment. Le message système est donc
-ajouté **côté serveur**, après filtrage. Tout message de rôle `system` ou `tool`
-venant du client est **rejeté en 400**, jamais silencieusement retiré : un client
-qui envoie un `system` est un client qui tente de réécrire les instructions de
-l'assistant.
+```text
+data: {"object":"chat.completion.chunk","choices":[{"delta":{"content":"Bon"}}]}
 
----
+data: {"object":"chat.completion.chunk","choices":[{"delta":{"content":"jour"}}]}
 
-## 4. Où vit la persona : profil ou requête ?
+data: [DONE]
+```
 
-Les deux marchent. Ils ne produisent pas le même comportement, et le choix a été
-tranché par mesure, pas par goût — même question, même profil, même modèle :
+Le frontend concatène `choices[0].delta.content` et gère :
 
-| Emplacement | Résultat observé |
+- `event: hermes.tool.progress` ;
+- `parsed.error` ;
+- `hermes.error` et `finish_reason: "error"` ;
+- `[DONE]` ou une fermeture propre ;
+- l'annulation via `AbortController`.
+
+Hermes peut répondre HTTP 200 tout en signalant un échec métier. Toujours lire
+`finish_reason`, `hermes.failed`, `hermes.error` et les en-têtes `X-Hermes-*`.
+
+## 5. Authentification
+
+| Trajet | Authentification |
 |---|---|
-| Persona du profil (`~/.hermes/profiles/<profil>/SOUL.md`) | Le modèle adopte le ton, **n'émet jamais le bloc d'outil**. Le scaffolding de l'agent — des dizaines de milliers de tokens — décide comment il appelle des outils, et une persona ne le surclasse pas. |
-| Tour `system` de la requête | Le bon appel d'outil dès le premier essai. |
+| Navigateur → Migration Factory | JWT application |
+| Backend → Hermes | `Authorization: Bearer HERMES_API_KEY` |
+| Hermes → fournisseur LLM | Géré dans le profil (`auth.json`, OAuth/token) |
 
-Règle : **conversation simple → profil suffit ; protocole d'outils → tour
-`system` dans la requête.**
+Avec le multiplexage, le profil peut exiger sa propre `API_SERVER_KEY` dans :
 
-Deuxième raison, indépendante du runtime : un profil s'édite hors du dépôt, par
-qui a un accès shell, et dérive du catalogue d'outils sans qu'un seul test le
-remarque. Si tu tiens quand même à mettre le texte dans le profil, **génère-le**
-depuis le code plutôt que de le maintenir à la main :
-
-```bash
-uv run python scripts/hermes_profile_prompt.py > /tmp/klinicos-soul.md
-hermes profile create klinicos
-cp /tmp/klinicos-soul.md ~/.hermes/profiles/klinicos/SOUL.md   # chemin exact : hermes profile show
+```text
+<HERMES_HOME>/profiles/migration/.env
 ```
 
-Voir [hermes_profile_prompt.py](backend/scripts/hermes_profile_prompt.py) : le
-texte est composé de `persona(assistant, locale)` + protocole d'outils +
-catalogue décrit depuis la table sur laquelle l'exécuteur dispatche. À
-régénérer dès qu'un outil change.
+Si elle manque, Hermes journalise :
 
-**Ce texte n'est pas un contrôle de sécurité.** Il dit au modèle quels outils
-existent. Ce que le modèle a le *droit* de faire est redécidé à chaque appel par
-le garde d'autorisation, et toute action modifiante passe par une confirmation
-humaine sur proposition signée. Un profil édité par n'importe qui ne peut donc
-pas élargir ce que l'assistant atteint.
-
----
-
-## 5. Configuration
-
-```bash
-HERMES_API_URL=http://127.0.0.1:8642   # racine seule, SANS /v1 ni /p/…
-HERMES_PROFILE=klinicos                # segment /p/… : ce qui choisit l'agent
-HERMES_API_KEY=                        # = API_SERVER_KEY côté Hermès ; vide → pas d'en-tête
-HERMES_MODEL=klinicos                  # champ "model" du corps ; défaut = le profil
-HERMES_TIMEOUT_MS=30000
-HERMES_MAX_TOKENS=                     # vide → clé absente du corps
-HERMES_TEMPERATURE=                    # vide → clé absente du corps
+```text
+no profile-scoped API_SERVER_KEY is configured
 ```
 
-Dans KlinicOS ces variables portent le préfixe applicatif `KLINICOS_` (une seule
-convention par application) — voir [.env.example](.env.example) et
-[config.py](backend/src/klinicos/core/config.py). Adapte le préfixe, pas la
-sémantique.
+Une mauvaise clé donne HTTP 401 depuis Hermes, traduit par Migration Factory en
+502 « Authentification refusée par Hermes ».
 
-### Depuis un conteneur : l'adresse change
+## 6. Incident principal : deux stockages Hermes
 
-Hermès écoute sur `127.0.0.1:8642` **de l'hôte**. Dans un conteneur, `127.0.0.1`
-désigne le conteneur : l'URL de `.env` n'y vaut rien, exactement comme pour une
-base de données. Deux adresses coexistent donc, et ce n'est pas une redondance :
+Deux instances utilisaient deux volumes différents :
+
+| Usage | Conteneur | Stockage hôte monté sur `/opt/data` |
+|---|---|---|
+| Chat/dashboard natif | `hermes-dashboard` | `/root/.hermes` |
+| Gateway Migration Factory | `hermes` | `/opt/hermes/.hermes` |
+
+Conséquence :
+
+- chat natif : `openai-codex / gpt-5.6-luna` ;
+- API Migration Factory : `anthropic / claude-sonnet-5` ;
+- modifier le dashboard ne modifiait pas la copie chargée par le gateway ;
+- Anthropic répondait `HTTP 400: You're out of extra usage`.
+
+Cette erreur ne venait pas de Migration Factory. Les logs Hermes confirmaient :
+
+```text
+Provider: anthropic
+Model: claude-sonnet-5
+Endpoint: https://api.anthropic.com
+```
+
+La correction a consisté à sauvegarder puis synchroniser vers le gateway :
+
+- `profiles/migration/config.yaml` ;
+- `profiles/migration/auth.json`.
+
+Ne pas synchroniser `.env` aveuglément : il contient la clé du gateway et peut
+être spécifique à chaque instance. Ne jamais afficher `auth.json` ou une clé.
+
+Après correction :
+
+```text
+HTTP 200
+finish_reason=stop
+content=OK
+```
+
+Le streaming a également renvoyé du contenu, `[DONE]` et aucune erreur.
+
+### Diagnostiquer les stockages
+
+```bash
+docker inspect hermes hermes-dashboard \
+  --format '{{.Name}} {{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}'
+
+docker exec hermes sh -lc \
+  'sed -n "1,8p" /opt/data/profiles/migration/config.yaml'
+
+docker exec hermes-dashboard sh -lc \
+  'sed -n "1,8p" /opt/data/profiles/migration/config.yaml'
+```
+
+Comparer les authentifications sans les afficher :
+
+```bash
+docker exec hermes sha256sum /opt/data/profiles/migration/auth.json
+docker exec hermes-dashboard sha256sum /opt/data/profiles/migration/auth.json
+```
+
+## 7. Multiplexage et port 8642
+
+Le gateway principal possède l'unique listener et sert les profils sous
+`/p/<profil>/`. La configuration principale utilise :
 
 ```yaml
-# docker-compose.yml — l'URL est reconstruite pour les conteneurs
-KLINICOS_HERMES_API_URL: http://${KLINICOS_HERMES_HOST:-172.28.0.1}:${KLINICOS_HERMES_PORT:-18642}
+multiplex_profiles: true
 ```
 
-`172.28.0.1:18642` est un relais nginx local vers `127.0.0.1:8642`, restreint au
-réseau Docker de la pile. Passer par un relais plutôt que de faire écouter Hermès
-plus largement : Hermès est mutualisé entre plusieurs sites de production, et on
-ne reconfigure pas un service dont d'autres dépendent pour un seul appelant.
+Un profil secondaire ne doit pas lancer son propre `api_server` sur `8642`.
+Sinon les logs contiennent :
 
----
-
-## 6. Implémentation de référence (Python, httpx)
-
-```python
-class HermesAgentRuntimeAdapter:
-    def __init__(self, *, base_url, profile, api_key=None, model=None,
-                 timeout_ms=30_000, max_tokens=None, temperature=None):
-        self._base_url = base_url.rstrip("/")
-        self._profile = profile
-        self._api_key = api_key
-        self._model = model or profile          # défaut = le profil
-        self._timeout = timeout_ms / 1000
-        self._max_tokens = max_tokens
-        self._temperature = temperature
-
-    @property
-    def endpoint(self) -> str:
-        return f"{self._base_url}/p/{self._profile}/v1/chat/completions"
-
-    def complete(self, conversation) -> AgentReply:
-        body = {
-            "model": self._model,
-            "messages": [{"role": m.role.value, "content": m.content}
-                         for m in conversation.messages],
-            "stream": False,
-        }
-        if self._max_tokens is not None:
-            body["max_tokens"] = self._max_tokens
-        if self._temperature is not None:
-            body["temperature"] = self._temperature
-
-        headers = {"Content-Type": "application/json"}
-        if self._api_key:
-            headers["Authorization"] = f"Bearer {self._api_key}"
-
-        try:
-            response = httpx.post(self.endpoint, json=body, headers=headers,
-                                  timeout=self._timeout)
-        except httpx.TimeoutException as exc:
-            logger.warning("hermes_timeout", profile=self._profile)
-            raise AgentRuntimeError("TIMEOUT") from exc
-        except httpx.HTTPError as exc:
-            logger.warning("hermes_unreachable", profile=self._profile,
-                           error=type(exc).__name__)
-            raise AgentRuntimeError("UPSTREAM_UNAVAILABLE") from exc
-
-        if response.status_code >= 400:
-            # Le statut et le profil au journal ; le corps nulle part.
-            logger.warning("hermes_error", profile=self._profile,
-                           status_code=response.status_code)
-            raise AgentRuntimeError("UPSTREAM_ERROR")
-
-        try:
-            content = response.json()["choices"][0]["message"]["content"]
-        except (ValueError, KeyError, IndexError, TypeError) as exc:
-            logger.warning("hermes_unreadable_reply", profile=self._profile)
-            raise AgentRuntimeError("UPSTREAM_ERROR") from exc
-
-        if not isinstance(content, str) or not content.strip():
-            raise AgentRuntimeError("EMPTY_REPLY")
-
-        return AgentReply(content=content, metadata={"profile": self._profile})
+```text
+Skipping secondary profile 'migration' due to port-binding config error
+Port 8642 already in use
 ```
 
-Prévois un double en mémoire (`ScriptedRuntime` : une liste de réponses
-préparées) **à côté de l'adaptateur**, pas dans l'arbre de tests : la façon dont
-le port s'exerce fait partie du port, et une seconde copie par fichier de test
-est la manière dont les assertions se mettent à diverger sur le comportement du
-runtime.
+En mode multiplexé :
 
----
+- gateway par défaut : écoute sur `8642` ;
+- profil `migration` : servi par `/p/migration/...` ;
+- aucun second listener sur `8642`.
 
-## 7. Erreurs : classifier, jamais relayer
+## 8. Autres endpoints Migration Factory
 
-| Interne | HTTP client | Quand |
+### Conversations
+
+```text
+GET    /api/v1/hermes/conversations
+GET    /api/v1/hermes/conversations/<id>
+POST   /api/v1/hermes/conversations
+DELETE /api/v1/hermes/conversations/<id>
+```
+
+Tables : `public.hermes_conversations` et `public.hermes_messages`. Les données
+sont isolées par l'identité JWT.
+
+### Jobs
+
+```text
+GET    /api/v1/hermes/jobs
+POST   /api/v1/hermes/jobs
+GET    /api/v1/hermes/jobs/<id>
+PATCH  /api/v1/hermes/jobs/<id>
+DELETE /api/v1/hermes/jobs/<id>
+POST   /api/v1/hermes/jobs/<id>/pause
+POST   /api/v1/hermes/jobs/<id>/resume
+POST   /api/v1/hermes/jobs/<id>/run
+```
+
+Les Jobs Hermes sont sous `http://hermes:8642/api/jobs`, sans `/v1` et sans
+`/p/migration`.
+
+### Exécution immédiate d'un job
+
+```text
+POST /api/v1/hermes/jobs/<id>/execute
+```
+
+Le backend récupère le prompt, l'envoie au chat du profil en non-streaming, puis
+stocke le résultat dans `public.hermes_job_results`. Aucun champ `model`.
+
+### Statut agent
+
+```text
+GET /api/v1/hermes/agent-status
+```
+
+## 9. Diagnostic des erreurs
+
+| Symptôme | Cause probable | Vérification |
 |---|---|---|
-| `TIMEOUT` | 504 | dépassement du délai |
-| `UPSTREAM_UNAVAILABLE` | 503 | Hermès injoignable |
-| `UPSTREAM_ERROR` | 502 | statut ≥ 400, ou réponse illisible |
-| `EMPTY_REPLY` | 502 | `content` vide ou non textuel |
+| 401 application | JWT absent/expiré | Reconnexion, `/auth/me` |
+| 400 `messages doit être...` | Corps invalide | Liste et rôles |
+| 500 clé non configurée | `HERMES_API_KEY` vide | DB puis environnement |
+| 502 authentification refusée | Mauvaise clé gateway/profil | Comparer sans afficher |
+| 502 profil inconnu | Profil absent/multiplexage inactif | URL et logs Hermes |
+| 502 agent injoignable | Réseau/DNS Docker | Résolution de `hermes` |
+| 504 | Timeout | Timeout et logs Hermes |
+| HTTP 200 + erreur | Erreur LLM encapsulée | `hermes.error`, logs fournisseur |
+| Aucun texte à l'écran | Erreur SSE imbriquée ignorée | Parseur frontend |
+| Chat natif OK, application KO | Stockages différents | Mounts et `config.yaml` |
 
-Un corps d'erreur amont peut contenir l'URL interne, la clé ou une trace. Le
-texte d'erreur d'un LLM est la dernière chose à renvoyer dans un navigateur.
+En-têtes utiles :
 
----
+```text
+X-Hermes-Completed
+X-Hermes-Partial
+X-Hermes-Error
+X-Hermes-Session-Id
+```
 
-## 8. Vérifier
+Les corps non JSON, traces, URLs internes et secrets ne doivent jamais être
+relayés au navigateur.
+
+## 10. Tests opérationnels
+
+### Appel direct depuis le backend
 
 ```bash
-# 1. Hermès répond, profil compris — appel brut, sans passer par le backend
-curl -sS -X POST "http://127.0.0.1:8642/p/klinicos/v1/chat/completions" \
-  -H "Content-Type: application/json" -H "Authorization: Bearer <CLE>" \
-  -d '{"model":"klinicos","messages":[{"role":"user","content":"test"}],"stream":false}'
+docker compose exec -T backend python3 - <<'PY'
+import requests
+from api.hermes import _hermes_config, _chat_url
 
-# 2. Le profil existe bien (un profil absent → 404)
-hermes profile show klinicos
-
-# 3. Depuis le conteneur, via le relais
-docker compose exec backend curl -sS -X POST \
-  "http://172.28.0.1:18642/p/klinicos/v1/chat/completions" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"klinicos","messages":[{"role":"user","content":"test"}],"stream":false}'
-
-# 4. Le trajet applicatif complet
-curl -sS -X POST http://localhost:8000/api/v1/ai/converse \
-  -H "Content-Type: application/json" -H "Authorization: Bearer <JWT>" \
-  -d '{"assistant":"SECRETARY","messages":[{"role":"user","content":"Bonjour"}]}'
+cfg = _hermes_config()
+r = requests.post(
+    _chat_url(cfg),
+    headers={
+        "Authorization": "Bearer " + cfg["api_key"],
+        "Content-Type": "application/json",
+    },
+    json={
+        "messages": [{"role": "user", "content": "Réponds uniquement par OK"}],
+        "stream": False,
+    },
+    timeout=(10, 60),
+)
+data = r.json()
+print("status=", r.status_code)
+print("finish_reason=", data["choices"][0]["finish_reason"])
+print("content=", data["choices"][0]["message"]["content"])
+PY
 ```
 
-Un 404 sur l'étape 1 signifie presque toujours l'une de deux choses : le profil
-n'existe pas, ou tu as ciblé le profil par `model` au lieu de l'URL.
+Attendu : HTTP 200, `finish_reason=stop`, contenu non vide.
+
+### Tests backend et frontend
+
+```bash
+docker compose exec -T backend \
+  python3 -m pytest -q tests/test_hermes_api.py
+
+docker compose exec -T frontend npm run build
+
+docker compose ps
+```
+
+Résultat validé pendant la correction : `33 passed`. Le warning Vite sur la
+taille du bundle est non bloquant.
+
+## 11. Déploiement
+
+Les scripts historiques peuvent échouer si l'ancien `docker-compose` ne comprend
+pas le tag YAML `!reset`. Utiliser Docker Compose moderne :
+
+```bash
+docker compose build backend frontend
+docker compose up -d backend frontend
+docker compose ps
+```
+
+Après modification d'un profil Hermes :
+
+```bash
+docker restart hermes
+```
+
+Puis refaire un test non-streaming et un test SSE.
+
+## 12. Points d'attention
+
+1. Le profil est dans l'URL, jamais dans `model`.
+2. Migration Factory ne choisit pas le modèle ou le fournisseur.
+3. HTTP 200 Hermes peut contenir une erreur LLM.
+4. Le frontend doit gérer les erreurs imbriquées du SSE.
+5. `system_config` peut écraser `.env`.
+6. Un profil multiplexé peut demander une clé API dédiée.
+7. Gateway et dashboard doivent lire le même `HERMES_HOME`, ou être
+   synchronisés prudemment.
+8. Ne jamais copier `.env` ou `auth.json` sans sauvegarde et autorisation.
+9. Ne jamais exposer le port `8642` publiquement : terminal et MCP sont puissants.
+10. Redémarrer ne corrige pas une configuration située dans le mauvais volume.
+11. Conserver le MCP PostgreSQL et les règles de sécurité du profil `migration`.
+12. Tester depuis le conteneur backend, pas uniquement depuis l'hôte.
+
+## 13. Checklist finale
+
+- [ ] URL : `/p/migration/v1/chat/completions`.
+- [ ] JSON : uniquement `messages` et `stream`.
+- [ ] `HERMES_PROFILE=migration` effectif.
+- [ ] Clé gateway/profil valide et non exposée.
+- [ ] Gateway et chat utilisent la même configuration de profil.
+- [ ] Modèle des logs conforme au modèle affiché dans Hermes.
+- [ ] Non-streaming : contenu et `finish_reason=stop`.
+- [ ] SSE : deltas, `[DONE]`, aucune erreur.
+- [ ] Tests Hermes réussis.
+- [ ] Build frontend réussi.
+- [ ] Services `healthy`.
 
 ---
 
-## 9. Checklist avant de dire que c'est fait
-
-- [ ] Le profil est dans l'URL ; `model` n'est jamais utilisé pour le sélectionner.
-- [ ] Le corps contient trois clés, plus `max_tokens`/`temperature` uniquement si configurés.
-- [ ] `HERMES_API_URL` est la racine seule, sans `/v1` ni `/p/…`.
-- [ ] Clé vide → en-tête `Authorization` absent (et pas `Bearer ` vide).
-- [ ] Les rôles `system` et `tool` venant du client sont rejetés en 400.
-- [ ] Le message système est ajouté par le serveur, après filtrage.
-- [ ] Aucune erreur amont ne traverse vers le client ; tout part au journal.
-- [ ] URL, profil et clé viennent de l'environnement, jamais du dépôt, jamais du bundle front.
-- [ ] Depuis Docker, l'URL passe par le relais et pas par `127.0.0.1`.
-- [ ] Le timeout est posé sur l'appel (30 s par défaut).
+État validé après correction : Migration Factory appelle uniquement le profil
+`migration`; Hermes gère `openai-codex / gpt-5.6-luna`; les appels
+non-streaming et streaming répondent correctement.
