@@ -252,23 +252,13 @@ def test_chat_poste_sur_l_url_du_profil(client):
     assert post.call_args.args[0] == 'http://hermes.test/p/migration/v1/chat/completions'
 
 
-def test_model_porte_le_nom_du_profil(client):
-    # Champ decoratif : sert a rendre les journaux du gateway lisibles.
+def test_corps_ne_contient_pas_de_modele(client):
     with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
          patch.object(hermes_module.requests, 'post',
                       return_value=_upstream(body={'ok': True})) as post:
         client.post('/api/v1/hermes/chat', json={
             'messages': [{'role': 'user', 'content': 'x'}], 'stream': False})
-    assert post.call_args.kwargs['json']['model'] == 'migration'
-
-
-def test_corps_limite_a_trois_clefs(client):
-    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_PROFIL), \
-         patch.object(hermes_module.requests, 'post',
-                      return_value=_upstream(body={'ok': True})) as post:
-        client.post('/api/v1/hermes/chat', json={
-            'messages': [{'role': 'user', 'content': 'x'}], 'stream': False})
-    assert set(post.call_args.kwargs['json']) == {'model', 'messages', 'stream'}
+    assert set(post.call_args.kwargs['json']) == {'messages', 'stream'}
 
 
 def test_profil_inconnu_renvoie_502_avec_diagnostic(client):

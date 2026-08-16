@@ -117,7 +117,7 @@ def _hermes_config() -> dict:
         # s'active explicitement (Paramètres > Profil Hermes), et se désactive en
         # vidant le champ. Un défaut non vide rendrait cette bascule impossible,
         # get_config traitant « valeur vide » comme « non configuré ».
-        'profile': (get_config('HERMES_PROFILE', '') or '').strip().strip('/'),
+        'profile': (get_config('HERMES_PROFILE', 'migration') or 'migration').strip().strip('/') or 'migration',
         # read timeout = silence max ENTRE deux chunks SSE, pas la durée totale.
         'read_timeout': (timeout if timeout > 0 else None),
     }
@@ -229,7 +229,6 @@ def chat():
         # Champ cosmétique : Hermes le renvoie tel quel et ne sélectionne rien
         # (c'est /p/<profil>/ dans l'URL qui choisit l'agent). On y met le nom du
         # profil par convention, pour que les journaux du gateway soient lisibles.
-        'model': cfg.get('profile') or 'hermes-agent',
         'messages': _build_messages(raw_messages, instructions),
         'stream': stream,
     }
@@ -558,8 +557,7 @@ def execute_job(job_id):
     try:
         cr = requests.post(
             _chat_url(cfg),
-            json={'model': cfg.get('profile') or 'hermes-agent',
-                  'messages': [{'role': 'user', 'content': prompt}], 'stream': False},
+            json={'messages': [{'role': 'user', 'content': prompt}], 'stream': False},
             headers=headers, timeout=(10, cfg['read_timeout']),
         )
     except requests.exceptions.Timeout:

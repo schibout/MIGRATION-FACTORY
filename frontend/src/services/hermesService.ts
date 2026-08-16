@@ -256,6 +256,17 @@ export async function streamChat(
       return; // fragment non-JSON (heartbeat exotique) : ignoré
     }
 
+    // Hermes peut signaler une erreur dans le champ imbriqué hermes.error
+    // tout en renvoyant HTTP 200 et finish_reason=error. La remonter ici évite
+    // de supprimer la bulle assistant sans afficher de retour à l utilisateur.
+    const hermes = parsed.hermes as Record<string, unknown> | undefined;
+    const nestedError = hermes && typeof hermes.error === "string" ? hermes.error : undefined;
+    const choicesForError = parsed.choices as Array<{ finish_reason?: unknown }> | undefined;
+    if (nestedError || choicesForError?.[0]?.finish_reason === "error") {
+      handlers.onError(nestedError || "Hermes n a pas pu générer de réponse.");
+      return;
+    }
+
     // Event outil : forme "event: hermes.tool.progress" OU objet typé dans data.
     if (evt === 'hermes.tool.progress' || parsed.object === 'hermes.tool.progress') {
       const label =

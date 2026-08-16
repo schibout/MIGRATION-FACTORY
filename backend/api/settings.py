@@ -110,7 +110,7 @@ SETTINGS_CATALOG = [
     # Defaut vide = agent Hermes par defaut (comportement historique) : n'activer
     # un profil qu'une fois le gateway configure pour le servir
     # (gateway.multiplex_profiles), sinon toute route /p/... repond 404.
-    {'key': 'HERMES_PROFILE',              'category': 'ai', 'label': "Profil Hermes (ex. migration ; vide = agent par défaut)", 'type': 'text', 'secret': False, 'default': '',        'requires_restart': False},
+    {'key': 'HERMES_PROFILE',              'category': 'ai', 'label': "Profil Hermes", 'type': 'text', 'secret': False, 'default': 'migration',        'requires_restart': False},
 ]
 
 
