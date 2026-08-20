@@ -50,6 +50,7 @@ import MaintenanceHierarchyPage from './pages/MaintenanceHierarchyPage';
 import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceBackupsPage from './pages/MaintenanceBackupsPage';
 import MaintenancePeToolsPage from './pages/MaintenancePeToolsPage';
+import MaintenanceIbauPage from './pages/MaintenanceIbauPage';
 import Parametres from './pages/Parametres';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
@@ -216,6 +217,7 @@ function App() {
           <Route path="maintenance/ih02" element={<IH02HierarchyPage />} />
           <Route path="maintenance/backups" element={<MaintenanceBackupsPage />} />
           <Route path="maintenance/pe-tools" element={<MaintenancePeToolsPage />} />
+          <Route path="maintenance/ibau" element={<MaintenanceIbauPage />} />
           <Route path="export/clients" element={<ExportClients />} />
           <Route path="export/projets" element={<ExportProjects />} />
           

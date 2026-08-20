@@ -45,6 +45,14 @@ const cards = [
     tag: 'PE TOOLS',
   },
   {
+    title: 'Liste IBAU (référentiel équipe)',
+    description: 'Liste des seuls IBAU, figée hors SAP : ajout, modification et suppression par les équipes.',
+    path: '/maintenance/ibau',
+    icon: LayersIcon,
+    color: 'error' as const,
+    tag: 'ÉDITABLE',
+  },
+  {
     title: 'Sauvegardes & restauration',
     description: 'Enregistrer un état de travail, y revenir à tout moment, et recharger les données depuis SAP.',
     path: '/maintenance/backups',
@@ -60,6 +68,8 @@ const typeCards = [
   { code: 'ERSA', title: 'Pièces de rechange', path: '/maintenance/articles/ersa', color: 'warning' as const },
   { code: 'IBAU', title: 'Ensembles de maintenance', path: '/maintenance/articles/ibau', color: 'info' as const },
   { code: 'NLAG', title: 'Articles non stockés', path: '/maintenance/articles/nlag', color: 'secondary' as const },
+  // Referentiel decouple de SAP (clean_data.ibau_article) : compteur dedie.
+  { code: 'LISTE_IBAU', label: 'Liste IBAU', title: 'Référentiel équipe, hors SAP', path: '/maintenance/ibau', color: 'error' as const },
 ];
 
 const MaintenancePage: React.FC = () => {
@@ -77,6 +87,12 @@ const MaintenancePage: React.FC = () => {
           setCounts(map);
         }
       } catch { /* compteurs facultatifs */ }
+      try {
+        const res = await api.get('/maintenance/ibau/stats');
+        if (res.data?.success) {
+          setCounts((prev) => ({ ...prev, LISTE_IBAU: Number(res.data.data?.total ?? 0) }));
+        }
+      } catch { /* compteur facultatif (migration 030 pas encore jouee) */ }
     })();
   }, []);
 
@@ -177,7 +193,7 @@ const MaintenancePage: React.FC = () => {
                     <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
                       {counts[card.code] !== undefined ? counts[card.code].toLocaleString() : '—'}
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{card.code}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{(card as any).label || card.code}</Typography>
                     <Typography variant="caption" color="text.secondary" noWrap>{card.title}</Typography>
                   </Box>
                 </CardContent>
