@@ -43,7 +43,6 @@ export async function getConversation(id: number): Promise<HermesConversationDet
 
 export async function saveConversation(payload: {
   conversation_id: number | null;
-  instructions: string;
   messages: HermesApiMessage[];
 }): Promise<number> {
   const res = await api.post('/hermes/conversations', payload);
@@ -173,7 +172,6 @@ async function tryRefreshViaAxios(): Promise<boolean> {
  */
 export async function streamChat(
   messages: HermesApiMessage[],
-  instructions: string,
   handlers: HermesStreamHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -186,7 +184,6 @@ export async function streamChat(
       },
       body: JSON.stringify({
         messages,
-        instructions: instructions || undefined,
         stream: true,
       }),
       signal,

@@ -12,8 +12,8 @@ import {
 // Slice du chat Assistant Hermes.
 //
 // Streaming => pas de createAsyncThunk : le thunk manuel sendMessage dispatch
-// des actions au fil des deltas SSE. Les instructions vivent dans le store :
-// persistantes sur toute la session SPA (navigation comprise).
+// des actions au fil des deltas SSE. La consigne système est fixée côté backend
+// (HERMES_DEFAULT_INSTRUCTIONS) : le chat n'envoie plus d'instructions client.
 // =====================================================
 
 /** Fichier joint (texte lu côté client) pour analyse par Hermes. */
@@ -31,19 +31,29 @@ export interface ChatBubble {
   attachment?: ChatAttachment;
 }
 
+// Fenêtre d'historique envoyée à Hermes (API stateless : tout repart à chaque
+// tour). On limite les tokens : seuls les N derniers messages partent, et le
+// contenu des fichiers joints n'est inclus en entier que dans les derniers
+// tours. La persistance en base (saveConversation) reste, elle, intégrale.
+const MAX_HISTORY_MESSAGES = 16;
+const ATTACHMENT_FRESH_WINDOW = 4;
+
 /**
  * Contenu réellement envoyé à Hermes (et persisté) pour un message : le texte
  * de l'utilisateur, complété du fichier joint entre balises si présent.
+ * `omitAttachment` remplace le contenu du fichier par une mention (messages
+ * anciens de l'historique : on économise les tokens sans perdre la trace).
  */
-const toApiContent = (m: ChatBubble): string =>
-  m.attachment
-    ? `${m.content}\n\n[Fichier joint « ${m.attachment.name} »]\n\`\`\`\n${m.attachment.content}\n\`\`\``
-    : m.content;
+const toApiContent = (m: ChatBubble, omitAttachment = false): string => {
+  if (!m.attachment) return m.content;
+  if (omitAttachment) {
+    return `${m.content}\n\n[Fichier joint « ${m.attachment.name} » omis de l'historique — le joindre à nouveau si son contenu est requis]`;
+  }
+  return `${m.content}\n\n[Fichier joint « ${m.attachment.name} »]\n\`\`\`\n${m.attachment.content}\n\`\`\``;
+};
 
 interface HermesChatState {
   messages: ChatBubble[];
-  /** Consigne persistante, envoyée comme message system à chaque requête. */
-  instructions: string;
   /** id du fil persisté en base (null = pas encore sauvegardé / nouveau). */
   conversationId: number | null;
   isStreaming: boolean;
@@ -54,7 +64,6 @@ interface HermesChatState {
 
 const initialState: HermesChatState = {
   messages: [],
-  instructions: '',
   conversationId: null,
   isStreaming: false,
   toolActivity: null,
@@ -111,9 +120,6 @@ const hermesChatSlice = createSlice({
         state.messages.pop();
       }
     },
-    instructionsChanged(state, action: PayloadAction<string>) {
-      state.instructions = action.payload;
-    },
     errorDismissed(state) {
       state.error = null;
     },
@@ -124,7 +130,6 @@ const hermesChatSlice = createSlice({
       state.messages = action.payload.messages
         .filter((m) => m.role === 'user' || m.role === 'assistant')
         .map((m) => ({ id: nextId(), role: m.role as 'user' | 'assistant', content: m.content }));
-      state.instructions = action.payload.instructions;
       state.conversationId = action.payload.id;
       state.error = null;
       state.toolActivity = null;
@@ -147,7 +152,6 @@ export const {
   toolProgressReceived,
   streamFinished,
   streamFailed,
-  instructionsChanged,
   errorDismissed,
   conversationSaved,
   conversationLoaded,
@@ -155,20 +159,22 @@ export const {
 } = hermesChatSlice.actions;
 
 /**
- * Envoie un message : historique complet (API Hermes stateless) + instructions.
+ * Envoie un message : fenêtre d'historique (API Hermes stateless).
  * ⚠️ Ordre important : capturer l'historique APRÈS userMessageAdded mais AVANT
  * streamStarted (sinon la bulle assistant vide partirait dans l'historique).
  */
 export const sendMessage = (content: string, attachment?: ChatAttachment, signal?: AbortSignal) =>
   async (dispatch: AppDispatch, getState: () => RootState): Promise<void> => {
     dispatch(userMessageAdded({ content, attachment }));
-    const { messages, instructions } = getState().hermesChat;
-    const history: HermesApiMessage[] = messages.map((m) => ({
+    const { messages } = getState().hermesChat;
+    const recent = messages.slice(-MAX_HISTORY_MESSAGES);
+    const freshFrom = recent.length - ATTACHMENT_FRESH_WINDOW;
+    const history: HermesApiMessage[] = recent.map((m, i) => ({
       role: m.role,
-      content: toApiContent(m),
+      content: toApiContent(m, i < freshFrom),
     }));
     dispatch(streamStarted());
-    await streamChat(history, instructions, {
+    await streamChat(history, {
       onDelta: (text) => dispatch(deltaReceived(text)),
       onToolProgress: (label) => dispatch(toolProgressReceived(label)),
       onDone: () => dispatch(streamFinished()),
@@ -183,7 +189,6 @@ export const sendMessage = (content: string, attachment?: ChatAttachment, signal
       try {
         const id = await saveConversation({
           conversation_id: after.conversationId,
-          instructions: after.instructions,
           messages: after.messages.map((m) => ({ role: m.role, content: toApiContent(m) })),
         });
         dispatch(conversationSaved(id));
@@ -193,7 +198,7 @@ export const sendMessage = (content: string, attachment?: ChatAttachment, signal
     }
   };
 
-/** Rouvre une conversation persistée : charge messages + instructions dans le chat. */
+/** Rouvre une conversation persistée : recharge ses messages dans le chat. */
 export const loadConversation = (id: number) =>
   async (dispatch: AppDispatch): Promise<void> => {
     const detail = await getConversation(id);

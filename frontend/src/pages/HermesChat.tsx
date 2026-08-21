@@ -7,7 +7,6 @@ import {
     DeleteOutline as DeleteIcon,
     Description as FileIcon,
     Edit as EditIcon,
-    ExpandMore as ExpandMoreIcon,
     History as HistoryIcon,
     MonitorHeart as StatusIcon,
     Pause as PauseIcon,
@@ -23,9 +22,6 @@ import {
     Work as JobsIcon,
 } from '@mui/icons-material';
 import {
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
     Alert,
     Avatar,
     Box,
@@ -81,7 +77,6 @@ import {
     ChatBubble,
     conversationCleared,
     errorDismissed,
-    instructionsChanged,
     loadConversation,
     sendMessage,
 } from '../store/slices/hermesChatSlice';
@@ -162,7 +157,7 @@ const Ligne: React.FC<{ message: ChatBubble; streaming: boolean }> = ({ message,
 // ----- Onglet Conversation -----
 const ConversationTab: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { messages, instructions, isStreaming, toolActivity, error } = useSelector(
+  const { messages, isStreaming, toolActivity, error } = useSelector(
     (s: RootState) => s.hermesChat,
   );
   const [saisie, setSaisie] = useState('');
@@ -215,31 +210,7 @@ const ConversationTab: React.FC = () => {
 
   return (
     <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-        <Accordion variant="outlined" disableGutters sx={{ flexGrow: 1, bgcolor: 'transparent' }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              Instructions à l’{AGENT}
-              {instructions.trim() && (
-                <Typography component="span" variant="caption" color="success.main" sx={{ ml: 1 }}>
-                  ● actives
-                </Typography>
-              )}
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <TextField
-              fullWidth
-              multiline
-              minRows={2}
-              size="small"
-              placeholder="Ex. : Réponds en français, de façon concise…"
-              value={instructions}
-              onChange={(e) => dispatch(instructionsChanged(e.target.value))}
-              helperText="Message système appliqué à toute la conversation."
-            />
-          </AccordionDetails>
-        </Accordion>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mb: 1.5 }}>
         <Button
           size="small"
           startIcon={<AddIcon />}

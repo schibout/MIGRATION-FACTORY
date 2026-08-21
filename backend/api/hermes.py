@@ -148,14 +148,33 @@ def _proxy(method: str, url: str, cfg: dict, json_body=None):
 
 _JOB_ACTIONS = {'pause', 'resume', 'run'}
 
+# Consigne d'efficacité par défaut : sans elle, Hermes enchaîne des appels
+# d'outils inutiles (skill_view / execute_code / terminal) avant d'écrire le
+# premier mot — mesuré à ~50s sur 56s pour une simple rédaction. Validé au
+# banc : 36s -> ~10s sur du texte pur, outils toujours appelés quand requis.
+# Surchargeable via system_config HERMES_DEFAULT_INSTRUCTIONS (vide = désactivé).
+_DEFAULT_INSTRUCTIONS = (
+    "Réponds directement dans le chat. Outils autorisés UNIQUEMENT dans ces cas : "
+    "interroger PostgreSQL (mcp postgres) quand la question porte sur les données ; "
+    "lire un fichier que l'utilisateur désigne ; exécuter une commande ou du code que "
+    "l'utilisateur demande EXPLICITEMENT d'exécuter. Tout le reste — rédaction, "
+    "explication, synthèse, comptage de mots, mise en forme — se fait sans aucun outil, "
+    "sans fichier intermédiaire, sans terminal ni execute_code. Au plus UNE consultation "
+    "de skill par réponse, et seulement avant d'écrire du SQL ou d'agir sur les données "
+    "du projet."
+)
+
 
 def _build_messages(raw_messages: list, instructions: str) -> list:
-    """Tableau messages envoyé à Hermes : les instructions utilisateur deviennent
-    LE message system en tête. On retire tout system du tableau reçu (le champ
-    instructions est la seule source de consigne, pas de doublon)."""
+    """Tableau messages envoyé à Hermes : consigne d'efficacité par défaut +
+    instructions utilisateur, concaténées dans LE message system en tête (les
+    instructions utilisateur viennent APRÈS et peuvent donc la contredire).
+    On retire tout system du tableau reçu (pas de doublon)."""
     messages = [m for m in raw_messages if m['role'] != 'system']
-    if instructions:
-        messages = [{'role': 'system', 'content': instructions}] + messages
+    defaut = (get_config('HERMES_DEFAULT_INSTRUCTIONS', _DEFAULT_INSTRUCTIONS) or '').strip()
+    system = '\n\n'.join(part for part in (defaut, instructions) if part)
+    if system:
+        messages = [{'role': 'system', 'content': system}] + messages
     return messages
 
 
