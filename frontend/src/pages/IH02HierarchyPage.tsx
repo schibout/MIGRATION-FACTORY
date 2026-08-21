@@ -398,9 +398,10 @@ const IH02HierarchyPage: React.FC = () => {
   const [workCenters, setWorkCenters] = useState<WorkCenter[]>([]);
 
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
-  const [bulkEdits, setBulkEdits] = useState<{ field: string; label: string; value: string }[]>([]);
+  const [bulkEdits, setBulkEdits] = useState<{ field: string; label: string; value: string; mode?: 'replace'; search?: string }[]>([]);
   const [bulkField, setBulkField] = useState('');
   const [bulkValue, setBulkValue] = useState('');
+  const [bulkSearch, setBulkSearch] = useState('');
   const [bulkCount, setBulkCount] = useState(0);
   const [bulkSaving, setBulkSaving] = useState(false);
 
@@ -419,6 +420,9 @@ const IH02HierarchyPage: React.FC = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'location' | 'equipment'; node: TreeNode } | null>(null);
   const [deleteSaving, setDeleteSaving] = useState(false);
+  // Suppression d'une ligne article de la nomenclature (occurrence, pas la fiche)
+  const [bomDeleteTarget, setBomDeleteTarget] = useState<SelectedBom | null>(null);
+  const [bomDeleteSaving, setBomDeleteSaving] = useState(false);
 
   // Panneau de détails d'un composant BOM (droite)
   const [selectedBom, setSelectedBom] = useState<SelectedBom | null>(null);
@@ -427,14 +431,19 @@ const IH02HierarchyPage: React.FC = () => {
   const [editBomArticleSuggestions, setEditBomArticleSuggestions] = useState<any[]>([]);
   const [editBomArticleLoading, setEditBomArticleLoading] = useState(false);
 
-  const BULK_FIELDS = [
+  // `replace: true` = remplacement d'une PARTIE de la valeur (chercher/remplacer)
+  // au lieu d'une affectation : indispensable pour l'identifiant STRNO, dont la
+  // valeur est propre a chaque noeud (unicite entre freres).
+  const BULK_FIELDS: { key: string; label: string; replace?: boolean }[] = [
     { key: 'designation', label: 'Désignation' },
+    { key: 'identifiant', label: 'Identifiant structuré (STRNO) — remplacer une partie', replace: true },
     { key: 'centre_couts', label: 'Centre de coûts' },
     { key: 'poste_travail_resp_maintenance', label: 'Poste travail resp. maintenance' },
     { key: 'art_type_construction', label: 'Art / Type construction' },
     { key: 'quantite', label: 'Quantité' },
     { key: 'unite', label: 'Unité' },
   ];
+  const bulkFieldIsReplace = !!BULK_FIELDS.find((f) => f.key === bulkField)?.replace;
 
   const loadRootNodes = useCallback(async () => {
     try {
@@ -1043,6 +1052,7 @@ const IH02HierarchyPage: React.FC = () => {
     setBulkEdits([]);
     setBulkField('');
     setBulkValue('');
+    setBulkSearch('');
     setBulkDialogOpen(true);
     try {
       const resp = await api.get('/ih02-hierarchy/descendants-count', { params: { node_id: node.node_id, level: node.level } });
@@ -1052,7 +1062,19 @@ const IH02HierarchyPage: React.FC = () => {
 
   const addBulkEdit = () => {
     if (!bulkField) return;
-    const label = BULK_FIELDS.find((f) => f.key === bulkField)?.label || bulkField;
+    const def = BULK_FIELDS.find((f) => f.key === bulkField);
+    if (def?.replace) {
+      if (!bulkSearch) return; // le texte a remplacer est obligatoire
+      setBulkEdits((prev) => {
+        const filtered = prev.filter((e) => e.field !== bulkField);
+        return [...filtered, { field: bulkField, label: def.label, value: bulkValue, mode: 'replace' as const, search: bulkSearch }];
+      });
+      setBulkField('');
+      setBulkValue('');
+      setBulkSearch('');
+      return;
+    }
+    const label = def?.label || bulkField;
     setBulkEdits((prev) => {
       const filtered = prev.filter((e) => e.field !== bulkField);
       return [...filtered, { field: bulkField, label, value: bulkValue }];
@@ -1072,7 +1094,7 @@ const IH02HierarchyPage: React.FC = () => {
       const resp = await api.put('/ih02-hierarchy/bulk-update', {
         node_id: selectedNode.node_id,
         level: selectedNode.level,
-        updates: bulkEdits.map((e) => ({ field: e.field, value: e.value })),
+        updates: bulkEdits.map((e) => ({ field: e.field, value: e.value, mode: e.mode, search: e.search })),
       });
       if (resp.data.success) {
         setSnackbar({ open: true, message: resp.data.message, severity: 'success' });
@@ -1085,6 +1107,34 @@ const IH02HierarchyPage: React.FC = () => {
       setSnackbar({ open: true, message: err.response?.data?.error || 'Erreur modification en masse', severity: 'error' });
     } finally {
       setBulkSaving(false);
+    }
+  };
+
+  const confirmBomDelete = async () => {
+    if (!bomDeleteTarget) return;
+    const sel = bomDeleteTarget;
+    if (!sel.comp.bom_key) {
+      setSnackbar({
+        open: true,
+        severity: 'error',
+        message: 'Cette ligne ne peut pas être supprimée : le serveur ne fournit pas son identifiant de nomenclature.',
+      });
+      setBomDeleteTarget(null);
+      return;
+    }
+    setBomDeleteSaving(true);
+    try {
+      await api.delete('/ih02-hierarchy/bom-component', { params: { bom_key: sel.comp.bom_key } });
+      setSnackbar({ open: true, message: `Article "${sel.comp.matnr_short || sel.comp.idnrk}" retiré de la nomenclature`, severity: 'success' });
+      if (selectedBom?.comp.bom_key === sel.comp.bom_key) setSelectedBom(null);
+      // Recharger la nomenclature d'origine (poste technique ou article parent)
+      if (sel.mode === 'fl' && sel.tplnr) await loadBom(sel.tplnr, true);
+      else if (sel.parentIdnrk) await loadArticleBom(sel.parentIdnrk, true);
+    } catch (err: any) {
+      setSnackbar({ open: true, message: err.response?.data?.error || 'Erreur lors de la suppression', severity: 'error' });
+    } finally {
+      setBomDeleteSaving(false);
+      setBomDeleteTarget(null);
     }
   };
 
@@ -1641,6 +1691,23 @@ const IH02HierarchyPage: React.FC = () => {
               sx={{ ml: 0.5, height: 18, fontSize: '0.6rem', backgroundColor: alpha(theme.palette.grey[500], 0.15) }}
             />
           )}
+          <Tooltip title="Retirer cet article de la nomenclature">
+            <IconButton
+              size="small"
+              color="error"
+              sx={{ ml: 0.5, p: 0.25, opacity: 0.55, '&:hover': { opacity: 1 } }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setBomDeleteTarget({
+                  comp, mode, pathKey,
+                  tplnr: mode === 'fl' ? (comp.tplnr || '') : undefined,
+                  parentIdnrk: mode === 'article' ? (parentIdnrk || '') : undefined,
+                });
+              }}
+            >
+              <DeleteIcon sx={{ fontSize: '0.95rem' }} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
@@ -2154,9 +2221,14 @@ const IH02HierarchyPage: React.FC = () => {
               </Box>
             </Box>
             {!e ? (
-              <Tooltip title="Modifier">
-                <IconButton color="primary" onClick={() => startEditBom(sel)}><EditIcon /></IconButton>
-              </Tooltip>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Tooltip title="Modifier">
+                  <IconButton color="primary" onClick={() => startEditBom(sel)}><EditIcon /></IconButton>
+                </Tooltip>
+                <Tooltip title="Retirer cet article de la nomenclature">
+                  <IconButton color="error" onClick={() => setBomDeleteTarget(sel)}><DeleteIcon /></IconButton>
+                </Tooltip>
+              </Box>
             ) : (
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button variant="contained" size="small" startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />} onClick={saveBom} disabled={saving}>Enregistrer</Button>
@@ -2419,17 +2491,43 @@ const IH02HierarchyPage: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-            <TextField
-              size="small"
-              label="Nouvelle valeur"
-              value={bulkValue}
-              onChange={(e) => setBulkValue(e.target.value)}
-              sx={{ flex: 1 }}
-            />
-            <IconButton color="primary" onClick={addBulkEdit} disabled={!bulkField}>
+            {bulkFieldIsReplace ? (
+              <>
+                <TextField
+                  size="small"
+                  label="Texte à remplacer *"
+                  value={bulkSearch}
+                  onChange={(e) => setBulkSearch(e.target.value)}
+                  sx={{ flex: 1, '& input': { fontFamily: 'monospace' } }}
+                />
+                <TextField
+                  size="small"
+                  label="Remplacer par"
+                  value={bulkValue}
+                  onChange={(e) => setBulkValue(e.target.value)}
+                  sx={{ flex: 1, '& input': { fontFamily: 'monospace' } }}
+                />
+              </>
+            ) : (
+              <TextField
+                size="small"
+                label="Nouvelle valeur"
+                value={bulkValue}
+                onChange={(e) => setBulkValue(e.target.value)}
+                sx={{ flex: 1 }}
+              />
+            )}
+            <IconButton color="primary" onClick={addBulkEdit} disabled={!bulkField || (bulkFieldIsReplace && !bulkSearch)}>
               <AddIcon />
             </IconButton>
           </Box>
+          {bulkFieldIsReplace && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Seule la partie « texte à remplacer » sera changée dans l'identifiant de chaque
+              nœud du sous-arbre (ex. remplacer « T130 » par « T140 »). Les identifiants sans
+              cette partie restent inchangés.
+            </Alert>
+          )}
 
           {bulkEdits.length > 0 && (
             <Table size="small">
@@ -2444,7 +2542,11 @@ const IH02HierarchyPage: React.FC = () => {
                 {bulkEdits.map((edit) => (
                   <TableRow key={edit.field}>
                     <TableCell>{edit.label}</TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>{edit.value || <Typography variant="caption" color="text.secondary">(vider)</Typography>}</TableCell>
+                    <TableCell sx={{ fontFamily: 'monospace' }}>
+                      {edit.mode === 'replace'
+                        ? `« ${edit.search} » devient « ${edit.value} »`
+                        : (edit.value || <Typography variant="caption" color="text.secondary">(vider)</Typography>)}
+                    </TableCell>
                     <TableCell>
                       <IconButton size="small" color="error" onClick={() => removeBulkEdit(edit.field)}>
                         <DeleteIcon fontSize="small" />
@@ -2672,8 +2774,9 @@ const IH02HierarchyPage: React.FC = () => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Numéro article"
+                    label="Article lié à l'équipement (facultatif)"
                     placeholder="Rechercher un article..."
+                    helperText="Fiche matériau de l'équipement. Pour ajouter un article à la nomenclature du poste, utilisez « Ajouter un article »."
                     InputProps={{
                       ...params.InputProps,
                       endAdornment: (
@@ -2731,6 +2834,33 @@ const IH02HierarchyPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+
+      {/* Dialog confirmation suppression d'une ligne article (nomenclature) */}
+      <Dialog open={!!bomDeleteTarget} onClose={() => setBomDeleteTarget(null)}>
+        <DialogTitle sx={{ color: theme.palette.error.main }}>Retirer cet article ?</DialogTitle>
+        <DialogContent>
+          {bomDeleteTarget && (
+            <>
+              <Typography>
+                Retirer <strong>{bomDeleteTarget.comp.matnr_short || bomDeleteTarget.comp.idnrk}</strong>
+                {' '}({bomDeleteTarget.comp.designation || 'sans désignation'}) de la nomenclature de{' '}
+                <strong>{bomDeleteTarget.mode === 'fl' ? bomDeleteTarget.tplnr : bomDeleteTarget.parentIdnrk}</strong> ?
+              </Typography>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Seule cette occurrence est retirée : la fiche article et ses autres
+                utilisations dans la structure ne sont pas touchées.
+              </Alert>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBomDeleteTarget(null)} disabled={bomDeleteSaving}>Annuler</Button>
+          <Button variant="contained" color="error" onClick={confirmBomDelete} disabled={bomDeleteSaving}
+            startIcon={bomDeleteSaving ? <CircularProgress size={16} /> : <DeleteIcon />}>
+            Retirer
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}>
         <Alert severity={snackbar.severity} onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}>{snackbar.message}</Alert>

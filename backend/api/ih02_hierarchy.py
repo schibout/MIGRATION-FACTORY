@@ -776,6 +776,11 @@ def bulk_update():
             'centre_couts': 'cost_center', 'quantite': 'quantity', 'unite': 'unit',
         }
         attr_fields = {'art_type_construction', 'poste_travail_resp_maintenance'}
+        # Champs acceptant le mode 'replace' (remplacement d'une PARTIE de la
+        # valeur, ex. renumeroter un prefixe STRNO sur tout un sous-arbre).
+        # Une affectation identique sur tous les noeuds n'aurait pas de sens
+        # pour l'identifiant (unicite entre freres) -> replace uniquement.
+        replace_map = {'identifiant': 'code', 'designation': 'designation'}
 
         with get_db_connection() as conn:
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -786,7 +791,13 @@ def bulk_update():
             sets, params = [], []
             for u in updates:
                 f, v = u.get('field'), u.get('value')
-                if f in col_map:
+                if (u.get('mode') or '') == 'replace':
+                    search = u.get('search') or ''
+                    if f in replace_map and search != '':
+                        col = replace_map[f]
+                        sets.append(f'{col} = REPLACE({col}, %s, %s)')
+                        params.extend([search, v or ''])
+                elif f in col_map:
                     sets.append(f'{col_map[f]} = %s'); params.append(v if v != '' else None)
                 elif f == 'poste_travail_resp_maintenance':
                     sets.append('work_center = %s'); params.append(v if v != '' else None)
@@ -797,15 +808,24 @@ def bulk_update():
                 return jsonify({'success': True, 'message': 'Aucun champ modifiable', 'data': {'updated_count': 0}}), 200
 
             sets.append('updated_by = %s'); params.append(_current_user())
-            cursor.execute(f"""
-                WITH RECURSIVE d AS (
-                    SELECT id FROM {MO} WHERE id = %s
-                    UNION ALL SELECT c.id FROM {MO} c JOIN d ON c.parent_id = d.id
-                    WHERE c.object_type = 'FUNC_LOC'
-                )
-                UPDATE {MO} SET {', '.join(sets)}
-                WHERE id IN (SELECT id FROM d)
-            """, [nid] + params)
+            try:
+                cursor.execute(f"""
+                    WITH RECURSIVE d AS (
+                        SELECT id FROM {MO} WHERE id = %s
+                        UNION ALL SELECT c.id FROM {MO} c JOIN d ON c.parent_id = d.id
+                        WHERE c.object_type = 'FUNC_LOC'
+                    )
+                    UPDATE {MO} SET {', '.join(sets)}
+                    WHERE id IN (SELECT id FROM d)
+                """, [nid] + params)
+            except pg_errors.UniqueViolation:
+                # Le remplacement sur l'identifiant produirait deux freres
+                # portant le meme code (uq_mo_code_sibling).
+                conn.rollback()
+                return jsonify({
+                    'success': False,
+                    'error': 'Remplacement impossible : deux postes techniques du même parent porteraient le même identifiant',
+                }), 409
             updated_count = cursor.rowcount
             conn.commit()
             return jsonify({'success': True, 'message': f'{updated_count} noeud(s) mis à jour',
@@ -1413,6 +1433,34 @@ def add_bom_component():
                             'data': {'id': new_id, 'idnrk': idnrk, 'posnr': posnr}}), 201
     except Exception as e:
         current_app.logger.error(f'Erreur ajout composant BOM IH02: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@ih02_hierarchy_blueprint.route('/bom-component', methods=['DELETE'])
+def delete_bom_component():
+    """Retire un article de la structure (ligne BOM_ITEM, stlty T ou M).
+
+    Soft delete de la LIGNE uniquement (l'article partage et ses autres
+    occurrences ne sont pas touches). bom_key = sap_key de la ligne, fourni
+    par /bom/<tplnr> et /article-bom/<matnr>.
+    """
+    try:
+        bom_key = (request.args.get('bom_key') or '').strip()
+        if not bom_key:
+            return jsonify({'success': False, 'error': 'bom_key requis'}), 400
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cursor.execute(f"""
+                UPDATE {MO} SET is_active = FALSE, updated_by = %s
+                WHERE object_type = 'BOM_ITEM' AND sap_key = %s AND is_active
+            """, [_current_user(), bom_key])
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return jsonify({'success': False, 'error': 'Ligne de nomenclature non trouvée'}), 404
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Article retiré de la nomenclature'}), 200
+    except Exception as e:
+        current_app.logger.error(f'Erreur suppression composant BOM IH02: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
