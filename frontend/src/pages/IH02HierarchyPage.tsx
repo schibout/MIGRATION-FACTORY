@@ -405,9 +405,10 @@ const IH02HierarchyPage: React.FC = () => {
   const [bulkSaving, setBulkSaving] = useState(false);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [addDialogType, setAddDialogType] = useState<'location' | 'equipment'>('location');
+  const [addDialogType, setAddDialogType] = useState<'location' | 'equipment' | 'article'>('location');
   const [addNodeData, setAddNodeData] = useState({ node_id: '', designation: '', type_poste: '', centre_couts: '' });
   const [addEquipmentData, setAddEquipmentData] = useState({ equnr: '', designation: '', eqart: '', herst: '', typbz: '', matnr: '', sernr: '' });
+  const [addArticleData, setAddArticleData] = useState({ idnrk: '', designation: '', menge: '1', meins: '' });
   const [equipmentSuggestions, setEquipmentSuggestions] = useState<any[]>([]);
   const [equipmentSearchLoading, setEquipmentSearchLoading] = useState(false);
   const [equipmentSearchQuery, setEquipmentSearchQuery] = useState('');
@@ -1103,6 +1104,16 @@ const IH02HierarchyPage: React.FC = () => {
     setAddDialogOpen(true);
   };
 
+  // Ajout d'un article a la nomenclature du poste : fonction separee de
+  // l'ajout d'equipement (demande metier), meme modele de pick-list.
+  const openAddArticle = () => {
+    setAddArticleData({ idnrk: '', designation: '', menge: '1', meins: '' });
+    setArticleSuggestions([]);
+    setArticleSearchQuery('');
+    setAddDialogType('article');
+    setAddDialogOpen(true);
+  };
+
   useEffect(() => {
     if (!addDialogOpen || addDialogType !== 'equipment') return;
     const timer = setTimeout(async () => {
@@ -1122,7 +1133,7 @@ const IH02HierarchyPage: React.FC = () => {
   }, [addDialogOpen, addDialogType, equipmentSearchQuery]);
 
   useEffect(() => {
-    if (!addDialogOpen || addDialogType !== 'equipment') return;
+    if (!addDialogOpen || (addDialogType !== 'equipment' && addDialogType !== 'article')) return;
     const timer = setTimeout(async () => {
       try {
         setArticleSearchLoading(true);
@@ -1170,6 +1181,17 @@ const IH02HierarchyPage: React.FC = () => {
           ...addNodeData,
         });
         setSnackbar({ open: true, message: `Poste technique "${addNodeData.node_id}" créé`, severity: 'success' });
+      } else if (addDialogType === 'article') {
+        await api.post('/ih02-hierarchy/bom-component', {
+          tplnr: selectedNode.node_id,
+          idnrk: addArticleData.idnrk,
+          menge: addArticleData.menge,
+          meins: addArticleData.meins,
+        });
+        setSnackbar({ open: true, message: `Article ajouté à la nomenclature de "${selectedNode.node_id}"`, severity: 'success' });
+        setAddDialogOpen(false);
+        await loadBom(selectedNode.node_id, true);
+        return; // la nomenclature est rechargée, pas les enfants de l'arbre
       } else {
         await api.post('/ih02-hierarchy/add-equipment', {
           parent_tplnr: selectedNode.node_id,
@@ -1905,6 +1927,9 @@ const IH02HierarchyPage: React.FC = () => {
                 <Tooltip title="Ajouter un équipement">
                   <IconButton size="small" sx={{ color: theme.palette.warning.main }} onClick={openAddEquipment}><EquipmentIcon /></IconButton>
                 </Tooltip>
+                <Tooltip title="Ajouter un article (nomenclature)">
+                  <IconButton size="small" color="info" onClick={openAddArticle}><BomIcon /></IconButton>
+                </Tooltip>
                 <Tooltip title="Modifier en masse (noeud + enfants)">
                   <IconButton size="small" color="secondary" onClick={() => openBulkEdit(node)}><BulkEditIcon /></IconButton>
                 </Tooltip>
@@ -2452,8 +2477,12 @@ const IH02HierarchyPage: React.FC = () => {
       {/* Dialog ajout poste technique / équipement */}
       <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {addDialogType === 'location' ? <FolderIcon color="primary" /> : <EquipmentIcon sx={{ color: theme.palette.warning.main }} />}
-          {addDialogType === 'location' ? 'Ajouter un poste technique' : 'Ajouter un équipement'}
+          {addDialogType === 'location' ? <FolderIcon color="primary" />
+            : addDialogType === 'article' ? <BomIcon color="info" />
+            : <EquipmentIcon sx={{ color: theme.palette.warning.main }} />}
+          {addDialogType === 'location' ? 'Ajouter un poste technique'
+            : addDialogType === 'article' ? 'Ajouter un article à la nomenclature'
+            : 'Ajouter un équipement'}
           {selectedNode && isLocation(selectedNode) && (
             <Chip size="small" label={`sous ${selectedNode.node_id}`} sx={{ ml: 1, fontFamily: 'monospace' }} />
           )}
@@ -2470,6 +2499,74 @@ const IH02HierarchyPage: React.FC = () => {
                 helperText="Déterminé par le niveau dans la hiérarchie" />
               <TextField label="Centre de coûts" size="small" value={addNodeData.centre_couts}
                 onChange={(e) => setAddNodeData((p) => ({ ...p, centre_couts: e.target.value }))} />
+            </Box>
+          ) : addDialogType === 'article' ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <Autocomplete
+                freeSolo
+                size="small"
+                options={articleSuggestions}
+                loading={articleSearchLoading}
+                value={addArticleData.idnrk}
+                getOptionLabel={(opt: any) =>
+                  typeof opt === 'string' ? opt : `${opt.matnr_short || opt.matnr} — ${opt.designation || ''}`
+                }
+                filterOptions={(x) => x}
+                onInputChange={(_, value) => {
+                  setArticleSearchQuery(value);
+                  setAddArticleData((p) => ({ ...p, idnrk: value }));
+                }}
+                onChange={(_, value: any) => {
+                  if (value && typeof value === 'object') {
+                    setAddArticleData((p) => ({
+                      ...p,
+                      idnrk: value.matnr_short || value.matnr || '',
+                      designation: value.designation || '',
+                      meins: value.meins || p.meins,
+                    }));
+                  }
+                }}
+                renderOption={(props, opt: any) => (
+                  <li {...props} key={opt.matnr}>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                        {opt.matnr_short || opt.matnr}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {opt.designation} {opt.mtart ? `· ${opt.mtart}` : ''} {opt.meins ? `· ${opt.meins}` : ''}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Code article *"
+                    placeholder="Rechercher par code ou désignation..."
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {articleSearchLoading ? <CircularProgress size={16} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+              {addArticleData.designation && (
+                <Alert severity="info" icon={<BomIcon fontSize="small" />}>
+                  {addArticleData.designation}
+                </Alert>
+              )}
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField label="Quantité" size="small" sx={{ flex: 1 }} value={addArticleData.menge}
+                  onChange={(e) => setAddArticleData((p) => ({ ...p, menge: e.target.value }))} />
+                <TextField label="Unité" size="small" sx={{ flex: 1 }} value={addArticleData.meins}
+                  helperText="Vide = unité de base de l'article"
+                  onChange={(e) => setAddArticleData((p) => ({ ...p, meins: e.target.value }))} />
+              </Box>
             </Box>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
@@ -2596,9 +2693,10 @@ const IH02HierarchyPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddDialogOpen(false)} disabled={addSaving}>Annuler</Button>
-          <Button variant="contained" onClick={confirmAddNode} disabled={addSaving}
+          <Button variant="contained" onClick={confirmAddNode}
+            disabled={addSaving || (addDialogType === 'article' && !addArticleData.idnrk.trim())}
             startIcon={addSaving ? <CircularProgress size={16} /> : <AddIcon />}>
-            Créer
+            {addDialogType === 'article' ? 'Ajouter' : 'Créer'}
           </Button>
         </DialogActions>
       </Dialog>

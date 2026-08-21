@@ -1317,6 +1317,105 @@ def _apply_bom_line_update(cursor, row_id, data, user):
     cursor.execute(f"UPDATE {MO} SET {', '.join(sets)} WHERE id = %s", params)
 
 
+@ih02_hierarchy_blueprint.route('/bom-component', methods=['POST'])
+def add_bom_component():
+    """Ajoute un article a la nomenclature (stlty=T) d'un poste technique.
+
+    Fonction distincte de l'ajout d'equipement (demande metier 2026-08) :
+    l'article est choisi via la pick-list /search-article puis materialise en
+    ARTICLE (_ensure_article) et rattache par une ligne BOM_ITEM MANUAL.
+    sap_key = 'T:MANUAL:<tplnr>:<matnr>' -> unicite naturelle par (poste,
+    article) ; une ligne manuelle supprimee (is_active=false) est reactivee.
+    """
+    try:
+        data = request.get_json() or {}
+        tplnr = (data.get('tplnr') or '').strip()
+        idnrk = _normalize_sap_matnr((data.get('idnrk') or '').strip())
+        menge = data.get('menge')
+        meins = (data.get('meins') or '').strip()
+
+        if not tplnr:
+            return jsonify({'success': False, 'error': 'tplnr requis'}), 400
+        if not idnrk:
+            return jsonify({'success': False, 'error': 'idnrk (article) requis'}), 400
+        try:
+            quantity = float(str(menge).replace(',', '.')) if menge not in (None, '') else 1
+        except ValueError:
+            return jsonify({'success': False, 'error': 'menge invalide'}), 400
+
+        user = _current_user()
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            fl_id = _resolve_id(cursor, 'FUNC_LOC', tplnr)
+            if fl_id is None:
+                return jsonify({'success': False, 'error': f'Poste technique "{tplnr}" non trouvé'}), 404
+
+            art_id = _ensure_article(cursor, idnrk, user)
+
+            # Unite par defaut = unite de base de l'article si non fournie
+            if not meins:
+                cursor.execute(f"SELECT attributes->>'meins_base' AS meins FROM {MO} WHERE id = %s", [art_id])
+                r = cursor.fetchone()
+                meins = (r and r['meins']) or 'PC'
+
+            # Deja present (ligne SAP ou manuelle active) -> 409
+            cursor.execute(f"""
+                SELECT 1 FROM {MO}
+                WHERE object_type = 'BOM_ITEM' AND is_active
+                  AND attributes->>'stlty' = 'T'
+                  AND parent_id = %s AND ref_object_id = %s
+                LIMIT 1
+            """, [fl_id, art_id])
+            if cursor.fetchone():
+                code_court = idnrk.lstrip('0') or idnrk
+                return jsonify({'success': False,
+                                'error': f'L\'article {code_court} est déjà dans la nomenclature de "{tplnr}"'}), 409
+
+            # Position = fin de nomenclature (pas de reindexation des lignes SAP)
+            cursor.execute(f"""
+                SELECT COALESCE(MAX(sort_order), 0) + 10 AS next_pos
+                FROM {MO}
+                WHERE object_type = 'BOM_ITEM' AND parent_id = %s AND attributes->>'stlty' = 'T'
+            """, [fl_id])
+            next_pos = cursor.fetchone()['next_pos']
+            posnr = str(next_pos).zfill(4)
+
+            sap_key = f'T:MANUAL:{tplnr}:{idnrk}'
+            attrs = {
+                'stlty': 'T', 'stlnr': 'MANUAL', 'posnr': posnr,
+                'stlkn': f'MAN-{idnrk}',
+            }
+            if data.get('potx1'):
+                attrs['potx1'] = data['potx1']
+            code = idnrk.lstrip('0') or idnrk
+            cursor.execute(f"""
+                INSERT INTO {MO} (object_type, sap_key, parent_id, ref_object_id, sort_order,
+                                  code, designation,
+                                  category, quantity, unit, attributes, source,
+                                  created_by, updated_by)
+                SELECT 'BOM_ITEM', %s, %s, %s, %s,
+                       %s, (SELECT designation FROM {MO} WHERE id = %s),
+                       %s, %s, %s, %s::jsonb, 'MANUAL', %s, %s
+                ON CONFLICT (object_type, sap_key) DO UPDATE
+                SET is_active = TRUE, parent_id = EXCLUDED.parent_id,
+                    ref_object_id = EXCLUDED.ref_object_id, sort_order = EXCLUDED.sort_order,
+                    quantity = EXCLUDED.quantity, unit = EXCLUDED.unit,
+                    attributes = EXCLUDED.attributes, updated_by = EXCLUDED.updated_by
+                RETURNING id
+            """, [sap_key, fl_id, art_id, next_pos,
+                  code, art_id,
+                  data.get('category') or None, quantity, meins,
+                  json.dumps(attrs), user, user])
+            new_id = cursor.fetchone()['id']
+            conn.commit()
+            return jsonify({'success': True,
+                            'message': f'Article {code} ajouté à la nomenclature de "{tplnr}"',
+                            'data': {'id': new_id, 'idnrk': idnrk, 'posnr': posnr}}), 201
+    except Exception as e:
+        current_app.logger.error(f'Erreur ajout composant BOM IH02: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @ih02_hierarchy_blueprint.route('/bom-component', methods=['PUT'])
 def update_bom_component():
     """Met a jour un composant BOM de poste technique (stlty=T).
