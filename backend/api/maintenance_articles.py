@@ -173,10 +173,13 @@ def list_articles():
         with get_db_connection() as conn:
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+            # Les jointures makt ne servent au COUNT que si la recherche libre
+            # les reference (k_fr/k_any) : sans recherche, les inclure force le
+            # tri des designations pour les ~64 000 lignes (~1,8 s pour rien).
             count_query = f"""
                 SELECT COUNT(*) AS total
                 FROM raw_data.mara m
-                {joins_makt}
+                {joins_makt if search else ''}
                 {where_sql}
             """
             cursor.execute(count_query, params)
@@ -209,47 +212,68 @@ def list_articles():
             cursor.execute(data_query, params + [per_page, offset])
             articles = cursor.fetchall()
 
-            cursor.execute(
-                """
-                SELECT DISTINCT TRIM(m.mtart) AS mtart,
-                       COALESCE(
-                           (SELECT mtbez FROM raw_data.t134t
-                            WHERE mandt = m.mandt AND mtart = m.mtart
-                            ORDER BY (CASE WHEN spras='F' THEN 0 WHEN spras='E' THEN 1 ELSE 2 END)
-                            LIMIT 1),
-                           ''
-                       ) AS label
-                FROM raw_data.mara m
-                WHERE {opt_type_sql}
-                ORDER BY 1
-                """.format(opt_type_sql=opt_type_sql),
-                list(opt_type_params)
-            )
-            mtart_options = [
-                {'code': r['mtart'], 'label': r['label']}
-                for r in cursor.fetchall()
-            ]
+            # Options des listes deroulantes : elles ne dependent que du flag
+            # all_sap -> cache dedie (les changements de page/tri/filtre ne les
+            # recalculent pas). Le DISTINCT est fait AVANT la recherche du
+            # libelle : la version historique evaluait la sous-requete de
+            # libelle pour chacune des ~64 000 lignes de mara (~20 s).
+            options_cache_key = f"{CACHE_PREFIX}options:all={int(all_sap)}"
+            cached_options = cache_get(options_cache_key)
+            if cached_options is not None:
+                options = json.loads(cached_options)
+                mtart_options = options['mtart']
+                matkl_options = options['matkl']
+            else:
+                cursor.execute(
+                    """
+                    SELECT v.mtart,
+                           COALESCE(
+                               (SELECT mtbez FROM raw_data.t134t
+                                WHERE mandt = v.mandt AND mtart = v.mtart
+                                ORDER BY (CASE WHEN spras='F' THEN 0 WHEN spras='E' THEN 1 ELSE 2 END)
+                                LIMIT 1),
+                               ''
+                           ) AS label
+                    FROM (
+                        SELECT DISTINCT m.mandt, TRIM(m.mtart) AS mtart
+                        FROM raw_data.mara m
+                        WHERE {opt_type_sql}
+                    ) v
+                    ORDER BY 1
+                    """.format(opt_type_sql=opt_type_sql),
+                    list(opt_type_params)
+                )
+                mtart_options = [
+                    {'code': r['mtart'], 'label': r['label']}
+                    for r in cursor.fetchall()
+                ]
 
-            cursor.execute(
-                """
-                SELECT DISTINCT TRIM(m.matkl) AS matkl,
-                       COALESCE(
-                           (SELECT wgbez FROM raw_data.t023t
-                            WHERE mandt = m.mandt AND matkl = m.matkl
-                            ORDER BY (CASE WHEN spras='F' THEN 0 WHEN spras='E' THEN 1 ELSE 2 END)
-                            LIMIT 1),
-                           ''
-                       ) AS label
-                FROM raw_data.mara m
-                WHERE {opt_type_sql} AND m.matkl IS NOT NULL AND TRIM(m.matkl) <> ''
-                ORDER BY 1
-                """.format(opt_type_sql=opt_type_sql),
-                list(opt_type_params)
-            )
-            matkl_options = [
-                {'code': r['matkl'], 'label': r['label']}
-                for r in cursor.fetchall()
-            ]
+                cursor.execute(
+                    """
+                    SELECT v.matkl,
+                           COALESCE(
+                               (SELECT wgbez FROM raw_data.t023t
+                                WHERE mandt = v.mandt AND matkl = v.matkl
+                                ORDER BY (CASE WHEN spras='F' THEN 0 WHEN spras='E' THEN 1 ELSE 2 END)
+                                LIMIT 1),
+                               ''
+                           ) AS label
+                    FROM (
+                        SELECT DISTINCT m.mandt, TRIM(m.matkl) AS matkl
+                        FROM raw_data.mara m
+                        WHERE {opt_type_sql} AND m.matkl IS NOT NULL AND TRIM(m.matkl) <> ''
+                    ) v
+                    ORDER BY 1
+                    """.format(opt_type_sql=opt_type_sql),
+                    list(opt_type_params)
+                )
+                matkl_options = [
+                    {'code': r['matkl'], 'label': r['label']}
+                    for r in cursor.fetchall()
+                ]
+                cache_set(options_cache_key,
+                          json.dumps({'mtart': mtart_options, 'matkl': matkl_options}),
+                          Config.MAINTENANCE_CACHE_TTL)
 
             payload = json.dumps({
                 'success': True,
