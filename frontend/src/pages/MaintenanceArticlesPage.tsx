@@ -103,6 +103,11 @@ interface MatklOption {
   label: string;
 }
 
+const displayArticleNumber = (article: Pick<Article, 'matnr' | 'matnr_short'>): string => {
+  const number = article.matnr_short || article.matnr || '';
+  return number.replace(/^0+/, '') || '0';
+};
+
 // Couleur de la pastille par categorie d'article (MTART)
 type ChipColor = 'default' | 'primary' | 'secondary' | 'info' | 'warning' | 'success' | 'error';
 const mtartColor = (mtart?: string): ChipColor => {
@@ -418,15 +423,20 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
   };
 
   const renderStats = () => (
-    <Grid container spacing={2} sx={{ mb: 3 }}>
+    <Grid
+      container
+      spacing={1}
+      wrap="nowrap"
+      sx={{ mb: 1.5, overflowX: 'auto', pb: 0.5 }}
+    >
       {!fixedMtart && (
-      <Grid item xs={12} sm={6} md={3}>
-        <Card sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.1) }}>
-          <CardContent sx={{ py: 2 }}>
+      <Grid item sx={{ flex: '1 1 0', minWidth: 150 }}>
+        <Card sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.1), height: '100%' }}>
+          <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <ArticleIcon sx={{ fontSize: 40, color: theme.palette.primary.main, mr: 2 }} />
+              <ArticleIcon sx={{ fontSize: 28, color: theme.palette.primary.main, mr: 1 }} />
               <Box>
-                <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600, lineHeight: 1.15 }}>
                   {(stats?.total ?? total).toLocaleString()}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -441,13 +451,13 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
       {(stats?.by_type || [])
         .filter((row: any) => !fixedMtart || row.mtart === fixedMtart)
         .map((row: any) => (
-        <Grid item xs={12} sm={6} md={3} key={row.mtart}>
-          <Card sx={{ backgroundColor: alpha(theme.palette.warning.main, 0.1) }}>
-            <CardContent sx={{ py: 2 }}>
+        <Grid item sx={{ flex: '1 1 0', minWidth: 150 }} key={row.mtart}>
+          <Card sx={{ backgroundColor: alpha(theme.palette.warning.main, 0.1), height: '100%' }}>
+            <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <LayersIcon sx={{ fontSize: 40, color: theme.palette.warning.main, mr: 2 }} />
+                <LayersIcon sx={{ fontSize: 28, color: theme.palette.warning.main, mr: 1 }} />
                 <Box>
-                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 600, lineHeight: 1.15 }}>
                     {Number(row.nb).toLocaleString()}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -459,13 +469,13 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
           </Card>
         </Grid>
       ))}
-      <Grid item xs={12} sm={6} md={3}>
-        <Card sx={{ backgroundColor: alpha(theme.palette.info.main, 0.1) }}>
-          <CardContent sx={{ py: 2 }}>
+      <Grid item sx={{ flex: '1 1 0', minWidth: 150 }}>
+        <Card sx={{ backgroundColor: alpha(theme.palette.info.main, 0.1), height: '100%' }}>
+          <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <CategoryIcon sx={{ fontSize: 40, color: theme.palette.info.main, mr: 2 }} />
+              <CategoryIcon sx={{ fontSize: 28, color: theme.palette.info.main, mr: 1 }} />
               <Box>
-                <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600, lineHeight: 1.15 }}>
                   {stats?.nb_groupes_articles ?? '-'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -518,7 +528,7 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
               <ArticleIcon sx={{ fontSize: 32, color: theme.palette.primary.main, mr: 2 }} />
               <Box sx={{ minWidth: 0 }}>
                 <Typography variant="h6" sx={{ fontFamily: 'monospace' }}>
-                  {a.matnr_short || a.matnr.replace(/^0+/, '')}
+                  {displayArticleNumber(a)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   {a.description || '-'}
@@ -564,7 +574,7 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
           {activeTab === 0 && (
             <Grid container spacing={2}>
               {ef('Description (FR)', 'description', { fullWidth: true })}
-              <DetailField label="N° Article" value={a.matnr} monospace />
+              <DetailField label="N° Article" value={displayArticleNumber(a)} monospace />
               <DetailField label="Type article" value={a.mtart} />
               <DetailField label="Catégorie" value={a.mtart_label} />
               {ef('Groupe articles', 'matkl')}
@@ -685,7 +695,11 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <ArticleIcon sx={{ fontSize: 32, mr: 2, color: theme.palette.primary.main }} />
         <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-          {fixedMtart ? `Articles maintenance — ${fixedMtart}` : 'Articles maintenance'}
+          {fixedMtart === 'ERSA'
+            ? 'Pièces de rechange'
+            : fixedMtart
+              ? `Articles maintenance — ${fixedMtart}`
+              : 'Articles maintenance'}
         </Typography>
         <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
           {/* En mode « tout SAP » les pastilles de type seraient mensongeres :
@@ -890,7 +904,7 @@ const MaintenanceArticlesPage: React.FC<{ fixedMtart?: string }> = ({ fixedMtart
                     sx={{ cursor: 'pointer' }}
                   >
                     <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, color: theme.palette.primary.dark }}>
-                      {a.matnr_short || a.matnr.replace(/^0+/, '')}
+                      {displayArticleNumber(a)}
                     </TableCell>
                     <TableCell sx={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {a.description || '-'}

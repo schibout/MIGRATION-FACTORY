@@ -5,13 +5,13 @@
 
 **Connection** — PostgreSQL 15.18 (Debian 15.18-1.pgdg12+1) on `10.190.100.58:5432`, database `sap_migration_db` (credentials in `.env`: `DB_USER` / `DB_PASSWORD`). Total size **10 GB**.
 
-**Inventory** — 4 schemas, 403 tables, 37 views.
+**Inventory** — 4 schemas, 405 tables, 38 views.
 
 | Schema | Tables | Views | Role |
 |---|---|---|---|
-| `clean_data` | 112 | 22 | IFS-shaped target layer (transformed tables + views) — what exports read |
-| `public` | 41 | 5 | Platform tables: users, jobs, ETL config, SAP/IFS dictionaries, AI assistant |
-| `raw_data` | 230 | 10 | SAP ECC extraction landing zone — **read only**, never write here |
+| `clean_data` | 113 | 22 | IFS-shaped target layer (transformed tables + views) — what exports read |
+| `public` | 42 | 5 | Platform tables: users, jobs, ETL config, SAP/IFS dictionaries, AI assistant |
+| `raw_data` | 230 | 11 | SAP ECC extraction landing zone — **read only**, never write here |
 | `snapshots` | 20 | 0 | Point-in-time copies taken before Maintenance reload/restore operations |
 
 ## Data Layer Hierarchy
@@ -327,6 +327,7 @@ IFS target layer. These are the tables and views the export engine reads. Safe t
 | [`resource_parent`](#clean-data-resource-parent) | table | 186 ~ | 128.0 kB | Table des relations parent-enfant entre ressources IFS. Définit la hiérarchie et les compétences de planifi… |
 | [`routing_head`](#clean-data-routing-head) | table | 0 ~ | 16.0 kB |  |
 | [`sales_part`](#clean-data-sales-part) | table | 1 655 ~ | 480.0 kB |  |
+| [`selection_articles_stjn_actifs`](#clean-data-selection-articles-stjn-actifs) | table | 27 376 ~ | 2.5 MB | Liste des articles actifs du site St-Jean (matnr SAP sur 18 caracteres). Base du nettoyage du catalogue : t… |
 | [`selection_articles_utilises`](#clean-data-selection-articles-utilises) | table | 28 801 ~ | 2.9 MB | Sélection des articles SAP MARA à retenir pour IFS PART_CATALOG selon usages réels SAP. |
 | [`ship_via`](#clean-data-ship-via) | table | 6 ~ | 8.0 kB | Modes de transport et transporteurs |
 | [`sub_project`](#clean-data-sub-project) | table | 1 179 ~ | 232.0 kB | Table des sous-projets |
@@ -4268,6 +4269,17 @@ Table des relations parent-enfant entre ressources IFS. Définit la hiérarchie 
 - **Size:** 480.0 kB
 - **Key:** `contract,catalog_no` _(IFS spec)_
 
+### clean_data.selection_articles_stjn_actifs
+
+Liste des articles actifs du site St-Jean (matnr SAP sur 18 caracteres). Base du nettoyage du catalogue : tout article absent de cette liste ET non retenu par les 3 autres sources de raw_data.v_articles_conserves est purge de raw_data par raw_data.sp_purge_articles_hors_selection().
+
+| # | Column | Type | Null | Description |
+|---|---|---|---|---|
+| 1 | `matnr` | text | Y |  |
+
+- **Rows:** 27 376 ~
+- **Size:** 2.5 MB
+
 ### clean_data.selection_articles_utilises
 
 Sélection des articles SAP MARA à retenir pour IFS PART_CATALOG selon usages réels SAP.
@@ -5873,9 +5885,9 @@ Platform schema: application state, ETL configuration, SAP/IFS data dictionaries
 | [`file_type_configs`](#public-file-type-configs) | table | 9 ~ | 48.0 kB |  |
 | [`file_type_configs_backup`](#public-file-type-configs-backup) | table | 9 ~ | 16.0 kB |  |
 | [`fournisseurs_a_conserver`](#public-fournisseurs-a-conserver) | table | 736 ~ | 104.0 kB |  |
-| [`hermes_conversations`](#public-hermes-conversations) | table | 42 ~ | 80.0 kB |  |
+| [`hermes_conversations`](#public-hermes-conversations) | table | 42 ~ | 88.0 kB |  |
 | [`hermes_job_results`](#public-hermes-job-results) | table | 1 ~ | 96.0 kB | Résultats de jobs Agent Trimet exécutés à la demande (prompt rejoué via chat, réponse stockée). |
-| [`hermes_messages`](#public-hermes-messages) | table | 490 ~ | 784.0 kB |  |
+| [`hermes_messages`](#public-hermes-messages) | table | 506 ~ | 784.0 kB |  |
 | [`ifs_field_catalog`](#public-ifs-field-catalog) | table | 12 969 ~ | 6.6 MB | Dictionnaire de données IFS chargé depuis les classeurs de spec Lot*.xlsx. Source de vérité du générateur s… |
 | [`ifs_metadata_table`](#public-ifs-metadata-table) | table | 0 ~ | 48.0 kB | Table de métadonnées contenant les définitions de tous les champs des tables IFS utilisés pour la migration… |
 | [`import_details`](#public-import-details) | table | 0 ~ | 40.0 kB |  |
@@ -5889,6 +5901,7 @@ Platform schema: application state, ETL configuration, SAP/IFS data dictionaries
 | [`migration_log`](#public-migration-log) | table | 0 ~ | 16.0 kB |  |
 | [`pg_stat_statements`](#public-pg-stat-statements) | view | view | 0 B |  |
 | [`pg_stat_statements_info`](#public-pg-stat-statements-info) | view | view | 0 B |  |
+| [`purge_articles_log`](#public-purge-articles-log) | table | 32 | 48.0 kB | Journal des purges du catalogue articles : une ligne par table et par execution. backup_table pointe la cop… |
 | [`sap_table_fields`](#public-sap-table-fields) | table | 7 615 ~ | 1.8 MB |  |
 | [`sap_table_properties`](#public-sap-table-properties) | table | 154 ~ | 96.0 kB |  |
 | [`system_config`](#public-system-config) | table | 50 ~ | 48.0 kB | Variables de configuration modifiables via la page Paramètres |
@@ -6508,7 +6521,7 @@ Configuration des requêtes d'extraction pour l'API
 | 6 | `date_maj` | timestamp without time zone | N |  |
 
 - **Rows:** 42 ~
-- **Size:** 80.0 kB
+- **Size:** 88.0 kB
 - **Key:** `id` _(PK)_
 
 ### public.hermes_job_results
@@ -6541,7 +6554,7 @@ Résultats de jobs Agent Trimet exécutés à la demande (prompt rejoué via cha
 | 5 | `position` | integer | N |  |
 | 6 | `date_creation` | timestamp without time zone | N |  |
 
-- **Rows:** 490 ~
+- **Rows:** 506 ~
 - **Size:** 784.0 kB
 - **Key:** `id` _(PK)_
 
@@ -6867,6 +6880,27 @@ Etats sauvegardes du module Maintenance. Les donnees elles-memes vivent      dan
 - **Rows:** view
 - **Size:** 0 B
 
+### public.purge_articles_log
+
+Journal des purges du catalogue articles : une ligne par table et par execution. backup_table pointe la copie des lignes supprimees dans le schema purge_backup, rejouable par raw_data.sp_restore_purge_articles(run_id).
+
+| # | Column | Type | Null | Description |
+|---|---|---|---|---|
+| 1 | `id` 🔑 | bigint | N |  |
+| 2 | `run_id` | bigint | N |  |
+| 3 | `run_at` | timestamp without time zone | N |  |
+| 4 | `dry_run` | boolean | N |  |
+| 5 | `label` | text | Y |  |
+| 6 | `table_name` | text | N |  |
+| 7 | `rows_before` | bigint | N |  |
+| 8 | `rows_deleted` | bigint | N |  |
+| 9 | `backup_table` | text | Y |  |
+| 10 | `executed_by` | text | N |  |
+
+- **Rows:** 32
+- **Size:** 48.0 kB
+- **Key:** `id` _(PK)_
+
 ### public.sap_table_fields
 
 | # | Column | Type | Null | Description |
@@ -7000,8 +7034,8 @@ Variables de configuration modifiables via la page Paramètres
 - **Rows:** 27 ~
 - **Size:** 96.0 kB
 - **Key:** `id` _(PK)_
-- **Unique:** `username`
 - **Unique:** `email`
+- **Unique:** `username`
 
 ## `raw_data` Schema
 
@@ -7080,7 +7114,7 @@ Columns are listed compactly (`name:type`); full detail per column, including Fr
 | [`ebkn`](#raw-data-ebkn) | 431 209 ~ | 122.5 MB | `mandt,banfn,bnfpo,zebkn` | Imputation demandes d'achat |
 | [`ebkpf`](#raw-data-ebkpf) | 0 | 16.0 kB | `mandt,glsbk,belnr,gjahr,glebk` | En-tête pièce de la comptabilité (pces de systèmes externes) |
 | [`edid4`](#raw-data-edid4) | 0 ~ | 8.0 kB | `—` |  |
-| [`eina`](#raw-data-eina) | 113 549 ~ | 25.5 MB | `mandt,infnr` | Fiche info-achat Fournisseur - En-tête |
+| [`eina`](#raw-data-eina) | 59 293 ~ | 25.5 MB | `mandt,infnr` | Fiche info-achat Fournisseur - En-tête |
 | [`eine`](#raw-data-eine) | 135 536 ~ | 39.4 MB | `mandt,infnr,ekorg,esokz,werks` | Fiche info-achat Fournisseur - Organisation achats |
 | [`ekbe`](#raw-data-ekbe) | 1 478 570 ~ | 519.1 MB | `mandt,ebeln,ebelp,zekkn,vgabe,gjahr,belnr,…` | Historique du document d'achat |
 | [`ekko`](#raw-data-ekko) | 358 309 ~ | 127.2 MB | `mandt,ebeln` | En-tête document d'achat |
@@ -7122,21 +7156,21 @@ Columns are listed compactly (`name:type`); full detail per column, including Fr
 | [`lfbk`](#raw-data-lfbk) | 24 315 ~ | 6.2 MB | `mandt,lifnr,banks,bankl,bankn` | Coordonnées bancaires Fournisseur |
 | [`lfm1`](#raw-data-lfm1) | 28 109 ~ | 4.4 MB | `mandt,lifnr,ekorg` | Données Fournisseur par Organisation d'achats |
 | [`maint_person_resource`](#raw-data-maint-person-resource) | 33 ~ | 152.0 kB | `maint_resource_seq` | Table des ressources personne de maintenance IFS - Données brutes |
-| [`makt`](#raw-data-makt) | 305 170 ~ | 51.6 MB | `mandt,matnr,spras` | Textes désignation Article par langue |
-| [`mara`](#raw-data-mara) | 85 904 ~ | 29.1 MB | `mandt,matnr` | Table de base Article - Données générales matières |
+| [`makt`](#raw-data-makt) | 96 951 ~ | 51.6 MB | `mandt,matnr,spras` | Textes désignation Article par langue |
+| [`mara`](#raw-data-mara) | 36 795 ~ | 29.1 MB | `mandt,matnr` | Table de base Article - Données générales matières |
 | [`marc`](#raw-data-marc) | 50 559 ~ | 27.7 MB | `mandt,matnr,werks` | Données division de l'article |
 | [`mard`](#raw-data-mard) | 42 805 ~ | 12.8 MB | `mandt,matnr,werks,lgort` | Données magasin de l'article |
-| [`marm`](#raw-data-marm) | 12 852 ~ | 2.0 MB | `mandt,matnr,meinh` | Unités de mesure Article |
-| [`mast`](#raw-data-mast) | 21 544 ~ | 4.6 MB | `id` | Lien article - nomenclature |
+| [`marm`](#raw-data-marm) | 1 358 ~ | 2.0 MB | `mandt,matnr,meinh` | Unités de mesure Article |
+| [`mast`](#raw-data-mast) | 10 802 ~ | 4.6 MB | `id` | Lien article - nomenclature |
 | [`mbew`](#raw-data-mbew) | 49 761 ~ | 25.3 MB | `mandt,matnr,bwkey` | Valorisation article |
 | [`mchb`](#raw-data-mchb) | 298 ~ | 128.0 kB | `mandt,matnr,werks,lgort,charg` | Stocks lots |
 | [`mkpf`](#raw-data-mkpf) | 1 887 735 ~ | 433.5 MB | `id` | En-tête du document article |
-| [`mlan`](#raw-data-mlan) | 77 661 ~ | 8.8 MB | `mandt,matnr,aland` | Données fiscales Article par pays |
+| [`mlan`](#raw-data-mlan) | 30 247 ~ | 8.8 MB | `mandt,matnr,aland` | Données fiscales Article par pays |
 | [`mlgn`](#raw-data-mlgn) | 0 ~ | 16.0 kB | `mandt,matnr,lgnum` | Données Article par Entrepôt (Warehouse) |
 | [`mlgt`](#raw-data-mlgt) | 0 ~ | 8.0 kB | `mandt,matnr,lgnum,lgtyp` | Données Article par Type d'emplacement |
 | [`mska`](#raw-data-mska) | 0 ~ | 24.0 kB | `id` | Stock commande client |
 | [`mslb`](#raw-data-mslb) | 25 ~ | 48.0 kB | `id` | Stocks spéciaux chez fournisseur |
-| [`mvke`](#raw-data-mvke) | 12 201 ~ | 3.1 MB | `mandt,matnr,vkorg,vtweg` | Données commerciales Article (Ventes) |
+| [`mvke`](#raw-data-mvke) | 907 ~ | 3.1 MB | `mandt,matnr,vkorg,vtweg` | Données commerciales Article (Ventes) |
 | [`objk`](#raw-data-objk) | 0 ~ | 8.0 kB | `mandt,obknr,obzae` | Liste des objets pour classification et nomenclatures. Lien entre objets techniques (po… |
 | [`pe_tools`](#raw-data-pe-tools) | 1 760 ~ | 656.0 kB | `raw_id` |  |
 | [`phl_article`](#raw-data-phl-article) | 1 954 ~ | 1.2 MB | `—` |  |
@@ -7242,6 +7276,7 @@ Columns are listed compactly (`name:type`); full detail per column, including Fr
 | [`tsad3t`](#raw-data-tsad3t) | 15 ~ | 24.0 kB | `client,langu,title` | Formules (textes) (gestion des adresses centrale) |
 | [`tvarv`](#raw-data-tvarv) | 354 ~ | 96.0 kB | `name,type,numb` | Variables système TVARV |
 | [`tvtw`](#raw-data-tvtw) | 2 ~ | 16.0 kB | `mandt,vtweg` | Canaux de distribution |
+| [`v_articles_conserves`](#raw-data-v-articles-conserves) | view | 0 B | `—` | Perimetre des articles conserves lors de la purge du catalogue : union de la selection … |
 | [`v_immo_comptes`](#raw-data-v-immo-comptes) | view | 0 B | `—` |  |
 | [`v_jalons_ref_libelles`](#raw-data-v-jalons-ref-libelles) | view | 0 B | `—` | Libellés (FieldValuesAsText) des jalons aplatis en colonnes. Nécessite l'import des jal… |
 | [`v_phl_article_retenu`](#raw-data-v-phl-article-retenu) | view | 0 B | `—` | Articles PHL dedoublonnes : un seul article par radical (code prive d'un suffixe -X d'u… |
@@ -7830,7 +7865,7 @@ En-tête pièce de la comptabilité (pces de systèmes externes)
 
 Fiche info-achat Fournisseur - En-tête
 
-- **Rows:** 113 549 ~
+- **Rows:** 59 293 ~
 - **Size:** 25.5 MB
 - **Key:** `mandt,infnr` _(PK)_
 - **Columns (40):** `mandt`:varchar(20), `infnr`:varchar(20), `matnr`:varchar(20), `matkl`:varchar(20), `lifnr`:varchar(20), `loekz`:varchar(20), `erdat`:varchar(20), `ernam`:varchar(20), `txz01`:varchar(40), `sortl`:varchar(20), `meins`:varchar(20), `umrez`:varchar(20), `umren`:varchar(20), `idnlf`:varchar(35), `verkf`:varchar(30), `telf1`:varchar(20), `mahn1`:varchar(20), `mahn2`:varchar(20), `mahn3`:varchar(20), `urznr`:varchar(20), `urzdt`:varchar(20), `urzla`:varchar(20), `urztp`:varchar(20), `urzzt`:varchar(20), `lmein`:varchar(20), `regio`:varchar(20), `vabme`:varchar(20), `ltsnr`:varchar(20), `ltssf`:varchar(20), `wglif`:varchar(20), `rueck`:varchar(20), `lifab`:varchar(20), `lifbi`:varchar(20), `kolif`:varchar(20), `anzpu`:varchar(20), `punei`:varchar(20), `relif`:varchar(20), `mfrnr`:varchar(20), `created_at`:timestamp without time zone, `updated_at`:timestamp without time zone
@@ -8204,7 +8239,7 @@ Table des ressources personne de maintenance IFS - Données brutes
 
 Textes désignation Article par langue
 
-- **Rows:** 305 170 ~
+- **Rows:** 96 951 ~
 - **Size:** 51.6 MB
 - **Key:** `mandt,matnr,spras` _(PK)_
 - **Columns (7):** `mandt`:varchar(20), `matnr`:varchar(20), `spras`:varchar(20), `maktx`:varchar(40), `maktg`:varchar(40), `created_at`:timestamp without time zone, `updated_at`:timestamp without time zone
@@ -8213,7 +8248,7 @@ Textes désignation Article par langue
 
 Table de base Article - Données générales matières
 
-- **Rows:** 85 904 ~
+- **Rows:** 36 795 ~
 - **Size:** 29.1 MB
 - **Key:** `mandt,matnr` _(PK)_
 - **Columns (129):** `mandt`:varchar(20), `matnr`:varchar(20), `ersda`:varchar(20), `ernam`:varchar(20), `laeda`:varchar(20), `aenam`:varchar(20), `vpsta`:varchar(20), `pstat`:varchar(20), `lvorm`:varchar(20), `mtart`:varchar(20), `mbrsh`:varchar(20), `matkl`:varchar(20), `bismt`:varchar(20), `meins`:varchar(20), `bstme`:varchar(20), `zeinr`:varchar(22), `zeiar`:varchar(20), `zeivr`:varchar(20), `zeifo`:varchar(20), `aeszn`:varchar(20), `blatt`:varchar(20), `blanz`:varchar(20), `ferth`:varchar(20), `formt`:varchar(20), `groes`:varchar(32), `wrkst`:varchar(48), `normt`:varchar(20), `labor`:varchar(20), `ekwsl`:varchar(20), `brgew`:varchar(20), `ntgew`:varchar(20), `gewei`:varchar(20), `volum`:varchar(20), `voleh`:varchar(20), `behvo`:varchar(20), `raube`:varchar(20), `tempb`:varchar(20), `disst`:varchar(20), `tragr`:varchar(20), `stoff`:varchar(20), `spart`:varchar(20), `kunnr`:varchar(20), `eannr`:varchar(20), `wesch`:varchar(20), `bwvor`:varchar(20), `bwscl`:varchar(20), `saiso`:varchar(20), `etiar`:varchar(20), `etifo`:varchar(20), `entar`:varchar(20), `ean11`:varchar(20), `numtp`:varchar(20), `laeng`:varchar(20), `breit`:varchar(20), `hoehe`:varchar(20), `meabm`:varchar(20), `prdha`:varchar(20), `aeklk`:varchar(20), `cadkz`:varchar(20), `qmpur`:varchar(20), `ergew`:varchar(20), `ergei`:varchar(20), `ervol`:varchar(20), `ervoe`:varchar(20), `gewto`:varchar(20), `volto`:varchar(20), `vabme`:varchar(20), `kzrev`:varchar(20), `kzkfg`:varchar(20), `xchpf`:varchar(20), `vhart`:varchar(20), `fuelg`:varchar(20), `stfak`:varchar(20), `magrv`:varchar(20), `begru`:varchar(20), `datab`:varchar(20), `liqdt`:varchar(20), `saisj`:varchar(20), `plgtp`:varchar(20), `mlgut`:varchar(20), `extwg`:varchar(20), `satnr`:varchar(20), `attyp`:varchar(20), `kzkup`:varchar(20), `kznfm`:varchar(20), `pmata`:varchar(20), `mstae`:varchar(20), `mstav`:varchar(20), `mstde`:varchar(20), `mstdv`:varchar(20), `taklv`:varchar(20), `rbnrm`:varchar(20), `mhdrz`:varchar(20), `mhdhb`:varchar(20), `mhdlp`:varchar(20), `inhme`:varchar(20), `inhal`:varchar(20), `vpreh`:varchar(20), `etiag`:varchar(20), `inhbr`:varchar(20), `cmeth`:varchar(20), `cuobf`:varchar(20), `kzumw`:varchar(20), `kosch`:varchar(20), `sprof`:varchar(20), `nrfhg`:varchar(20), `mfrpn`:varchar(40), `mfrnr`:varchar(20), `bmatn`:varchar(20), `mprof`:varchar(20), `kzwsm`:varchar(20), `saity`:varchar(20), `profl`:varchar(20), `ihivi`:varchar(20), `iloos`:varchar(20), `serlv`:varchar(20), `kzgvh`:varchar(20), `xgchp`:varchar(20), `kzeff`:varchar(20), `compl`:varchar(20), `iprkz`:varchar(20), `rdmhd`:varchar(20), `przus`:varchar(20), `mtpos_mara`:varchar(20), `bflme`:varchar(20), `matfi`:varchar(20), `cmrel`:varchar(20), `created_at`:timestamp without time zone, `updated_at`:timestamp without time zone
@@ -8240,7 +8275,7 @@ Données magasin de l'article
 
 Unités de mesure Article
 
-- **Rows:** 12 852 ~
+- **Rows:** 1 358 ~
 - **Size:** 2.0 MB
 - **Key:** `mandt,matnr,meinh` _(PK)_
 - **Columns (26):** `mandt`:varchar(20), `matnr`:varchar(20), `meinh`:varchar(20), `umrez`:varchar(20), `umren`:varchar(20), `eannr`:varchar(20), `ean11`:varchar(20), `numtp`:varchar(20), `laeng`:varchar(20), `breit`:varchar(20), `hoehe`:varchar(20), `meabm`:varchar(20), `volum`:varchar(20), `voleh`:varchar(20), `brgew`:varchar(20), `gewei`:varchar(20), `mesub`:varchar(20), `atinn`:varchar(20), `mesrt`:varchar(20), `xfhdw`:varchar(20), `xbeww`:varchar(20), `kzwso`:varchar(20), `msehi`:varchar(20), `bflme_marm`:varchar(20), `created_at`:timestamp without time zone, `updated_at`:timestamp without time zone
@@ -8249,7 +8284,7 @@ Unités de mesure Article
 
 Lien article - nomenclature
 
-- **Rows:** 21 544 ~
+- **Rows:** 10 802 ~
 - **Size:** 4.6 MB
 - **Key:** `id` _(PK)_
 - **Columns (16):** `id`:integer, `mandt`:text, `matnr`:text, `werks`:text, `stlan`:text, `stlnr`:text, `stlal`:text, `losvn`:text, `losbs`:text, `andat`:text, `annam`:text, `aedat`:text, `aenam`:text, `cslty`:text, `created_at`:timestamp without time zone, `updated_at`:timestamp without time zone
@@ -8286,7 +8321,7 @@ En-tête du document article
 
 Données fiscales Article par pays
 
-- **Rows:** 77 661 ~
+- **Rows:** 30 247 ~
 - **Size:** 8.8 MB
 - **Key:** `mandt,matnr,aland` _(PK)_
 - **Columns (15):** `mandt`:varchar(20), `matnr`:varchar(20), `aland`:varchar(20), `taxm1`:varchar(20), `taxm2`:varchar(20), `taxm3`:varchar(20), `taxm4`:varchar(20), `taxm5`:varchar(20), `taxm6`:varchar(20), `taxm7`:varchar(20), `taxm8`:varchar(20), `taxm9`:varchar(20), `taxim`:varchar(20), `created_at`:timestamp without time zone, `updated_at`:timestamp without time zone
@@ -8331,7 +8366,7 @@ Stocks spéciaux chez fournisseur
 
 Données commerciales Article (Ventes)
 
-- **Rows:** 12 201 ~
+- **Rows:** 907 ~
 - **Size:** 3.1 MB
 - **Key:** `mandt,matnr,vkorg,vtweg` _(PK)_
 - **Columns (61):** `mandt`:varchar(20), `matnr`:varchar(20), `vkorg`:varchar(20), `vtweg`:varchar(20), `lvorm`:varchar(20), `versg`:varchar(20), `bonus`:varchar(20), `provg`:varchar(20), `sktof`:varchar(20), `vmsta`:varchar(20), `vmstd`:varchar(20), `aumng`:varchar(20), `lfmng`:varchar(20), `efmng`:varchar(20), `scmng`:varchar(20), `schme`:varchar(20), `vrkme`:varchar(20), `mtpos`:varchar(20), `dwerk`:varchar(20), `prodh`:varchar(20), `pmatn`:varchar(20), `kondm`:varchar(20), `ktgrm`:varchar(20), `mvgr1`:varchar(20), `mvgr2`:varchar(20), `mvgr3`:varchar(20), `mvgr4`:varchar(20), `mvgr5`:varchar(20), `sstuf`:varchar(20), `pflks`:varchar(20), `lstfl`:varchar(20), `lstvz`:varchar(20), `lstak`:varchar(20), `ldvfl`:varchar(20), `ldbfl`:varchar(20), `ldvzl`:varchar(20), `ldbzl`:varchar(20), `vdvfl`:varchar(20), `vdbfl`:varchar(20), `vdvzl`:varchar(20), `vdbzl`:varchar(20), `prat1`:varchar(20), `prat2`:varchar(20), `prat3`:varchar(20), `prat4`:varchar(20), `prat5`:varchar(20), `prat6`:varchar(20), `prat7`:varchar(20), `prat8`:varchar(20), `prat9`:varchar(20), `prata`:varchar(20), `rdprf`:varchar(20), `megru`:varchar(20), `lfmax`:varchar(20), `rjart`:varchar(20), `pbind`:varchar(20), `vavme`:varchar(20), `matkc`:varchar(20), `pvmso`:varchar(20), `created_at`:timestamp without time zone, `updated_at`:timestamp without time zone
@@ -9242,6 +9277,14 @@ Canaux de distribution
 - **Key:** `mandt,vtweg` _(SAP DDIC)_
 - **Columns (4):** `mandt`:text, `vtweg`:text, `created_at`:timestamp without time zone, `updated_at`:timestamp without time zone
 
+### raw_data.v_articles_conserves
+
+Perimetre des articles conserves lors de la purge du catalogue : union de la selection St-Jean, des matnr references par la structure IH02, du perimetre des exports IFS (article_definitif) et des materiaux d'equipements. La colonne sources indique pourquoi chaque article est conserve.
+
+- **Rows:** view
+- **Size:** 0 B
+- **Columns (2):** `matnr`:text, `sources`:text
+
 ### raw_data.v_immo_comptes
 
 - **Rows:** view
@@ -9410,7 +9453,7 @@ SELECT * FROM public.ai_table_relationships;
 
 ## Query Gotchas
 
-- **Do not add SAP technical filters.** Project decision (2026-06-15): queries here run without `mandt` / `loevm` / `lvorm` / `loekz` / `stblg` predicates — the extraction already applied them. Most `raw_data` objects do not even have those columns (`mandt` on 169/240, `loevm` on 10/240, `lvorm` on 13/240, `loekz` on 10/240, `stblg` on 3/240), so such a predicate usually raises `42703 column ... does not exist`. `backend/services/sql_filters.py` strips them from AI-generated SQL before `sql_guard` for exactly this reason.
+- **Do not add SAP technical filters.** Project decision (2026-06-15): queries here run without `mandt` / `loevm` / `lvorm` / `loekz` / `stblg` predicates — the extraction already applied them. Most `raw_data` objects do not even have those columns (`mandt` on 169/241, `loevm` on 10/241, `lvorm` on 13/241, `loekz` on 10/241, `stblg` on 3/241), so such a predicate usually raises `42703 column ... does not exist`. `backend/services/sql_filters.py` strips them from AI-generated SQL before `sql_guard` for exactly this reason.
 
 - **`raw_data` is read-only.** Corrections belong in `clean_data` or in the mapping tables.
 

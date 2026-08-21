@@ -11,65 +11,65 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
-const cards = [
+const sections = [
   {
-    title: 'Équipements',
-    description: 'Consulter la liste des équipements SAP, leurs caractéristiques et rattachements.',
-    path: '/maintenance/equipment',
-    icon: EquipmentIcon,
-    color: 'warning' as const,
-    tag: 'SAP',
+    title: 'Structure technique et référentiels',
+    cards: [
+      {
+        title: 'Explorer la hiérarchie des postes techniques',
+        description: 'Parcourir l\'arborescence des postes techniques et les équipements qui leur sont rattachés.',
+        path: '/maintenance/ih02',
+        icon: IH02Icon,
+        color: 'secondary' as const,
+        tag: 'IH02',
+      },
+      {
+        title: 'Liste des équipements',
+        description: 'Rechercher un équipement, consulter ses caractéristiques et modifier ses données.',
+        path: '/maintenance/equipment',
+        icon: EquipmentIcon,
+        color: 'secondary' as const,
+        tag: 'SAP',
+      },
+      {
+        title: 'Catalogue des articles',
+        description: 'Consulter tous les articles de maintenance SAP : ERSA, IBAU et NLAG.',
+        path: '/maintenance/articles',
+        icon: ArticleIcon,
+        color: 'primary' as const,
+        tag: 'SAP',
+      },
+      {
+        title: 'Pièces de rechange',
+        description: 'Consulter les pièces de rechange ERSA avec leurs stocks et divisions.',
+        path: '/maintenance/articles/ersa',
+        icon: ArticleIcon,
+        color: 'warning' as const,
+        tag: 'ERSA',
+      },
+      {
+        title: 'Référentiel IBAU équipe',
+        description: 'Gérer la liste IBAU manuelle, distincte des articles provenant de SAP.',
+        path: '/maintenance/ibau',
+        icon: LayersIcon,
+        color: 'primary' as const,
+        tag: 'ÉDITABLE',
+      },
+    ],
   },
   {
-    title: 'Hiérarchie technique & Équipements',
-    description: 'Explorer l\'arborescence complète des postes techniques avec leurs équipements rattachés (IH02).',
-    path: '/maintenance/ih02',
-    icon: IH02Icon,
-    color: 'secondary' as const,
-    tag: 'IH02',
+    title: 'Maintenance préventive',
+    cards: [
+      {
+        title: 'Gammes préventives',
+        description: 'Filtrer, exporter et modifier les plans, fréquences et charges de maintenance.',
+        path: '/maintenance/pe-tools',
+        icon: PeToolsIcon,
+        color: 'success' as const,
+        tag: 'PE TOOLS',
+      },
+    ],
   },
-  {
-    title: 'Articles maintenance',
-    description: 'Consulter tous les articles de maintenance (ERSA, IBAU, NLAG) avec stocks et divisions.',
-    path: '/maintenance/articles',
-    icon: ArticleIcon,
-    color: 'primary' as const,
-    tag: 'MARA',
-  },
-  {
-    title: 'Gammes préventives (PE Tools)',
-    description: 'Filtrer, exporter et modifier les gammes de maintenance préventive : plans, fréquences et charges.',
-    path: '/maintenance/pe-tools',
-    icon: PeToolsIcon,
-    color: 'success' as const,
-    tag: 'PE TOOLS',
-  },
-  {
-    title: 'Liste IBAU (référentiel équipe)',
-    description: 'Liste des seuls IBAU, figée hors SAP : ajout, modification et suppression par les équipes.',
-    path: '/maintenance/ibau',
-    icon: LayersIcon,
-    color: 'error' as const,
-    tag: 'ÉDITABLE',
-  },
-  {
-    title: 'Sauvegardes & restauration',
-    description: 'Enregistrer un état de travail, y revenir à tout moment, et recharger les données depuis SAP.',
-    path: '/maintenance/backups',
-    icon: BackupIcon,
-    color: 'info' as const,
-    tag: 'ÉTATS',
-  },
-];
-
-// Blocs dédiés par type d'article (pages séparées). Les articles inactifs
-// (indicateur de suppression SAP) sont exclus des compteurs côté backend.
-const typeCards = [
-  { code: 'ERSA', title: 'Pièces de rechange', path: '/maintenance/articles/ersa', color: 'warning' as const },
-  { code: 'IBAU', title: 'Ensembles de maintenance', path: '/maintenance/articles/ibau', color: 'info' as const },
-  { code: 'NLAG', title: 'Articles non stockés', path: '/maintenance/articles/nlag', color: 'secondary' as const },
-  // Referentiel decouple de SAP (clean_data.ibau_article) : compteur dedie.
-  { code: 'LISTE_IBAU', label: 'Liste IBAU', title: 'Référentiel équipe, hors SAP', path: '/maintenance/ibau', color: 'error' as const },
 ];
 
 const MaintenancePage: React.FC = () => {
@@ -100,108 +100,131 @@ const MaintenancePage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>Maintenance</Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Gestion de la structure de maintenance, des postes techniques et des équipements.
+        Gérez la structure technique, les articles et la maintenance préventive.
       </Typography>
 
-      <Grid container spacing={3}>
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <Grid item xs={12} sm={6} md={4} key={card.path}>
-              <Card
-                elevation={0}
-                sx={{
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: 3,
-                  height: '100%',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    borderColor: theme.palette[card.color].main,
-                    boxShadow: `0 4px 20px ${alpha(theme.palette[card.color].main, 0.15)}`,
-                    transform: 'translateY(-2px)',
-                  },
-                }}
-              >
-                <CardActionArea onClick={() => navigate(card.path)} sx={{ height: '100%', p: 1 }}>
-                  <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box
-                        sx={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: 2,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: alpha(theme.palette[card.color].main, 0.1),
-                        }}
-                      >
-                        <Icon sx={{ fontSize: 28, color: theme.palette[card.color].main }} />
-                      </Box>
-                      <Chip label={card.tag} size="small" variant="outlined" color={card.color} />
-                    </Box>
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>{card.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">{card.description}</Typography>
-                    </Box>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
-            </Grid>
-          );
-        })}
-      </Grid>
+      {sections.map((section) => (
+        <Box
+          component="section"
+          key={section.title}
+          sx={{ mb: 4 }}
+        >
+          <Typography
+            variant="overline"
+            color="text.secondary"
+            sx={{ display: 'block', fontWeight: 700, letterSpacing: '0.08em', mb: 1.5 }}
+          >
+            {section.title}
+          </Typography>
+          <Grid container spacing={3}>
+            {section.cards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <Grid item xs={12} md={4} key={card.path}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 3,
+                      height: '100%',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        borderColor: theme.palette[card.color].main,
+                        boxShadow: `0 4px 20px ${alpha(theme.palette[card.color].main, 0.15)}`,
+                        transform: 'translateY(-2px)',
+                      },
+                    }}
+                  >
+                    <CardActionArea onClick={() => navigate(card.path)} sx={{ height: '100%', p: 1 }}>
+                      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Box
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: alpha(theme.palette[card.color].main, 0.1),
+                            }}
+                          >
+                            <Icon sx={{ fontSize: 28, color: theme.palette[card.color].main }} />
+                          </Box>
+                          <Chip label={card.tag} size="small" variant="outlined" color={card.color} />
+                        </Box>
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>{card.title}</Typography>
+                          <Typography variant="body2" color="text.secondary">{card.description}</Typography>
+                        </Box>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      ))}
 
-      {/* Articles de maintenance par type — pages dédiées */}
-      <Typography variant="h6" sx={{ fontWeight: 600, mt: 5, mb: 2 }}>
-        Articles de maintenance par type
-      </Typography>
-      <Grid container spacing={3}>
-        {typeCards.map((card) => (
-          <Grid item xs={12} sm={6} md={4} key={card.code}>
+      <Box
+        component="section"
+        sx={{ mt: 5, pt: 3, borderTop: `1px solid ${theme.palette.divider}` }}
+      >
+        <Typography
+          variant="overline"
+          color="text.secondary"
+          sx={{ display: 'block', fontWeight: 700, letterSpacing: '0.08em', mb: 1.5 }}
+        >
+          Administration des données
+        </Typography>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={4}>
             <Card
               elevation={0}
               sx={{
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: 3,
-                height: '100%',
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  borderColor: theme.palette[card.color].main,
-                  boxShadow: `0 4px 20px ${alpha(theme.palette[card.color].main, 0.15)}`,
+                  borderColor: theme.palette.warning.main,
+                  boxShadow: `0 4px 20px ${alpha(theme.palette.warning.main, 0.15)}`,
                   transform: 'translateY(-2px)',
                 },
               }}
             >
-              <CardActionArea onClick={() => navigate(card.path)} sx={{ height: '100%', p: 1 }}>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box
-                    sx={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: alpha(theme.palette[card.color].main, 0.1),
-                      flexShrink: 0,
-                    }}
-                  >
-                    <LayersIcon sx={{ fontSize: 30, color: theme.palette[card.color].main }} />
+              <CardActionArea onClick={() => navigate('/maintenance/backups')} sx={{ p: 1 }}>
+                <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                      }}
+                    >
+                      <BackupIcon sx={{ fontSize: 28, color: theme.palette.warning.main }} />
+                    </Box>
+                    <Chip label="SENSIBLE" size="small" variant="outlined" color="warning" />
                   </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
-                      {counts[card.code] !== undefined ? counts[card.code].toLocaleString() : '—'}
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      États sauvegardés et rechargement SAP
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{(card as any).label || card.code}</Typography>
-                    <Typography variant="caption" color="text.secondary" noWrap>{card.title}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Sauvegarder le travail, restaurer un état antérieur ou recharger les données depuis SAP.
+                    </Typography>
                   </Box>
                 </CardContent>
               </CardActionArea>
             </Card>
           </Grid>
-        ))}
-      </Grid>
+        </Grid>
+      </Box>
     </Box>
   );
 };
