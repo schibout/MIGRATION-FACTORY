@@ -78,7 +78,7 @@ BEGIN
             WHEN 'P0'    THEN sp.end_p0::DATE
             WHEN 'P0bis' THEN sp.end_p0::DATE
             WHEN 'P0ter' THEN sp.end_p0::DATE
-            WHEN 'P1'    THEN sp.end_p1::DATE
+            WHEN 'P1'    THEN sp.end_p1::DATE  
             WHEN 'P1bis' THEN sp.end_p1::DATE
             WHEN 'P1ter' THEN sp.end_p1::DATE
             WHEN 'P2'    THEN sp.end_p2::DATE
