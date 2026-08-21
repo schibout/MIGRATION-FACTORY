@@ -14,9 +14,16 @@ Deploy:   Docker Compose + Nginx
 ```
 
 ### Schemas base de donnees
-- `raw_data` : 121 tables SAP brutes (lecture seule)
-- `clean_data` : 45 vues/tables transformees pour IFS
-- `public` : 15 tables systeme (users, jobs, configs, logs)
+- `raw_data` : 230 tables + 10 vues SAP brutes / imports SharePoint (lecture seule)
+- `clean_data` : 112 tables + 22 vues transformees pour IFS (cible des exports)
+- `public` : 41 tables + 5 vues systeme (users, jobs, configs, logs, dictionnaires SAP/IFS, Assistant IA)
+- `snapshots` : 20 tables, copies automatiques avant operations Maintenance destructives
+
+**Reference complete generee : `.astro/warehouse.md`** — colonnes, types, cles (PK / index unique /
+DDIC SAP / spec IFS), valeurs categorielles, catalogue d'export, routage mot-cle -> tables, graphe de
+jointures SAP DDIC. Fichier entierement genere, ecrase a chaque regeneration : le contexte metier se
+met dans la base (`COMMENT ON`, `etl_export_queries.description`, `ai_domain_tables`), pas dans le md.
+Regenerer : `./.astro/refresh_warehouse.sh` (apres une migration SQL ou une re-extraction SAP).
 
 ## Structure du code
 
