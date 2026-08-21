@@ -261,6 +261,10 @@ interface DraggedBom {
 interface PendingBomDrop {
   drag: DraggedBom;
   targetType: 'FUNC_LOC' | 'ARTICLE';
+  /** Cible = poste technique : le noeud, pour s'y positionner apres le deplacement. */
+  targetNode?: LocationNode;
+  /** Cible = article : sa ligne (comme pour la selection), pour s'y positionner. */
+  targetSel?: SelectedBom;
   targetKey: string;
   targetLabel: string;
 }
@@ -907,6 +911,7 @@ const IH02HierarchyPage: React.FC = () => {
         targetType: 'FUNC_LOC',
         targetKey: targetNode.node_id,
         targetLabel: targetNode.display_name || targetNode.node_id,
+        targetNode,
       });
       return;
     }
@@ -934,11 +939,18 @@ const IH02HierarchyPage: React.FC = () => {
         new_parent_level: pendingDrop.target.level,
       });
       setSnackbar({ open: true, message: `"${pendingDrop.source.node_id}" déplacé sous "${pendingDrop.target.node_id}"`, severity: 'success' });
+      const target = pendingDrop.target;
       setLoadedChildren({});
       setLoadedEqChildren({});
-      setExpandedNodes({});
+      // Se positionner sur le PARENT cible : lui seul reste deplie (ses enfants,
+      // dont le noeud deplace, sont recharges) et le panneau affiche ses details.
+      setExpandedNodes({ [getNodeKey(target)]: true });
       loadRootNodes();
       loadStats();
+      loadChildren(target);
+      setSelectedBom(null);
+      setSelectedNode(target);
+      loadLocationDetails(target);
     } catch (err: any) {
       setSnackbar({ open: true, message: err.response?.data?.error || 'Erreur lors du déplacement', severity: 'error' });
     } finally {
@@ -985,11 +997,12 @@ const IH02HierarchyPage: React.FC = () => {
     setDropTargetKey(pathKey);
   };
 
-  const handleBomDrop = (e: React.DragEvent, cible: BomComponent) => {
+  const handleBomDrop = (e: React.DragEvent, targetSel: SelectedBom) => {
     if (!draggedBomRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     setDropTargetKey(null);
+    const cible = targetSel.comp;
     const drag = draggedBomRef.current;
     draggedBomRef.current = null;
     setDraggedBom(null);
@@ -1010,6 +1023,7 @@ const IH02HierarchyPage: React.FC = () => {
       targetType: 'ARTICLE',
       targetKey: cible.idnrk,
       targetLabel: cible.matnr_short || cible.idnrk,
+      targetSel,
     });
   };
 
@@ -1029,13 +1043,29 @@ const IH02HierarchyPage: React.FC = () => {
         severity: 'success',
       });
       // Recharger uniquement les deux nomenclatures concernees : l'arbre reste
-      // deplie (cf. le repli corrige au renommage).
-      if (drag.mode === 'fl') await loadBom(drag.sourceKey, true);
-      else await loadArticleBom(drag.sourceKey, true);
-      if (targetType === 'FUNC_LOC') await loadBom(targetKey, true);
-      else await loadArticleBom(targetKey, true);
-      // Le panneau de details pointait peut-etre la ligne deplacee
-      if (selectedBom?.comp.bom_key === drag.comp.bom_key) setSelectedBom(null);
+      // deplie (cf. le repli corrige au renommage). Ces rechargements remettent
+      // aussi a jour les compteurs (bomCounts / articleBomCounts) -> chevrons
+      // et pastilles refletent le deplacement immediatement.
+      await Promise.all([
+        drag.mode === 'fl' ? loadBom(drag.sourceKey, true) : loadArticleBom(drag.sourceKey, true),
+        targetType === 'FUNC_LOC' ? loadBom(targetKey, true) : loadArticleBom(targetKey, true),
+      ]);
+      // Se positionner sur le PARENT cible : sa nomenclature est depliee pour
+      // montrer la ligne deplacee, et le panneau de droite affiche ses details.
+      if (targetType === 'FUNC_LOC' && pendingBomDrop.targetNode) {
+        const tn = pendingBomDrop.targetNode;
+        setExpandedNodes((prev) => ({ ...prev, [getNodeKey(tn)]: true }));
+        setExpandedBom((prev) => ({ ...prev, [targetKey]: true }));
+        setSelectedBom(null);
+        setSelectedNode(tn);
+        loadLocationDetails(tn);
+      } else if (pendingBomDrop.targetSel) {
+        setExpandedArticleBom((prev) => ({ ...prev, [pendingBomDrop.targetSel!.pathKey]: true }));
+        selectBomComponent(pendingBomDrop.targetSel);
+      } else if (selectedBom?.comp.bom_key === drag.comp.bom_key) {
+        // Le panneau de details pointait peut-etre la ligne deplacee
+        setSelectedBom(null);
+      }
     } catch (err: any) {
       setSnackbar({
         open: true,
@@ -1600,7 +1630,10 @@ const IH02HierarchyPage: React.FC = () => {
     mode: 'fl' | 'article',
     parentIdnrk?: string,
   ) => {
-    const childCount = comp.children_count ?? articleBomCounts[comp.idnrk] ?? 0;
+    // articleBomCounts d'abord : il est remis a jour apres chaque deplacement /
+    // ajout / suppression, alors que children_count date du chargement de la
+    // liste parente (chevron fige sinon).
+    const childCount = articleBomCounts[comp.idnrk] ?? comp.children_count ?? 0;
     const hasChildren = childCount > 0;
     const isExpanded = expandedArticleBom[pathKey];
     const isLoading = loadingArticleBom[comp.idnrk];
@@ -1621,7 +1654,11 @@ const IH02HierarchyPage: React.FC = () => {
           onDragEnd={handleDragEnd}
           onDragOver={(e) => handleBomDragOver(e, pathKey)}
           onDragLeave={handleDragLeave}
-          onDrop={(e) => handleBomDrop(e, comp)}
+          onDrop={(e) => handleBomDrop(e, {
+            comp, mode, pathKey,
+            tplnr: mode === 'fl' ? (comp.tplnr || '') : undefined,
+            parentIdnrk: mode === 'article' ? (parentIdnrk || '') : undefined,
+          })}
           onClick={() => selectBomComponent({
             comp, mode, pathKey,
             tplnr: mode === 'fl' ? (comp.tplnr || '') : undefined,
