@@ -24,6 +24,11 @@ def _block_writes_during_maintenance_job():
 
 CACHE_PREFIX = 'maint:articles:'
 
+# TTL long pour les listes deroulantes (types / groupes d'articles) : elles ne
+# changent qu'apres un rechargement SAP, qui purge explicitement le prefixe
+# 'maint:' (cf. maintenance_reload_service). Le TTL n'est qu'un filet.
+OPTIONS_CACHE_TTL = 3600
+
 # Types d'articles consideres "maintenance" (SAP PM) :
 #   ERSA = Pieces de rechange, IBAU = Sous-ensembles de maintenance,
 #   NLAG = Article non gere en stock
@@ -273,7 +278,7 @@ def list_articles():
                 ]
                 cache_set(options_cache_key,
                           json.dumps({'mtart': mtart_options, 'matkl': matkl_options}),
-                          Config.MAINTENANCE_CACHE_TTL)
+                          OPTIONS_CACHE_TTL)
 
             payload = json.dumps({
                 'success': True,

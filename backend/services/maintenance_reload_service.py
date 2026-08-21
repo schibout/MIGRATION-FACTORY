@@ -350,6 +350,16 @@ def _execute(job_id):
             _finish(job_id)
             logger.info(f"✅ Job maintenance #{job_id} ({job_type}) termine.")
 
+            # Les donnees servies par les ecrans maintenance viennent de changer
+            # (raw_data et/ou maintenance_object) : purge du cache applicatif,
+            # sans quoi les pages articles serviraient l'ancienne version
+            # jusqu'a expiration du TTL (1 h pour les listes deroulantes).
+            try:
+                from services.cache_service import cache_invalidate
+                cache_invalidate('maint:')
+            except Exception as e:
+                logger.warning(f"Purge du cache maintenance impossible : {e}")
+
             # Chaque operation cree un snapshot de securite (~370 Mo : maintenance_object
             # + les tables raw_data, dont iloa). Sans purge, l'espace disque du serveur
             # partage avec Ollama se remplirait silencieusement.
