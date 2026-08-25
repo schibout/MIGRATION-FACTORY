@@ -31,13 +31,13 @@ BEGIN
         SUBSTRING(address_id, 1, 50) as addr_no,
         -- DELIVERY_TERMS (VARCHAR 5) - NULL par défaut
         -- TODO: À enrichir depuis table de transcodification ou LFM1
-        NULL as delivery_terms,
+        public.get_default_value('clean_data.supplier_address', 'delivery_terms', NULL) as delivery_terms,
         -- SHIP_VIA_CODE (VARCHAR 3) - NULL par défaut
         -- TODO: À enrichir depuis table de transcodification ou LFM1
-        NULL as ship_via_code,
+        public.get_default_value('clean_data.supplier_address', 'ship_via_code', NULL) as ship_via_code,
         -- ROUTE_ID (VARCHAR 12) - NULL par défaut
         -- TODO: À enrichir depuis table de transcodification ou LFM1
-        NULL as route_id,
+        public.get_default_value('clean_data.supplier_address', 'route_id', NULL) as route_id,
         -- CONTACT (VARCHAR 100) - depuis name
         SUBSTRING(name, 1, 100) as contact,
         -- INTRASTAT_EXEMPT (VARCHAR 4000) - Règle selon pays
