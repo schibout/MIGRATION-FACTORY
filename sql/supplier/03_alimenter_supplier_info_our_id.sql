@@ -30,7 +30,7 @@ BEGIN
         f.numero_compte_fournisseur as supplier_id,
         f.company as company,
         -- Génération d'OUR_ID selon la société
-        'TRIMET'||'-'||f.numero_compte_fournisseur as our_id,
+        public.get_default_value('clean_data.supplier_info_our_id', 'our_id_prefix', 'TRIMET')||'-'||f.numero_compte_fournisseur as our_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp,
         'etl_supplier_base' as created_by,
