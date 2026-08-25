@@ -37,7 +37,7 @@ BEGIN
     SELECT 
         sia.supplier_id,
         sia.address_id,
-        'TRIMET' as company,
+        public.get_default_value('clean_data.supplier_document_tax_info', 'company', 'TRIMET') as company,
         CASE 
             WHEN sia.country = 'FR' THEN 'SIRET'
             WHEN sia.country = 'DE' THEN 'TVA DE'
@@ -48,12 +48,12 @@ BEGIN
         END as tax_id_type,
         COALESCE(ifs.tva, 'NO_VAT_' || sia.supplier_id) as vat_no,
         CURRENT_DATE as validated_date,
-        'NOT_SET' as reliability_status_db,
+        public.get_default_value('clean_data.supplier_document_tax_info', 'reliability_status_db', 'NOT_SET') as reliability_status_db,
         CURRENT_DATE as declaration_date,
         CURRENT_DATE as last_modify_date,
-        '' as tax_office_id,
-        '' as company_addr_tax_id_type,
-        'FALSE' as company_addr_tax_id_type_db,
+        public.get_default_value('clean_data.supplier_document_tax_info', 'tax_office_id', '') as tax_office_id,
+        public.get_default_value('clean_data.supplier_document_tax_info', 'company_addr_tax_id_type', '') as company_addr_tax_id_type,
+        public.get_default_value('clean_data.supplier_document_tax_info', 'company_addr_tax_id_type_db', 'FALSE') as company_addr_tax_id_type_db,
         COALESCE(sia.created_timestamp, NOW()) as created_timestamp,
         NOW() as updated_timestamp,
         COALESCE(sia.created_by, 'system') as created_by,
