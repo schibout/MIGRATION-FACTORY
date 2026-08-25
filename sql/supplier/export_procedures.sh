@@ -71,6 +71,14 @@ procedures=(
     "fn_upsert_supplier_delivery_tax_code"
     "fn_upsert_payment_address"
     "fn_upsert_supplier_tax_info"
+    # --- Ajoutees le 2026-08-25 : presentes en base mais jamais exportees ---
+    "extract_and_insert_supplier_data"
+    "fn_calculate_iban"
+    "insert_comm_method"
+    "insert_supplier_address"
+    "populate_supplier_info_address_type"
+    "sp_insert_comm_method_from_sap"
+    "sp_insert_payment_address_from_sap"
 )
 
 # Fichiers de sortie correspondants avec numérotation

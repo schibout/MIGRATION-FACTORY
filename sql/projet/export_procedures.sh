@@ -44,7 +44,7 @@ export PGPASSWORD="$DB_PASSWORD"
 
 # Début du script
 echo "=========================================="
-echo "  Export des procédures CLIENT"
+echo "  Export des procédures PROJET"
 echo "=========================================="
 echo ""
 log_info "Connexion: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
@@ -55,31 +55,17 @@ count=0
 
 # Liste des procédures à exporter
 procedures=(
-    "sp_insert_ifs_customer_ref"
-    "sp_insert_customer_info_from_sap"
-    "sp_insert_customer_address_from_sap"
-    "sp_insert_customer_address_type_from_sap"
-    "sp_insert_customer_tax_info_from_sap"
-    "sp_insert_customer_delivery_tax_info_from_sap"
-    "sp_insert_customer_tax_free_tax_code_from_sap"
-    "sp_insert_customer_del_tax_exempt_from_sap"
-    "sp_insert_customer_addr_tax_number_from_sap"
-    "sp_insert_customer_document_tax_info_from_sap"
-    "sp_insert_cus_comm_method_from_sap"
-    "sp_insert_cus_ident_invoice_info_from_sap"
-    "sp_insert_customer_delivery_fee_code_from_sap"
-    "sp_insert_customer_credit_info_from_sap"
-    "sp_insert_cust_ord_customer_from_sap"
-    "sp_insert_cust_ord_customer_address_from_sap"
-    "sp_insert_cus_identity_pay_info_from_sap"
-    "sp_insert_cus_paym_way_per_ident_from_sap"
-    "sp_insert_cus_payment_address_from_sap"
-    "sp_insert_payment_way_per_identity_from_sap"
-    # --- Ajoutees le 2026-08-25 : presentes en base mais jamais exportees ---
-    "sp_insert_ifs_customer_from_sap"
-    "sp_insert_customer_info_contact_from_sap"
-    "sp_insert_customer_info_cfv_from_customer_info"
+    "alimenter_ifs_project_base"
+    "alimenter_ifs_project_site_ext"
+    "alimenter_ifs_project_margin_matrix"
+    "alimenter_ifs_project_role"
+    "alimenter_ifs_project_role_assignment"
+    "alimenter_sub_project"
+    "alimenter_activity"
+    "alimenter_project_activity"
+    "alimenter_project_activity_class"
 )
+
 
 # Export de chaque procédure
 for proc_name in "${procedures[@]}"; do
