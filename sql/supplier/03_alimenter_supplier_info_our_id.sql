@@ -30,7 +30,7 @@ BEGIN
         f.numero_compte_fournisseur as supplier_id,
         f.company as company,
         -- Génération d'OUR_ID selon la société
-        'TRIMET'||'-'||f.numero_compte_fournisseur as our_id,
+        public.get_default_value('clean_data.supplier_info_our_id', 'our_id_prefix', 'TRIMET')||'-'||f.numero_compte_fournisseur as our_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp,
         'etl_supplier_base' as created_by,
@@ -66,9 +66,7 @@ BEGIN
     RAISE NOTICE 'Total fournisseurs: %', (SELECT COUNT(*) FROM clean_data.supplier_info_our_id);
     RAISE NOTICE 'Exemples OUR_ID: %', 
                  (SELECT STRING_AGG(our_id, ', ') FROM (SELECT our_id FROM clean_data.supplier_info_our_id ORDER BY supplier_id LIMIT 5) t);
-
     RETURN v_records_inserted;
-
 EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur dans alimenter_supplier_info_our_id: %', SQLERRM;

@@ -2,6 +2,7 @@ import {
     CompareArrows as CompareArrowsIcon,
     List as ListIcon,
     Rule as RuleIcon,
+    SettingsSuggest as SettingsSuggestIcon,
     Storage as StorageIcon,
     Transform as TransformIcon,
     Tune as TuneIcon
@@ -50,6 +51,13 @@ const Sidebar = () => {
           <TuneIcon sx={{ color: '#FFF' }} />
         </ListItemIcon>
         <ListItemText primary="Paramètres" />
+      </ListItem>
+
+      <ListItem button component={Link} to="/configuration/valeurs-defaut">
+        <ListItemIcon>
+          <SettingsSuggestIcon sx={{ color: '#FFF' }} />
+        </ListItemIcon>
+        <ListItemText primary="Valeurs par défaut" />
       </ListItem>
       
       <ListItem button component={Link} to="/listes-valeurs">

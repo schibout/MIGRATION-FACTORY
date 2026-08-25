@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS raw_data.selection_fournisseurs (
     statut_validation VARCHAR(20)
 );
 
--- Index sur numero_compte_sap pour améliorer les performances des jointures
-CREATE INDEX IF NOT EXISTS idx_selection_fournisseurs_numero_compte_sap ON raw_data.selection_fournisseurs(numero_compte_sap);
+-- Index sur lifnr pour améliorer les performances des jointures
+CREATE INDEX IF NOT EXISTS idx_selection_fournisseurs_lifnr ON raw_data.selection_fournisseurs(lifnr);
 
 COMMENT ON TABLE raw_data.selection_fournisseurs IS 'Liste définitive des fournisseurs sélectionnés pour la migration vers IFS';

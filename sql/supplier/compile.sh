@@ -67,6 +67,13 @@ errors=0
 
 # Liste des fichiers dans l'ordre d'exécution
 files=(
+    # Prerequis des valeurs par defaut parametrables : la table et l'accesseur
+    # doivent exister AVANT les fonctions ETL qui les appellent, sinon chaque
+    # chargement echoue sur "function public.get_default_value does not exist".
+    # Les deux fichiers sont idempotents (IF NOT EXISTS / ON CONFLICT DO NOTHING
+    # / CREATE OR REPLACE), ils peuvent donc etre rejoues sans risque.
+    "../../migrations/031_create_etl_default_values.sql"
+    "../functions/get_default_value.sql"
     "01_alimenter_ifs_fournisseurs.sql"
     "02_alimenter_supplier_info_general.sql"
     "03_alimenter_supplier_info_our_id.sql"
