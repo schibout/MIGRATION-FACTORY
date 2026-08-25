@@ -21,7 +21,8 @@ import {
     Rule as ReglesGestionIcon,
     Security as SecurityIcon,
     TableChart as TableStructureIcon,
-    Compare as TranscodificationIcon
+    Compare as TranscodificationIcon,
+    SettingsSuggest as ValeursDefautIcon
 } from '@mui/icons-material';
 
 // Type pour les éléments du menu de configuration
@@ -99,6 +100,12 @@ const Configuration: React.FC = () => {
       path: '/configuration/smtp',
       icon: <EmailIcon sx={{ fontSize: 40, color: '#ef5350' }} />,
       description: 'Configurer le serveur SMTP pour l\'envoi d\'emails (mot de passe oublié)'
+    },
+    {
+      title: 'Valeurs par défaut',
+      path: '/configuration/valeurs-defaut',
+      icon: <ValeursDefautIcon sx={{ fontSize: 40, color: '#9575cd' }} />,
+      description: 'Gérer les valeurs par défaut utilisées par les chargements ETL'
     }
   ];
 
