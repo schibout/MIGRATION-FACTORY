@@ -66,9 +66,7 @@ BEGIN
     INNER JOIN raw_data.adr2 adr2 ON adrc.addrnumber = adr2.addrnumber
     WHERE adr2.tel_number IS NOT NULL 
     AND adr2.tel_number != ''
-
     UNION ALL
-
     -- FAX (Fax) - depuis raw_data.adr3
     SELECT 
         'SUPPLIER' as party_type_db,
@@ -99,9 +97,7 @@ BEGIN
     INNER JOIN raw_data.adr3 adr3 ON adrc.addrnumber = adr3.addrnumber
     WHERE adr3.fax_number IS NOT NULL 
     AND adr3.fax_number != ''
-
     UNION ALL
-
     -- EMAIL (E-Mail) - depuis raw_data.adr6
     SELECT 
         'SUPPLIER' as party_type_db,
@@ -160,9 +156,7 @@ BEGIN
                  (SELECT COUNT(DISTINCT supplier_id) FROM clean_data.comm_method WHERE method_id_db = 'E_MAIL');
     RAISE NOTICE 'Total fournisseurs avec moyens de communication: %', 
                  (SELECT COUNT(DISTINCT supplier_id) FROM clean_data.comm_method);
-
     RETURN v_records_inserted;
-
 EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur dans alimenter_comm_method: %', SQLERRM;

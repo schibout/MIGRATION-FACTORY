@@ -28,6 +28,7 @@ BEGIN
         -- Colonnes spécifiées uniquement
         NULL as INVOICE_FEE,
         COALESCE(NULLIF(TRIM(sf.condition_paiement_ifs), ''), f.conditions_paiement_achats, 'NET30') as PAY_TERM_ID,
+        COALESCE(NULLIF(TRIM(sf.code_tva_ifs), ''), '') as DEF_VAT_CODE,
         COALESCE(f.devise_principale, 'EUR') as DEF_CURRENCY,
         'FALSE' as IDENTITY_TYPE,
         '' as VOTING_SHARE_PERCENTAGE,
@@ -90,6 +91,7 @@ BEGIN
         PARTY_TYPE_DB,
         INVOICE_FEE,
         PAY_TERM_ID,
+        DEF_VAT_CODE,
         DEF_CURRENCY,
         IDENTITY_TYPE,
         VOTING_SHARE_PERCENTAGE,
@@ -131,6 +133,7 @@ BEGIN
         PARTY_TYPE_DB,
         INVOICE_FEE,
         PAY_TERM_ID,
+        DEF_VAT_CODE,
         DEF_CURRENCY,
         IDENTITY_TYPE,
         VOTING_SHARE_PERCENTAGE,

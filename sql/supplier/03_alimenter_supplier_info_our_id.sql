@@ -66,9 +66,7 @@ BEGIN
     RAISE NOTICE 'Total fournisseurs: %', (SELECT COUNT(*) FROM clean_data.supplier_info_our_id);
     RAISE NOTICE 'Exemples OUR_ID: %', 
                  (SELECT STRING_AGG(our_id, ', ') FROM (SELECT our_id FROM clean_data.supplier_info_our_id ORDER BY supplier_id LIMIT 5) t);
-
     RETURN v_records_inserted;
-
 EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur dans alimenter_supplier_info_our_id: %', SQLERRM;

@@ -1,0 +1,437 @@
+﻿table_cible;variante;colonne;type_valeur_defaut;valeur_par_defaut;regle_sql;script_source;ligne_insert
+clean_data.ifs_fournisseurs;STANDARD;address_id;CONSTANTE_FORCEE;01;'01';01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;cle_pays;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.code_pays), ''), a.land1);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;code_postal;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.code_postal), ''), a.pstlz);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;code_tva_ifs;AUCUNE_VALEUR_PAR_DEFAUT;;sf.code_tva_ifs;01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;company;CONSTANTE_FORCEE;TRIMET;'TRIMET';01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;conditions_paiement_achats;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.condition_paiement_ifs), ''), sap_data.conditions_paiement_achats);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;conditions_paiement_compta;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.condition_paiement_ifs), ''), sap_data.conditions_paiement_compta);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;date_creation_sap;REGLE_CONDITIONNELLE;;CASE WHEN TRIM(COALESCE(a.erdat, '')) ~ '^[0-9]{8}$' AND TRIM(a.erdat) <> '00000000' THEN TO_DATE(TRIM(a.erdat), 'YYYYMMDD') WHEN TRIM(COALESCE(a.erdat, '')) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN TO_DATE(TRIM(a.erdat), 'YYYY-MM-DD') ELSE sf.date_import::date END;01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;destinataire_paiement;AUCUNE_VALEUR_PAR_DEFAUT;;sap_data.destinataire_paiement;01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;incoterms_1;AUCUNE_VALEUR_PAR_DEFAUT;;sap_data.incoterms_1;01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;incoterms_2;AUCUNE_VALEUR_PAR_DEFAUT;;sap_data.incoterms_2;01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;language_sap;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE( public.get_transcodification('LANGUAGE', NULLIF(TRIM(sf.langue), '')), public.get_transcodification('LANGUAGE', a.spras) );01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;localite;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.localite), ''), a.ort01);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;nom_1;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.denomination_sociale), ''), a.name1);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;numero_compte_fournisseur;AUCUNE_VALEUR_PAR_DEFAUT;;sf.numero_compte_sap;01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;organisation_achats;AUCUNE_VALEUR_PAR_DEFAUT;;sap_data.organisation_achats;01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;rue;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE( NULLIF(TRIM(sf.libelle_concatene), ''), NULLIF(TRIM(CONCAT_WS(' ', sf.numero_voie, sf.indice_numero_voie, sf.type_voie, sf.libelle_voie)), ''), a.stras );01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;siret;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.numero_siret), ''), a.stcd1);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;societe;AUCUNE_VALEUR_PAR_DEFAUT;;sap_data.societe;01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;telephone_1;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.telephone_1), ''), a.telf1);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;telephone_2;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.telephone_2), ''), NULLIF(TRIM(sf.telephone_3), ''), a.telf2);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.ifs_fournisseurs;STANDARD;tva;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(NULLIF(TRIM(sf.numero_tva_intra), ''), a.stceg);01_alimenter_ifs_fournisseurs.sql;7
+clean_data.supplier_info_general;STANDARD;association_no;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(f.siret, 1, 20);02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;b2b_supplier;CONSTANTE_FORCEE;FALSE;'FALSE';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;b2b_supplier_db;CONSTANTE_FORCEE;FALSE;'FALSE';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;business_classification;NULL_EXPLICITE;NULL;NULL;02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;corporate_form;NULL_EXPLICITE;NULL;NULL;02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;country;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(f.cle_pays, 1, 2);02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;country_db;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(f.cle_pays, 1, 2);02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;created_timestamp;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP);02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;creation_date;AUCUNE_VALEUR_PAR_DEFAUT;;f.date_creation_sap;02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;default_domain;CONSTANTE_FORCEE;FALSE;'FALSE';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;default_language;CONSTANTE_FORCEE;FR;'FR';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;default_language_db;CONSTANTE_FORCEE;FR;'FR';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;identifier_ref_validation;REGLE_CONDITIONNELLE;VERIFIED | PARTIAL | NOT_VERIFIED;CASE WHEN f.siret IS NOT NULL AND f.siret != '' THEN 'VERIFIED' WHEN f.tva IS NOT NULL AND f.tva != '' THEN 'PARTIAL' ELSE 'NOT_VERIFIED' END;02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;identifier_ref_validation_db;CONSTANTE_FORCEE;NONE;'NONE';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;identifier_reference;REGLE_CONDITIONNELLE;;SUBSTRING( CASE WHEN f.siret IS NOT NULL AND f.siret != '' THEN f.siret WHEN f.tva IS NOT NULL AND f.tva != '' THEN f.tva ELSE f.numero_compte_fournisseur END, 1, 20 );02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;name;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(f.nom_1, 1, 100);02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;one_time;CONSTANTE_FORCEE;FALSE;'FALSE';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;one_time_db;CONSTANTE_FORCEE;FALSE;'FALSE';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;party;NULL_EXPLICITE;NULL;null;02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;picture_id;NULL_EXPLICITE;NULL;NULL;02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;supplier_category;CONSTANTE_FORCEE;Supplier;'Supplier';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;supplier_category_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(f.numero_compte_fournisseur, 1, 20);02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;supplier_legacy_sap_id;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(f.numero_compte_fournisseur, 1, 20);02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;suppliers_own_id;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(f.siret, 1, 20);02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_general;STANDARD;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;02_alimenter_supplier_info_general.sql;15
+clean_data.supplier_info_our_id;STANDARD;company;AUCUNE_VALEUR_PAR_DEFAUT;;f.company;03_alimenter_supplier_info_our_id.sql;16
+clean_data.supplier_info_our_id;STANDARD;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';03_alimenter_supplier_info_our_id.sql;16
+clean_data.supplier_info_our_id;STANDARD;created_timestamp;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP);03_alimenter_supplier_info_our_id.sql;16
+clean_data.supplier_info_our_id;STANDARD;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;03_alimenter_supplier_info_our_id.sql;16
+clean_data.supplier_info_our_id;STANDARD;our_id;AUCUNE_VALEUR_PAR_DEFAUT;;'TRIMET'||'-'||f.numero_compte_fournisseur;03_alimenter_supplier_info_our_id.sql;16
+clean_data.supplier_info_our_id;STANDARD;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;03_alimenter_supplier_info_our_id.sql;16
+clean_data.supplier_info_our_id;STANDARD;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';03_alimenter_supplier_info_our_id.sql;16
+clean_data.supplier_info_our_id;STANDARD;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;03_alimenter_supplier_info_our_id.sql;16
+clean_data.supplier_info_address;STANDARD;address;FALLBACK;;SUBSTRING( TRIM(COALESCE(a.street, f.rue) || ' ' || COALESCE(a.house_num1, '') || ' ' || COALESCE(a.city1, f.localite) || ' ' || COALESCE(a.post_code1, f.code_postal)), 1, 35 );04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;address1;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(COALESCE(a.street, f.rue), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;address2;FALLBACK;;SUBSTRING(COALESCE(a.str_suppl1, ''), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;address3;FALLBACK;;SUBSTRING(COALESCE(a.str_suppl2, ''), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;address4;FALLBACK;;SUBSTRING(COALESCE(a.building, ''), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;address5;FALLBACK;;SUBSTRING(COALESCE(a.floor, ''), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;address6;FALLBACK;;SUBSTRING(COALESCE(a.roomnumber, ''), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;address_id;CONSTANTE_FORCEE;01;'01';04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;city;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(COALESCE(a.city1, f.localite), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;comm_id;NULL_EXPLICITE;NULL;NULL::NUMERIC(20);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;country;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(COALESCE(a.country, f.cle_pays), 1, 4000);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;country_db;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(COALESCE(a.country, f.cle_pays), 1, 2);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;county;FALLBACK;;SUBSTRING(COALESCE(a.city2, ''), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;created_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;default_domain;CONSTANTE_FORCEE;TRUE;'TRUE';04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;ean_location;FALLBACK;;SUBSTRING(COALESCE(a.location, ''), 1, 100);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;name;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(COALESCE(a.name1, f.nom_1), 1, 100);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;output_media;CONSTANTE_FORCEE;1;1;04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;output_media_db;CONSTANTE_FORCEE;1;'1';04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;party;FALLBACK;;SUBSTRING(COALESCE(a.name_co, ''), 1, 20);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;state;FALLBACK;;SUBSTRING(COALESCE(a.region, ''), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;supplier_branch;FALLBACK;;SUBSTRING(COALESCE(a.addr_group, ''), 1, 20);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(f.numero_compte_fournisseur, 1, 20);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;valid_from;REGLE_CONDITIONNELLE;;CASE WHEN a.date_from IS NOT NULL AND a.date_from != '' THEN a.date_from::DATE ELSE CURRENT_DATE END;04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;valid_to;REGLE_CONDITIONNELLE;NULL;CASE WHEN a.date_to IS NOT NULL AND a.date_to != '' THEN a.date_to::DATE ELSE NULL END;04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address;STANDARD;zip_code;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(COALESCE(a.post_code1, f.code_postal), 1, 35);04_alimenter_supplier_info_address.sql;16
+clean_data.supplier_info_address_type;DELIVERY;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.address_id;05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;address_type_code;CONSTANTE_FORCEE;Delivery;'Delivery';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;address_type_code_db;CONSTANTE_FORCEE;DELIVERY;'DELIVERY';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;address_type_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id || '_' || sia.address_id || '_D';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;created_timestamp;DYNAMIQUE;NOW();NOW();05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;def_address;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;default_domain;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;invoice;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;party;CONSTANTE_FORCEE;;'';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;pay;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id;05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;updated_timestamp;DYNAMIQUE;NOW();NOW();05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;DELIVERY;visit;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;25
+clean_data.supplier_info_address_type;INVOICE;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.address_id;05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;address_type_code;CONSTANTE_FORCEE;Document;'Document';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;address_type_code_db;CONSTANTE_FORCEE;INVOICE;'INVOICE';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;address_type_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id || '_' || sia.address_id || '_I';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;created_timestamp;DYNAMIQUE;NOW();NOW();05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;def_address;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;default_domain;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;invoice;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;party;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;pay;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id;05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;updated_timestamp;DYNAMIQUE;NOW();NOW();05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;INVOICE;visit;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;69
+clean_data.supplier_info_address_type;PAY;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.address_id;05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;address_type_code;CONSTANTE_FORCEE;Pay;'Pay';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;address_type_code_db;CONSTANTE_FORCEE;PAY;'PAY';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;address_type_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id || '_' || sia.address_id || '_P';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;created_timestamp;DYNAMIQUE;NOW();NOW();05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;def_address;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;default_domain;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;invoice;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;party;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;pay;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id;05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;updated_timestamp;DYNAMIQUE;NOW();NOW();05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;PAY;visit;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;155
+clean_data.supplier_info_address_type;VISIT;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.address_id;05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;address_type_code;CONSTANTE_FORCEE;Visit;'Visit';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;address_type_code_db;CONSTANTE_FORCEE;VISIT;'VISIT';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;address_type_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id || '_' || sia.address_id || '_V';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;created_timestamp;DYNAMIQUE;NOW();NOW();05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;def_address;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;default_domain;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;invoice;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;party;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;pay;CONSTANTE_FORCEE;FALSE;'FALSE';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id;05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;updated_timestamp;DYNAMIQUE;NOW();NOW();05_insert_supplier_address_types.sql;111
+clean_data.supplier_info_address_type;VISIT;visit;CONSTANTE_FORCEE;TRUE;'TRUE';05_insert_supplier_address_types.sql;111
+clean_data.comm_method;E_MAIL;address_default;REGLE_CONDITIONNELLE;TRUE | FALSE;CASE WHEN adr6.flgdefault = 'X' THEN 'TRUE' ELSE 'FALSE' END;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.address_id;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;created_timestamp;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP);06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;description;REGLE_CONDITIONNELLE;Adresse électronique principale du fournisseur | Adresse électronique du fournisseur;CASE WHEN adr6.flgdefault = 'X' THEN 'Adresse électronique principale du fournisseur' ELSE 'Adresse électronique du fournisseur' END;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;identity;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;method_default;REGLE_CONDITIONNELLE;TRUE | FALSE;CASE WHEN adr6.flgdefault = 'X' THEN 'TRUE' ELSE 'FALSE' END;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;method_id;CONSTANTE_FORCEE;E-Mail;'E-Mail';06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;method_id_db;CONSTANTE_FORCEE;E_MAIL;'E_MAIL';06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;name;AUCUNE_VALEUR_PAR_DEFAUT;;f.nom_1;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;valid_from;DYNAMIQUE;CURRENT_DATE;CURRENT_DATE;06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;valid_to;CONSTANTE_FORCEE;2099-12-31;DATE '2099-12-31';06_alimenter_comm_method.sql;15
+clean_data.comm_method;E_MAIL;value;AUCUNE_VALEUR_PAR_DEFAUT;;adr6.smtp_addr;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;address_default;CONSTANTE_FORCEE;FALSE;'FALSE';06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.address_id;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;created_timestamp;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP);06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;description;REGLE_CONDITIONNELLE;Numéro de télécopie principal du fournisseur | Numéro de télécopie du fournisseur;CASE WHEN adr3.flgdefault = 'X' THEN 'Numéro de télécopie principal du fournisseur' ELSE 'Numéro de télécopie du fournisseur' END;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;identity;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;method_default;REGLE_CONDITIONNELLE;TRUE | FALSE;CASE WHEN adr3.flgdefault = 'X' THEN 'TRUE' ELSE 'FALSE' END;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;method_id;CONSTANTE_FORCEE;Fax;'Fax';06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;method_id_db;CONSTANTE_FORCEE;FAX;'FAX';06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;name;AUCUNE_VALEUR_PAR_DEFAUT;;f.nom_1;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;valid_from;DYNAMIQUE;CURRENT_DATE;CURRENT_DATE;06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;valid_to;CONSTANTE_FORCEE;2099-12-31;DATE '2099-12-31';06_alimenter_comm_method.sql;15
+clean_data.comm_method;FAX;value;AUCUNE_VALEUR_PAR_DEFAUT;;adr3.fax_number;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;address_default;CONSTANTE_FORCEE;FALSE;'FALSE';06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.address_id;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;created_timestamp;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP);06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;description;REGLE_CONDITIONNELLE;Téléphone principal du fournisseur | Téléphone du fournisseur;CASE WHEN adr2.flgdefault = 'X' THEN 'Téléphone principal du fournisseur' ELSE 'Téléphone du fournisseur' END;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;identity;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;method_default;REGLE_CONDITIONNELLE;TRUE | FALSE;CASE WHEN adr2.flgdefault = 'X' THEN 'TRUE' ELSE 'FALSE' END;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;method_id;CONSTANTE_FORCEE;Phone;'Phone';06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;method_id_db;CONSTANTE_FORCEE;PHONE;'PHONE';06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;name;AUCUNE_VALEUR_PAR_DEFAUT;;f.nom_1;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;valid_from;DYNAMIQUE;CURRENT_DATE;CURRENT_DATE;06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;valid_to;CONSTANTE_FORCEE;2099-12-31;DATE '2099-12-31';06_alimenter_comm_method.sql;15
+clean_data.comm_method;PHONE;value;AUCUNE_VALEUR_PAR_DEFAUT;;adr2.tel_number;06_alimenter_comm_method.sql;15
+clean_data.supplier_address;STANDARD;addr_no;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(address_id, 1, 50);07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;contact;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(name, 1, 100);07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;del_terms_location;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(COALESCE(city, address1), 1, 100);07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;delivery_terms;NULL_EXPLICITE;NULL;NULL;07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;intrastat_exempt;REGLE_CONDITIONNELLE;Include | Exempt;CASE WHEN country_db IN ('FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'SE', 'DK', 'PL', 'CZ', 'HU', 'RO', 'BG', 'HR', 'SI', 'SK', 'LT', 'LV', 'EE', 'CY', 'MT', 'LU', 'GR') THEN 'Include' ELSE 'Exempt' END;07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;intrastat_exempt_db;REGLE_CONDITIONNELLE;INCLUDE | EXEMPT;CASE WHEN country_db IN ('FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'SE', 'DK', 'PL', 'CZ', 'HU', 'RO', 'BG', 'HR', 'SI', 'SK', 'LT', 'LV', 'EE', 'CY', 'MT', 'LU', 'GR') THEN 'INCLUDE' ELSE 'EXEMPT' END;07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;route_id;NULL_EXPLICITE;NULL;NULL;07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;ship_via_code;NULL_EXPLICITE;NULL;NULL;07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;supplier_calendar_id;FALLBACK;XX;SUBSTRING('CAL_' || COALESCE(country_db, 'XX'), 1, 10);07_alimenter_supplier_address.sql;13
+clean_data.supplier_address;STANDARD;vendor_no;AUCUNE_VALEUR_PAR_DEFAUT;;SUBSTRING(supplier_id, 1, 20);07_alimenter_supplier_address.sql;13
+clean_data.supplier_document_tax_info;STANDARD;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.address_id;08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;company;CONSTANTE_FORCEE;TRIMET;'TRIMET';08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;company_addr_tax_id_type;CONSTANTE_FORCEE;;'';08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;company_addr_tax_id_type_db;CONSTANTE_FORCEE;FALSE;'FALSE';08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;created_by;FALLBACK;system;COALESCE(sia.created_by, 'system');08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;created_timestamp;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(sia.created_timestamp, NOW());08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;declaration_date;DYNAMIQUE;CURRENT_DATE;CURRENT_DATE;08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;is_deleted;FALLBACK;FALSE;COALESCE(sia.is_deleted, FALSE);08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;last_modify_date;DYNAMIQUE;CURRENT_DATE;CURRENT_DATE;08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;reliability_status_db;CONSTANTE_FORCEE;NOT_SET;'NOT_SET';08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id;08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;tax_id_type;REGLE_CONDITIONNELLE;SIRET | TVA DE | VAT BE | VAT NL | VAT IT | OTHER;CASE WHEN sia.country = 'FR' THEN 'SIRET' WHEN sia.country = 'DE' THEN 'TVA DE' WHEN sia.country ='BE' THEN 'VAT BE' WHEN sia.country ='NL' THEN 'VAT NL' WHEN sia.country ='IT' THEN 'VAT IT' ELSE 'OTHER' END;08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;tax_office_id;CONSTANTE_FORCEE;;'';08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;updated_by;CONSTANTE_FORCEE;insert_supplier_tax_info_v1;'insert_supplier_tax_info_v1';08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;updated_timestamp;DYNAMIQUE;NOW();NOW();08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;validated_date;DYNAMIQUE;CURRENT_DATE;CURRENT_DATE;08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier_document_tax_info;STANDARD;vat_no;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(ifs.tva, 'NO_VAT_' || sia.supplier_id);08_insert_supplier_document_tax_info.sql;13
+clean_data.supplier;STANDARD;additional_cost_amount;CONSTANTE_FORCEE;0;0;09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;adhoc_pur_rqst_approval_db;CONSTANTE_FORCEE;MANUALLY;'MANUALLY';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;b2b_conf_order_with_diff_db;CONSTANTE_FORCEE;FALSE;'FALSE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;blanket_date_db;CONSTANTE_FORCEE;ORDERDATE;'ORDERDATE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;buyer_code;CONSTANTE_FORCEE;*;'*';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;category_db;CONSTANTE_FORCEE;E;'E';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;coc_approval_db;CONSTANTE_FORCEE;Y;'Y';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;cr_check_db;CONSTANTE_FORCEE;Y;'Y';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;create_confirmation_chg_ord_db;CONSTANTE_FORCEE;FALSE;'FALSE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;created_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;currency_code;FALLBACK;EUR;COALESCE(f.devise_principale, 'EUR');09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;days_before_arrival;FALLBACK;30;COALESCE(m.plifz::numeric, 30);09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;days_before_delivery;FALLBACK;30;COALESCE(m.plifz::numeric, 30);09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;delivery_rem_interval;CONSTANTE_FORCEE;3;3;09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;delivery_reminder_db;CONSTANTE_FORCEE;DELIVREM;'DELIVREM';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;dir_del_approval_db;CONSTANTE_FORCEE;AUTOMATICALLY;'AUTOMATICALLY';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;discount;CONSTANTE_FORCEE;0;0;09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;email_purchase_order_db;CONSTANTE_FORCEE;TRUE;'TRUE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;environmental_approval_db;CONSTANTE_FORCEE;APPROVED;'APPROVED';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;express_order_allowed_db;CONSTANTE_FORCEE;1;'1';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;ord_conf_rem_interval;CONSTANTE_FORCEE;7;7;09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;ord_conf_reminder_db;CONSTANTE_FORCEE;CONFREM;'CONFREM';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;order_conf_approval_db;CONSTANTE_FORCEE;AUTOMATICALLY;'AUTOMATICALLY';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;order_conf_diff_approval_db;CONSTANTE_FORCEE;MANUALLY;'MANUALLY';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;pack_list_flag_db;CONSTANTE_FORCEE;Y;'Y';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;po_change_management_db;CONSTANTE_FORCEE;USE_SITE_DEFAULT;'USE_SITE_DEFAULT';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;pricat_automatic_approval_db;CONSTANTE_FORCEE;NOT_APPLICABLE;'NOT_APPLICABLE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;print_amounts_incl_tax_db;CONSTANTE_FORCEE;FALSE;'FALSE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;purch_order_flag_db;CONSTANTE_FORCEE;Y;'Y';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;qc_approval_db;CONSTANTE_FORCEE;Y;'Y';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;quick_registered_supplier_db;CONSTANTE_FORCEE;ORDINARY;'ORDINARY';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;rec_adv_sb_consignment_db;CONSTANTE_FORCEE;FALSE;'FALSE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;rec_adv_sb_mix_ownership_db;CONSTANTE_FORCEE;FALSE;'FALSE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;rec_adv_self_billing_db;CONSTANTE_FORCEE;FALSE;'FALSE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;receipt_ref_reminder_db;CONSTANTE_FORCEE;NO_RCPT_REMINDER;'NO_RCPT_REMINDER';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;receiving_advice_type_db;CONSTANTE_FORCEE;USE_CUSTOMER_DEFAULT;'USE_CUSTOMER_DEFAULT';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;supp_grp;CONSTANTE_FORCEE;DEFAULT;'DEFAULT';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;supplier_group;CONSTANTE_FORCEE;EXTERNAL;'EXTERNAL';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;tax_liability;REGLE_CONDITIONNELLE;EU_TAX | NON_EU;CASE WHEN f.cle_pays IN ('FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'SE', 'DK') THEN 'EU_TAX' ELSE 'NON_EU' END;09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;template_supplier_db;CONSTANTE_FORCEE;NOTEMPLATE;'NOTEMPLATE';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;09_sp_insert_supplier_from_sap.sql;14
+clean_data.supplier;STANDARD;vendor_no;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;09_sp_insert_supplier_from_sap.sql;14
+clean_data.identity_invoice_info;STANDARD;allow_quantity_diff;CONSTANTE_FORCEE;TRUE;'TRUE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;allow_tolerance;CONSTANTE_FORCEE;TRUE;'TRUE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;automatic_invoice;CONSTANTE_FORCEE;N;'N';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;bi_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;company;FALLBACK;TRIMET;COALESCE(f.company, 'TRIMET');10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;country_tax_registered;REGLE_CONDITIONNELLE;TRUE | FALSE;CASE WHEN f.cle_pays IN ('FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'SE', 'DK') THEN 'TRUE' ELSE 'FALSE' END;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;create_tolerance_posting;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;created_by;REGLE_CONDITIONNELLE;etl_supplier_base_with_bank | etl_supplier_base;CASE WHEN lb.lifnr IS NOT NULL THEN 'etl_supplier_base_with_bank' ELSE 'etl_supplier_base' END;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;created_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;def_currency;FALLBACK;EUR;COALESCE(f.devise_principale, 'EUR');10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;def_vat_code;FALLBACK;;COALESCE(NULLIF(TRIM(sf.code_tva_ifs), ''), '');10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;digital_invoice;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;exc_from_spesometro_dec;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;exclude_invoice_image;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;exclude_posting_auth;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;identity;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;identity_type;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;inc_inv_curr_rate_base;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;invoice_fee;NULL_EXPLICITE;NULL;NULL;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;invoice_recipient_from;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;legal_identity;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;matching_level;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;ncf_reference_check;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;pay_term_id;FALLBACK;NET30;COALESCE(NULLIF(TRIM(sf.condition_paiement_ifs), ''), f.conditions_paiement_achats, 'NET30');10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;po_ref_rec_ref_val_method;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;print_tax_code_text;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;report_and_withhold;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;second_tin;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;service_code_required;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;tax_buy_curr_rate_base;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;tax_certificate_form;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;tax_exempt;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;updated_by;REGLE_CONDITIONNELLE;etl_supplier_base_with_bank | etl_supplier_base;CASE WHEN lb.lifnr IS NOT NULL THEN 'etl_supplier_base_with_bank' ELSE 'etl_supplier_base' END;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;utility_bill_provider;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;voting_share_percentage;CONSTANTE_FORCEE;;'';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_invoice_info;STANDARD;withholding_base_amount;CONSTANTE_FORCEE;FALSE;'FALSE';10_sp_insert_identity_invoice_info_from_sap.sql;81
+clean_data.identity_pay_info;STANDARD;amount_tolerance;FALLBACK;100;COALESCE(m.minbw::numeric, 100);11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;ar_contact;NULL_EXPLICITE;NULL;NULL;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;blocked_for_payment;REGLE_CONDITIONNELLE;TRUE | FALSE;CASE WHEN COALESCE(b.sperr, '') != '' OR COALESCE(m.sperm, '') != '' THEN 'TRUE' ELSE 'FALSE' END;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;business_category;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;check_recipient;CONSTANTE_FORCEE;Payee;'Payee';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;check_recipient_db;CONSTANTE_FORCEE;PAYEE;'PAYEE';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;comm_id;CONSTANTE_FORCEE;0;0::numeric;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;company;FALLBACK;TRIMET;COALESCE(f.company, 'TRIMET');11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;corporation_id;NULL_EXPLICITE;NULL;NULL;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;customer_id;NULL_EXPLICITE;NULL;NULL;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;deduction_group;NULL_EXPLICITE;NULL;NULL;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;default_payment_method;CONSTANTE_FORCEE;BANK;'BANK';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;disc_days_tolerance;CONSTANTE_FORCEE;3;3::numeric;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;format_no;CONSTANTE_FORCEE;1;1::numeric;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;identity;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;interest_template;CONSTANTE_FORCEE;1;'1';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;is_one_inv_per_pay;CONSTANTE_FORCEE;False;'False';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;is_one_inv_per_pay_db;CONSTANTE_FORCEE;FALSE;'FALSE';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;member_id;NULL_EXPLICITE;NULL;NULL;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;netting_allowed;CONSTANTE_FORCEE;FALSE;'FALSE';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;next_payment_matching_id;CONSTANTE_FORCEE;0;0::numeric;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;other_payee_identity;NULL_EXPLICITE;NULL;NULL;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;output_media;CONSTANTE_FORCEE;Printout;'Printout';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;output_media_db;CONSTANTE_FORCEE;1;'1';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;payment_advice;CONSTANTE_FORCEE;No Advice;'No Advice';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;payment_advice_db;CONSTANTE_FORCEE;1;'1';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;payment_delay;FALLBACK;30;COALESCE(m.plifz::numeric, 30);11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;payment_mode;CONSTANTE_FORCEE;Bank Transfer, Digital Wallet;'Bank Transfer, Digital Wallet';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;payment_mode_db;CONSTANTE_FORCEE;18;'18';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;payment_receipt_type;CONSTANTE_FORCEE;No Receipt;'No Receipt';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;payment_receipt_type_db;CONSTANTE_FORCEE;NO_RECEIPT;'NO_RECEIPT';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;percent_tolerance;CONSTANTE_FORCEE;5;5::numeric;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;predicted_payment_delay;CONSTANTE_FORCEE;False;'False';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;predicted_payment_delay_db;CONSTANTE_FORCEE;FALSE;'FALSE';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;priority;CONSTANTE_FORCEE;1;1::numeric;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;reminder_template;CONSTANTE_FORCEE;DEFAULT;'DEFAULT';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;rule_id;NULL_EXPLICITE;NULL;NULL;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;send_interest_inv_to_payer;CONSTANTE_FORCEE;FALSE;'FALSE';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;send_reminder_to_payer;CONSTANTE_FORCEE;FALSE;'FALSE';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;send_stmt_of_acc_to_payer;CONSTANTE_FORCEE;FALSE;'FALSE';11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.identity_pay_info;STANDARD;template_id;NULL_EXPLICITE;NULL;NULL;11_sp_insert_identity_pay_info_from_sap.sql;126
+clean_data.payment_way_per_identity;STANDARD;company;FALLBACK;TRIMET;COALESCE(f.company, 'TRIMET');12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;created_by;CONSTANTE_FORCEE;System;'System';12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;created_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;default_payment_way;CONSTANTE_FORCEE;TRUE;'TRUE';12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;identity;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;updated_by;CONSTANTE_FORCEE;System;'System';12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.payment_way_per_identity;STANDARD;way_id;CONSTANTE_FORCEE;1;1;12_fn_upsert_payment_way_per_identity.sql;16
+clean_data.supplier_delivery_tax_code;STANDARD;address_id;FALLBACK;DEFAULT_ADDR;COALESCE(sia.address_id, 'DEFAULT_ADDR');13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.supplier_delivery_tax_code;STANDARD;company;FALLBACK;TRIMET;COALESCE(f.company, 'TRIMET');13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.supplier_delivery_tax_code;STANDARD;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.supplier_delivery_tax_code;STANDARD;created_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.supplier_delivery_tax_code;STANDARD;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.supplier_delivery_tax_code;STANDARD;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.supplier_delivery_tax_code;STANDARD;tax_code;REGLE_CONDITIONNELLE;NO_TAX_CODE;SUBSTRING(CASE WHEN f.tva IS NOT NULL AND f.tva != '' THEN TRIM(f.tva) WHEN f.siret IS NOT NULL AND f.siret != '' THEN TRIM(f.siret) WHEN f.cle_pays IS NOT NULL THEN CONCAT(TRIM(f.cle_pays), '_DEFAULT') ELSE 'NO_TAX_CODE' END, 1, 20);13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.supplier_delivery_tax_code;STANDARD;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.supplier_delivery_tax_code;STANDARD;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;13_fn_upsert_supplier_delivery_tax_code.sql;17
+clean_data.payment_address;ADRESSE_DEFAUT;account;NULL_EXPLICITE;NULL;NULL;14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;sia.address_id;14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;bank_account_validated;CONSTANTE_FORCEE;Not Validated;'Not Validated';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;bank_account_validated_db;CONSTANTE_FORCEE;FALSE;'FALSE';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;bic_code;NULL_EXPLICITE;NULL;NULL;14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;blocked_for_use;CONSTANTE_FORCEE;FALSE;'FALSE';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;company;CONSTANTE_FORCEE;TRIMET;'TRIMET';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;created_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;default_address;CONSTANTE_FORCEE;TRUE;'TRUE';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;description;CONSTANTE_FORCEE;Adresse de paiement par défaut;'Adresse de paiement par défaut';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;identity;AUCUNE_VALEUR_PAR_DEFAUT;;sia.supplier_id;14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;mapping_type;CONSTANTE_FORCEE;DEFAULT;'DEFAULT';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;ADRESSE_DEFAUT;way_id;CONSTANTE_FORCEE;SEPA;'SEPA';14_fn_upsert_payment_address.sql;23
+clean_data.payment_address;BANQUE;account;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(v_iban, rec.bankn);14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;rec.lifnr;14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;bank_account_validated;CONSTANTE_FORCEE;Not Validated;'Not Validated';14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;bank_account_validated_db;CONSTANTE_FORCEE;FALSE;'FALSE';14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;bic_code;AUCUNE_VALEUR_PAR_DEFAUT;;rec.swift;14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;blocked_for_use;CONSTANTE_FORCEE;FALSE;'FALSE';14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;company;AUCUNE_VALEUR_PAR_DEFAUT;;rec.company;14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;created_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;default_address;REGLE_CONDITIONNELLE;TRUE | FALSE;CASE WHEN rec.bank_seq = 1 THEN 'TRUE' ELSE 'FALSE' END;14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;description;AUCUNE_VALEUR_PAR_DEFAUT;;COALESCE(rec.bank_name, 'Compte bancaire ' || rec.bank_seq);14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;identity;AUCUNE_VALEUR_PAR_DEFAUT;;rec.lifnr;14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;mapping_type;CONSTANTE_FORCEE;BANK_TRANSFER;'BANK_TRANSFER';14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;party_type;CONSTANTE_FORCEE;Supplier;'Supplier';14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;party_type_db;CONSTANTE_FORCEE;SUPPLIER;'SUPPLIER';14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;14_fn_upsert_payment_address.sql;110
+clean_data.payment_address;BANQUE;way_id;CONSTANTE_FORCEE;SEPA;'SEPA';14_fn_upsert_payment_address.sql;110
+clean_data.supplier_tax_info;STANDARD;address_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.address_id;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;business_transaction_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.cle_pays;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;company;FALLBACK;TRIMET;COALESCE(f.company, 'TRIMET');15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;created_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;created_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;icms_tax_payer;REGLE_CONDITIONNELLE;Taxpayer | NULL;CASE WHEN f.cle_pays = 'BR' THEN 'Taxpayer' ELSE NULL END;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;icms_tax_payer_db;REGLE_CONDITIONNELLE;TAXPAYER | NULL;CASE WHEN f.cle_pays = 'BR' THEN 'TAXPAYER' ELSE NULL END;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;is_deleted;CONSTANTE_FORCEE;FALSE;FALSE;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;supplier_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.numero_compte_fournisseur;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;tax_calc_structure_id;AUCUNE_VALEUR_PAR_DEFAUT;;f.cle_pays;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;updated_by;CONSTANTE_FORCEE;etl_supplier_base;'etl_supplier_base';15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;updated_timestamp;DYNAMIQUE;CURRENT_TIMESTAMP;CURRENT_TIMESTAMP;15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;use_supp_address_for_tax;CONSTANTE_FORCEE;True;'True';15_fn_upsert_supplier_tax_info.sql;17
+clean_data.supplier_tax_info;STANDARD;use_supp_address_for_tax_db;CONSTANTE_FORCEE;True;'True';15_fn_upsert_supplier_tax_info.sql;17
