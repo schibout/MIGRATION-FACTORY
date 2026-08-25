@@ -38,8 +38,8 @@ BEGIN
         f.address_id as address_id,
         COALESCE(f.company, 'TRIMET') as company,
         -- Use Supplier Address for Tax: forcé à TRUE pour tous les fournisseurs
-        'True' as use_supp_address_for_tax,
-        'True' as use_supp_address_for_tax_db,
+        public.get_default_value('clean_data.supplier_tax_info', 'use_supp_address_for_tax', 'True') as use_supp_address_for_tax,
+        public.get_default_value('clean_data.supplier_tax_info', 'use_supp_address_for_tax_db', 'True') as use_supp_address_for_tax_db,
         -- Tax Calculation Structure ID basé sur le pays
         f.cle_pays as tax_calc_structure_id,
         CASE 
