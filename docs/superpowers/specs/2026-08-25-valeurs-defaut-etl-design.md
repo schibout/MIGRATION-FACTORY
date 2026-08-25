@@ -19,7 +19,7 @@ Alternatives écartées : passe de post-traitement générique par UPDATE (deux 
 ## Périmètre
 
 - **Inclus** : colonnes de type `CONSTANTE_FORCEE` et `NULL_EXPLICITE` uniquement.
-- **Exclus** : `REGLE_CONDITIONNELLE` / `DYNAMIQUE` / `FALLBACK` (SQL libre éditable depuis un écran = risque d'injection et de casse). Pas de création libre de lignes depuis l'écran (v1). Pas d'historique complet des valeurs (seulement dernier `updated_by` / `updated_at`).
+- **Exclus** : colonnes techniques (`created_by`, `updated_by`, `created_timestamp`, `updated_timestamp`, `is_deleted`) — elles restent en dur, aucun intérêt métier à les paramétrer (≈208 lignes de seed au lieu de 252) ; `REGLE_CONDITIONNELLE` / `DYNAMIQUE` / `FALLBACK` (SQL libre éditable depuis un écran = risque d'injection et de casse). Pas de création libre de lignes depuis l'écran (v1). Pas d'historique complet des valeurs (seulement dernier `updated_by` / `updated_at`).
 - **Ordre** : module fournisseurs d'abord (inventaire déjà fait), puis extension module par module (customer, article, projet, maintenance…) en générant le même inventaire CSV au préalable.
 
 ## Composants
@@ -74,7 +74,7 @@ Le fallback = ancienne valeur codée en dur → zéro régression si la table de
 ### 4. Backend — modèle + API
 
 - Modèle SQLAlchemy `backend/models/etl_default_value.py` (`EtlDefaultValue`), calqué sur `models/transcodification.py` (`to_dict`/`from_dict`, schéma `public`).
-- Blueprint `backend/api/default_values.py`, routes `/api/v1/default-values` :
+- Blueprint `backend/api/default_values.py`, enregistré sous le préfixe `config` comme la transcodification → routes `/api/v1/config/default-values` :
   - `GET /default-values` — pagination + filtres (`module`, `table_cible`, `colonne` (recherche partielle), `is_active`).
   - `GET /default-values/meta` — listes distinctes de modules et tables (pour alimenter les selects de filtre).
   - `PUT /default-values/<id>` — champs modifiables : `valeur`, `type_valeur`, `description`, `is_active` ; `updated_by` = identité JWT ; `updated_at` automatique.
@@ -84,7 +84,7 @@ Le fallback = ancienne valeur codée en dur → zéro régression si la table de
 ### 5. Frontend — écran « Valeurs par défaut »
 
 - Route `/configuration/valeurs-defaut` dans `App.tsx` ; entrée Sidebar « Valeurs par défaut » sous « Transcodification ».
-- Page `frontend/src/pages/DefaultValuesManagement.tsx` + composants `frontend/src/components/defaultvalues/` (Filter, Table, Form) + service `defaultValueService.ts` — structure calquée sur l'ensemble transcodification.
+- Page `frontend/src/pages/DefaultValuesManagement.tsx` **mono-fichier** (filtres + tableau + dialog — précédent existant : `ReglesGestion.tsx`) + service `defaultValueService.ts`.
 - **Filtres** : Module, Table cible (dépendant du module, via `/meta`), Colonne (texte libre), Statut (actif/inactif/tous).
 - **Tableau** (pagination serveur) : Table | Colonne | Variante | Type | Valeur | Description | Actif (switch inline) | Modifié par / le | Actions.
 - **Dialog d'édition** : éditables = valeur, description, actif, case « NULL explicite » (bascule `type_valeur`) ; lecture seule = module, table, colonne, variante. Validation légère : colonnes suffixées `_db` de type booléen → select `TRUE`/`FALSE` (majuscules, contrainte IFS) ; sinon champ texte.
