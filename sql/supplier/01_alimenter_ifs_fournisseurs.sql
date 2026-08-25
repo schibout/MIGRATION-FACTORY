@@ -15,9 +15,9 @@ BEGIN
       destinataire_paiement, language_sap
    )
    SELECT
-      'TRIMET' as company,
+      public.get_default_value('clean_data.ifs_fournisseurs', 'company', 'TRIMET') as company,
       sf.numero_compte_sap as numero_compte_fournisseur,
-        '01' as address_id,
+        public.get_default_value('clean_data.ifs_fournisseurs', 'address_id', '01') as address_id,
       
       -- === PRIORITÉ 1: selection_fournisseurs | PRIORITÉ 2: SAP ===
       
