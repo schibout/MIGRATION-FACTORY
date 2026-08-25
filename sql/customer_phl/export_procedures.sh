@@ -76,6 +76,8 @@ procedures=(
     "sp_insert_cust_ord_customer_address_from_client_adresse_phl"
     "sp_update_customer_id_cascade_phl"
     "sp_renumber_all_customer_ids_phl"
+    # --- Ajoutees le 2026-08-25 : presentes en base mais jamais exportees ---
+    "sp_insert_customer_address_type_single_phl"
 )
 
 # Export de chaque procédure

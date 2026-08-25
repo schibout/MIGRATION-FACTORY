@@ -74,6 +74,13 @@ procedures=(
     "alimenter_purchase_part"
     "alimenter_purchase_part_supplier"
     "alimenter_sales_part"
+    # --- Ajoutees le 2026-08-25 : presentes en base mais jamais exportees ---
+    "alimenter_inventory_part_refonte"
+    "alimenter_inventory_part_saint_jean"
+    "alimenter_part_catalog_refonte"
+    "alimenter_part_catalog_saint_jean"
+    "alimenter_selection_articles_utilises"
+    "sp_load_part_catalog"
 )
 
 # Fichiers de sortie correspondants
