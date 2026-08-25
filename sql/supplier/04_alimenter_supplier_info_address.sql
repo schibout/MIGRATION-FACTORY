@@ -61,7 +61,7 @@ BEGIN
         SUBSTRING(COALESCE(a.city2, ''), 1, 35) as county,
         SUBSTRING(COALESCE(a.region, ''), 1, 35) as state,
         public.get_default_value('clean_data.supplier_info_address', 'comm_id', NULL)::NUMERIC(20) as comm_id,
-        public.get_default_value('clean_data.supplier_info_address', 'output_media', '1') as output_media,
+        public.get_default_value('clean_data.supplier_info_address', 'output_media', '1')::numeric as output_media,
         public.get_default_value('clean_data.supplier_info_address', 'output_media_db', '1') as output_media_db,
         SUBSTRING(COALESCE(a.addr_group, ''), 1, 20) as supplier_branch,
         CURRENT_TIMESTAMP as created_timestamp,
