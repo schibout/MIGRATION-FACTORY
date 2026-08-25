@@ -24,7 +24,7 @@ BEGIN
     )
     SELECT 
         SUBSTRING(f.numero_compte_fournisseur, 1, 20) as supplier_id,
-        '01' as address_id,
+        public.get_default_value('clean_data.supplier_info_address', 'address_id', '01') as address_id,
         SUBSTRING(COALESCE(a.name1, f.nom_1), 1, 100) as name,
         SUBSTRING(
             TRIM(COALESCE(a.street, f.rue) || ' ' || 
@@ -45,11 +45,11 @@ BEGIN
             ELSE NULL
         END as valid_to,
         SUBSTRING(COALESCE(a.name_co, ''), 1, 20) as party,
-        'TRUE' as default_domain,
+        public.get_default_value('clean_data.supplier_info_address', 'default_domain', 'TRUE') as default_domain,
         SUBSTRING(COALESCE(a.country, f.cle_pays), 1, 4000) as country,
         SUBSTRING(COALESCE(a.country, f.cle_pays), 1, 2) as country_db,
-        'Supplier' as party_type,
-        'SUPPLIER' as party_type_db,
+        public.get_default_value('clean_data.supplier_info_address', 'party_type', 'Supplier') as party_type,
+        public.get_default_value('clean_data.supplier_info_address', 'party_type_db', 'SUPPLIER') as party_type_db,
         SUBSTRING(COALESCE(a.street, f.rue), 1, 35) as address1,
         SUBSTRING(COALESCE(a.str_suppl1, ''), 1, 35) as address2,
         SUBSTRING(COALESCE(a.str_suppl2, ''), 1, 35) as address3,
@@ -60,9 +60,9 @@ BEGIN
         SUBSTRING(COALESCE(a.city1, f.localite), 1, 35) as city,
         SUBSTRING(COALESCE(a.city2, ''), 1, 35) as county,
         SUBSTRING(COALESCE(a.region, ''), 1, 35) as state,
-        NULL::NUMERIC(20) as comm_id,
-        1 as output_media,
-        '1' as output_media_db,
+        public.get_default_value('clean_data.supplier_info_address', 'comm_id', NULL)::NUMERIC(20) as comm_id,
+        public.get_default_value('clean_data.supplier_info_address', 'output_media', '1') as output_media,
+        public.get_default_value('clean_data.supplier_info_address', 'output_media_db', '1') as output_media_db,
         SUBSTRING(COALESCE(a.addr_group, ''), 1, 20) as supplier_branch,
         CURRENT_TIMESTAMP as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp,
