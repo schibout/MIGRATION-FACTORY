@@ -1,8 +1,5 @@
--- Procédure pour insérer les codes de frais de livraison clients depuis les données SAP
--- Utilise clean_data.ifs_customer comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_delivery_fee_code_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -32,7 +29,7 @@ BEGIN
         COALESCE(ifs.numero_adresse, k.ADRNR) as address_id,
         'TRIMET' as company,
         COALESCE(k.LAND1, ifs.country, 'FR') as supply_country,
-        'C05' as fee_code,        -- champ obligatoire dans IFS → code par défaut
+        NULL as fee_code,
         SUBSTRING(COALESCE(k.STCEG, k.STCD1, ifs.tax_number_1), 1, 10) as tax_id_number,
         NULL as tax_code_selection
     FROM clean_data.ifs_customer ifs
@@ -54,5 +51,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT delivery fee code - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
-
+$procedure$

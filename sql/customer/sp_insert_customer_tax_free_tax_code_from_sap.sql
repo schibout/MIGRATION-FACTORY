@@ -1,8 +1,5 @@
--- Procédure pour insérer les codes fiscaux exonérés clients depuis les données SAP
--- Utilise clean_data.ifs_customer comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_tax_free_tax_code_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -17,11 +14,31 @@ BEGIN
     TRUNCATE TABLE clean_data.CUSTOMER_TAX_FREE_TAX_CODE;
     RAISE NOTICE 'Table customer_tax_free_tax_code vidée';
     
-    -- Pas d'insertion : DELIVERY_TYPE n'existe pas dans IFS (ORA-20111 DeliveryType.FND_RECORD_NOT_EXIST)
-    -- et VAT_FREE_VAT_CODE est obligatoire mais absent des données SAP (ORA-20124 Error.NULLVALUE).
-    -- Cette table nécessite une saisie manuelle ou une cartographie métier spécifique.
-    v_processed_count := 0;
-    RAISE NOTICE 'CUSTOMER_TAX_FREE_TAX_CODE : aucune donnée insérée (données source insuffisantes - saisie manuelle requise)';
+    -- Insertion directe après TRUNCATE
+    INSERT INTO clean_data.CUSTOMER_TAX_FREE_TAX_CODE (
+        CUSTOMER_ID,
+        ADDRESS_ID,
+        COMPANY,
+        SUPPLY_COUNTRY,
+        DELIVERY_TYPE,
+        VAT_FREE_VAT_CODE
+    )
+    SELECT DISTINCT ON (ifs.customer_number, COALESCE(ifs.numero_adresse, k.ADRNR))
+        ifs.customer_number as CUSTOMER_ID,
+        COALESCE(ifs.numero_adresse, k.ADRNR) as ADDRESS_ID,
+        'TRIMET' as COMPANY,
+        COALESCE(k.LAND1, ifs.country, 'FR') as SUPPLY_COUNTRY,
+        'Delivery Type' as DELIVERY_TYPE,
+        NULL as VAT_FREE_VAT_CODE
+    FROM clean_data.ifs_customer ifs  -- TABLE MAÎTRE
+    LEFT JOIN raw_data.KNA1 k 
+        ON ifs.customer_number = k.KUNNR
+        AND ifs.numero_adresse = k.ADRNR
+        AND (k.LOEVM IS NULL OR k.LOEVM = '')
+    WHERE COALESCE(ifs.numero_adresse, k.ADRNR) IS NOT NULL
+    ORDER BY ifs.customer_number, COALESCE(ifs.numero_adresse, k.ADRNR);
+    
+    GET DIAGNOSTICS v_processed_count = ROW_COUNT;
     
     v_end_time := NOW();
     RAISE NOTICE 'INSERT tax free code terminé - %: % enregistrements traités', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), v_processed_count;
@@ -32,4 +49,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT tax free code - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

@@ -1,5 +1,5 @@
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_cus_comm_method_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -109,7 +109,44 @@ BEGIN
     LEFT JOIN raw_data.kna1 k ON ifs.customer_number = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')
     LEFT JOIN raw_data.adr6 ON LPAD(TRIM(k.ADRNR), 10, '0') = LPAD(TRIM(adr6.addrnumber), 10, '0') AND adr6.flgdefault = 'X'
     WHERE adr6.smtp_addr IS NOT NULL AND adr6.smtp_addr != ''
-    -- TELEX et TELETEX supprimés : CommMethodCode 'TELEX'/'TELETEX' n'existe pas dans IFS → ORA-20111
+    UNION ALL
+    SELECT 
+        NULL AS party_type,
+        'CUSTOMER' AS party_type_db,
+        ifs.customer_number AS identity,
+        ROW_NUMBER() OVER (ORDER BY ifs.customer_number) AS comm_id,
+        COALESCE(k.TELX1, ifs.telex) AS value,
+        'Telex' AS method_id,
+        'Telex' AS description,
+        ifs.created_on AS valid_from,
+        NULL::DATE AS valid_to,
+        'FALSE' AS method_default,
+        'FALSE' AS address_default,
+        COALESCE(k.NAME1, ifs.name_1) AS name,
+        'TELEX' AS method_id_db,
+        COALESCE(ifs.numero_adresse, k.ADRNR) AS address_id
+    FROM clean_data.ifs_customer ifs
+    LEFT JOIN raw_data.kna1 k ON ifs.customer_number = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')
+    WHERE COALESCE(k.TELX1, ifs.telex) IS NOT NULL AND COALESCE(k.TELX1, ifs.telex) != ''
+    UNION ALL
+    SELECT 
+        NULL AS party_type,
+        'CUSTOMER' AS party_type_db,
+        ifs.customer_number AS identity,
+        ROW_NUMBER() OVER (ORDER BY ifs.customer_number) AS comm_id,
+        COALESCE(k.TELTX, ifs.teletex) AS value,
+        'Teletex' AS method_id,
+        'Teletex' AS description,
+        ifs.created_on AS valid_from,
+        NULL::DATE AS valid_to,
+        'FALSE' AS method_default,
+        'FALSE' AS address_default,
+        COALESCE(k.NAME1, ifs.name_1) AS name,
+        'TELETEX' AS method_id_db,
+        COALESCE(ifs.numero_adresse, k.ADRNR) AS address_id
+    FROM clean_data.ifs_customer ifs
+    LEFT JOIN raw_data.kna1 k ON ifs.customer_number = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')
+    WHERE COALESCE(k.TELTX, ifs.teletex) IS NOT NULL AND COALESCE(k.TELTX, ifs.teletex) != ''
     UNION ALL
     SELECT 
         NULL AS party_type,
@@ -163,4 +200,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT méthodes communication - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

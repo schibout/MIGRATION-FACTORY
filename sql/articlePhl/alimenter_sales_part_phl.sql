@@ -1,10 +1,6 @@
--- Alimentation de SALES_PART pour les articles PHL (source: raw_data.phl_article)
--- INSERT en append : s'execute APRES alimenter_sales_part() et alimenter_part_catalog_phl().
--- contract = SJ. PHL = articles en stock => catalog_type INV, part_no renseigne.
-
 CREATE OR REPLACE FUNCTION clean_data.alimenter_sales_part_phl()
-RETURNS void
-LANGUAGE plpgsql
+ RETURNS void
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
@@ -13,9 +9,7 @@ DECLARE
     v_duration INTERVAL;
 BEGIN
     v_start_time := CURRENT_TIMESTAMP;
-
     RAISE NOTICE 'Debut de l''alimentation SALES_PART (articles PHL) - %', v_start_time;
-
     INSERT INTO clean_data.sales_part (
         contract,
         catalog_no,
@@ -73,13 +67,10 @@ BEGIN
         ), 1, 10) as sales_unit_meas,
         '903028' as catalog_group,
         '*' as sales_price_group_id,
-
         -- Article lie (PHL = article en stock)
         SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as part_no,
-
         'Y' as activeind_db,
         'INV' as catalog_type_db,
-
         1 as conv_factor,
         1 as inverted_conv_factor,
         1 as price_conv_factor,
@@ -89,45 +80,34 @@ BEGIN
             NULLIF(TRIM(phl."U/M"), ''),
             'PCS'
         ), 1, 10) as price_unit_meas,
-
         0 as list_price,
         0 as list_price_incl_tax,
         0 as rental_list_price,
         0 as rental_list_price_incl_tax,
         NULL::numeric as cost,
         NULL::numeric as expected_average_price,
-
         'TRUE' as taxable_db,
         'C05' as tax_code,
         NULL as tax_class_id,
         'FALSE' as use_price_incl_tax_db,
-
         CURRENT_TIMESTAMP as date_entered,
         NULL::timestamp as price_change_date,
-
         0 as close_tolerance,
         NULL::numeric as minimum_qty,
-
         'NOTSUPPLIED' as sourcing_option_db,
-
         'DONOTCREATESMOBJECT' as create_sm_object_option_db,
         'FALSE' as quick_registered_part_db,
-
         'FALSE' as export_to_external_app_db,
         'TRUE' as allow_inc_pkg_rsrv_picklst,
         'TRUE' as allow_incomp_pkg_delivery,
         'FALSE' as pack_comp_in_shpmnt,
-
         'SALES' as sales_type_db,
-
         'TRUE' as primary_catalog_db,
-
         NULL as delivery_type,
         NULL as non_inv_part_type_db,
         NULL as customs_stat_no,
         'FR' as country_of_origin,
         NULL as statistical_code
-
     -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
     FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
@@ -144,24 +124,19 @@ BEGIN
             AND sp.catalog_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       )
     ORDER BY TRIM(phl."N. ARTICLE");
-
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
-
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
-
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Alimentation SALES_PART (PHL) terminee avec succes';
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Articles PHL inseres: %', v_count_inserted;
     RAISE NOTICE 'Duree d''execution: %', v_duration;
     RAISE NOTICE '====================================================';
-
 EXCEPTION
     WHEN OTHERS THEN
         v_end_time := CURRENT_TIMESTAMP;
         v_duration := v_end_time - v_start_time;
-
         RAISE NOTICE '====================================================';
         RAISE NOTICE 'ERREUR lors de l''alimentation SALES_PART (PHL)';
         RAISE NOTICE '====================================================';
@@ -169,7 +144,7 @@ EXCEPTION
         RAISE NOTICE 'Message: %', SQLERRM;
         RAISE NOTICE 'Duree avant erreur: %', v_duration;
         RAISE NOTICE '====================================================';
-
         RAISE;
 END;
-$function$;
+$function$
+;

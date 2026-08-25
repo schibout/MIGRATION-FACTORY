@@ -1,9 +1,5 @@
--- Transposition de sp_insert_cust_ord_customer_from_sap pour le module customerFile.
--- Table maître ifs_customer remplacée par une CTE sur clean_data.v_customer_source (fichier + clients PHL absents du fichier).
--- Le fichier fait autorité : les COALESCE préfèrent le fichier puis retombent sur SAP.
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_cust_ord_customer_from_file_customer()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -266,4 +262,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT cust ord customer - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

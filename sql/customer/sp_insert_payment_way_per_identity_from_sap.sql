@@ -1,7 +1,3 @@
--- Procédure pour insérer les moyens de paiement par identité depuis les données SAP
--- Cette procédure extrait les données clients SAP (KNA1, KNB1) et les transforme
--- pour alimenter la table PAYMENT_WAY_PER_IDENTITY avec gestion des conflits (UPSERT)
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_payment_way_per_identity_from_sap(IN p_client character varying DEFAULT '100'::character varying)
  LANGUAGE plpgsql
 AS $procedure$
@@ -30,7 +26,7 @@ BEGIN
         TRIM(k.KUNNR) as IDENTITY,
         'Customer' as PARTY_TYPE,
         'CUSTOMER' as PARTY_TYPE_DB,
-        'SEPA' as WAY_ID,
+        COALESCE(kb.ZTERM, 'BANK_TRANSFER') as WAY_ID,
         'TRUE' as DEFAULT_PAYMENT_WAY,
         TO_DATE(k.ERDAT, 'YYYYMMDD') as VALID_FROM,
         NULL as VALID_TO,

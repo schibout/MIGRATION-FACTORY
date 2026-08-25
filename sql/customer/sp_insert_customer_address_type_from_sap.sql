@@ -1,9 +1,5 @@
--- Procédure pour insérer les types d'adresses clients depuis les données SAP
--- Utilise clean_data.ifs_customer comme table maître
--- Insère les 3 types (DELIVERY, INVOICE, DOCUMENT) avec une seule adresse par défaut par type et par client
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_address_type_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -104,4 +100,4 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur lors de l''INSERT types d''adresse: %', SQLERRM;
 END;
-$procedure$;
+$procedure$

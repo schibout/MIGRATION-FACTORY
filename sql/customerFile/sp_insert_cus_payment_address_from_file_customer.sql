@@ -1,8 +1,5 @@
--- Procédure pour insérer les adresses de paiement clients depuis le fichier file_customer
--- Utilise clean_data.v_customer_source (fichier + clients PHL absents du fichier) comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_cus_payment_address_from_file_customer()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -49,7 +46,20 @@ BEGIN
         'SEPA' as way_id,
         fc.address_id as address_id,
         CONCAT_WS(' - ', COALESCE(k.NAME1, fc.name_1), COALESCE(k.ORT01, fc.city)) as description,
-        'TRUE' as default_address,
+        CASE
+            WHEN ROW_NUMBER() OVER (
+                PARTITION BY fc.customer_id
+                ORDER BY
+                    CASE
+                        WHEN UPPER(BTRIM(COALESCE(fc.source_systeme, ''))) = 'FILE' THEN 0
+                        WHEN fc.address_id IN ('01', '1') THEN 1
+                        ELSE 2
+                    END,
+                    CASE WHEN fc.address_id = '1' THEN '01' ELSE fc.address_id END,
+                    fc.address_id
+            ) = 1 THEN 'TRUE'
+            ELSE 'FALSE'
+        END as default_address,
         -- Calcul de l'IBAN depuis les données bancaires
         clean_data.fn_calculate_iban(
             COALESCE(knbk.BANKS, fc.country),
@@ -93,4 +103,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT adresses paiement - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

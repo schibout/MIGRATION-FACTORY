@@ -1,17 +1,6 @@
--- Ajout d'un article generique SILICIUM dans PART_CATALOG (master part) et INVENTORY_PART.
--- Procedure INDEPENDANTE (execution manuelle) : ne fait PAS partie de alimenter_all_phl().
--- Reprend exactement les memes valeurs par defaut que les procedures PHL
--- (alimenter_part_catalog_phl / alimenter_inventory_part_phl).
--- Idempotente : guards NOT EXISTS, peut etre rejouee sans doublon.
---
--- Valeurs retenues :
---   part_no / description = 'SILICIUM'
---   unit_code / unit_meas = 'kg'
---   contract (inventory_part) = 'SJ'
-
 CREATE OR REPLACE FUNCTION clean_data.ajouter_article_silicium()
-RETURNS void
-LANGUAGE plpgsql
+ RETURNS void
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_part_no    text := 'SILICIUM';
@@ -62,7 +51,7 @@ BEGIN
         'NOT SERIAL TRACKING' as serial_tracking_code_db,
         'NOT SERIAL TRACKING' as eng_serial_tracking_code_db,
         'NOT CONFIGURED'      as configurable_db,
-        'ALLOW_COND_CODE'     as condition_code_usage_db,
+        'NOT_ALLOW_COND_CODE'     as condition_code_usage_db,
         'NO_SUBLOTS'          as sub_lot_rule_db,
         'MULTI_LOTS'          as lot_quantity_rule_db,
         'NOT POSITION PART'   as position_part_db,
@@ -203,7 +192,5 @@ EXCEPTION
 
         RAISE;
 END;
-$function$;
-
--- Execution manuelle :
---   SELECT clean_data.ajouter_article_silicium();
+$function$
+;

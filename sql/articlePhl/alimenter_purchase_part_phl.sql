@@ -1,11 +1,6 @@
--- Alimentation de PURCHASE_PART pour les articles PHL (source: raw_data.phl_article)
--- INSERT en append : s'execute APRES alimenter_purchase_part() et alimenter_part_catalog_phl().
--- contract = SJ. Pas de purchase_part_supplier (aucun fournisseur dans phl_article).
--- Defauts identiques a la version SAP.
-
 CREATE OR REPLACE FUNCTION clean_data.alimenter_purchase_part_phl()
-RETURNS void
-LANGUAGE plpgsql
+ RETURNS void
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
@@ -14,9 +9,7 @@ DECLARE
     v_duration INTERVAL;
 BEGIN
     v_start_time := CURRENT_TIMESTAMP;
-
     RAISE NOTICE 'Debut de l''alimentation PURCHASE_PART (articles PHL) - %', v_start_time;
-
     INSERT INTO clean_data.purchase_part (
         contract,
         part_no,
@@ -138,7 +131,6 @@ BEGIN
         NULL::text as objversion,
         NULL::text as objid,
         NULL::text as std_name_id
-
     -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
     FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
@@ -158,24 +150,19 @@ BEGIN
             AND pp.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       )
     ORDER BY TRIM(phl."N. ARTICLE");
-
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
-
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
-
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Alimentation PURCHASE_PART (PHL) terminee avec succes';
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Articles PHL inseres: %', v_count_inserted;
     RAISE NOTICE 'Duree d''execution: %', v_duration;
     RAISE NOTICE '====================================================';
-
 EXCEPTION
     WHEN OTHERS THEN
         v_end_time := CURRENT_TIMESTAMP;
         v_duration := v_end_time - v_start_time;
-
         RAISE NOTICE '====================================================';
         RAISE NOTICE 'ERREUR lors de l''alimentation PURCHASE_PART (PHL)';
         RAISE NOTICE '====================================================';
@@ -183,7 +170,7 @@ EXCEPTION
         RAISE NOTICE 'Message: %', SQLERRM;
         RAISE NOTICE 'Duree avant erreur: %', v_duration;
         RAISE NOTICE '====================================================';
-
         RAISE;
 END;
-$function$;
+$function$
+;

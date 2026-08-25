@@ -1,9 +1,5 @@
--- Transposition de sp_insert_customer_info_cfv_from_customer_info pour le module customerFile.
--- IMPORTANT : cette procédure lit FROM clean_data.customer_info (déjà alimentée),
--- il n'y a donc PAS de master swap. Corps identique, seul le nom change.
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_info_cfv_from_file_customer()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -99,4 +95,4 @@ EXCEPTION
         RAISE EXCEPTION 'Erreur lors de l''alimentation CUSTOMER_INFO_CFV - %: %',
             TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

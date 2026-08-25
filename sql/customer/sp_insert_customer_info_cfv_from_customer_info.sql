@@ -1,5 +1,5 @@
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_info_cfv_from_customer_info()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -75,8 +75,8 @@ BEGIN
         business_classification,
         date_of_registration,
         main_representative,
-        cf_legacy_customer_as400_mn as cfs_legacy_customer_as400_mn,
-        cf_legacy_customer_sap_id as cfs_legacy_customer_sap_id,
+        "cf$_legacy_customer_as400_mn" as cfs_legacy_customer_as400_mn,
+        "cf$_legacy_customer_sap_id" as cfs_legacy_customer_sap_id,
         NOW() as created_at,
         NOW() as updated_at
     FROM clean_data.customer_info;
@@ -95,5 +95,4 @@ EXCEPTION
         RAISE EXCEPTION 'Erreur lors de l''alimentation CUSTOMER_INFO_CFV - %: %', 
             TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
-
+$procedure$

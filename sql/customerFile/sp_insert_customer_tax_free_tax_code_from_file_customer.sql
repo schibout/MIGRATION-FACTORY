@@ -1,8 +1,5 @@
--- Procédure pour insérer les codes fiscaux exonérés clients depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
--- Utilise clean_data.v_customer_source (fichier + clients PHL absents du fichier) (CTE fc) comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_tax_free_tax_code_from_file_customer()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -63,4 +60,4 @@ EXCEPTION
         RAISE EXCEPTION 'Erreur lors de l''INSERT tax free code depuis file_customer - %: %',
             TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

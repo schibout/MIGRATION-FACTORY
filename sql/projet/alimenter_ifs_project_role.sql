@@ -99,5 +99,3 @@ EXCEPTION
         RAISE EXCEPTION '❌ Erreur lors de l''alimentation PROJECT_ROLE: %', SQLERRM;
 END;
 $function$
-
-

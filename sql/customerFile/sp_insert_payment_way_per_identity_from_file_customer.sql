@@ -1,12 +1,3 @@
--- Procédure pour insérer les moyens de paiement par identité depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
--- Aligne sur la structure RÉELLE de clean_data.payment_way_per_identity (modèle PHL) :
--- colonnes created_timestamp/updated_timestamp/created_by/updated_by/is_deleted
--- (et NON valid_from/valid_to/is_active de la version SAP, absentes de la table).
--- TRUNCATE + INSERT, une ligne par client (customer_id).
---
--- Le paramètre p_client est conservé pour ne pas changer la signature déjà déployée ;
--- il n'est plus utilisé (la source est file_customer, pas un MANDT KNA1).
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_payment_way_per_identity_from_file_customer(IN p_client character varying DEFAULT '100'::character varying)
  LANGUAGE plpgsql
 AS $procedure$

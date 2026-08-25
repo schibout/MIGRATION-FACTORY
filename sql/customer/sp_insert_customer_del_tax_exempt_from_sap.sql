@@ -1,8 +1,5 @@
--- Procédure pour insérer les exemptions fiscales de livraison clients depuis les données SAP
--- Utilise clean_data.ifs_customer comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_del_tax_exempt_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -72,4 +69,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT del tax exempt - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

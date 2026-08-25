@@ -1,27 +1,30 @@
--- DROP FUNCTION clean_data.alimenter_activity();
-
 CREATE OR REPLACE FUNCTION clean_data.alimenter_activity()
  RETURNS void
  LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
-    v_count_errors INTEGER := 0;
     v_start_time TIMESTAMP;
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
 BEGIN
     v_start_time := CURRENT_TIMESTAMP;
 
-    RAISE NOTICE 'Début de l''alimentation des activités (ACTIVITY) - %', v_start_time;
+    RAISE NOTICE 'Début de l''alimentation des activités (ACTIVITY) depuis v_portes_detail - %', v_start_time;
 
-    -- Vider la table cible avant insertion
     TRUNCATE TABLE clean_data.activity RESTART IDENTITY;
     RAISE NOTICE 'Table activity vidée';
 
-    -- Insérer les activités basées sur les portes pour chaque projet
-    -- Toutes les activités sont associées au sous-projet 10 (Suivi des portes)
-    -- activity_no est calculé via la table de transcodification (catégorie 'Activity', SAP → IFS)
+    ---------------------------------------------------------------------------
+    -- Activités de type PORTE uniquement.
+    -- Source : clean_data.v_portes_detail, pas raw_data.sharepoint_porte et plus
+    -- de CROSS JOIN fixe P0/P0bis/P0ter/... pour tous les projets.
+    --
+    -- On conserve seulement les jalons dont le libellé correspond à une vraie
+    -- porte IFS : P0..P6, P0bis..P6bis, P0ter..P6ter(s).
+    -- Les jalons métier non-porte comme "Point L. Maenner", "P1 Fermée",
+    -- "P4 batch 1", etc. sont exclus.
+    ---------------------------------------------------------------------------
     INSERT INTO clean_data.activity (
         activity_seq,
         project_id,
@@ -47,17 +50,16 @@ BEGIN
         activity_responsible
     )
     SELECT
-        ROW_NUMBER() OVER (ORDER BY pb.project_id, g.gate_order) AS activity_seq,
-        pb.project_id,
-        -- activity_no : transcodification SAP → IFS, fallback sur le code source
+        ROW_NUMBER() OVER (ORDER BY src.project_id, src.activity_source, src.milestone_id) AS activity_seq,
+        src.project_id,
         SUBSTRING(
             COALESCE(
-                public.get_transcodification('Activity', g.gate_code, 'ASAP', 'IFS'),
-                g.gate_code
+                public.get_transcodification('Activity', src.activity_source, 'ASAP', 'IFS'),
+                src.activity_source
             ),
             1, 10
         ) AS activity_no,
-        SUBSTRING(g.description, 1, 200) AS description,
+        SUBSTRING('Porte ' || src.activity_source, 1, 200) AS description,
         '10' AS sub_project_id,
         'ALL_CONNECTED_OBJECTS' AS progress_method,
         'ALL_CONNECTED_OBJECTS' AS progress_method_db,
@@ -73,74 +75,50 @@ BEGIN
         'ACTIVITY' AS node_type_db,
         'INHERIT' AS mandatory_invoice_comment,
         'INHERIT' AS mandatory_invoice_comment_db,
-        -- early_start / early_finish : date d'échéance de la porte côté ASAP
-        CASE g.gate_code
-            WHEN 'P0'    THEN sp.end_p0::DATE
-            WHEN 'P0bis' THEN sp.end_p0::DATE
-            WHEN 'P0ter' THEN sp.end_p0::DATE
-            WHEN 'P1'    THEN sp.end_p1::DATE  
-            WHEN 'P1bis' THEN sp.end_p1::DATE
-            WHEN 'P1ter' THEN sp.end_p1::DATE
-            WHEN 'P2'    THEN sp.end_p2::DATE
-            WHEN 'P3'    THEN sp.end_p3::DATE
-            WHEN 'P4'    THEN sp.end_p4::DATE
-            WHEN 'P5'    THEN sp.end_p5::DATE
-            WHEN 'P6'    THEN sp.end_p6::DATE
-            WHEN 'CFV1'  THEN sp.conception_date::DATE
-            WHEN 'CFV2'  THEN sp.mise_en_service_date::DATE
-            WHEN 'CFV3'  THEN sp.achevement_industriel_date::DATE
-        END AS early_start,
-        CASE g.gate_code
-            WHEN 'P0'    THEN sp.end_p0::DATE
-            WHEN 'P0bis' THEN sp.end_p0::DATE
-            WHEN 'P0ter' THEN sp.end_p0::DATE
-            WHEN 'P1'    THEN sp.end_p1::DATE
-            WHEN 'P1bis' THEN sp.end_p1::DATE
-            WHEN 'P1ter' THEN sp.end_p1::DATE
-            WHEN 'P2'    THEN sp.end_p2::DATE
-            WHEN 'P3'    THEN sp.end_p3::DATE
-            WHEN 'P4'    THEN sp.end_p4::DATE
-            WHEN 'P5'    THEN sp.end_p5::DATE
-            WHEN 'P6'    THEN sp.end_p6::DATE
-            WHEN 'CFV1'  THEN sp.conception_date::DATE
-            WHEN 'CFV2'  THEN sp.mise_en_service_date::DATE
-            WHEN 'CFV3'  THEN sp.achevement_industriel_date::DATE
-        END AS early_finish,
-        COALESCE(
-            clean_data.get_person_id_from_sharepoint_user_id(sp.pm_id::TEXT),
-            pb.manager
-        ) AS activity_responsible
-    FROM clean_data.project_base pb
+        src.activity_date AS early_start,
+        src.activity_date AS early_finish,
+        COALESCE(pm_user.person_id, pb.manager) AS activity_responsible
+    FROM (
+        SELECT DISTINCT ON (x.project_id, x.activity_source)
+            x.*
+        FROM (
+            SELECT
+                SUBSTRING(vd.project_number, 1, 10) AS project_id,
+                vd.site_id,
+                vd.milestone_id,
+                CASE
+                    WHEN UPPER(TRIM(vd.gate)) ~ '^P[0-6]$'
+                     AND regexp_replace(lower(COALESCE(NULLIF(TRIM(vd.porte_libelle), ''), vd.gate)), '\s+', '', 'g') = lower(TRIM(vd.gate))
+                        THEN UPPER(TRIM(vd.gate))
+                    WHEN UPPER(TRIM(vd.gate)) ~ '^P[0-6]$'
+                     AND regexp_replace(lower(COALESCE(vd.porte_libelle, '')), '\s+', '', 'g') = lower(TRIM(vd.gate)) || 'bis'
+                        THEN UPPER(TRIM(vd.gate)) || 'bis'
+                    WHEN UPPER(TRIM(vd.gate)) ~ '^P[0-6]$'
+                     AND regexp_replace(lower(COALESCE(vd.porte_libelle, '')), '\s+', '', 'g') IN (lower(TRIM(vd.gate)) || 'ter', lower(TRIM(vd.gate)) || 'ters')
+                        THEN UPPER(TRIM(vd.gate)) || 'ter'
+                    ELSE NULL
+                END AS activity_source,
+                COALESCE(vd.date_realisee, vd.date_prevue)::DATE AS activity_date,
+                vd.date_etat_source
+            FROM clean_data.v_portes_detail vd
+            WHERE vd.project_number IS NOT NULL
+        ) x
+        WHERE x.activity_source IS NOT NULL
+        ORDER BY x.project_id, x.activity_source, x.date_etat_source DESC NULLS LAST, x.milestone_id
+    ) src
+    JOIN clean_data.project_base pb
+        ON pb.project_id = src.project_id
     LEFT JOIN raw_data.sharepoint_projets sp
-        ON pb.project_id = SUBSTRING(COALESCE(sp.project_number, sp.code), 1, 10)
-    CROSS JOIN (
-        VALUES
-            -- Portes principales et intermédiaires
-            ('P0',    'Porte P0 - Idée',                 1),
-            ('P0bis', 'Porte P0bis',                     2),
-            ('P0ter', 'Porte P0ter',                     3),
-            ('P1',    'Porte P1 - Faisabilité',          4),
-            ('P1bis', 'Porte P1bis',                     5),
-            ('P1ter', 'Porte P1ter',                     6),
-            ('P2',    'Porte P2 - Avant-Projet',         7),
-            ('P3',    'Porte P3 - Conception',           8),
-            ('P4',    'Porte P4 - Réalisation',          9),
-            ('P5',    'Porte P5 - Mise en Service',     10),
-            ('P6',    'Porte P6 - Clôture',             11),
-            -- Tâches CFV
-            ('CFV1',  'CFV Conception',                 12),
-            ('CFV2',  'CFV Mise en Service',            13),
-            ('CFV3',  'CFV Achèvement Industriel',      14)
-    ) AS g(gate_code, description, gate_order)
-    ORDER BY pb.project_id, g.gate_order;
+        ON sp.sharepoint_id::TEXT = src.site_id
+    LEFT JOIN raw_data.sharepoint_users pm_user
+        ON pm_user.sharepoint_user_id = sp.pm_id
+    ORDER BY src.project_id, src.activity_source, src.milestone_id;
 
-    -- Compter les enregistrements insérés
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
 
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
 
-    -- Log des résultats
     RAISE NOTICE 'Alimentation des activités terminée avec succès';
     RAISE NOTICE 'Nombre d''enregistrements traités: %', v_count_inserted;
     RAISE NOTICE 'Durée d''exécution: %', v_duration;
@@ -155,9 +133,6 @@ EXCEPTION
         RAISE NOTICE 'Code d''erreur: %', SQLSTATE;
         RAISE NOTICE 'Message d''erreur: %', SQLERRM;
         RAISE NOTICE 'Durée avant erreur: %', v_duration;
-
-        -- Relancer l'exception pour arrêter le processus ETL
         RAISE;
 END;
 $function$
-;

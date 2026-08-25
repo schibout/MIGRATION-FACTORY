@@ -1,8 +1,5 @@
--- Procédure pour insérer les informations de paiement clients depuis les données SAP
--- Utilise clean_data.ifs_customer comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_cus_identity_pay_info_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -71,7 +68,7 @@ BEGIN
         COALESCE(knb1.SPERR, 'FALSE') as blocked_for_payment,
         NULL as other_payee_identity,
         NULL as interest_template,
-        'STANDARD' as reminder_template,   -- champ obligatoire dans IFS → valeur par défaut
+        NULL as reminder_template,
         NULL as payment_delay,
         NULL as amount_tolerance,
         NULL as percent_tolerance,
@@ -86,9 +83,8 @@ BEGIN
         NULL as send_reminder_to_payer,
         NULL as send_interest_inv_to_payer,
         NULL as rule_id,
-        -- champ obligatoire dans IFS → valeur neutre NO_RECEIPT
-        'No Receipt' as payment_receipt_type,
-        'NO_RECEIPT' as payment_receipt_type_db,
+        NULL as payment_receipt_type,
+        NULL as payment_receipt_type_db,
         NULL as template_id,
         NULL as check_recipient,
         NULL as check_recipient_db,
@@ -124,5 +120,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT infos paiement - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
-
+$procedure$

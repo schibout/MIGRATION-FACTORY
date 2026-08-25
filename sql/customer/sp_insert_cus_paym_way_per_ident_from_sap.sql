@@ -1,5 +1,5 @@
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_cus_paym_way_per_ident_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -31,12 +31,7 @@ BEGIN
         AND ifs.company_code = knb1.BUKRS
         AND (knb1.LOEVM IS NULL OR knb1.LOEVM = '')
     WHERE COALESCE(ifs.payment_methods, knb1.ZWELS) IS NOT NULL
-    AND COALESCE(ifs.payment_methods, knb1.ZWELS) != ''
-    -- Filtre de cohérence : n'inclure que les clients chargés dans cus_identity_pay_info
-    -- évite ORA-20110 IdentityPayInfo.IDENTITYPAYEXIST
-    AND ifs.customer_number IN (
-        SELECT identity FROM clean_data.cus_identity_pay_info WHERE company = 'TRIMET'
-    );
+    AND COALESCE(ifs.payment_methods, knb1.ZWELS) != '';
     GET DIAGNOSTICS v_processed_count = ROW_COUNT;
     v_end_time := NOW();
     RAISE NOTICE 'INSERT moyens de paiement terminé - %: % enregistrements traités', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), v_processed_count;
@@ -46,4 +41,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT moyens de paiement - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

@@ -1,8 +1,5 @@
--- Procédure pour insérer les informations de crédit clients depuis les données SAP
--- Utilise clean_data.ifs_customer comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_credit_info_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -82,5 +79,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT infos crédit - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
-
+$procedure$

@@ -1,40 +1,6 @@
--- =====================================================================
--- clean_data.alimenter_project_activity_class
--- Réécriture — job "migration / changement statut activités V2".
--- La VALUE de chaque classe = valeur IFS issue des transcodifications.
---
--- Modèle (14 activités/projet, générées par clean_data.alimenter_project_activity) :
---   * Portes : 000-P0 … 006-P6 (+ bis/ter pour P0 et P1)
---              -> 3 classes : PORTE / STATUT_PORTE / QUAL_PORTE
---   * CFV    : phases CFV1/CFV2/CFV3 -> 1 classe CFV, RATTACHÉE À LA PORTE
---              (activity_no = code IFS de la porte, pas CFV1/2/3) :
---                 CFV1 (Conception)            -> activity_no 003-P3
---                 CFV2 (Mise en service)       -> activity_no 004-P4
---                 CFV3 (Achèvement industriel) -> activity_no 006-P6
---              => P3 / P4 / P6 portent donc 4 classes (PORTE/STATUT/QUAL + CFV)
---
--- Sources & règles :
---   * STRUCTURE    : uniquement les classes définies dans clean_data.ifs_model_project
---                    (INNER JOIN) -> chaque porte ne reçoit QUE ses classes du modèle.
---   * PORTE        : transco 'PORTE' du suffixe (P0->0 / P1->1 / ... / P6->6), fallback suffixe.
---   * STATUT_PORTE : classement de la porte (v_portes_detail.classement) -> transco 'Classement' NUMÉRIQUE
---                    (vide=0 / Fait=1 / Vigilance=2), fallback 0.
---   * QUAL_PORTE   : note de la porte (v_portes_detail.note) ; 'A définir' si vide (règle transco 'Note').
---   * CFV1/2/3     : sharepoint_statut_cfv.State -> transco 'CFV' (Prévue=0..Rouge=3, 'pas nécessaire (NA)'=4) ;
---                    vide / pas de donnée -> 0. Nom de classe = celui du modèle (CFV1/CFV2/CFV3).
---
--- Note & classement pris dans clean_data.v_portes_detail (valeur la plus récente par porte).
--- CFV pris dans le DERNIER statut_cfv du projet (par 'modified') pour la phase = title.
---
--- PRÉREQUIS : déployer d'abord transco_project_activity_class.sql
---             (catégories PORTE, CFV, et 'Classement' repointée en numérique).
---
--- NB : activity_seq / activity_class_seq laissés NULL (hors périmètre).
---      Connexion read-only -> fichier déployable, non exécuté ici.
--- =====================================================================
 CREATE OR REPLACE FUNCTION clean_data.alimenter_project_activity_class()
-RETURNS void
-LANGUAGE plpgsql
+ RETURNS void
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_count_portes INTEGER := 0;
@@ -209,4 +175,4 @@ EXCEPTION
         RAISE NOTICE 'Durée avant erreur : %', v_duration;
         RAISE;
 END;
-$function$;
+$function$

@@ -1,13 +1,5 @@
--- Procédure pour insérer les informations clients depuis les données SAP
--- Cette procédure extrait les données clients SAP (KNA1, KNB1) et les transforme
--- pour alimenter la table CUSTOMER_INFO avec TRUNCATE + INSERT
--- Utilise INNER JOIN avec KNB1 pour s'assurer que seuls les clients actifs en comptabilité sont traités
--- FILTRE: Seuls les clients présents dans raw_data.clienttosave sont traités
--- Mise à jour pour inclure les nouvelles colonnes : CUSTOMER_TAX_USAGE_TYPE, BUSINESS_CLASSIFICATION, 
--- DATE_OF_REGISTRATION, MAIN_REPRESENTATIVE
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_info_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -49,8 +41,8 @@ BEGIN
         BUSINESS_CLASSIFICATION,
         DATE_OF_REGISTRATION,
         MAIN_REPRESENTATIVE,
-        cf_legacy_customer_as400_mn,
-        cf_legacy_customer_sap_id
+        cf$_legacy_customer_as400_mn,
+        cf$_legacy_customer_sap_id
     )
     SELECT DISTINCT ON (ifs.customer_number)
         ifs.customer_number as CUSTOMER_ID,
@@ -67,10 +59,7 @@ BEGIN
         NULL as DEFAULT_LANGUAGE,
         COALESCE(public.get_transcodification('LANGUAGE', k.SPRAS), public.get_transcodification('LANGUAGE', ifs.language)) as DEFAULT_LANGUAGE_DB,
         NULL as COUNTRY,
-        -- Certains codes pays SAP (ex: 'SZ') n'existent pas dans IFS → NULL pour éviter ORA-20111 IsoCountry.NOTEXIST
-        CASE WHEN COALESCE(k.LAND1, ifs.country) IN ('SZ') THEN NULL
-             ELSE COALESCE(k.LAND1, ifs.country)
-        END as COUNTRY_DB,
+        COALESCE(k.LAND1, ifs.country) as COUNTRY_DB,
         'Customer' as PARTY_TYPE,
         'CUSTOMER' as PARTY_TYPE_DB,
         NULL as CORPORATE_FORM,
@@ -93,8 +82,8 @@ BEGIN
             ifs.created_on
         ) as DATE_OF_REGISTRATION,
         NULL as MAIN_REPRESENTATIVE,
-        SUBSTRING(COALESCE(TRIM(k.NAME1), ifs.name_1), 1, 50) as cf_legacy_customer_as400_mn,
-        ifs.customer_number as cf_legacy_customer_sap_id
+        SUBSTRING(COALESCE(TRIM(k.NAME1), ifs.name_1), 1, 50) as cf$_legacy_customer_as400_mn,
+        ifs.customer_number as cf$_legacy_customer_sap_id
     FROM clean_data.ifs_customer ifs  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k 
         ON ifs.customer_number = k.KUNNR
@@ -119,4 +108,4 @@ EXCEPTION
         v_error_count := v_error_count + 1;
         RAISE EXCEPTION 'Erreur lors de l''INSERT: %', SQLERRM;
 END;
-$procedure$;
+$procedure$

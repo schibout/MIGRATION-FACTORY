@@ -1,5 +1,3 @@
--- DROP FUNCTION clean_data.alimenter_sub_project();
-
 CREATE OR REPLACE FUNCTION clean_data.alimenter_sub_project()
  RETURNS void
  LANGUAGE plpgsql
@@ -89,5 +87,3 @@ EXCEPTION
         RAISE;
 END;
 $function$
-;
-

@@ -7,37 +7,7 @@ DECLARE
     v_project_count INTEGER := 0;
     v_seq_no NUMERIC := 1;
     rec RECORD;
-    
-    -- Fonction imbriquée pour insérer une affectation
-    PROCEDURE insert_role_assignment(
-        p_project_id VARCHAR,
-        p_company VARCHAR,
-        p_role_id VARCHAR,
-        p_person_id VARCHAR
-    ) AS $$
-    BEGIN
-        IF p_person_id IS NOT NULL AND p_person_id <> '' THEN
-            INSERT INTO clean_data.project_role_assignment (
-                assign_seq_no,
-                project_id,
-                company,
-                role_id,
-                person_id,
-                system_generated
-            )
-            VALUES (
-                v_seq_no,
-                p_project_id,
-                p_company,
-                p_role_id,
-                p_person_id,
-                'FALSE'
-            );
-            v_seq_no := v_seq_no + 1;
-            v_inserted_count := v_inserted_count + 1;
-        END IF;
-    END;
-    $$;
+    v_person_id VARCHAR;
     
 BEGIN
     RAISE NOTICE '========================================';
@@ -60,89 +30,116 @@ BEGIN
         SELECT DISTINCT
             pb.project_id,
             pb.company,
-            um.person_id AS cor_maint,
-            ua.person_id AS ach_capex,
-            up.person_id AS chef_projet,
-            us.person_id AS sponsor,
-            uc.person_id AS client_int
+            sp.maintenance_correspondent_id,
+            sp.acheteur_capex_id,
+            sp.pm_id,
+            sp.sponsor_id,
+            sp.client_correspondent_id
         FROM clean_data.project_base pb
-        LEFT JOIN raw_data.sharepoint_projets sp
-            ON pb.project_id = SUBSTRING(COALESCE(sp.project_number, sp.code), 1, 10)
-        -- person_id directement depuis raw_data.sharepoint_users (comme alimenter_project_activity)
-        LEFT JOIN raw_data.sharepoint_users um ON um.sharepoint_user_id = sp.maintenance_correspondent_id
-        LEFT JOIN raw_data.sharepoint_users ua ON ua.sharepoint_user_id = sp.acheteur_capex_id
-        LEFT JOIN raw_data.sharepoint_users up ON up.sharepoint_user_id = sp.pm_id
-        LEFT JOIN raw_data.sharepoint_users us ON us.sharepoint_user_id = sp.sponsor_id
-        LEFT JOIN raw_data.sharepoint_users uc ON uc.sharepoint_user_id = sp.client_correspondent_id
-        WHERE pb.project_id IS NOT NULL
+        LEFT JOIN raw_data.sharepoint_projets sp ON pb.project_id = sp.project_number
+        WHERE pb.project_id IS NOT NULL 
             AND pb.project_id <> ''
             AND pb.company IS NOT NULL
             AND pb.company <> ''
         ORDER BY pb.project_id
     ) LOOP
+        
         -- COR_MAINT -> Correspondant Maintenance
-        CALL insert_role_assignment(
-            rec.project_id,
-            rec.company,
-            'COR_MAINT',
-            rec.cor_maint
-        );
+        v_person_id := clean_data.get_person_id_from_sharepoint_user_id(rec.maintenance_correspondent_id);
+        IF v_person_id IS NOT NULL AND v_person_id <> '' THEN
+            INSERT INTO clean_data.project_role_assignment (
+                assign_seq_no, project_id, company, role_id, person_id, system_generated
+            ) VALUES (
+                v_seq_no, rec.project_id, rec.company, 'COR_MAINT', v_person_id, 'FALSE'
+            );
+            v_seq_no := v_seq_no + 1;
+            v_inserted_count := v_inserted_count + 1;
+        END IF;
         
         -- ACH_CAPEX -> Acheteur CAPEX
-        CALL insert_role_assignment(
-            rec.project_id,
-            rec.company,
-            'ACH_CAPEX',
-            rec.ach_capex
-        );
+        v_person_id := clean_data.get_person_id_from_sharepoint_user_id(rec.acheteur_capex_id);
+        IF v_person_id IS NOT NULL AND v_person_id <> '' THEN
+            INSERT INTO clean_data.project_role_assignment (
+                assign_seq_no, project_id, company, role_id, person_id, system_generated
+            ) VALUES (
+                v_seq_no, rec.project_id, rec.company, 'ACH_CAPEX', v_person_id, 'FALSE'
+            );
+            v_seq_no := v_seq_no + 1;
+            v_inserted_count := v_inserted_count + 1;
+        END IF;
         
-        -- CDPROJET -> Chef de projet
-        CALL insert_role_assignment(
-            rec.project_id,
-            rec.company,
-            'CDPROJET',
-            rec.chef_projet
-        );
+        -- CDPROJET -> Chef de projet (PM)
+        v_person_id := clean_data.get_person_id_from_sharepoint_user_id(rec.pm_id);
+        IF v_person_id IS NOT NULL AND v_person_id <> '' THEN
+            INSERT INTO clean_data.project_role_assignment (
+                assign_seq_no, project_id, company, role_id, person_id, system_generated
+            ) VALUES (
+                v_seq_no, rec.project_id, rec.company, 'CDPROJET', v_person_id, 'FALSE'
+            );
+            v_seq_no := v_seq_no + 1;
+            v_inserted_count := v_inserted_count + 1;
+        END IF;
         
         -- RSP -> Chef de projet (même personne)
-        CALL insert_role_assignment(
-            rec.project_id,
-            rec.company,
-            'RSP',
-            rec.chef_projet
-        );
+        v_person_id := clean_data.get_person_id_from_sharepoint_user_id(rec.pm_id);
+        IF v_person_id IS NOT NULL AND v_person_id <> '' THEN
+            INSERT INTO clean_data.project_role_assignment (
+                assign_seq_no, project_id, company, role_id, person_id, system_generated
+            ) VALUES (
+                v_seq_no, rec.project_id, rec.company, 'RSP', v_person_id, 'FALSE'
+            );
+            v_seq_no := v_seq_no + 1;
+            v_inserted_count := v_inserted_count + 1;
+        END IF;
         
         -- RA -> Chef de projet (même personne)
-        CALL insert_role_assignment(
-            rec.project_id,
-            rec.company,
-            'RA',
-            rec.chef_projet
-        );
+        v_person_id := clean_data.get_person_id_from_sharepoint_user_id(rec.pm_id);
+        IF v_person_id IS NOT NULL AND v_person_id <> '' THEN
+            INSERT INTO clean_data.project_role_assignment (
+                assign_seq_no, project_id, company, role_id, person_id, system_generated
+            ) VALUES (
+                v_seq_no, rec.project_id, rec.company, 'RA', v_person_id, 'FALSE'
+            );
+            v_seq_no := v_seq_no + 1;
+            v_inserted_count := v_inserted_count + 1;
+        END IF;
         
         -- RFP -> Chef de projet (même personne)
-        CALL insert_role_assignment(
-            rec.project_id,
-            rec.company,
-            'RFP',
-            rec.chef_projet
-        );
+        v_person_id := clean_data.get_person_id_from_sharepoint_user_id(rec.pm_id);
+        IF v_person_id IS NOT NULL AND v_person_id <> '' THEN
+            INSERT INTO clean_data.project_role_assignment (
+                assign_seq_no, project_id, company, role_id, person_id, system_generated
+            ) VALUES (
+                v_seq_no, rec.project_id, rec.company, 'RFP', v_person_id, 'FALSE'
+            );
+            v_seq_no := v_seq_no + 1;
+            v_inserted_count := v_inserted_count + 1;
+        END IF;
         
         -- SPONSOR -> Sponsor
-        CALL insert_role_assignment(
-            rec.project_id,
-            rec.company,
-            'SPONSOR',
-            rec.sponsor
-        );
+        v_person_id := clean_data.get_person_id_from_sharepoint_user_id(rec.sponsor_id);
+        IF v_person_id IS NOT NULL AND v_person_id <> '' THEN
+            INSERT INTO clean_data.project_role_assignment (
+                assign_seq_no, project_id, company, role_id, person_id, system_generated
+            ) VALUES (
+                v_seq_no, rec.project_id, rec.company, 'SPONSOR', v_person_id, 'FALSE'
+            );
+            v_seq_no := v_seq_no + 1;
+            v_inserted_count := v_inserted_count + 1;
+        END IF;
         
-        -- CLIENT_INT -> Correspondant/ Client du projet
-        CALL insert_role_assignment(
-            rec.project_id,
-            rec.company,
-            'CLIENT_INT',
-            rec.client_int
-        );
+        -- CLIENT_INT -> Correspondant Client
+        v_person_id := clean_data.get_person_id_from_sharepoint_user_id(rec.client_correspondent_id);
+        IF v_person_id IS NOT NULL AND v_person_id <> '' THEN
+            INSERT INTO clean_data.project_role_assignment (
+                assign_seq_no, project_id, company, role_id, person_id, system_generated
+            ) VALUES (
+                v_seq_no, rec.project_id, rec.company, 'CLIENT_INT', v_person_id, 'FALSE'
+            );
+            v_seq_no := v_seq_no + 1;
+            v_inserted_count := v_inserted_count + 1;
+        END IF;
+        
     END LOOP;
     
     RAISE NOTICE '';
@@ -210,5 +207,3 @@ EXCEPTION
         RAISE EXCEPTION '❌ Erreur lors de l''alimentation PROJECT_ROLE_ASSIGNMENT: %', SQLERRM;
 END;
 $function$
-
-

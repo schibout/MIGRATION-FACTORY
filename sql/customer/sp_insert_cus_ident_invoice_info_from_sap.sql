@@ -1,5 +1,5 @@
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_cus_ident_invoice_info_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -55,16 +55,13 @@ BEGIN
         knb1.HBKID as national_bank_code,
         knb1.TOGRU as group_id,
         NULL as def_authorizer,
-        -- Les codes de paiement SAP (ex: F030) n'existent pas dans TRIMET → NULL (IFS utilise le défaut société)
-        NULL as pay_term_id,
-        -- Le numéro TVA SAP n'est pas un code taxe IFS → NULL pour éviter ORA-20110 StatutoryFee.MISSINVTIME
-        NULL as def_vat_code,
+        COALESCE(knb1.ZTERM, 'NET30') as pay_term_id,
+        COALESCE(ifs.vat_number, k.STCEG) as def_vat_code,
         NULL as rounding_tax_code,
         COALESCE(knvv.WAERS, 'EUR') as def_currency,
         NULL as paym_dev_days,
-        -- 'CUSTOMER' n'existe pas comme IdentityType dans IFS → valeur valide 'EXTERN'
-        'External' as identity_type,
-        'EXTERN' as identity_type_db,
+        'Customer' as identity_type,
+        'CUSTOMER' as identity_type_db,
         NULL as def_preliminary_code,
         'N' as automatic_invoice,
         NULL as percent_tolerance,
@@ -74,9 +71,8 @@ BEGIN
         NULL as tax_exempt_valid_from,
         NULL as tax_exempt_valid_to,
         'FALSE' as second_tin,
-        -- 'NO_REPORT' n'existe pas comme ReportAndWithhold dans IFS → NULL
-        NULL as report_and_withhold,
-        NULL as report_and_withhold_db,
+        'No Report' as report_and_withhold,
+        'NO_REPORT' as report_and_withhold_db,
         NULL as numeration_group,
         NULL as tax_book_id,
         NULL as tax_book_type,
@@ -103,4 +99,4 @@ EXCEPTION
         v_end_time := NOW();
         RAISE EXCEPTION 'Erreur lors de l''INSERT infos facturation - %: %', TO_CHAR(v_end_time, 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

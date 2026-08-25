@@ -220,4 +220,3 @@ EXCEPTION
         RAISE EXCEPTION '❌ Erreur lors de l''alimentation project_base: %', SQLERRM;
 END;
 $function$
-

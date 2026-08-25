@@ -182,4 +182,3 @@ EXCEPTION
         RAISE EXCEPTION '❌ Erreur lors de l''alimentation PROJECT_MARGIN_MATRIX: %', SQLERRM;
 END;
 $function$
-

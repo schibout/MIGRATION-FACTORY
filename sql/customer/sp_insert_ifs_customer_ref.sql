@@ -1,8 +1,5 @@
--- ============================================================================
--- Procédure stockée
--- ============================================================================
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_ifs_customer_ref()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -146,7 +143,11 @@ BEGIN
         knvv.vkorg AS sales_organization,
         knvv.vtweg AS distribution_channel,
         knvv.spart AS division,
-        knvv.kdgrp AS customer_group,
+        CASE
+            WHEN UPPER(TRIM(kna1.land1)) = 'FR' THEN '0'
+            WHEN UPPER(TRIM(kna1.land1)) IN ('AT','BE','BG','CY','CZ','DE','DK','EE','ES','FI','GR','HR','HU','IE','IT','LT','LU','LV','MT','NL','PL','PT','RO','SE','SI','SK') THEN '1'
+            ELSE '2'
+        END AS customer_group,
         knvv.bzirk AS sales_district,
         knvv.kalks AS pricing_procedure,
         knvv.inco1 AS incoterms_1,
@@ -188,13 +189,4 @@ EXCEPTION
         RAISE NOTICE '[%] ❌ Erreur dans sp_insert_ifs_customer_from_sap: %', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
         RAISE;
 END;
-$procedure$;
-
--- ============================================================================
--- Commentaires sur la table et les colonnes
--- ============================================================================
-COMMENT ON TABLE clean_data.ifs_customer IS 'Table consolidée des clients SAP pour export vers IFS';
-COMMENT ON COLUMN clean_data.ifs_customer.customer_number IS 'Numéro client SAP (KUNNR)';
-COMMENT ON COLUMN clean_data.ifs_customer.company_code IS 'Code société (BUKRS)';
-COMMENT ON COLUMN clean_data.ifs_customer.sales_organization IS 'Organisation commerciale (VKORG)';
-
+$procedure$

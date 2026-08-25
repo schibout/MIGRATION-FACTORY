@@ -3,15 +3,11 @@ CREATE OR REPLACE PROCEDURE clean_data.populate_pm_action_resource()
 AS $procedure$
 DECLARE
     v_pm_revision     VARCHAR := '1';
-    v_demand_type     VARCHAR := 'Work Order';   -- ⚠️ à confirmer
-    v_demand_type_db  VARCHAR := 'WORK_ORDER';    -- ⚠️ valeur _db IFS à vérifier
+    v_demand_type     VARCHAR := 'Work Order';
+    v_demand_type_db  VARCHAR := 'WORK_ORDER';
     v_count INTEGER := 0;
 BEGIN
     TRUNCATE TABLE clean_data.pm_action_resource;
-
-    -- Charge et nb d'intervenants sont portés par la ligne d'opération :
-    -- une ressource par ligne de pe_tools renseignée, rattachée au pm_no du plan.
-    -- pm_action_resource_seq est la PK (seule) : row_number() global.
     INSERT INTO clean_data.pm_action_resource (
         pm_no,
         pm_revision,
@@ -29,8 +25,10 @@ BEGIN
         v_demand_type_db,
         clean_data.pe_num(s.charge)                     AS planned_hours,
         clean_data.pe_num(s.nb_intervenants)            AS planned_quantity
-    FROM clean_data.v_pm_source s;
-
+    FROM clean_data.v_pm_source s
+    JOIN clean_data.pm_action p
+      ON p.pm_no = s.pm_no
+     AND p.pm_revision = v_pm_revision;
     GET DIAGNOSTICS v_count = ROW_COUNT;
     RAISE NOTICE 'pm_action_resource: % lignes insérées', v_count;
 END;

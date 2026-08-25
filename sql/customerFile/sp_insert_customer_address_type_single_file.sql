@@ -1,12 +1,5 @@
--- Procédure pour insérer un type d'adresse spécifique depuis le fichier file_customer
--- Source: clean_data.v_customer_source (fichier + clients PHL absents du fichier)
--- Paramètre: p_address_type (DELIVERY, INVOICE, DOCUMENT)
-
-CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_address_type_single_file(
-    IN p_address_type VARCHAR,
-    OUT p_inserted_count INTEGER
-)
-LANGUAGE plpgsql
+CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_address_type_single_file(IN p_address_type character varying, OUT p_inserted_count integer)
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_address_type_code VARCHAR;
@@ -68,4 +61,4 @@ EXCEPTION
         RAISE EXCEPTION 'Erreur lors de l''INSERT type d''adresse % depuis file_customer - %: %',
             p_address_type, TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), SQLERRM;
 END;
-$procedure$;
+$procedure$

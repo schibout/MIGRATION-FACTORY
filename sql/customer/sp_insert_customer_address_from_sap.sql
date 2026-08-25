@@ -1,11 +1,5 @@
--- Procédure pour insérer les adresses clients depuis les données SAP
--- Cette procédure extrait les données d'adresses clients SAP (KNA1, KNB1, ADRC) et les transforme
--- pour alimenter la table CUSTOMER_INFO_ADDRESS avec TRUNCATE + INSERT
--- Utilise INNER JOIN avec KNB1 pour s'assurer que seuls les clients actifs en comptabilité sont traités
--- FILTRE: Seuls les clients existants dans clean_data.customer_info sont traités
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_address_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -108,4 +102,4 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur lors de l''INSERT adresses: %', SQLERRM;
 END;
-$procedure$;
+$procedure$

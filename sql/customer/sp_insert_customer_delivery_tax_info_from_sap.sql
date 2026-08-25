@@ -1,8 +1,5 @@
--- Procédure pour insérer les informations fiscales de livraison clients depuis les données SAP
--- Utilise clean_data.ifs_customer comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_delivery_tax_info_from_sap()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -59,4 +56,4 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur lors de l''INSERT delivery tax info: %', SQLERRM;
 END;
-$procedure$;
+$procedure$

@@ -1,12 +1,5 @@
--- Procédure pour insérer les informations clients depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
--- Transposition de sp_insert_customer_info_from_sap : la table maître ifs_customer
--- est remplacée par une CTE sur clean_data.v_customer_source (fichier + clients PHL absents du fichier) (liste explicite des clients).
--- Le fichier est la source faisant autorité (données corrigées) -> les COALESCE
--- préfèrent le fichier puis retombent sur les tables SAP.
--- Alimente clean_data.CUSTOMER_INFO avec TRUNCATE + INSERT.
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_info_from_file_customer()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -132,4 +125,4 @@ EXCEPTION
         v_error_count := v_error_count + 1;
         RAISE EXCEPTION 'Erreur lors de l''INSERT: %', SQLERRM;
 END;
-$procedure$;
+$procedure$

@@ -9,11 +9,6 @@ DECLARE
     v_count INTEGER := 0;
 BEGIN
     TRUNCATE TABLE clean_data.pm_action_work_step;
-
-    -- Une ligne de pe_tools = une opération = un work step.
-    -- pm_action_work_step_seq est la PK (seule) de la table : il doit rester
-    -- globalement unique, d'où un row_number() non partitionné ; l'ordre au sein
-    -- d'une pm_action est porté par order_no (compteur de gamme).
     INSERT INTO clean_data.pm_action_work_step (
         pm_no,
         pm_revision,
@@ -32,11 +27,13 @@ BEGIN
         left(COALESCE(NULLIF(btrim(s.designation), ''), 'N/A'), 500)       AS description,
         clean_data.pe_num(s.compteur_de_gamme)                             AS order_no,
         v_org_contract,
-        s.poste_technique,
+        p.mch_code,
         v_connection_type,
         v_connection_type_db
-    FROM clean_data.v_pm_source s;
-
+    FROM clean_data.v_pm_source s
+    JOIN clean_data.pm_action p
+      ON p.pm_no = s.pm_no
+     AND p.pm_revision = v_pm_revision;
     GET DIAGNOSTICS v_count = ROW_COUNT;
     RAISE NOTICE 'pm_action_work_step: % lignes insérées', v_count;
 END;

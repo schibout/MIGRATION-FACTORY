@@ -1,8 +1,5 @@
--- Procédure pour insérer les informations fiscales de livraison clients depuis clean_data.v_customer_source (fichier + clients PHL absents du fichier)
--- Utilise clean_data.v_customer_source (fichier + clients PHL absents du fichier) (CTE fc) comme table maître
-
 CREATE OR REPLACE PROCEDURE clean_data.sp_insert_customer_delivery_tax_info_from_file_customer()
-LANGUAGE plpgsql
+ LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     v_processed_count INTEGER := 0;
@@ -64,4 +61,4 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Erreur lors de l''INSERT delivery tax info: %', SQLERRM;
 END;
-$procedure$;
+$procedure$

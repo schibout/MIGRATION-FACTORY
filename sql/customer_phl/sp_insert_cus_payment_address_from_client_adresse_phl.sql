@@ -38,7 +38,16 @@ BEGIN
         'SEPA' as way_id,
         cap.address_id as address_id,
         CONCAT_WS(' - ', COALESCE(cap.name, cp.name), COALESCE(cap.city, '')) as description,
-        'TRUE' as default_address,
+        CASE
+            WHEN ROW_NUMBER() OVER (
+                PARTITION BY cp.customer_id
+                ORDER BY
+                    CASE WHEN cap.address_id IN ('01', '1') THEN 0 ELSE 1 END,
+                    CASE WHEN cap.address_id = '1' THEN '01' ELSE cap.address_id END,
+                    cap.address_id
+            ) = 1 THEN 'TRUE'
+            ELSE 'FALSE'
+        END as default_address,
         NULL as account,
         NULL as bic_code,
         'FALSE' as blocked_for_use,
