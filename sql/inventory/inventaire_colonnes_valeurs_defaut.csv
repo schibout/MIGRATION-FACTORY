@@ -1,0 +1,178 @@
+﻿table_cible;variante;colonne;type_valeur_defaut;valeur_par_defaut;regle_sql;script_source;ligne_insert
+clean_data.ifs_article_maitre;STANDARD;actif_achat;CONSTANTE_FORCEE;NON;'NON';alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;actif_commercial;CONSTANTE_FORCEE;NON;'NON';alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;actif_dans_centre;CONSTANTE_FORCEE;NON;'NON';alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;actif_evaluation;CONSTANTE_FORCEE;NON;'NON';alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;avec_stock;CONSTANTE_FORCEE;NON;'NON';alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;langue;CONSTANTE_FORCEE;FR;'FR';alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;nombre_centres_actifs;CONSTANTE_FORCEE;0;0;alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;nombre_magasins;CONSTANTE_FORCEE;0;0;alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;stock_total_bloque;CONSTANTE_FORCEE;0;0;alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;stock_total_controle;CONSTANTE_FORCEE;0;0;alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;stock_total_libre;CONSTANTE_FORCEE;0;0;alimenter_ifs_article_phl.sql;15
+clean_data.ifs_article_maitre;STANDARD;valeur_stock_magasins_total;CONSTANTE_FORCEE;0;0;alimenter_ifs_article_phl.sql;15
+clean_data.invent_part_plan;STANDARD;acquired_supply_type;CONSTANTE_FORCEE;Requisition;'Requisition';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;acquired_supply_type_db;CONSTANTE_FORCEE;R;'R';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;carry_rate;CONSTANTE_FORCEE;0;0;alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;lot_size_auto;CONSTANTE_FORCEE;Manual Lot Size;'Manual Lot Size';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;lot_size_auto_db;CONSTANTE_FORCEE;N;'N';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;manuf_supply_type;CONSTANTE_FORCEE;Requisition;'Requisition';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;manuf_supply_type_db;CONSTANTE_FORCEE;R;'R';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;maxweek_supply;CONSTANTE_FORCEE;0;0;alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;mul_order_qty;CONSTANTE_FORCEE;0;0;alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;order_point_qty_auto;CONSTANTE_FORCEE;Manual Order Point;'Manual Order Point';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;order_point_qty_auto_db;CONSTANTE_FORCEE;N;'N';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;order_requisition;CONSTANTE_FORCEE;Requisition;'Requisition';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;order_requisition_db;CONSTANTE_FORCEE;R;'R';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;planning_method_auto;CONSTANTE_FORCEE;True;'True';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;planning_method_auto_db;CONSTANTE_FORCEE;TRUE;'TRUE';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;proposal_release;CONSTANTE_FORCEE;Release;'Release';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;proposal_release_db;CONSTANTE_FORCEE;RELEASE;'RELEASE';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;safety_stock_auto;CONSTANTE_FORCEE;Manual Safety Stock;'Manual Safety Stock';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;safety_stock_auto_db;CONSTANTE_FORCEE;N;'N';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;sched_capacity;CONSTANTE_FORCEE;Infinite Capacity;'Infinite Capacity';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;sched_capacity_db;CONSTANTE_FORCEE;I;'I';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;service_rate;CONSTANTE_FORCEE;0;0;alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;setup_cost;CONSTANTE_FORCEE;0;0;alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;shrinkage_fac;CONSTANTE_FORCEE;0;0;alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;split_manuf_acquired;CONSTANTE_FORCEE;No Split;'No Split';alimenter_inventory_part_planning.sql;30
+clean_data.invent_part_plan;STANDARD;split_manuf_acquired_db;CONSTANTE_FORCEE;NO_SPLIT;'NO_SPLIT';alimenter_inventory_part_planning.sql;30
+clean_data.inventory_part;STANDARD;asset_class;CONSTANTE_FORCEE;S;'S';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;automatic_capability_check_db;CONSTANTE_FORCEE;NO AUTOMATIC CAPABILITY CHECK;'NO AUTOMATIC CAPABILITY CHECK';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;avail_activity_status_db;CONSTANTE_FORCEE;CHANGED;'CHANGED';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;co_reserve_onh_analys_flag_db;CONSTANTE_FORCEE;N;'N';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;count_variance;CONSTANTE_FORCEE;0;0;alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;cycle_code_db;CONSTANTE_FORCEE;N;'N';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;cycle_period;CONSTANTE_FORCEE;0;0;alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;dop_connection_db;CONSTANTE_FORCEE;AUT;'AUT';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;dop_netting_db;CONSTANTE_FORCEE;NONET;'NONET';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;excl_ship_pack_proposal_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;ext_service_cost_method_db;CONSTANTE_FORCEE;EXCLUDE SERVICE COST;'EXCLUDE SERVICE COST';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;forecast_consumption_flag_db;CONSTANTE_FORCEE;FORECAST;'FORECAST';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;frequency_class_db;CONSTANTE_FORCEE;VERY SLOW MOVER;'VERY SLOW MOVER';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;inventory_part_cost_level_db;CONSTANTE_FORCEE;COST PER PART;'COST PER PART';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;invoice_consideration_db;CONSTANTE_FORCEE;TRANSACTION BASED;'TRANSACTION BASED';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;lead_time_code_db;CONSTANTE_FORCEE;P;'P';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;lifecycle_stage_db;CONSTANTE_FORCEE;DEVELOPMENT;'DEVELOPMENT';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;mandatory_expiration_date_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;manuf_leadtime;CONSTANTE_FORCEE;0;0;alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;negative_on_hand_db;CONSTANTE_FORCEE;NEG ONHAND NOT OK;'NEG ONHAND NOT OK';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;oe_alloc_assign_flag_db;CONSTANTE_FORCEE;N;'N';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;onhand_analysis_flag_db;CONSTANTE_FORCEE;N;'N';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;part_status;CONSTANTE_FORCEE;A;'A';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;planner_buyer;CONSTANTE_FORCEE;*;'*';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;purch_leadtime;CONSTANTE_FORCEE;0;0;alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;qty_calc_rounding;CONSTANTE_FORCEE;0;0;alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;reset_config_std_cost_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;shortage_flag_db;CONSTANTE_FORCEE;Y;'Y';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;stock_management_db;CONSTANTE_FORCEE;Y;'Y';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;supply_code_db;CONSTANTE_FORCEE;IO;'IO';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;type_code_db;CONSTANTE_FORCEE;4;'4';alimenter_inventory_part.sql;21
+clean_data.inventory_part;STANDARD;zero_cost_flag_db;CONSTANTE_FORCEE;N;'N';alimenter_inventory_part.sql;21
+clean_data.part_catalog;STANDARD;allow_as_not_consumed_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;catch_unit_enabled_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;component_lot_rule_db;CONSTANTE_FORCEE;ONE_LOT_ALLOWED;'ONE_LOT_ALLOWED';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;condition_code_usage_db;CONSTANTE_FORCEE;NOT_ALLOW_COND_CODE;'NOT_ALLOW_COND_CODE';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;configurable_db;CONSTANTE_FORCEE;NOT CONFIGURED;'NOT CONFIGURED';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;eng_serial_tracking_code_db;CONSTANTE_FORCEE;NOT SERIAL TRACKING;'NOT SERIAL TRACKING';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;multilevel_tracking_db;CONSTANTE_FORCEE;TRACKING_OFF;'TRACKING_OFF';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;position_part_db;CONSTANTE_FORCEE;NOT POSITION PART;'NOT POSITION PART';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;receipt_issue_serial_track_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;serial_rule_db;CONSTANTE_FORCEE;MANUAL;'MANUAL';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;serial_tracking_code_db;CONSTANTE_FORCEE;NOT SERIAL TRACKING;'NOT SERIAL TRACKING';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;stop_arrival_issued_serial_db;CONSTANTE_FORCEE;TRUE;'TRUE';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;stop_new_serial_in_rma_db;CONSTANTE_FORCEE;TRUE;'TRUE';alimenter_part_catalog.sql;24
+clean_data.part_catalog;STANDARD;sub_lot_rule_db;CONSTANTE_FORCEE;NO_SUBLOTS;'NO_SUBLOTS';alimenter_part_catalog.sql;24
+clean_data.purchase_part;STANDARD;acquisition_origin;NULL_EXPLICITE;;NULL::numeric;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;acquisition_reason_id;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;acquisition_type;CONSTANTE_FORCEE;Purchase;'Purchase';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;acquisition_type_db;CONSTANTE_FORCEE;PURCHASE;'PURCHASE';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;action_authorized;CONSTANTE_FORCEE;Warning;'Warning';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;action_authorized_db;CONSTANTE_FORCEE;WARNING;'WARNING';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;action_non_authorized;CONSTANTE_FORCEE;Warning;'Warning';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;action_non_authorized_db;CONSTANTE_FORCEE;WARNING;'WARNING';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;buyer_code;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;close_code;CONSTANTE_FORCEE;Automatic;'Automatic';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;close_code_db;CONSTANTE_FORCEE;Y;'Y';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;close_tolerance;CONSTANTE_FORCEE;0;0;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;company;CONSTANTE_FORCEE;TRIMET;'TRIMET';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;dop_pegged_po_update_flag;CONSTANTE_FORCEE;Planned;'Planned';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;dop_pegged_po_update_flag_db;CONSTANTE_FORCEE;PLANNED;'PLANNED';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;eng_attribute;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;nbs_code;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;note_id;NULL_EXPLICITE;;NULL::numeric;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;note_text;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;objid;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;objversion;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;over_delivery;CONSTANTE_FORCEE;Yes;'Yes';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;over_delivery_db;CONSTANTE_FORCEE;YES;'YES';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;over_delivery_tolerance;CONSTANTE_FORCEE;0;0;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;package_part_flag;CONSTANTE_FORCEE;No;'No';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;package_part_flag_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;process_type;CONSTANTE_FORCEE;STD;'STD';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qc_code;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qc_date;NULL_EXPLICITE;;NULL::date;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qmr_approval_template;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qsl_approval_template;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qsr_approval_template;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qualified_manufacturer;CONSTANTE_FORCEE;No;'No';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qualified_manufacturer_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qualified_supplier;CONSTANTE_FORCEE;No;'No';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;qualified_supplier_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;quality_system_level_id;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;standard_pack_size;CONSTANTE_FORCEE;1;1;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;stat_grp;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;statistical_code;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;statistical_code_manuf;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;std_name_description;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;std_name_id;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;taxable;CONSTANTE_FORCEE;Yes;'Yes';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;taxable_db;CONSTANTE_FORCEE;TRUE;'TRUE';alimenter_purchase_part.sql;17
+clean_data.purchase_part;STANDARD;technical_coordinator_id;NULL_EXPLICITE;;NULL::text;alimenter_purchase_part.sql;17
+clean_data.purchase_part_supplier;STANDARD;acquisition_type_db;CONSTANTE_FORCEE;PURCHASE;'PURCHASE';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;dist_order_receipt_type_db;CONSTANTE_FORCEE;NO AUTOMATIC RECPT;'NO AUTOMATIC RECPT';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;ext_svc_primary_vendor_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;external_service_allowed_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;issue_packaging_material_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;leadtime_auto_db;CONSTANTE_FORCEE;N;'N';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;multisite_planned_part_db;CONSTANTE_FORCEE;NOT_MULTISITE_PLAN;'NOT_MULTISITE_PLAN';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;part_ownership_db;CONSTANTE_FORCEE;COMPANY OWNED;'COMPANY OWNED';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;primary_vendor_db;CONSTANTE_FORCEE;Y;'Y';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;purchase_payment_type_db;CONSTANTE_FORCEE;NORMAL;'NORMAL';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;qualified_supplier_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;quick_registered_part_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;receive_case_db;CONSTANTE_FORCEE;INVDIR;'INVDIR';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;rental_primary_vendor_db;CONSTANTE_FORCEE;N;'N';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;status_code;CONSTANTE_FORCEE;2;'2';alimenter_purchase_part_supplier.sql;25
+clean_data.purchase_part_supplier;STANDARD;use_price_incl_tax_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_purchase_part_supplier.sql;25
+clean_data.sales_part;STANDARD;activeind_db;CONSTANTE_FORCEE;Y;'Y';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;allow_inc_pkg_rsrv_picklst;CONSTANTE_FORCEE;TRUE;'TRUE';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;allow_incomp_pkg_delivery;CONSTANTE_FORCEE;TRUE;'TRUE';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;catalog_group;CONSTANTE_FORCEE;903028;'903028';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;close_tolerance;CONSTANTE_FORCEE;0;0;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;conv_factor;CONSTANTE_FORCEE;1;1;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;cost;NULL_EXPLICITE;;NULL::numeric;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;country_of_origin;CONSTANTE_FORCEE;FR;'FR';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;create_sm_object_option_db;CONSTANTE_FORCEE;DONOTCREATESMOBJECT;'DONOTCREATESMOBJECT';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;delivery_type;NULL_EXPLICITE;;NULL;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;expected_average_price;NULL_EXPLICITE;;NULL::numeric;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;export_to_external_app_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;inverted_conv_factor;CONSTANTE_FORCEE;1;1;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;list_price;CONSTANTE_FORCEE;0;0;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;list_price_incl_tax;CONSTANTE_FORCEE;0;0;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;minimum_qty;NULL_EXPLICITE;;NULL::numeric;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;pack_comp_in_shpmnt;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;price_change_date;NULL_EXPLICITE;;NULL::timestamp;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;price_conv_factor;CONSTANTE_FORCEE;1;1;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;primary_catalog_db;CONSTANTE_FORCEE;TRUE;'TRUE';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;quick_registered_part_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;rental_list_price;CONSTANTE_FORCEE;0;0;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;rental_list_price_incl_tax;CONSTANTE_FORCEE;0;0;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;sales_price_group_id;CONSTANTE_FORCEE;*;'*';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;sales_type_db;CONSTANTE_FORCEE;SALES;'SALES';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;sourcing_option_db;CONSTANTE_FORCEE;NOTSUPPLIED;'NOTSUPPLIED';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;statistical_code;NULL_EXPLICITE;;NULL;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;tax_class_id;NULL_EXPLICITE;;NULL;alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;tax_code;CONSTANTE_FORCEE;C05;'C05';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;taxable_db;CONSTANTE_FORCEE;TRUE;'TRUE';alimenter_sales_part.sql;26
+clean_data.sales_part;STANDARD;use_price_incl_tax_db;CONSTANTE_FORCEE;FALSE;'FALSE';alimenter_sales_part.sql;26
