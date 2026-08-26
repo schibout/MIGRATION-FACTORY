@@ -5,6 +5,7 @@ import uuid
 import time
 import threading
 import importlib.util
+import inspect
 import sys
 import os
 import logging
@@ -20,10 +21,10 @@ def get_target_tables():
     try:
         # Utiliser une requête SQL directe pour tirer parti de toutes les colonnes
         query = """
-            SELECT 
-                id, table_name, display_name, description, source_schema, 
-                target_schema, python_module, execution_order, dependent_on, 
-                is_active, icon_name, last_modified, created_at, created_by
+            SELECT
+                id, table_name, display_name, description, source_schema,
+                target_schema, python_module, execution_order, dependent_on,
+                is_active, icon_name, module_params, last_modified, created_at, created_by
             FROM etl_target_tables
             ORDER BY execution_order, display_name
         """
@@ -44,6 +45,7 @@ def get_target_tables():
                 'dependent_on': row.dependent_on,
                 'is_active': row.is_active,
                 'icon_name': row.icon_name,
+                'module_params': row.module_params,
                 'last_modified': row.last_modified.isoformat() if row.last_modified else None,
                 'created_at': row.created_at.isoformat() if row.created_at else None,
                 'created_by': row.created_by
@@ -194,8 +196,22 @@ def run_etl_process(execution_id, table_data):
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
                 
-                # Exécuter la fonction run_etl du module
-                etl_result = module.run_etl()
+                # Exécuter la fonction run_etl du module, en lui transmettant les
+                # module_params de la table cible. Seules les clés acceptées par la
+                # signature sont passées : un module sans paramètre reste appelé sans
+                # argument (rétrocompatibilité avec tous les modules existants).
+                params = getattr(table_data, 'module_params', None) or {}
+                accepted = {
+                    k: v for k, v in params.items()
+                    if k in inspect.signature(module.run_etl).parameters
+                }
+                if accepted:
+                    execution['messages'].append({
+                        'time': time.time(),
+                        'message': f'Paramètres du module: {accepted}',
+                        'type': 'info'
+                    })
+                etl_result = module.run_etl(**accepted)
                 
                 # Récupérer les logs du module si disponibles
                 if 'log_messages' in etl_result and isinstance(etl_result['log_messages'], list):

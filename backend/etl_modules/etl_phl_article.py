@@ -62,16 +62,30 @@ load_dotenv()
 
 
 class PhlArticleETL:
-    # Fonctions a appeler, dans l'ordre (part_catalog en premier = table de base)
-    STEPS = [
-        ("part_catalog (PHL)", "SELECT clean_data.alimenter_part_catalog_phl()"),
-        ("inventory_part (PHL)", "SELECT clean_data.alimenter_inventory_part_phl()"),
-        ("sales_part (PHL)", "SELECT clean_data.alimenter_sales_part_phl()"),
-        ("purchase_part (PHL)", "SELECT clean_data.alimenter_purchase_part_phl()"),
-        ("manuf_part_attribute (PHL)", "SELECT clean_data.alimenter_manuf_part_attribute_phl()"),
+    # Sites autorises : SJ = Saint-Jean, CS = Castel (memes valeurs que la garde
+    # des fonctions SQL alimenter_*_phl(p_contract)).
+    CONTRACTS = ('SJ', 'CS')
+
+    # Fonctions a appeler, dans l'ordre (part_catalog en premier = table de base).
+    # Chaque fonction prend le site en parametre.
+    STEP_FUNCTIONS = [
+        ("part_catalog (PHL)", "alimenter_part_catalog_phl"),
+        ("inventory_part (PHL)", "alimenter_inventory_part_phl"),
+        ("sales_part (PHL)", "alimenter_sales_part_phl"),
+        ("purchase_part (PHL)", "alimenter_purchase_part_phl"),
+        ("manuf_part_attribute (PHL)", "alimenter_manuf_part_attribute_phl"),
     ]
 
-    def __init__(self):
+    def __init__(self, contract='SJ'):
+        if contract not in self.CONTRACTS:
+            raise ValueError(f"Site invalide: {contract} (attendu: {' ou '.join(self.CONTRACTS)})")
+        self.contract = contract
+        # Le site est valide contre la liste blanche ci-dessus : l'interpolation
+        # dans le SQL est sure.
+        self.STEPS = [
+            (label, f"SELECT clean_data.{fonction}('{contract}')")
+            for label, fonction in self.STEP_FUNCTIONS
+        ]
         # Identifiants issus de la source UNIQUE (config.database), qui lit les
         # variables DB_* de l'environnement. Auparavant ce bloc resolvait des
         # variables PG_* que docker-compose ne transmet pas au conteneur, d'ou un
@@ -112,8 +126,8 @@ class PhlArticleETL:
     def run_etl_with_psycopg2_logs(self):
         """Execution des fonctions PHL avec capture des NOTICE PostgreSQL"""
         start_time = time.time()
-        logger.info("Demarrage du processus ETL articles PHL")
-        self._add_log_message("Demarrage du processus ETL articles PHL", "info")
+        logger.info(f"Demarrage du processus ETL articles PHL (site {self.contract})")
+        self._add_log_message(f"Demarrage du processus ETL articles PHL (site {self.contract})", "info")
 
         try:
             conn_psycopg2 = psycopg2.connect(
@@ -167,10 +181,11 @@ class PhlArticleETL:
             }
 
 
-def run_etl():
-    """Fonction de compatibilite pour l'interface ETL existante"""
+def run_etl(contract='SJ'):
+    """Point d'entree de l'interface ETL. `contract` vient de
+    etl_target_tables.module_params ('SJ' Saint-Jean, 'CS' Castel)."""
     try:
-        etl = PhlArticleETL()
+        etl = PhlArticleETL(contract=contract)
         return etl.run_etl_with_psycopg2_logs()
     except Exception as e:
         logger.error(f"Erreur dans le processus ETL PHL: {str(e)}")
@@ -186,8 +201,9 @@ def run_etl():
 
 
 if __name__ == "__main__":
+    import sys as _sys
     try:
-        etl = PhlArticleETL()
+        etl = PhlArticleETL(contract=_sys.argv[1] if len(_sys.argv) > 1 else 'SJ')
         result = etl.run_etl_with_psycopg2_logs()
 
         if result["success"]:
