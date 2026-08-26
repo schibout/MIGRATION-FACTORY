@@ -8,6 +8,7 @@ import {
     KeyboardArrowUp as KeyboardArrowUpIcon,
     Logout as LogoutIcon,
     Build as MaintenanceIcon,
+    MenuBook as MenuBookIcon,
     Menu as MenuIcon,
     Person as PersonIcon,
     AccountTree as ProjectIcon,
@@ -72,6 +73,7 @@ const menuItems: MenuItem[] = [
   { text: 'Import des données', icon: <CloudUploadIcon />, path: '/data-import' },
   { text: 'Export des données', icon: <AssessmentIcon />, path: '/data-exports' },
   { text: 'Intelligence Artificielle', icon: <SmartToyIcon />, path: '/intelligence-artificielle' },
+  { text: "Mode d'emploi", icon: <MenuBookIcon />, path: '/mode-emploi' },
   { text: 'Configuration', icon: <SettingsIcon />, path: '/configuration' },
 ];
 

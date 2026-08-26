@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Modes d'emploi Migration Factory</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #F6F7FA;
+    --surface: #FFFFFF;
+    --surface-sunken: #EEF1F6;
+    --ink: #17202B;
+    --ink-soft: #4C5666;
+    --ink-faint: #7C8698;
+    --line: #DDE2EA;
+    --accent: #2454C7;
+    --accent-ink: #17347A;
+    --accent-soft: #E7EDFB;
+    --accent-soft-line: #C6D4F5;
+    --success: #187A57;
+    --success-soft: #E3F5EC;
+    --success-line: #BFE6D3;
+    --amber: #9C6B0B;
+    --amber-soft: #FBF0DB;
+    --amber-line: #EFD6A0;
+    --shadow: 0 1px 2px rgba(23,32,43,0.04), 0 8px 24px -12px rgba(23,32,43,0.12);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10141C;
+      --surface: #171D28;
+      --surface-sunken: #131822;
+      --ink: #E8ECF3;
+      --ink-soft: #A7B0C0;
+      --ink-faint: #737E91;
+      --line: #262E3C;
+      --accent: #7CA0FF;
+      --accent-ink: #C4D4FF;
+      --accent-soft: #1B2947;
+      --accent-soft-line: #2C3F6C;
+      --success: #4FCB9B;
+      --success-soft: #143327;
+      --success-line: #1F5A44;
+      --amber: #E3B255;
+      --amber-soft: #34290F;
+      --amber-line: #5A4517;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #10141C;
+    --surface: #171D28;
+    --surface-sunken: #131822;
+    --ink: #E8ECF3;
+    --ink-soft: #A7B0C0;
+    --ink-faint: #737E91;
+    --line: #262E3C;
+    --accent: #7CA0FF;
+    --accent-ink: #C4D4FF;
+    --accent-soft: #1B2947;
+    --accent-soft-line: #2C3F6C;
+    --success: #4FCB9B;
+    --success-soft: #143327;
+    --success-line: #1F5A44;
+    --amber: #E3B255;
+    --amber-soft: #34290F;
+    --amber-line: #5A4517;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  ::selection { background: var(--accent-soft-line); }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.85em;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.05em 0.45em;
+    color: var(--accent-ink);
+    white-space: nowrap;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    padding: 3.4rem 1.5rem 2.4rem;
+    border-bottom: 1px solid var(--line);
+    background: radial-gradient(1100px 420px at 12% -10%, var(--accent-soft) 0%, transparent 60%);
+  }
+  .masthead-inner { max-width: 880px; margin: 0 auto; }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-line);
+    border-radius: 999px;
+    padding: 0.3rem 0.85rem;
+  }
+  .masthead h1 {
+    font-size: clamp(1.9rem, 4.5vw, 2.6rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 1.1rem 0 0.7rem;
+    text-wrap: balance;
+  }
+  .masthead p.lede {
+    max-width: 62ch;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  /* ---------- Sections ---------- */
+  main { max-width: 880px; margin: 0 auto; padding: 2.2rem 1.5rem 4rem; }
+
+  .domain { margin-top: 2.4rem; }
+  .domain:first-child { margin-top: 0.4rem; }
+  .domain-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .domain-head h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    white-space: nowrap;
+  }
+  .domain-head .rule { flex: 1; height: 1px; background: var(--line); }
+  .domain-head .count {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 0.9rem;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem 1rem;
+    min-height: 100%;
+  }
+  a.card {
+    text-decoration: none;
+    color: inherit;
+    border-color: var(--accent-soft-line);
+    box-shadow: var(--shadow);
+    transition: transform 0.12s ease, border-color 0.12s ease;
+  }
+  a.card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  a.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    a.card { transition: none; }
+    a.card:hover { transform: none; }
+  }
+  .card.pending { background: var(--surface-sunken); }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+  .card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.35;
+  }
+  .card.pending h3 { color: var(--ink-soft); }
+  .card p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .card.pending p { color: var(--ink-faint); }
+
+  .pill {
+    flex-shrink: 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.18rem 0.65rem;
+    white-space: nowrap;
+  }
+  .pill.ok { color: var(--success); background: var(--success-soft); border: 1px solid var(--success-line); }
+  .pill.todo { color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber-line); }
+
+  .card-foot {
+    margin-top: auto;
+    padding-top: 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  a.card:hover .card-foot { text-decoration: underline; }
+
+  /* ---------- Footer note ---------- */
+  .note {
+    margin-top: 3rem;
+    border-top: 1px solid var(--line);
+    padding-top: 1.3rem;
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    max-width: 68ch;
+  }
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <span class="eyebrow">Migration Factory &middot; SAP &rarr; IFS</span>
+    <h1>Modes d'emploi</h1>
+    <p class="lede">
+      Le point d'entr&eacute;e unique vers les guides d'utilisation de la plateforme
+      Migration Factory&nbsp;: chargements ETL, &eacute;crans de configuration et
+      op&eacute;rations courantes. Chaque guide s'ouvre dans une page d&eacute;di&eacute;e.
+    </p>
+  </div>
+</header>
+
+<main>
+
+  <section class="domain">
+    <div class="domain-head">
+      <h2>Articles</h2>
+      <div class="rule"></div>
+      <span class="count">1 guide disponible</span>
+    </div>
+    <div class="cards">
+      <a class="card" href="chargement-article-phl.html">
+        <div class="card-top">
+          <h3>Chargement Article PHL</h3>
+          <span class="pill ok">Disponible</span>
+        </div>
+        <p>Charger les articles PHL (Saint-Jean et Castel) depuis le fichier source
+           jusqu'aux tables IFS&nbsp;: pr&eacute;paration, ex&eacute;cution, contr&ocirc;les.</p>
+        <span class="card-foot">Ouvrir le guide &rarr;</span>
+      </a>
+      <div class="card pending">
+        <div class="card-top">
+          <h3>Chargement Articles SAP</h3>
+          <span class="pill todo">&Agrave; r&eacute;diger</span>
+        </div>
+        <p>Chargement du r&eacute;f&eacute;rentiel article depuis les tables SAP
+           (<code>part_catalog</code> et tables filles).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="domain">
+    <div class="domain-head">
+      <h2>Tiers</h2>
+      <div class="rule"></div>
+      <span class="count">&agrave; venir</span>
+    </div>
+    <div class="cards">
+      <div class="card pending">
+        <div class="card-top">
+          <h3>Chargement Fournisseurs</h3>
+          <span class="pill todo">&Agrave; r&eacute;diger</span>
+        </div>
+        <p>Reprise des fournisseurs SAP, renum&eacute;rotation 600000+ et adresses.</p>
+      </div>
+      <div class="card pending">
+        <div class="card-top">
+          <h3>Chargement Clients</h3>
+          <span class="pill todo">&Agrave; r&eacute;diger</span>
+        </div>
+        <p>Reprise des clients SAP et PHL&nbsp;: identit&eacute;s, adresses, donn&eacute;es de facturation.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="domain">
+    <div class="domain-head">
+      <h2>Maintenance</h2>
+      <div class="rule"></div>
+      <span class="count">&agrave; venir</span>
+    </div>
+    <div class="cards">
+      <div class="card pending">
+        <div class="card-top">
+          <h3>&Eacute;cran IH02 &amp; rechargement</h3>
+          <span class="pill todo">&Agrave; r&eacute;diger</span>
+        </div>
+        <p>Hi&eacute;rarchie des objets de maintenance, &eacute;tats sauvegard&eacute;s,
+           rechargement SAP en mode fusion ou remise &agrave; z&eacute;ro.</p>
+      </div>
+      <div class="card pending">
+        <div class="card-top">
+          <h3>PM Actions &amp; Op&eacute;rations</h3>
+          <span class="pill todo">&Agrave; r&eacute;diger</span>
+        </div>
+        <p>Gammes de maintenance pr&eacute;ventive et t&acirc;ches
+           (<code>pm_action</code>, <code>jt_task</code>).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="domain">
+    <div class="domain-head">
+      <h2>Transverse</h2>
+      <div class="rule"></div>
+      <span class="count">&agrave; venir</span>
+    </div>
+    <div class="cards">
+      <div class="card pending">
+        <div class="card-top">
+          <h3>Exports &amp; Imports</h3>
+          <span class="pill todo">&Agrave; r&eacute;diger</span>
+        </div>
+        <p>G&eacute;n&eacute;rer les exports ZIP/CSV vers IFS et importer des fichiers
+           avec validation ligne &agrave; ligne.</p>
+      </div>
+      <div class="card pending">
+        <div class="card-top">
+          <h3>Valeurs par d&eacute;faut ETL</h3>
+          <span class="pill todo">&Agrave; r&eacute;diger</span>
+        </div>
+        <p>Param&eacute;trer les constantes des chargements depuis l'&eacute;cran
+           Configuration &rsaquo; Valeurs par d&eacute;faut, sans toucher aux proc&eacute;dures.</p>
+      </div>
+      <div class="card pending">
+        <div class="card-top">
+          <h3>Assistant IA</h3>
+          <span class="pill todo">&Agrave; r&eacute;diger</span>
+        </div>
+        <p>Interroger la base en fran&ccedil;ais&nbsp;: bonnes pratiques, limites et
+           correction des requ&ecirc;tes g&eacute;n&eacute;r&eacute;es.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="note">
+    Ce sommaire est mis &agrave; jour au fil de la r&eacute;daction des guides&nbsp;:
+    une carte &laquo;&nbsp;&Agrave; r&eacute;diger&nbsp;&raquo; devient cliquable d&egrave;s
+    que le mode d'emploi correspondant est publi&eacute;. Un guide manquant ou une
+    correction &agrave; signaler&nbsp;? Voir avec Samir.
+  </p>
+
+</main>
+
+</body>
+</html>

@@ -52,6 +52,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceBackupsPage from './pages/MaintenanceBackupsPage';
 import MaintenancePeToolsPage from './pages/MaintenancePeToolsPage';
 import MaintenanceIbauPage from './pages/MaintenanceIbauPage';
+import ModeEmploi from './pages/ModeEmploi';
 import Parametres from './pages/Parametres';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
@@ -228,6 +229,9 @@ function App() {
           <Route path="resultats-ia" element={<ResultatsIA />} />
           <Route path="configuration-ia" element={<ConfigurationIA />} />
           <Route path="hermes" element={<HermesChat />} />
+
+          {/* Modes d'emploi (guides HTML servis depuis public/guides/) */}
+          <Route path="mode-emploi" element={<ModeEmploi />} />
 
           {/* Routes pour la configuration */}
           <Route path="configuration" element={<Configuration />} />
