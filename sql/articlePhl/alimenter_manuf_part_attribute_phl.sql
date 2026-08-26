@@ -68,45 +68,47 @@ BEGIN
         p_contract as contract,
         -- PART_NO: N. ARTICLE = cle des articles PHL
         SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as part_no,
-        'Y'        as backflush_part_db,              -- All Locations
-        '0'        as engineering_info_db,            -- Not Mandatory
-        'DATE'     as structure_effectivity_db,       -- Date
-        'DATE'     as routing_effectivity_db,         -- Date
-        'Promised' as promise_planned_db,             -- Promised
+        -- Valeurs par defaut parametrables via l'ecran /configuration/valeurs-defaut
+        -- (public.get_default_value, fallback = ancienne valeur codee en dur)
+        public.get_default_value('clean_data.manuf_part_attribute', 'backflush_part_db', 'Y') as backflush_part_db,              -- All Locations
+        public.get_default_value('clean_data.manuf_part_attribute', 'engineering_info_db', '0') as engineering_info_db,          -- Not Mandatory
+        public.get_default_value('clean_data.manuf_part_attribute', 'structure_effectivity_db', 'DATE') as structure_effectivity_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'routing_effectivity_db', 'DATE') as routing_effectivity_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'promise_planned_db', 'Promised') as promise_planned_db,
         SUBSTRING(pc.unit_code, 1, 10) as default_print_unit, -- Default Print Unit depuis PART_CATALOG.UNIT_CODE
-        'Common'   as configuration_usage_db,         -- Common
-        'PLANNED'  as dop_pegged_so_update_flag_db,   -- Planned
-        'TRUE'     as mrp_control_flag_db,            -- True
-        'FALSE'    as prod_part_as_supply_in_mrp_db,  -- False
-        'FALSE'    as use_theoritical_density_db,     -- False (defaut ajoute, non present dans la spec)
+        public.get_default_value('clean_data.manuf_part_attribute', 'configuration_usage_db', 'Common') as configuration_usage_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'dop_pegged_so_update_flag_db', 'PLANNED') as dop_pegged_so_update_flag_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'mrp_control_flag_db', 'TRUE') as mrp_control_flag_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'prod_part_as_supply_in_mrp_db', 'FALSE') as prod_part_as_supply_in_mrp_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'use_theoritical_density_db', 'FALSE') as use_theoritical_density_db,
         NULLIF(REPLACE(TRIM(COALESCE(dens.densite, '')), ',', '.'), '')::numeric as density,
-        'ALLOWED'  as over_reporting_db,              -- Allowed
-        'TRUE'     as issue_planned_scrap_db,         -- True
-        'FALSE'    as adjust_on_op_qty_deviation_db,  -- False
-        'FALSE'    as issue_overreported_qty_db,      -- False
-        'TRUE'     as plan_manuf_sup_on_due_date_db,  -- Plan Manufacturing Supply on Due Date : active pour tous
-        'TRUE'     as plan_manuf_sup_on_due_date,
-        'FALSE'    as ship_dirty_db,                  -- False
-        'FALSE'    as ship_dirty,                     -- False
-        'FALSE'    as auto_replace_alt_comp_db,       -- False
-        'TRUE'     as consider_lead_time_db,          -- True
-        0          as unprotected_lead_time,
-        'FALSE'    as run_mrp,
-        'FALSE'    as run_crp,
-        'TRUE'     as include_firm_demands,
-        'TRUE'     as include_firm_supplies,
-        'FALSE'    as optimize_new_delivery_date,
-        'FALSE'    as run_in_background,
-        0 as component_scrap,
-        0 as shrinkage_factor,
-        0 as cum_leadtime,
-        0 as order_gap_time,
-        0 as low_level,
-        0 as fixed_leadtime_day,
-        0 as variable_leadtime_hour,
-        0 as variable_leadtime_day,
-        0 as fixed_leadtime_hour,
-        'DIRECT' as overhaul_scrap_rule
+        public.get_default_value('clean_data.manuf_part_attribute', 'over_reporting_db', 'ALLOWED') as over_reporting_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'issue_planned_scrap_db', 'TRUE') as issue_planned_scrap_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'adjust_on_op_qty_deviation_db', 'FALSE') as adjust_on_op_qty_deviation_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'issue_overreported_qty_db', 'FALSE') as issue_overreported_qty_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date_db', 'TRUE') as plan_manuf_sup_on_due_date_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date', 'TRUE') as plan_manuf_sup_on_due_date,
+        public.get_default_value('clean_data.manuf_part_attribute', 'ship_dirty_db', 'FALSE') as ship_dirty_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'ship_dirty', 'FALSE') as ship_dirty,
+        public.get_default_value('clean_data.manuf_part_attribute', 'auto_replace_alt_comp_db', 'FALSE') as auto_replace_alt_comp_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'consider_lead_time_db', 'TRUE') as consider_lead_time_db,
+        public.get_default_value('clean_data.manuf_part_attribute', 'unprotected_lead_time', '0')::numeric as unprotected_lead_time,
+        public.get_default_value('clean_data.manuf_part_attribute', 'run_mrp', 'FALSE') as run_mrp,
+        public.get_default_value('clean_data.manuf_part_attribute', 'run_crp', 'FALSE') as run_crp,
+        public.get_default_value('clean_data.manuf_part_attribute', 'include_firm_demands', 'TRUE') as include_firm_demands,
+        public.get_default_value('clean_data.manuf_part_attribute', 'include_firm_supplies', 'TRUE') as include_firm_supplies,
+        public.get_default_value('clean_data.manuf_part_attribute', 'optimize_new_delivery_date', 'FALSE') as optimize_new_delivery_date,
+        public.get_default_value('clean_data.manuf_part_attribute', 'run_in_background', 'FALSE') as run_in_background,
+        public.get_default_value('clean_data.manuf_part_attribute', 'component_scrap', '0')::numeric as component_scrap,
+        public.get_default_value('clean_data.manuf_part_attribute', 'shrinkage_factor', '0')::numeric as shrinkage_factor,
+        public.get_default_value('clean_data.manuf_part_attribute', 'cum_leadtime', '0')::numeric as cum_leadtime,
+        public.get_default_value('clean_data.manuf_part_attribute', 'order_gap_time', '0')::numeric as order_gap_time,
+        public.get_default_value('clean_data.manuf_part_attribute', 'low_level', '0')::numeric as low_level,
+        public.get_default_value('clean_data.manuf_part_attribute', 'fixed_leadtime_day', '0')::numeric as fixed_leadtime_day,
+        public.get_default_value('clean_data.manuf_part_attribute', 'variable_leadtime_hour', '0')::numeric as variable_leadtime_hour,
+        public.get_default_value('clean_data.manuf_part_attribute', 'variable_leadtime_day', '0')::numeric as variable_leadtime_day,
+        public.get_default_value('clean_data.manuf_part_attribute', 'fixed_leadtime_hour', '0')::numeric as fixed_leadtime_hour,
+        public.get_default_value('clean_data.manuf_part_attribute', 'overhaul_scrap_rule', 'DIRECT') as overhaul_scrap_rule
     -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
     FROM raw_data.v_phl_article_retenu phl
     LEFT JOIN raw_data.phl_article_densite dens
@@ -163,58 +165,81 @@ BEGIN
           AND ip.part_no  = m.part_no
     );
     GET DIAGNOSTICS v_count_orphans = ROW_COUNT;
-    -- Forcer Plan Manufacturing Supply on Due Date a TRUE aussi sur les lignes existantes.
+    -- Forcer Plan Manufacturing Supply on Due Date (parametrable, defaut TRUE) aussi sur les lignes existantes.
     UPDATE clean_data.manuf_part_attribute m
-    SET plan_manuf_sup_on_due_date_db = 'TRUE',
-        plan_manuf_sup_on_due_date = 'TRUE'
-    FROM raw_data.v_phl_article_retenu phl
+    SET plan_manuf_sup_on_due_date_db = def.plan_db,
+        plan_manuf_sup_on_due_date = def.plan_lbl
+    FROM (SELECT
+              public.get_default_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date_db', 'TRUE') as plan_db,
+              public.get_default_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date', 'TRUE') as plan_lbl
+         ) def,
+         raw_data.v_phl_article_retenu phl
     WHERE m.contract = p_contract
       AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
       AND (m.plan_manuf_sup_on_due_date_db, m.plan_manuf_sup_on_due_date)
-          IS DISTINCT FROM ('TRUE', 'TRUE');
-    -- Forcer les delais/niveaux de planification et flags MRP a la valeur cible sur toutes les lignes PHL existantes.
+          IS DISTINCT FROM (def.plan_db, def.plan_lbl);
+    -- Forcer les delais/niveaux de planification et flags MRP a la valeur cible (parametrable
+    -- via l'ecran valeurs par defaut) sur toutes les lignes PHL existantes.
     UPDATE clean_data.manuf_part_attribute m
-    SET cum_leadtime = 0,
-        order_gap_time = 0,
-        low_level = 0,
-        fixed_leadtime_day = 0,
-        variable_leadtime_hour = 0,
-        variable_leadtime_day = 0,
-        fixed_leadtime_hour = 0,
-        overhaul_scrap_rule = 'DIRECT',
-        unprotected_lead_time = 0,
-        run_mrp = 'FALSE',
-        run_crp = 'FALSE',
-        include_firm_demands = 'TRUE',
-        include_firm_supplies = 'TRUE',
-        optimize_new_delivery_date = 'FALSE',
-        run_in_background = 'FALSE',
-        ship_dirty = 'FALSE'
-    FROM raw_data.v_phl_article_retenu phl
+    SET cum_leadtime = def.cum_leadtime,
+        order_gap_time = def.order_gap_time,
+        low_level = def.low_level,
+        fixed_leadtime_day = def.fixed_leadtime_day,
+        variable_leadtime_hour = def.variable_leadtime_hour,
+        variable_leadtime_day = def.variable_leadtime_day,
+        fixed_leadtime_hour = def.fixed_leadtime_hour,
+        overhaul_scrap_rule = def.overhaul_scrap_rule,
+        unprotected_lead_time = def.unprotected_lead_time,
+        run_mrp = def.run_mrp,
+        run_crp = def.run_crp,
+        include_firm_demands = def.include_firm_demands,
+        include_firm_supplies = def.include_firm_supplies,
+        optimize_new_delivery_date = def.optimize_new_delivery_date,
+        run_in_background = def.run_in_background,
+        ship_dirty = def.ship_dirty
+    FROM (SELECT
+              public.get_default_value('clean_data.manuf_part_attribute', 'cum_leadtime', '0')::numeric as cum_leadtime,
+              public.get_default_value('clean_data.manuf_part_attribute', 'order_gap_time', '0')::numeric as order_gap_time,
+              public.get_default_value('clean_data.manuf_part_attribute', 'low_level', '0')::numeric as low_level,
+              public.get_default_value('clean_data.manuf_part_attribute', 'fixed_leadtime_day', '0')::numeric as fixed_leadtime_day,
+              public.get_default_value('clean_data.manuf_part_attribute', 'variable_leadtime_hour', '0')::numeric as variable_leadtime_hour,
+              public.get_default_value('clean_data.manuf_part_attribute', 'variable_leadtime_day', '0')::numeric as variable_leadtime_day,
+              public.get_default_value('clean_data.manuf_part_attribute', 'fixed_leadtime_hour', '0')::numeric as fixed_leadtime_hour,
+              public.get_default_value('clean_data.manuf_part_attribute', 'overhaul_scrap_rule', 'DIRECT') as overhaul_scrap_rule,
+              public.get_default_value('clean_data.manuf_part_attribute', 'unprotected_lead_time', '0')::numeric as unprotected_lead_time,
+              public.get_default_value('clean_data.manuf_part_attribute', 'run_mrp', 'FALSE') as run_mrp,
+              public.get_default_value('clean_data.manuf_part_attribute', 'run_crp', 'FALSE') as run_crp,
+              public.get_default_value('clean_data.manuf_part_attribute', 'include_firm_demands', 'TRUE') as include_firm_demands,
+              public.get_default_value('clean_data.manuf_part_attribute', 'include_firm_supplies', 'TRUE') as include_firm_supplies,
+              public.get_default_value('clean_data.manuf_part_attribute', 'optimize_new_delivery_date', 'FALSE') as optimize_new_delivery_date,
+              public.get_default_value('clean_data.manuf_part_attribute', 'run_in_background', 'FALSE') as run_in_background,
+              public.get_default_value('clean_data.manuf_part_attribute', 'ship_dirty', 'FALSE') as ship_dirty
+         ) def,
+         raw_data.v_phl_article_retenu phl
     WHERE m.contract = p_contract
       AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
-      AND (m.cum_leadtime IS DISTINCT FROM 0
-        OR m.order_gap_time IS DISTINCT FROM 0
-        OR m.low_level IS DISTINCT FROM 0
-        OR m.fixed_leadtime_day IS DISTINCT FROM 0
-        OR m.variable_leadtime_hour IS DISTINCT FROM 0
-        OR m.variable_leadtime_day IS DISTINCT FROM 0
-        OR m.fixed_leadtime_hour IS DISTINCT FROM 0
-        OR m.overhaul_scrap_rule IS DISTINCT FROM 'DIRECT'
-        OR m.unprotected_lead_time IS DISTINCT FROM 0
-        OR m.run_mrp IS DISTINCT FROM 'FALSE'
-        OR m.run_crp IS DISTINCT FROM 'FALSE'
-        OR m.include_firm_demands IS DISTINCT FROM 'TRUE'
-        OR m.include_firm_supplies IS DISTINCT FROM 'TRUE'
-        OR m.optimize_new_delivery_date IS DISTINCT FROM 'FALSE'
-        OR m.run_in_background IS DISTINCT FROM 'FALSE'
-        OR m.ship_dirty IS DISTINCT FROM 'FALSE');
+      AND (m.cum_leadtime IS DISTINCT FROM def.cum_leadtime
+        OR m.order_gap_time IS DISTINCT FROM def.order_gap_time
+        OR m.low_level IS DISTINCT FROM def.low_level
+        OR m.fixed_leadtime_day IS DISTINCT FROM def.fixed_leadtime_day
+        OR m.variable_leadtime_hour IS DISTINCT FROM def.variable_leadtime_hour
+        OR m.variable_leadtime_day IS DISTINCT FROM def.variable_leadtime_day
+        OR m.fixed_leadtime_hour IS DISTINCT FROM def.fixed_leadtime_hour
+        OR m.overhaul_scrap_rule IS DISTINCT FROM def.overhaul_scrap_rule
+        OR m.unprotected_lead_time IS DISTINCT FROM def.unprotected_lead_time
+        OR m.run_mrp IS DISTINCT FROM def.run_mrp
+        OR m.run_crp IS DISTINCT FROM def.run_crp
+        OR m.include_firm_demands IS DISTINCT FROM def.include_firm_demands
+        OR m.include_firm_supplies IS DISTINCT FROM def.include_firm_supplies
+        OR m.optimize_new_delivery_date IS DISTINCT FROM def.optimize_new_delivery_date
+        OR m.run_in_background IS DISTINCT FROM def.run_in_background
+        OR m.ship_dirty IS DISTINCT FROM def.ship_dirty);
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
     RAISE NOTICE '====================================================';

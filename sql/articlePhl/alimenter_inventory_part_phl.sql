@@ -119,7 +119,7 @@ BEGIN
                 'PCE'
             ), 1, 10)
         END as unit_meas,
-        'A' as part_status,
+        public.get_default_value('clean_data.inventory_part', 'part_status', 'A') as part_status,
         NULLIF(NULLIF(TRIM(COALESCE(phl."ID NOM STD", '')), ''), '0')::numeric as std_name_id,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."NUM PRODUIT", '')), 1, 5), '') as part_product_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as part_product_family,
@@ -146,7 +146,7 @@ BEGIN
             ELSE 'N'
         END as oe_alloc_assign_flag_db,
         NULLIF(REPLACE(TRIM(COALESCE(phl."DIAMETRE", '')), ',', '.'), '')::numeric as c_diameter,
-        2.7::numeric as c_density,
+        public.get_default_value('clean_data.inventory_part', 'c_density', '2.7')::numeric as c_density,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 4), '') as c_alloy_serie_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
@@ -162,45 +162,47 @@ BEGIN
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."SCIAGE", '')), 1, 2), '') as c_sawing_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."NORME CHARGE", '')), 1, 3), '') as c_load_standard_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."STATUT", '')), 1, 3), '') as c_final_state_code,
-        'S' as c_spire_code,
+        public.get_default_value('clean_data.inventory_part', 'c_spire_code', 'S') as c_spire_code,
         NULLIF(REPLACE(TRIM(COALESCE(phl."POIDS NET", '')), ',', '.'), '')::numeric as storage_weight_requirement,
         NULLIF(REPLACE(TRIM(COALESCE(phl."VOLUME NET", '')), ',', '.'), '')::numeric as storage_volume_requirement,
-        NULL::numeric as intrastat_conv_factor,
-        '*' as planner_buyer,
-        'S' as asset_class,
-        NULL as country_of_origin,
+        public.get_default_value('clean_data.inventory_part', 'intrastat_conv_factor', NULL)::numeric as intrastat_conv_factor,
+        -- Valeurs par defaut parametrables via l'ecran /configuration/valeurs-defaut
+        -- (public.get_default_value, fallback = ancienne valeur codee en dur)
+        public.get_default_value('clean_data.inventory_part', 'planner_buyer', '*') as planner_buyer,
+        public.get_default_value('clean_data.inventory_part', 'asset_class', 'S') as asset_class,
+        public.get_default_value('clean_data.inventory_part', 'country_of_origin', NULL) as country_of_origin,
         '1' as type_code_db,
-        'IO' as supply_code_db,
-        0 as expected_leadtime,
-        0 as manuf_leadtime,
-        0 as purch_leadtime,
+        public.get_default_value('clean_data.inventory_part', 'supply_code_db', 'IO') as supply_code_db,
+        public.get_default_value('clean_data.inventory_part', 'expected_leadtime', '0')::numeric as expected_leadtime,
+        public.get_default_value('clean_data.inventory_part', 'manuf_leadtime', '0')::numeric as manuf_leadtime,
+        public.get_default_value('clean_data.inventory_part', 'purch_leadtime', '0')::numeric as purch_leadtime,
         'Y' as lead_time_code_db,
-        'ST' as inventory_valuation_method_db,
-        0 as count_variance,
-        'N' as cycle_code_db,
-        0 as cycle_period,
-        0 as qty_calc_rounding,
+        public.get_default_value('clean_data.inventory_part', 'inventory_valuation_method_db', 'ST') as inventory_valuation_method_db,
+        public.get_default_value('clean_data.inventory_part', 'count_variance', '0')::numeric as count_variance,
+        public.get_default_value('clean_data.inventory_part', 'cycle_code_db', 'N') as cycle_code_db,
+        public.get_default_value('clean_data.inventory_part', 'cycle_period', '0')::numeric as cycle_period,
+        public.get_default_value('clean_data.inventory_part', 'qty_calc_rounding', '0')::numeric as qty_calc_rounding,
         'Y' as zero_cost_flag_db,
-        'N' as onhand_analysis_flag_db,
-        'Y' as shortage_flag_db,
-        'FORECAST' as forecast_consumption_flag_db,
-        'Y' as stock_management_db,
-        'AUT' as dop_connection_db,
-        'NEG ONHAND NOT OK' as negative_on_hand_db,
-        'TRANSACTION BASED' as invoice_consideration_db,
-        'COST PER PART' as inventory_part_cost_level_db,
-        'EXCLUDE SERVICE COST' as ext_service_cost_method_db,
-        'NO AUTOMATIC CAPABILITY CHECK' as automatic_capability_check_db,
-        'NONET' as dop_netting_db,
-        'N' as co_reserve_onh_analys_flag_db,
-        'FALSE' as mandatory_expiration_date_db,
-        'FALSE' as excl_ship_pack_proposal_db,
-        'FALSE' as reset_config_std_cost_db,
-        'DEVELOPMENT' as lifecycle_stage_db,
-        'VERY SLOW MOVER' as frequency_class_db,
-        NULL as abc_class,
-        NULL as hsn_sac_code,
-        'SJM' as company,
+        public.get_default_value('clean_data.inventory_part', 'onhand_analysis_flag_db', 'N') as onhand_analysis_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'shortage_flag_db', 'Y') as shortage_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'forecast_consumption_flag_db', 'FORECAST') as forecast_consumption_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'stock_management_db', 'Y') as stock_management_db,
+        public.get_default_value('clean_data.inventory_part', 'dop_connection_db', 'AUT') as dop_connection_db,
+        public.get_default_value('clean_data.inventory_part', 'negative_on_hand_db', 'NEG ONHAND NOT OK') as negative_on_hand_db,
+        public.get_default_value('clean_data.inventory_part', 'invoice_consideration_db', 'TRANSACTION BASED') as invoice_consideration_db,
+        public.get_default_value('clean_data.inventory_part', 'inventory_part_cost_level_db', 'COST PER PART') as inventory_part_cost_level_db,
+        public.get_default_value('clean_data.inventory_part', 'ext_service_cost_method_db', 'EXCLUDE SERVICE COST') as ext_service_cost_method_db,
+        public.get_default_value('clean_data.inventory_part', 'automatic_capability_check_db', 'NO AUTOMATIC CAPABILITY CHECK') as automatic_capability_check_db,
+        public.get_default_value('clean_data.inventory_part', 'dop_netting_db', 'NONET') as dop_netting_db,
+        public.get_default_value('clean_data.inventory_part', 'co_reserve_onh_analys_flag_db', 'N') as co_reserve_onh_analys_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'mandatory_expiration_date_db', 'FALSE') as mandatory_expiration_date_db,
+        public.get_default_value('clean_data.inventory_part', 'excl_ship_pack_proposal_db', 'FALSE') as excl_ship_pack_proposal_db,
+        public.get_default_value('clean_data.inventory_part', 'reset_config_std_cost_db', 'FALSE') as reset_config_std_cost_db,
+        public.get_default_value('clean_data.inventory_part', 'lifecycle_stage_db', 'DEVELOPMENT') as lifecycle_stage_db,
+        public.get_default_value('clean_data.inventory_part', 'frequency_class_db', 'VERY SLOW MOVER') as frequency_class_db,
+        public.get_default_value('clean_data.inventory_part', 'abc_class', NULL) as abc_class,
+        public.get_default_value('clean_data.inventory_part', 'hsn_sac_code', NULL) as hsn_sac_code,
+        public.get_default_value('clean_data.inventory_part', 'company', 'SJM') as company,
         CURRENT_TIMESTAMP as create_date
     FROM raw_data.v_phl_article_retenu phl
     LEFT JOIN raw_data.phl_article_densite dens
@@ -234,7 +236,7 @@ BEGIN
             ), 1, 10)
         END as unit_meas,
             NULLIF(REPLACE(TRIM(COALESCE(phl."DIAMETRE", '')), ',', '.'), '')::numeric as c_diameter,
-            2.7::numeric as c_density,
+            public.get_default_value('clean_data.inventory_part', 'c_density', '2.7')::numeric as c_density,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 4), '') as c_alloy_serie_code,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
@@ -250,10 +252,10 @@ BEGIN
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."SCIAGE", '')), 1, 2), '') as c_sawing_code,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."NORME CHARGE", '')), 1, 3), '') as c_load_standard_code,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."STATUT", '')), 1, 3), '') as c_final_state_code,
-            'S' as c_spire_code,
+            public.get_default_value('clean_data.inventory_part', 'c_spire_code', 'S') as c_spire_code,
             NULLIF(REPLACE(TRIM(COALESCE(phl."POIDS NET", '')), ',', '.'), '')::numeric as storage_weight_requirement,
             NULLIF(REPLACE(TRIM(COALESCE(phl."VOLUME NET", '')), ',', '.'), '')::numeric as storage_volume_requirement,
-            NULL::numeric as intrastat_conv_factor
+            public.get_default_value('clean_data.inventory_part', 'intrastat_conv_factor', NULL)::numeric as intrastat_conv_factor
         FROM raw_data.v_phl_article_retenu phl
         LEFT JOIN raw_data.phl_article_densite dens
           ON TRIM(dens.identifiant) = TRIM(phl."N. ARTICLE")
@@ -297,29 +299,34 @@ BEGIN
     -- PHL : forcer "Allow Many Lots per Production Order" a True
     -- Champ IFS PART_CATALOG.LOT_QUANTITY_RULE_DB = MULTI_LOTS.
     UPDATE clean_data.part_catalog pc
-    SET lot_quantity_rule_db = 'MULTI_LOTS',
+    SET lot_quantity_rule_db = def.rule_db,
         lot_quantity_rule = 'Many Lots Per Production Order'
-    FROM raw_data.v_phl_article_retenu phl
+    FROM (SELECT public.get_default_value('clean_data.part_catalog', 'lot_quantity_rule_db', 'MULTI_LOTS') as rule_db) def,
+         raw_data.v_phl_article_retenu phl
     WHERE pc.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
       AND (pc.lot_quantity_rule_db, pc.lot_quantity_rule)
-          IS DISTINCT FROM ('MULTI_LOTS', 'Many Lots Per Production Order');
+          IS DISTINCT FROM (def.rule_db, 'Many Lots Per Production Order');
     GET DIAGNOSTICS v_count_updated_part_catalog = ROW_COUNT;
     -- PHL : forcer "Plan Manufacturing Supply on Due Date" a True
     -- Champs IFS MANUF_PART_ATTRIBUTE.PLAN_MANUF_SUP_ON_DUE_DATE_DB et libelle = TRUE.
     UPDATE clean_data.manuf_part_attribute mpa
-    SET plan_manuf_sup_on_due_date_db = 'TRUE',
-        plan_manuf_sup_on_due_date = 'TRUE'
-    FROM raw_data.v_phl_article_retenu phl
+    SET plan_manuf_sup_on_due_date_db = def.plan_db,
+        plan_manuf_sup_on_due_date = def.plan_lbl
+    FROM (SELECT
+              public.get_default_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date_db', 'TRUE') as plan_db,
+              public.get_default_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date', 'TRUE') as plan_lbl
+         ) def,
+         raw_data.v_phl_article_retenu phl
     WHERE mpa.contract = p_contract
       AND mpa.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
       AND (mpa.plan_manuf_sup_on_due_date_db, mpa.plan_manuf_sup_on_due_date)
-          IS DISTINCT FROM ('TRUE', 'TRUE');
+          IS DISTINCT FROM (def.plan_db, def.plan_lbl);
     GET DIAGNOSTICS v_count_updated_manuf_part_attribute = ROW_COUNT;
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
