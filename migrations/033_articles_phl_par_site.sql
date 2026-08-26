@@ -20,6 +20,12 @@ SET display_name  = 'Articles PHL Saint-Jean',
     last_modified = CURRENT_TIMESTAMP
 WHERE table_name = 'inventory_part_phl';
 
+-- La séquence de l'id est en retard sur les lignes insérées avec un id explicite :
+-- sans resynchronisation, l'INSERT ci-dessous échoue en duplicate key (constaté
+-- sur id=30). setval sur le MAX(id) réaligne la séquence.
+SELECT setval('public.etl_target_tables_id_seq',
+              (SELECT MAX(id) FROM public.etl_target_tables));
+
 -- Nouvelle ligne : même module Python, site Castel.
 INSERT INTO public.etl_target_tables
     (table_name, display_name, description, source_schema, target_schema,
