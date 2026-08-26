@@ -1,7 +1,13 @@
-CREATE OR REPLACE FUNCTION clean_data.alimenter_part_catalog_phl()
+-- L'ancienne signature sans parametre doit disparaitre, sinon PostgreSQL cree une
+-- surcharge et les appels sans argument deviennent ambigus.
+DROP FUNCTION IF EXISTS clean_data.alimenter_part_catalog_phl();
+CREATE OR REPLACE FUNCTION clean_data.alimenter_part_catalog_phl(p_contract text DEFAULT 'SJ')
  RETURNS void
  LANGUAGE plpgsql
 AS $function$
+-- p_contract est accepte pour l'homogeneite avec les autres procedures PHL mais
+-- n'influe pas sur le contenu : part_catalog n'a pas de site, l'article est
+-- insere une seule fois quel que soit le site charge (garde NOT EXISTS).
 DECLARE
     v_count_inserted INTEGER := 0;
     v_count_rebut_updated INTEGER := 0;
@@ -9,6 +15,9 @@ DECLARE
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
 BEGIN
+    IF p_contract NOT IN ('SJ', 'CS') THEN
+        RAISE EXCEPTION 'Site invalide: % (attendu: SJ ou CS)', p_contract;
+    END IF;
     v_start_time := CURRENT_TIMESTAMP;
     RAISE NOTICE 'Debut de l''alimentation PART_CATALOG (articles PHL) - %', v_start_time;
     INSERT INTO clean_data.part_catalog (

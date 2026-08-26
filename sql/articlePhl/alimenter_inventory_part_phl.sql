@@ -1,4 +1,7 @@
-CREATE OR REPLACE FUNCTION clean_data.alimenter_inventory_part_phl()
+-- L'ancienne signature sans parametre doit disparaitre, sinon PostgreSQL cree une
+-- surcharge et les appels sans argument deviennent ambigus.
+DROP FUNCTION IF EXISTS clean_data.alimenter_inventory_part_phl();
+CREATE OR REPLACE FUNCTION clean_data.alimenter_inventory_part_phl(p_contract text DEFAULT 'SJ')
  RETURNS void
  LANGUAGE plpgsql
 AS $function$
@@ -11,8 +14,11 @@ DECLARE
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
 BEGIN
+    IF p_contract NOT IN ('SJ', 'CS') THEN
+        RAISE EXCEPTION 'Site invalide: % (attendu: SJ ou CS)', p_contract;
+    END IF;
     v_start_time := CURRENT_TIMESTAMP;
-    RAISE NOTICE 'Debut de l''alimentation INVENTORY_PART (articles PHL) - %', v_start_time;
+    RAISE NOTICE 'Debut de l''alimentation INVENTORY_PART (articles PHL, site %) - %', p_contract, v_start_time;
     INSERT INTO clean_data.inventory_part (
         contract,
         part_no,
@@ -96,7 +102,7 @@ BEGIN
         create_date
     )
     SELECT DISTINCT ON (TRIM(phl."N. ARTICLE"))
-        'SJ' as contract,
+        p_contract as contract,
         SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as part_no,
         SUBSTRING(TRIM(COALESCE(NULLIF(phl."DESCRIPTION", ''), phl."DESCRIPTION LANGUE", phl."N. ARTICLE")), 1, 200) as description,
         SUBSTRING(TRIM(COALESCE(NULLIF(phl."DESCRIPTION", ''), phl."DESCRIPTION LANGUE", phl."N. ARTICLE")), 1, 200) as description_copy,
@@ -208,7 +214,7 @@ BEGIN
       )
       AND NOT EXISTS (
           SELECT 1 FROM clean_data.inventory_part ip
-          WHERE ip.contract = 'SJ'
+          WHERE ip.contract = p_contract
             AND ip.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       )
     ORDER BY TRIM(phl."N. ARTICLE");
@@ -276,7 +282,7 @@ BEGIN
         storage_volume_requirement = src.storage_volume_requirement,
         intrastat_conv_factor = src.intrastat_conv_factor
     FROM src
-    WHERE ip.contract = 'SJ'
+    WHERE ip.contract = p_contract
       AND ip.part_no = src.part_no
       AND (ip.unit_meas, ip.c_diameter, ip.c_density, ip.c_alloy_code, ip.c_alloy_serie_code, ip.c_family_code,
            ip.c_epaisseur_brut, ip.c_longueur_brut, ip.c_largeur_brut, ip.c_commercial_weight,
@@ -307,7 +313,7 @@ BEGIN
     SET plan_manuf_sup_on_due_date_db = 'TRUE',
         plan_manuf_sup_on_due_date = 'TRUE'
     FROM raw_data.v_phl_article_retenu phl
-    WHERE mpa.contract = 'SJ'
+    WHERE mpa.contract = p_contract
       AND mpa.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''

@@ -1,4 +1,7 @@
-CREATE OR REPLACE FUNCTION clean_data.alimenter_sales_part_phl()
+-- L'ancienne signature sans parametre doit disparaitre, sinon PostgreSQL cree une
+-- surcharge et les appels sans argument deviennent ambigus.
+DROP FUNCTION IF EXISTS clean_data.alimenter_sales_part_phl();
+CREATE OR REPLACE FUNCTION clean_data.alimenter_sales_part_phl(p_contract text DEFAULT 'SJ')
  RETURNS void
  LANGUAGE plpgsql
 AS $function$
@@ -8,8 +11,11 @@ DECLARE
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
 BEGIN
+    IF p_contract NOT IN ('SJ', 'CS') THEN
+        RAISE EXCEPTION 'Site invalide: % (attendu: SJ ou CS)', p_contract;
+    END IF;
     v_start_time := CURRENT_TIMESTAMP;
-    RAISE NOTICE 'Debut de l''alimentation SALES_PART (articles PHL) - %', v_start_time;
+    RAISE NOTICE 'Debut de l''alimentation SALES_PART (articles PHL, site %) - %', p_contract, v_start_time;
     INSERT INTO clean_data.sales_part (
         contract,
         catalog_no,
@@ -54,7 +60,7 @@ BEGIN
         statistical_code
     )
     SELECT DISTINCT ON (TRIM(phl."N. ARTICLE"))
-        'SJ' as contract,
+        p_contract as contract,
         -- catalog_no: N. ARTICLE = cle des articles PHL
         SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as catalog_no,
         SUBSTRING(TRIM(COALESCE(NULLIF(phl."DESCRIPTION", ''), phl."DESCRIPTION LANGUE", phl."N. ARTICLE")), 1, 200) as catalog_desc,
@@ -120,7 +126,7 @@ BEGIN
       -- Ne pas dupliquer une ligne (contract, catalog_no) deja presente
       AND NOT EXISTS (
           SELECT 1 FROM clean_data.sales_part sp
-          WHERE sp.contract = 'SJ'
+          WHERE sp.contract = p_contract
             AND sp.catalog_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       )
     ORDER BY TRIM(phl."N. ARTICLE");

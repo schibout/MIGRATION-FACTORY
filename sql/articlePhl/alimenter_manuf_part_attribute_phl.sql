@@ -1,4 +1,7 @@
-CREATE OR REPLACE FUNCTION clean_data.alimenter_manuf_part_attribute_phl()
+-- L'ancienne signature sans parametre doit disparaitre, sinon PostgreSQL cree une
+-- surcharge et les appels sans argument deviennent ambigus.
+DROP FUNCTION IF EXISTS clean_data.alimenter_manuf_part_attribute_phl();
+CREATE OR REPLACE FUNCTION clean_data.alimenter_manuf_part_attribute_phl(p_contract text DEFAULT 'SJ')
  RETURNS void
  LANGUAGE plpgsql
 AS $function$
@@ -10,8 +13,11 @@ DECLARE
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
 BEGIN
+    IF p_contract NOT IN ('SJ', 'CS') THEN
+        RAISE EXCEPTION 'Site invalide: % (attendu: SJ ou CS)', p_contract;
+    END IF;
     v_start_time := CURRENT_TIMESTAMP;
-    RAISE NOTICE 'Debut de l''alimentation MANUF_PART_ATTRIBUTE (articles fabriques PHL) - %', v_start_time;
+    RAISE NOTICE 'Debut de l''alimentation MANUF_PART_ATTRIBUTE (articles fabriques PHL, site %) - %', p_contract, v_start_time;
     INSERT INTO clean_data.manuf_part_attribute (
         contract,
         part_no,
@@ -58,8 +64,8 @@ BEGIN
         overhaul_scrap_rule
     )
     SELECT DISTINCT ON (TRIM(phl."N. ARTICLE"))
-        -- CONTRACT: SJ (Saint-Jean) pour tous les PHL
-        'SJ' as contract,
+        -- CONTRACT: site passe en parametre (SJ = Saint-Jean, CS = Castel)
+        p_contract as contract,
         -- PART_NO: N. ARTICLE = cle des articles PHL
         SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as part_no,
         'Y'        as backflush_part_db,              -- All Locations
@@ -114,13 +120,13 @@ BEGIN
       -- L'article doit deja exister dans inventory_part (table parente)
       AND EXISTS (
           SELECT 1 FROM clean_data.inventory_part ip
-          WHERE ip.contract = 'SJ'
+          WHERE ip.contract = p_contract
             AND ip.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       )
       -- Idempotence : ne pas reinserer une ligne (contract, part_no) deja presente
       AND NOT EXISTS (
           SELECT 1 FROM clean_data.manuf_part_attribute m
-          WHERE m.contract = 'SJ'
+          WHERE m.contract = p_contract
             AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       )
     ORDER BY TRIM(phl."N. ARTICLE");
@@ -129,7 +135,7 @@ BEGIN
     UPDATE clean_data.manuf_part_attribute mpa
     SET density = NULLIF(REPLACE(TRIM(COALESCE(dens.densite, '')), ',', '.'), '')::numeric
     FROM raw_data.phl_article_densite dens
-    WHERE mpa.contract = 'SJ'
+    WHERE mpa.contract = p_contract
       AND mpa.part_no = TRIM(dens.identifiant)
       AND mpa.density IS DISTINCT FROM NULLIF(REPLACE(TRIM(COALESCE(dens.densite, '')), ',', '.'), '')::numeric;
     GET DIAGNOSTICS v_count_density_updated = ROW_COUNT;
@@ -137,7 +143,7 @@ BEGIN
     UPDATE clean_data.manuf_part_attribute m
     SET default_print_unit = SUBSTRING(pc.unit_code, 1, 10)
     FROM clean_data.part_catalog pc
-    WHERE m.contract = 'SJ'
+    WHERE m.contract = p_contract
       AND pc.part_no = m.part_no
       AND m.default_print_unit IS DISTINCT FROM SUBSTRING(pc.unit_code, 1, 10);
     -- Purge des orphelins.
@@ -162,7 +168,7 @@ BEGIN
     SET plan_manuf_sup_on_due_date_db = 'TRUE',
         plan_manuf_sup_on_due_date = 'TRUE'
     FROM raw_data.v_phl_article_retenu phl
-    WHERE m.contract = 'SJ'
+    WHERE m.contract = p_contract
       AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
@@ -188,7 +194,7 @@ BEGIN
         run_in_background = 'FALSE',
         ship_dirty = 'FALSE'
     FROM raw_data.v_phl_article_retenu phl
-    WHERE m.contract = 'SJ'
+    WHERE m.contract = p_contract
       AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
