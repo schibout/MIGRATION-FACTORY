@@ -67,6 +67,7 @@ files=(
     "alimenter_sales_part_phl.sql"
     "alimenter_purchase_part_phl.sql"
     "alimenter_manuf_part_attribute_phl.sql"
+    "vider_tables_articles_phl.sql"
     "alimenter_all_phl.sql"
 )
 

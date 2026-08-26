@@ -72,6 +72,7 @@ procedures=(
     "alimenter_sales_part_phl"
     "alimenter_purchase_part_phl"
     "alimenter_manuf_part_attribute_phl"
+    "vider_tables_articles_phl"
     "alimenter_all_phl"
     "ajouter_article_silicium"
 )
@@ -83,6 +84,7 @@ output_files=(
     "alimenter_sales_part_phl.sql"
     "alimenter_purchase_part_phl.sql"
     "alimenter_manuf_part_attribute_phl.sql"
+    "vider_tables_articles_phl.sql"
     "alimenter_all_phl.sql"
     "ajouter_article_silicium.sql"
 )
