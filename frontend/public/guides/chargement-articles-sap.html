@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chargement Articles SAP</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #F6F7FA;
+    --surface: #FFFFFF;
+    --surface-sunken: #EEF1F6;
+    --ink: #17202B;
+    --ink-soft: #4C5666;
+    --ink-faint: #7C8698;
+    --line: #DDE2EA;
+    --accent: #2454C7;
+    --accent-ink: #17347A;
+    --accent-soft: #E7EDFB;
+    --accent-soft-line: #C6D4F5;
+    --success: #187A57;
+    --success-soft: #E3F5EC;
+    --success-line: #BFE6D3;
+    --amber: #9C6B0B;
+    --amber-soft: #FBF0DB;
+    --amber-line: #EFD6A0;
+    --shadow: 0 1px 2px rgba(23,32,43,0.04), 0 8px 24px -12px rgba(23,32,43,0.12);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10141C;
+      --surface: #171D28;
+      --surface-sunken: #131822;
+      --ink: #E8ECF3;
+      --ink-soft: #A7B0C0;
+      --ink-faint: #737E91;
+      --line: #262E3C;
+      --accent: #7CA0FF;
+      --accent-ink: #C4D4FF;
+      --accent-soft: #1B2947;
+      --accent-soft-line: #2C3F6C;
+      --success: #4FCB9B;
+      --success-soft: #143327;
+      --success-line: #1F5A44;
+      --amber: #E3B255;
+      --amber-soft: #34290F;
+      --amber-line: #5A4517;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #10141C;
+    --surface: #171D28;
+    --surface-sunken: #131822;
+    --ink: #E8ECF3;
+    --ink-soft: #A7B0C0;
+    --ink-faint: #737E91;
+    --line: #262E3C;
+    --accent: #7CA0FF;
+    --accent-ink: #C4D4FF;
+    --accent-soft: #1B2947;
+    --accent-soft-line: #2C3F6C;
+    --success: #4FCB9B;
+    --success-soft: #143327;
+    --success-line: #1F5A44;
+    --amber: #E3B255;
+    --amber-soft: #34290F;
+    --amber-line: #5A4517;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  ::selection { background: var(--accent-soft-line); }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code, pre {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  code {
+    font-size: 0.85em;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.05em 0.45em;
+    color: var(--accent-ink);
+    white-space: nowrap;
+  }
+  pre {
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    overflow-x: auto;
+  }
+  pre code { background: none; border: none; padding: 0; white-space: pre; }
+
+  a { color: var(--accent); }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    padding: 3.4rem 1.5rem 2.4rem;
+    border-bottom: 1px solid var(--line);
+    background: radial-gradient(1100px 420px at 12% -10%, var(--accent-soft) 0%, transparent 60%);
+  }
+  .masthead-inner { max-width: 880px; margin: 0 auto; }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-line);
+    border-radius: 999px;
+    padding: 0.3rem 0.85rem;
+  }
+  .masthead h1 {
+    font-size: clamp(1.9rem, 4.5vw, 2.6rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 1.1rem 0 0.7rem;
+    text-wrap: balance;
+  }
+  .masthead p.lede { max-width: 66ch; color: var(--ink-soft); margin: 0; }
+  .back {
+    display: inline-block;
+    margin-bottom: 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .back:hover { text-decoration: underline; }
+
+  /* ---------- Body ---------- */
+  main { max-width: 880px; margin: 0 auto; padding: 2.2rem 1.5rem 4rem; }
+
+  section { margin-top: 2.8rem; }
+  section:first-child { margin-top: 0.5rem; }
+
+  .step-head {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 2.1rem;
+    height: 2.1rem;
+    display: grid;
+    place-items: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-line);
+    border-radius: 8px;
+  }
+  .step-head h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  h3 { font-size: 1.02rem; font-weight: 600; margin: 1.6rem 0 0.5rem; }
+  p, li { color: var(--ink-soft); max-width: 72ch; }
+  p strong, li strong { color: var(--ink); }
+  ol, ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.35rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+    box-shadow: var(--shadow);
+    margin: 1rem 0;
+  }
+
+  .callout {
+    border-radius: 10px;
+    padding: 0.9rem 1.2rem;
+    margin: 1.1rem 0;
+    font-size: 0.92rem;
+  }
+  .callout.warn { background: var(--amber-soft); border: 1px solid var(--amber-line); }
+  .callout.warn strong { color: var(--amber); }
+  .callout.ok { background: var(--success-soft); border: 1px solid var(--success-line); }
+  .callout.ok strong { color: var(--success); }
+  .callout p { margin: 0.2rem 0; max-width: none; }
+
+  .table-wrap { overflow-x: auto; margin: 1rem 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    font-size: 0.88rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  th, td { text-align: left; padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--surface-sunken);
+  }
+  tr:last-child td { border-bottom: none; }
+  td { color: var(--ink-soft); }
+  td:first-child { white-space: nowrap; }
+
+  /* pipeline */
+  .pipeline { display: flex; flex-direction: column; gap: 0.4rem; margin: 1.1rem 0; }
+  .pipe-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.9rem;
+  }
+  .pipe-row .n {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent);
+    flex-shrink: 0;
+    width: 1.4rem;
+  }
+  .pipe-row .fn { font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; color: var(--accent-ink); }
+  .pipe-row .what { color: var(--ink-faint); font-size: 0.84rem; margin-left: auto; text-align: right; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="back" href="index.html">&larr; Tous les modes d'emploi</a><br>
+    <span class="eyebrow">Migration Factory &middot; Articles</span>
+    <h1>Chargement des articles SAP</h1>
+    <p class="lede">
+      Charger le r&eacute;f&eacute;rentiel article depuis les tables SAP extraites
+      (<code>raw_data</code>) vers les tables cibles IFS (<code>clean_data</code>),
+      v&eacute;rifier le r&eacute;sultat et g&eacute;n&eacute;rer les fichiers d'export.
+    </p>
+  </div>
+</header>
+
+<main>
+
+  <section>
+    <div class="step-head"><span class="step-num">&#8226;</span><h2>Vue d'ensemble</h2></div>
+    <p>
+      Le chargement des articles SAP est port&eacute; par le module
+      <strong>&laquo;&nbsp;Donn&eacute;es de base des Articles&nbsp;&raquo;</strong>
+      (ordre d'ex&eacute;cution&nbsp;8, domaine IFS_Articles). Il lit les tables SAP
+      d&eacute;j&agrave; extraites dans <code>raw_data</code> et alimente les tables
+      IFS dans <code>clean_data</code>, dans un ordre impos&eacute; par les
+      d&eacute;pendances&nbsp;:
+    </p>
+    <div class="pipeline">
+      <div class="pipe-row"><span class="n">1</span><span class="fn">alimenter_ifs_article()</span><span class="what">article ma&icirc;tre consolid&eacute;</span></div>
+      <div class="pipe-row"><span class="n">2</span><span class="fn">alimenter_part_catalog()</span><span class="what">catalogue article (table de base)</span></div>
+      <div class="pipe-row"><span class="n">3</span><span class="fn">alimenter_inventory_part()</span><span class="what">article magasin par site</span></div>
+      <div class="pipe-row"><span class="n">4</span><span class="fn">alimenter_inventory_part_planning()</span><span class="what">donn&eacute;es de planification</span></div>
+      <div class="pipe-row"><span class="n">5</span><span class="fn">alimenter_purchase_part()</span><span class="what">article achet&eacute;</span></div>
+      <div class="pipe-row"><span class="n">6</span><span class="fn">alimenter_purchase_part_supplier()</span><span class="what">lien article &ndash; fournisseur</span></div>
+      <div class="pipe-row"><span class="n">7</span><span class="fn">alimenter_sales_part()</span><span class="what">article vendu</span></div>
+    </div>
+    <p>Les sources SAP utilis&eacute;es&nbsp;:</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Table raw_data</th><th>Contenu SAP</th></tr>
+        <tr><td><code>article_definitif</code></td><td>liste des articles retenus pour la migration (p&eacute;rim&egrave;tre valid&eacute; m&eacute;tier)</td></tr>
+        <tr><td><code>mara</code> / <code>makt</code></td><td>fiche article g&eacute;n&eacute;rale et d&eacute;signations</td></tr>
+        <tr><td><code>marc</code></td><td>donn&eacute;es article par division (site)</td></tr>
+        <tr><td><code>mvke</code></td><td>donn&eacute;es de vente</td></tr>
+        <tr><td><code>mbew</code></td><td>valorisation</td></tr>
+        <tr><td><code>mard</code></td><td>donn&eacute;es magasin</td></tr>
+        <tr><td><code>eina</code></td><td>fiches info-achat (liens fournisseurs)</td></tr>
+      </table>
+    </div>
+    <div class="callout warn">
+      <p><strong>Ordre de chargement.</strong> Le module Fournisseurs doit avoir &eacute;t&eacute;
+      charg&eacute; <em>avant</em> les articles&nbsp;: <code>purchase_part_supplier</code> relie
+      chaque article &agrave; son fournisseur renum&eacute;rot&eacute; (600000+) via la
+      correspondance <code>supplier_legacy_sap_id</code>. Sans fournisseurs charg&eacute;s,
+      les liens article&ndash;fournisseur sortent vides. Les articles PHL, eux, se chargent
+      <em>apr&egrave;s</em> les articles SAP (ils s'ajoutent au catalogue existant).</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="step-head"><span class="step-num">1</span><h2>V&eacute;rifier les donn&eacute;es SAP extraites</h2></div>
+    <ol>
+      <li>Ouvrir le menu <strong>Donn&eacute;es SAP &rsaquo; Articles</strong> pour contr&ocirc;ler
+          visuellement les articles extraits (recherche par code, d&eacute;signation, type).</li>
+      <li>V&eacute;rifier que l'extraction SAP est r&eacute;cente&nbsp;: menu
+          <strong>Extraction</strong>, onglet historique. Les tables <code>mara</code>,
+          <code>marc</code>, <code>mvke</code>, <code>mbew</code>, <code>mard</code> et
+          <code>eina</code> doivent avoir &eacute;t&eacute; extraites.</li>
+      <li>V&eacute;rifier le p&eacute;rim&egrave;tre&nbsp;: la table
+          <code>raw_data.article_definitif</code> contient la liste des articles retenus.
+          C'est elle qui d&eacute;limite ce qui sera charg&eacute;.</li>
+    </ol>
+    <div class="callout warn">
+      <p><strong>Ne jamais modifier</strong> les tables <code>raw_data</code> directement&nbsp;:
+      elles sont la copie fid&egrave;le de SAP. Toute correction se fait soit dans SAP puis
+      r&eacute;-extraction, soit dans les r&egrave;gles de transformation.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="step-head"><span class="step-num">2</span><h2>Lancer le chargement</h2></div>
+    <ol>
+      <li>Ouvrir le menu <strong>Chargement des donn&eacute;es</strong>.</li>
+      <li>Rep&eacute;rer la carte <strong>&laquo;&nbsp;Donn&eacute;es de base des
+          Articles&nbsp;&raquo;</strong> (domaine IFS_Articles).</li>
+      <li>Cliquer sur <strong>Ex&eacute;cuter</strong>. Le module encha&icirc;ne les 7
+          fonctions du pipeline&nbsp;; le journal d'ex&eacute;cution s'affiche en direct
+          (messages PostgreSQL inclus&nbsp;: nombre de lignes ins&eacute;r&eacute;es par
+          table, dur&eacute;e de chaque &eacute;tape).</li>
+      <li>Attendre le statut <strong>Succ&egrave;s</strong>. En cas d'erreur, le journal
+          indique la fonction en cause et le message PostgreSQL&nbsp;; l'ex&eacute;cution
+          s'arr&ecirc;te &agrave; la premi&egrave;re erreur.</li>
+    </ol>
+    <div class="callout ok">
+      <p><strong>Rejouable sans risque.</strong> Le chargement est con&ccedil;u pour
+      &ecirc;tre relanc&eacute;&nbsp;: les tables sont recharg&eacute;es ou
+      compl&eacute;t&eacute;es de fa&ccedil;on idempotente. Relancer le module apr&egrave;s
+      une correction ne cr&eacute;e pas de doublons.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="step-head"><span class="step-num">3</span><h2>V&eacute;rifier le chargement</h2></div>
+    <p>Contr&ocirc;les visuels&nbsp;: menu <strong>Donn&eacute;es IFS &rsaquo; Articles</strong>
+       (contenu des tables cibles), ou requ&ecirc;tes de comptage&nbsp;:</p>
+    <pre><code>SELECT
+  (SELECT count(*) FROM clean_data.ifs_article_maitre)  AS article_maitre,
+  (SELECT count(*) FROM clean_data.part_catalog)        AS part_catalog,
+  (SELECT count(*) FROM clean_data.inventory_part)      AS inventory_part,
+  (SELECT count(*) FROM clean_data.purchase_part)       AS purchase_part,
+  (SELECT count(*) FROM clean_data.sales_part)          AS sales_part;</code></pre>
+    <p>R&egrave;gles de coh&eacute;rence &agrave; conna&icirc;tre pour interpr&eacute;ter les &eacute;carts&nbsp;:</p>
+    <ul>
+      <li><strong><code>part_catalog</code> est la table de base</strong>&nbsp;: toutes les
+          tables filles (inventory, purchase, sales) ne contiennent que des articles
+          pr&eacute;sents dans le catalogue. Un article absent du catalogue n'appara&icirc;t
+          nulle part ailleurs.</li>
+      <li><strong><code>sales_part</code> est volontairement plus petite</strong>&nbsp;: les
+          types d'articles non vendus (NLAG, HIBE, ERSA&hellip;) sont exclus des articles de
+          vente. Un &eacute;cart entre <code>part_catalog</code> et <code>sales_part</code>
+          est donc normal.</li>
+      <li><strong><code>purchase_part_supplier</code></strong>&nbsp;: v&eacute;rifier que les
+          <code>vendor_no</code> sont bien des num&eacute;ros renum&eacute;rot&eacute;s
+          (600000+), pas les anciens num&eacute;ros SAP.</li>
+    </ul>
+    <p>Rep&eacute;rer les articles du p&eacute;rim&egrave;tre qui n'ont pas &eacute;t&eacute; charg&eacute;s&nbsp;:</p>
+    <pre><code>SELECT a.*
+FROM raw_data.article_definitif a
+WHERE NOT EXISTS (
+    SELECT 1 FROM clean_data.part_catalog pc
+    WHERE pc.part_no = TRIM(a.matnr)
+);</code></pre>
+  </section>
+
+  <section>
+    <div class="step-head"><span class="step-num">4</span><h2>Exporter les articles</h2></div>
+    <ol>
+      <li>Ouvrir le menu <strong>Export des donn&eacute;es</strong>.</li>
+      <li>S&eacute;lectionner la cat&eacute;gorie <strong>Article</strong>&nbsp;: chaque table
+          cible IFS a sa requ&ecirc;te d'export (part_catalog, inventory_part, purchase_part,
+          sales_part, manuf_part_attribute&hellip;).</li>
+      <li>Lancer l'export&nbsp;: un fichier <strong>ZIP contenant les CSV</strong> est
+          g&eacute;n&eacute;r&eacute;, pr&ecirc;t &agrave; &ecirc;tre transmis pour le
+          chargement IFS.</li>
+    </ol>
+    <div class="callout warn">
+      <p><strong>Cache de 5 minutes.</strong> Les exports sont mis en cache&nbsp;: si vous
+      relancez un export juste apr&egrave;s un rechargement, attendez 5 minutes ou le fichier
+      peut refl&eacute;ter l'&eacute;tat pr&eacute;c&eacute;dent.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="step-head"><span class="step-num">5</span><h2>Aller plus loin</h2></div>
+    <ul>
+      <li><strong>Articles PHL</strong>&nbsp;: le chargement des articles PHL (Saint-Jean et
+          Castel) est document&eacute; dans le guide
+          <a href="chargement-article-phl.html">Chargement Article PHL</a>. Il
+          s'ex&eacute;cute toujours apr&egrave;s le chargement SAP.</li>
+      <li><strong>Requ&ecirc;tes d'export</strong>&nbsp;: elles sont param&eacute;trables en
+          base (<code>etl_export_queries</code>)&nbsp;&mdash; ajouter ou modifier un export ne
+          demande aucune modification de code.</li>
+      <li><strong>Assistant IA</strong>&nbsp;: pour des v&eacute;rifications ad hoc, le menu
+          Intelligence Artificielle permet d'interroger les tables en fran&ccedil;ais.</li>
+    </ul>
+  </section>
+
+</main>
+</body>
+</html>
