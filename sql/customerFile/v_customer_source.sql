@@ -150,9 +150,6 @@ SELECT
     NULLIF(UPPER(TRIM(p.customer_category_db)), '')::TEXT         AS phl_customer_category_db,
     NULLIF(UPPER(TRIM(p.b2b_customer_db)), '')::TEXT              AS phl_b2b_customer_db,
     NULLIF(UPPER(TRIM(p.identifier_ref_validation_db)), '')::TEXT AS phl_identifier_ref_validation_db,
-    -- Code client PHL retenu : cle de jointure vers raw_data.client_adresse_phl
-    -- pour clean_data.v_customer_address_source (toutes les adresses du client).
-    NULLIF(TRIM(p.customer_id), '')::TEXT             AS phl_cli_customer_id,
     NULLIF(TRIM(p.name), '')::TEXT                    AS phl_cli_name,
     p.creation_date::DATE                             AS phl_cli_creation_date,
     NULLIF(TRIM(p.association_no), '')::TEXT          AS phl_cli_association_no,
@@ -174,7 +171,14 @@ SELECT
     p.date_of_registration::DATE                      AS phl_cli_date_of_registration,
     -- Voie par laquelle le client PHL a ete retrouve : 'SAP_ID', 'NAME',
     -- 'NAME_PARTIAL' ou NULL. Sert au controle de qualite du rapprochement.
-    p.match_kind::TEXT                                AS phl_match_kind
+    p.match_kind::TEXT                                AS phl_match_kind,
+    -- Code client PHL retenu : cle de jointure vers raw_data.client_adresse_phl
+    -- pour clean_data.v_customer_address_source (toutes les adresses du client).
+    -- EN DERNIERE POSITION A DESSEIN : CREATE OR REPLACE VIEW n'accepte que
+    -- l'AJOUT de colonnes en fin de liste. Inserer une colonne au milieu fait
+    -- echouer le remplacement ("cannot change name of view column") et laisse
+    -- l'ancienne vue en place -> ne jamais reordonner les colonnes ci-dessus.
+    NULLIF(TRIM(p.customer_id), '')::TEXT             AS phl_cli_customer_id
 FROM raw_data.file_customer f
 -- Nom du fichier normalise une seule fois (majuscules, sans accents ni
 -- ponctuation), pour que les deux cotes de la comparaison restent coherents.
