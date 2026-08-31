@@ -43,24 +43,40 @@ BEGIN
         JURISDICTION_CODE
     )
     WITH fc AS (
-        -- Source unifiee : fichier + clients PHL absents du fichier.
+        -- Table pivot : raw_data.file_customer (168 clients), deja enrichie en
+        -- jointure externe par raw_data.client_phl / client_adresse_phl.
         -- customer_id et address_id sont deja calcules par la vue.
         SELECT *
         FROM clean_data.v_customer_source
         WHERE customer_id IS NOT NULL
     )
+    -- Cascade appliquee a chaque colonne : FICHIER -> PHL -> SAP (ADRC/KNA1).
+    -- Les colonnes phl_* passaient auparavant AVANT celles du fichier : c'etait
+    -- sans effet tant qu'elles n'etaient alimentees que sur la branche PHL de la
+    -- vue (supprimee depuis). Maintenant qu'elles completent les clients du
+    -- fichier, l'ordre est retabli : le fichier fait autorite.
     SELECT DISTINCT ON (fc.customer_id, fc.address_id)
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
-        -- Cote PHL, client_adresse_phl fournit deja l'adresse au format IFS :
-        -- on la prend telle quelle plutot que de la reconstruire.
-        COALESCE(NULLIF(TRIM(fc.phl_addr_name),''), NULLIF(TRIM(fc.name_1),''), TRIM(k.NAME1)) as NAME,
-        COALESCE(NULLIF(TRIM(fc.phl_address),''),
-                 CONCAT_WS(' ', fc.street, fc.postal_code),
-                 CONCAT_WS(' ', TRIM(a.STREET), TRIM(a.HOUSE_NUM1))) as ADDRESS,
+        COALESCE(NULLIF(TRIM(fc.name_1),''), NULLIF(TRIM(fc.phl_addr_name),''), TRIM(k.NAME1)) as NAME,
+        -- client_adresse_phl fournit deja l'adresse au format IFS : elle est
+        -- reprise telle quelle, mais seulement si le fichier ne dit rien.
+        COALESCE(NULLIF(CONCAT_WS(' ', fc.street, fc.postal_code), ''),
+                 NULLIF(TRIM(fc.phl_address),''),
+                 NULLIF(CONCAT_WS(' ', TRIM(a.STREET), TRIM(a.HOUSE_NUM1)), '')) as ADDRESS,
         public.get_default_value('clean_data.customer_info_address', 'ean_location', NULL) as EAN_LOCATION,
+        -- Deux formats de date coexistent dans le fichier : 'YYYYMMDD' et
+        -- RFC 1123 'Fri, 01 Sep 2023 00:00:00 GMT' (150 des 168 lignes). Ne
+        -- tester que YYYYMMDD perdait la date du fichier au profit de SAP.
+        -- 'Mon' suppose lc_time anglophone (le serveur est en en_US.UTF-8).
         COALESCE(
-            CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END,
+            CASE
+                WHEN fc.created_on ~ '^[0-9]{8}$'
+                    THEN TO_DATE(fc.created_on, 'YYYYMMDD')
+                WHEN fc.created_on ~ '[0-9]{2} [A-Za-z]{3} [0-9]{4}'
+                    THEN TO_DATE(substring(fc.created_on from '[0-9]{2} [A-Za-z]{3} [0-9]{4}'), 'DD Mon YYYY')
+            END,
+            fc.phl_cli_creation_date,
             CASE WHEN k.ERDAT IS NOT NULL AND k.ERDAT != '' AND LENGTH(TRIM(k.ERDAT)) = 8
             THEN TO_DATE(k.ERDAT, 'YYYYMMDD')
             ELSE NULL END
@@ -68,22 +84,29 @@ BEGIN
         public.get_default_value('clean_data.customer_info_address', 'valid_to', NULL)::date as VALID_TO,
         fc.customer_id as PARTY,
         COALESCE(
+            NULLIF(CONCAT_WS(', ', fc.street, fc.city, fc.postal_code), ''),
             NULLIF(TRIM(fc.phl_address_lov),''),
-            CONCAT_WS(', ', fc.street, fc.city, fc.postal_code),
-            CONCAT_WS(', ', TRIM(a.STREET), TRIM(a.CITY1), TRIM(a.POST_CODE1))
+            NULLIF(CONCAT_WS(', ', TRIM(a.STREET), TRIM(a.CITY1), TRIM(a.POST_CODE1)), '')
         ) as ADDRESS_LOV,
+        -- Le fichier ne porte pas d'indicateur de domaine par defaut : il est
+        -- deduit de la presence du code societe, PHL ne servant que de repli.
         COALESCE(
+            CASE WHEN NULLIF(TRIM(fc.bukrs), '') IS NOT NULL THEN 'TRUE' END,
             fc.phl_default_domain,
-            CASE WHEN fc.bukrs IS NOT NULL THEN 'TRUE' ELSE 'FALSE' END
+            'FALSE'
         ) as DEFAULT_DOMAIN,
-        COALESCE(NULLIF(TRIM(fc.country),''), t_country.LANDX) as COUNTRY,
+        -- file_customer.country est un CODE ('FR') sur les 168 lignes, pas un
+        -- libelle : il alimente COUNTRY_DB, pas COUNTRY. Le libelle vient donc
+        -- de SAP (T005T, SPRAS='F'), puis de PHL, comme dans customer_info.
+        COALESCE(NULLIF(TRIM(t_country.LANDX),''), fc.phl_cli_country) as COUNTRY,
         public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1)) as COUNTRY_DB,
         public.get_default_value('clean_data.customer_info_address', 'party_type', 'Customer') as PARTY_TYPE,
-        COALESCE(NULLIF(TRIM(fc.phl_party_type_db),''), 'CUSTOMER') as PARTY_TYPE_DB,
+        COALESCE(NULLIF(TRIM(fc.phl_party_type_db),''),
+                 public.get_default_value('clean_data.customer_info_address', 'party_type_db', 'CUSTOMER')) as PARTY_TYPE_DB,
         public.get_default_value('clean_data.customer_info_address', 'secondary_contact', NULL) as SECONDARY_CONTACT,
         public.get_default_value('clean_data.customer_info_address', 'primary_contact', NULL) as PRIMARY_CONTACT,
         COALESCE(SUBSTRING(fc.street, 1, 35), SUBSTRING(TRIM(a.STREET), 1, 35)) as ADDRESS1,
-        COALESCE(SUBSTRING(NULLIF(TRIM(fc.phl_address2),''), 1, 35), SUBSTRING(TRIM(a.HOUSE_NUM1), 1, 35), '') as ADDRESS2,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.phl_address2),''), 1, 35), SUBSTRING(NULLIF(TRIM(a.HOUSE_NUM1),''), 1, 35), '') as ADDRESS2,
         COALESCE(TRIM(a.HOUSE_NUM2), '') as ADDRESS3,
         COALESCE(TRIM(a.LOCATION), '') as ADDRESS4,
         COALESCE(TRIM(a.BUILDING), '') as ADDRESS5,

@@ -100,13 +100,20 @@ const DataLoadingPage: React.FC = () => {
       addLogMessage('Chargement des tables cibles ETL...', 'info');
       
       const data = await etlService.getTargetTables();
-      
-      setTables(data);
-      if (data.length > 0) {
+
+      // Tri d'affichage : modules actifs d'abord, inactifs relégués à la fin,
+      // chaque groupe classé par ordre alphabétique sur le libellé.
+      const sorted = [...data].sort((a, b) => {
+        if (!!a.is_active !== !!b.is_active) return a.is_active ? -1 : 1;
+        return (a.display_name || '').localeCompare(b.display_name || '', 'fr', { sensitivity: 'base' });
+      });
+
+      setTables(sorted);
+      if (sorted.length > 0) {
         // Sélectionner par défaut la première table active
-        const activeTable = data.find(t => t.is_active) || data[0];
+        const activeTable = sorted.find(t => t.is_active) || sorted[0];
         setSelectedTable(activeTable);
-        addLogMessage(`${data.length} tables cibles chargées avec succès`, 'success');
+        addLogMessage(`${sorted.length} tables cibles chargées avec succès`, 'success');
       } else {
         addLogMessage('Aucune table cible trouvée dans la base de données', 'warning');
       }
