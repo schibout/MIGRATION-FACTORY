@@ -34,18 +34,29 @@ BEGIN
         shipment_type
     )
     WITH fc AS (
-        -- Source unifiee : fichier + clients PHL absents du fichier.
-        -- customer_id et address_id sont deja calcules par la vue.
+        -- 1 ligne = 1 ADRESSE, meme source que customer_info_address : chaque
+        -- adresse chargee recoit ses parametres de commande, sinon une adresse
+        -- de livraison PHL n'aurait ni incoterm ni mode d'expedition.
         SELECT *
-        FROM clean_data.v_customer_source
+        FROM clean_data.v_customer_address_source
         WHERE customer_id IS NOT NULL
     )
-    SELECT DISTINCT ON (fc.customer_id, fc.address_id)
+    SELECT DISTINCT ON (fc.customer_id, fc.addr_id)
         fc.customer_id as customer_no,
-        fc.address_id as addr_no,
+        fc.addr_id as addr_no,
         COALESCE(knvv.INCO1, NULLIF(TRIM(fc.incoterms_1),''), 'EXW') as delivery_terms,
         COALESCE(knvv.BZIRK, fc.sales_district) as district_code,
-        COALESCE(NULLIF(TRIM(fc.region),''), k.REGIO) as region_code,
+        -- Departement de L'ADRESSE : deduit du code postal PHL (regle du
+        -- fichier), le champ region du fichier ne valant que pour l'adresse
+        -- principale.
+        COALESCE(
+            CASE WHEN fc.addr_origin = 'PHL'
+                  AND fc.addr_zip_code ~ '^[0-9]{5}$'
+                  AND COALESCE(fc.addr_country_db, 'FR') = 'FR'
+                 THEN LEFT(fc.addr_zip_code, 2) END,
+            CASE WHEN fc.addr_id = fc.address_id
+                 THEN COALESCE(NULLIF(TRIM(fc.region),''), k.REGIO) END
+        ) as region_code,
         COALESCE(knvv.VSBED, '01') as ship_via_code,
         public.get_default_value('clean_data.cust_ord_customer_address', 'contact', NULL) as contact,
         public.get_default_value('clean_data.cust_ord_customer_address', 'route_id', NULL) as route_id,
@@ -65,7 +76,7 @@ BEGIN
     LEFT JOIN raw_data.KNVV knvv
         ON fc.kunnr = knvv.KUNNR
         AND fc.vkorg = knvv.VKORG
-    ORDER BY fc.customer_id, fc.address_id;
+    ORDER BY fc.customer_id, fc.addr_id;
 
     GET DIAGNOSTICS v_processed_count = ROW_COUNT;
 
