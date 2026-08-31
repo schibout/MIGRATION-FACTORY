@@ -71,7 +71,19 @@ load_dotenv()
 # Chaque entrée : (appel SQL CALL, emoji, libellé fonctionnel).
 # NB : sp_insert_customer_address_type_single_file est volontairement absente
 # (appelée en interne par l'orchestrateur). sp_update_customer_id_cascade_file
-# est également absente (redondante avec le renumber, qui fait déjà la cascade).
+# est également absente : elle ne sert qu'à propager un changement de
+# customer_id, or ce module n'en change plus aucun.
+#
+# PAS DE RENUMÉROTATION SUR CE MODULE. Le fichier raw_data.file_customer est le
+# référentiel et porte déjà le numéro de compte IFS cible
+# (« Nouveau n° de compte IFS » -> nouveau_compte_ifs, repli num_corrige puis
+# kunnr, cf. clean_data.v_customer_source). Appeler
+# sp_renumber_all_customer_ids_file(700000) écrasait ces identifiants métier par
+# une numérotation séquentielle 700000+ et faisait perdre le travail de
+# renumérotation déjà fait dans le fichier. La procédure reste compilée
+# (sql/customerFile/) mais n'est plus appelée par le pipeline.
+# Les modules customer (SAP) et customer_phl gardent la leur : eux n'ont pas de
+# numéro IFS en source.
 ETL_STEPS = [
     ("clean_data.sp_insert_customer_info_from_file_customer()", "📝", "informations clients"),
     ("clean_data.sp_insert_customer_info_cfv_from_file_customer()", "🧩", "champs personnalisés (CFV) clients"),
@@ -93,7 +105,6 @@ ETL_STEPS = [
     ("clean_data.sp_insert_customer_credit_info_from_file_customer()", "💳", "informations de crédit"),
     ("clean_data.sp_insert_cust_ord_customer_from_file_customer()", "🛒", "informations de commande"),
     ("clean_data.sp_insert_cust_ord_customer_address_from_file_customer()", "📍", "adresses de commande"),
-    ("clean_data.sp_renumber_all_customer_ids_file(700000)", "🔢", "renumérotation des customer_id en cascade"),
 ]
 
 

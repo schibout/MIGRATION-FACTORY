@@ -140,8 +140,10 @@ BEGIN
             ELSE NULL END
         ) as DATE_OF_REGISTRATION,
         public.get_default_value('clean_data.customer_info', 'main_representative', NULL) as MAIN_REPRESENTATIVE,
-        -- Identifiants legacy : conserves tels quels, y compris apres la
-        -- renumerotation (sp_renumber_all_customer_ids_file n'y touche plus).
+        -- CUSTOMER_ID est le numero de compte IFS du fichier et n'est plus
+        -- renumerote : sp_renumber_all_customer_ids_file a ete retiree du
+        -- pipeline (backend/etl_modules/etl_file_customer.py).
+        -- Identifiants legacy : conserves tels quels.
         -- as400 = code client PHL resolu par clean_data.get_legacy_as400_id
         --         (recherche par n° SAP, repli par nom). PAS de repli sur
         --         l'identifiant du fichier : sans correspondance PHL, on laisse
