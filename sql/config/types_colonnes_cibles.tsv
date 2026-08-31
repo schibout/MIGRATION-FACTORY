@@ -19,6 +19,14 @@ cus_identity_pay_info	payment_delay	numeric	::numeric
 cus_identity_pay_info	percent_tolerance	numeric	::numeric
 cus_identity_pay_info	priority	numeric	::numeric
 cus_payment_address	bank_account_valid_date	date	::date
+cust_ord_customer	cycle_period	numeric	::numeric
+cust_ord_customer	date_del	date	::date
+cust_ord_customer	discount	numeric	::numeric
+cust_ord_customer	last_ivc_date	date	::date
+cust_ord_customer	min_sales_amount	numeric	::numeric
+cust_ord_customer	no_delnote_copies	numeric	::numeric
+cust_ord_customer	note_id	numeric	::numeric
+cust_ord_customer	priority	numeric	::numeric
 cust_ord_customer_address	delivery_time	date	::date
 customer_credit_info	allowed_due_amount	numeric	::numeric
 customer_credit_info	allowed_due_days	numeric	::numeric
@@ -108,7 +116,3 @@ sales_part	price_change_date	timestamp without time zone	::timestamp
 sales_part	price_conv_factor	numeric	::numeric
 sales_part	rental_list_price	numeric	::numeric
 sales_part	rental_list_price_incl_tax	numeric	::numeric
-cust_ord_customer	cycle_period	numeric	::numeric
-cust_ord_customer	date_del	date	::date
-cust_ord_customer	discount	numeric	::numeric
-cust_ord_customer	last_ivc_date	date	::date

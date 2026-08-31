@@ -55,6 +55,7 @@ FICHIERS_SEED = [
     RACINE / 'migrations' / '035_seed_etl_default_values_pm_actions.sql',
     RACINE / 'migrations' / '036_seed_default_value_c_density_fil.sql',
     RACINE / 'migrations' / '037_seed_valeurs_defaut_a_arbitrer.sql',
+    RACINE / 'migrations' / '038_seed_valeurs_defaut_cust_ord_customer_file.sql',
 ]
 
 

@@ -132,118 +132,118 @@ BEGIN
         WHERE customer_id IS NOT NULL
     )
     SELECT DISTINCT
-        fc.customer_id,                                                                  -- customer_no
-        NULL::VARCHAR(10),          -- cust_grp -> NULL (réf. IFS CustomerGroup absente)
-        0::NUMERIC(3,0),                                                                 -- cycle_period
-        SUBSTRING(COALESCE(MAX(knvv.WAERS), 'EUR'), 1, 3),                              -- currency_code
-        'E'::VARCHAR(2),                                                                 -- category_db
-        fc.customer_id,                                                                  -- customer_no_pay
-        NULL::VARCHAR(10),                            -- cust_price_group_id -> NULL (réf. IFS absente)
-        NULL::VARCHAR(20),                        -- salesman_code -> NULL (réf. IFS absente)
-        NULL::VARCHAR(10),     -- market_code -> NULL (réf. IFS SalesMarket absente)
-        NULL::VARCHAR(10),                                                              -- print_control_code -> NULL (réf. IFS absente)
+        fc.customer_id AS customer_no,
+        public.get_default_value('clean_data.cust_ord_customer', 'cust_grp', NULL) AS cust_grp,                                                          -- -> NULL (réf. IFS CustomerGroup absente)
+        public.get_default_value('clean_data.cust_ord_customer', 'cycle_period', '0')::numeric AS cycle_period,
+        SUBSTRING(COALESCE(MAX(knvv.WAERS), 'EUR'), 1, 3) AS currency_code,
+        public.get_default_value('clean_data.cust_ord_customer', 'category_db', 'E') AS category_db,
+        fc.customer_id AS customer_no_pay,
+        public.get_default_value('clean_data.cust_ord_customer', 'cust_price_group_id', NULL) AS cust_price_group_id,                                               -- -> NULL (réf. IFS absente)
+        public.get_default_value('clean_data.cust_ord_customer', 'salesman_code', NULL) AS salesman_code,                                                     -- -> NULL (réf. IFS absente)
+        public.get_default_value('clean_data.cust_ord_customer', 'market_code', NULL) AS market_code,                                                       -- -> NULL (réf. IFS SalesMarket absente)
+        public.get_default_value('clean_data.cust_ord_customer', 'print_control_code', NULL) AS print_control_code,                                                -- -> NULL (réf. IFS absente)
         CASE WHEN fc.sales_order_block IS NOT NULL AND fc.sales_order_block != ''
-             THEN 'Y' ELSE 'N' END::VARCHAR(1),                                         -- cr_stop_db
-        SUBSTRING(COALESCE(fc.customer_classification, ''), 1, 100),                   -- cust_ref
-        NULL::DATE,                                                                      -- date_del
-        'N'::VARCHAR(2),                                                                 -- invoice_sort_db
-        NULL::DATE,                                                                      -- last_ivc_date
-        SUBSTRING(COALESCE(fc.name_1, ''), 1, 2000),                                   -- note_text
-        'Y'::VARCHAR(1),                                                                 -- order_conf_flag_db
-        'Y'::VARCHAR(1),                                                                 -- pack_list_flag_db
-        NULL::VARCHAR(5),                                                                -- acquisition_site
-        NULL::VARCHAR(3),                                                                -- order_id
-        'MANUALLY'::VARCHAR(20),                                                         -- edi_auto_order_approval_db
-        'MANUALLY'::VARCHAR(20),                                                         -- edi_auto_change_approval_db
-        NULL::VARCHAR(20),                                                               -- edi_authorize_code
-        NULL::VARCHAR(5),                                                                -- edi_site
-        NULL::VARCHAR(30),                                                               -- edi_auto_approval_user
-        NULL::VARCHAR(12),                                                               -- template_id
-        0::NUMERIC(20,2),                                                                -- discount
-        'G'::VARCHAR(25),                                                          -- discount_type (valeur par défaut G)
-        NULL::NUMERIC(20,2),                                                             -- min_sales_amount
-        NULL::NUMERIC(20,2),                                                             -- note_id
-        NULL::VARCHAR(35),                                                               -- template_customer_desc
-        'NOT_TEMPLATE'::VARCHAR(20),                                                     -- template_customer_db
-        'NORMAL'::VARCHAR(20),                                                           -- quick_registered_customer_db
-        'DONOTCREATE'::VARCHAR(20),                                                      -- commission_receiver_db
-        NULL::NUMERIC(20,2),                                                             -- no_delnote_copies
-        NULL::VARCHAR(20),                                                               -- forward_agent_id
-        NULL::VARCHAR(1),                                                                -- auto_despatch_adv_send
-        'FALSE'::VARCHAR(20),                                                            -- mul_tier_del_notification_db
-        NULL::VARCHAR(15),                                                               -- match_type_db
-        'FALSE'::VARCHAR(20),                                                            -- print_amounts_incl_tax_db
-        'FALSE'::VARCHAR(20),                                                            -- confirm_deliveries_db
-        'FALSE'::VARCHAR(20),                                                            -- check_sales_grp_deliv_conf_db
-        NULL::VARCHAR(20),                                                               -- handl_unit_at_co_delivery_db
-        'FALSE'::VARCHAR(20),                                                            -- update_price_from_sbi_db
-        'FALSE'::VARCHAR(20),                                                            -- rec_adv_auto_match_diff_db
-        'FALSE'::VARCHAR(20),                                                            -- rec_adv_auto_matching_db
-        NULL::VARCHAR(25),                                                               -- rec_adv_matching_option_db
-        NULL::VARCHAR(30),                                                               -- receiving_advice_type_db
-        NULL::VARCHAR(30),                                                               -- self_billing_match_option_db
-        NULL::VARCHAR(30),                                                               -- sbi_auto_approval_user
-        NULL::VARCHAR(30),                                                               -- rec_adv_auto_approval_user
-        'FALSE'::VARCHAR(20),                                                            -- adv_inv_full_pay_db
-        'MANUALLY'::VARCHAR(20),                                                         -- release_internal_order_db
-        NULL::VARCHAR(10),                                                                -- credit_control_group_id -> NULL (réf. IFS absente)
-        NULL::VARCHAR(40),                                                               -- backorder_option_db
-        NULL::NUMERIC(20,2),                                                             -- priority
-        'FALSE'::VARCHAR(20),                                                            -- receive_pack_size_chg_db
-        'Y'::VARCHAR(20),                                                                -- summarized_freight_charges_db
-        'SHIPMENT'::VARCHAR(23),                                                         -- print_delivered_lines_db
-        'TRUE'::VARCHAR(20),                                                             -- email_order_conf_db
-        'FALSE'::VARCHAR(20),                                                            -- email_invoice_db
-        'FALSE'::VARCHAR(5),                                                             -- allow_auto_sub_of_parts_db
-        'FALSE'::VARCHAR(20),                                                            -- b2b_auto_create_co_from_sq_db
-        'FALSE'::VARCHAR(5),                                                             -- print_withholding_tax_db
-        'SPECIFIED ON COMPANY'::VARCHAR(20),                                             -- consol_rental_ivc_serial_db
-        NULL::VARCHAR(5),                                                                -- exclude_from_scan_order
-        NULL::VARCHAR(5),                                                                -- default_inv_currency
-        NULL::VARCHAR(5),                                                                -- confirm_direct_deliveries
-        'Y'::VARCHAR(20),                                                                -- summarized_source_lines_db
-        'N'::VARCHAR(20),                                                                -- send_change_message_db
-        NULL::VARCHAR(20),                                                               -- replicate_doc_text_db
+             THEN 'Y' ELSE 'N' END::VARCHAR(1) AS cr_stop_db,
+        SUBSTRING(COALESCE(fc.customer_classification, ''), 1, 100) AS cust_ref,
+        public.get_default_value('clean_data.cust_ord_customer', 'date_del', NULL)::date AS date_del,
+        public.get_default_value('clean_data.cust_ord_customer', 'invoice_sort_db', 'N') AS invoice_sort_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'last_ivc_date', NULL)::date AS last_ivc_date,
+        SUBSTRING(COALESCE(fc.name_1, ''), 1, 2000) AS note_text,
+        public.get_default_value('clean_data.cust_ord_customer', 'order_conf_flag_db', 'Y') AS order_conf_flag_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'pack_list_flag_db', 'Y') AS pack_list_flag_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'acquisition_site', NULL) AS acquisition_site,
+        public.get_default_value('clean_data.cust_ord_customer', 'order_id', NULL) AS order_id,
+        public.get_default_value('clean_data.cust_ord_customer', 'edi_auto_order_approval_db', 'MANUALLY') AS edi_auto_order_approval_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'edi_auto_change_approval_db', 'MANUALLY') AS edi_auto_change_approval_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'edi_authorize_code', NULL) AS edi_authorize_code,
+        public.get_default_value('clean_data.cust_ord_customer', 'edi_site', NULL) AS edi_site,
+        public.get_default_value('clean_data.cust_ord_customer', 'edi_auto_approval_user', NULL) AS edi_auto_approval_user,
+        public.get_default_value('clean_data.cust_ord_customer', 'template_id', NULL) AS template_id,
+        public.get_default_value('clean_data.cust_ord_customer', 'discount', '0')::numeric AS discount,
+        public.get_default_value('clean_data.cust_ord_customer', 'discount_type', 'G', 'CUSTOMERFILE') AS discount_type,                                                      -- (valeur par défaut G)
+        public.get_default_value('clean_data.cust_ord_customer', 'min_sales_amount', NULL)::numeric AS min_sales_amount,
+        public.get_default_value('clean_data.cust_ord_customer', 'note_id', NULL)::numeric AS note_id,
+        public.get_default_value('clean_data.cust_ord_customer', 'template_customer_desc', NULL) AS template_customer_desc,
+        public.get_default_value('clean_data.cust_ord_customer', 'template_customer_db', 'NOT_TEMPLATE') AS template_customer_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'quick_registered_customer_db', 'NORMAL') AS quick_registered_customer_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'commission_receiver_db', 'DONOTCREATE') AS commission_receiver_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'no_delnote_copies', NULL)::numeric AS no_delnote_copies,
+        public.get_default_value('clean_data.cust_ord_customer', 'forward_agent_id', NULL) AS forward_agent_id,
+        public.get_default_value('clean_data.cust_ord_customer', 'auto_despatch_adv_send', NULL) AS auto_despatch_adv_send,
+        public.get_default_value('clean_data.cust_ord_customer', 'mul_tier_del_notification_db', 'FALSE') AS mul_tier_del_notification_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'match_type_db', NULL) AS match_type_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'print_amounts_incl_tax_db', 'FALSE') AS print_amounts_incl_tax_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'confirm_deliveries_db', 'FALSE') AS confirm_deliveries_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'check_sales_grp_deliv_conf_db', 'FALSE') AS check_sales_grp_deliv_conf_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'handl_unit_at_co_delivery_db', NULL) AS handl_unit_at_co_delivery_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'update_price_from_sbi_db', 'FALSE') AS update_price_from_sbi_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'rec_adv_auto_match_diff_db', 'FALSE') AS rec_adv_auto_match_diff_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'rec_adv_auto_matching_db', 'FALSE') AS rec_adv_auto_matching_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'rec_adv_matching_option_db', NULL) AS rec_adv_matching_option_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'receiving_advice_type_db', NULL) AS receiving_advice_type_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'self_billing_match_option_db', NULL) AS self_billing_match_option_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'sbi_auto_approval_user', NULL) AS sbi_auto_approval_user,
+        public.get_default_value('clean_data.cust_ord_customer', 'rec_adv_auto_approval_user', NULL) AS rec_adv_auto_approval_user,
+        public.get_default_value('clean_data.cust_ord_customer', 'adv_inv_full_pay_db', 'FALSE') AS adv_inv_full_pay_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'release_internal_order_db', 'MANUALLY') AS release_internal_order_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'credit_control_group_id', NULL) AS credit_control_group_id,                                           -- -> NULL (réf. IFS absente)
+        public.get_default_value('clean_data.cust_ord_customer', 'backorder_option_db', NULL) AS backorder_option_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'priority', NULL)::numeric AS priority,
+        public.get_default_value('clean_data.cust_ord_customer', 'receive_pack_size_chg_db', 'FALSE') AS receive_pack_size_chg_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'summarized_freight_charges_db', 'Y') AS summarized_freight_charges_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'print_delivered_lines_db', 'SHIPMENT') AS print_delivered_lines_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'email_order_conf_db', 'TRUE') AS email_order_conf_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'email_invoice_db', 'FALSE') AS email_invoice_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'allow_auto_sub_of_parts_db', 'FALSE') AS allow_auto_sub_of_parts_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'b2b_auto_create_co_from_sq_db', 'FALSE') AS b2b_auto_create_co_from_sq_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'print_withholding_tax_db', 'FALSE') AS print_withholding_tax_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'consol_rental_ivc_serial_db', 'SPECIFIED ON COMPANY') AS consol_rental_ivc_serial_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'exclude_from_scan_order', NULL) AS exclude_from_scan_order,
+        public.get_default_value('clean_data.cust_ord_customer', 'default_inv_currency', NULL) AS default_inv_currency,
+        public.get_default_value('clean_data.cust_ord_customer', 'confirm_direct_deliveries', NULL) AS confirm_direct_deliveries,
+        public.get_default_value('clean_data.cust_ord_customer', 'summarized_source_lines_db', 'Y') AS summarized_source_lines_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'send_change_message_db', 'N') AS send_change_message_db,
+        public.get_default_value('clean_data.cust_ord_customer', 'replicate_doc_text_db', NULL) AS replicate_doc_text_db,
         -- colonnes affichage
         CASE WHEN fc.sales_order_block IS NOT NULL AND fc.sales_order_block != ''
-             THEN 'TRUE' ELSE 'FALSE' END,                                               -- cr_stop
-        'N',                                                                             -- invoice_sort
-        'Y',                                                                             -- order_conf_flag
-        'Y',                                                                             -- pack_list_flag
-        'E',                                                                             -- category
-        'MANUALLY',                                                                      -- edi_auto_order_approval
-        'MANUALLY',                                                                      -- edi_auto_change_approval
-        'NOT_TEMPLATE',                                                                  -- template_customer
-        'NORMAL',                                                                        -- quick_registered_customer
-        'DONOTCREATE',                                                                   -- commission_receiver
-        'Y',                                                                             -- summarized_source_lines
-        'N',                                                                             -- send_change_message
-        NULL,                                                                            -- replicate_doc_text
-        'FALSE',                                                                         -- mul_tier_del_notification
-        NULL,                                                                            -- match_type
-        'FALSE',                                                                         -- print_amounts_incl_tax
-        'FALSE',                                                                         -- confirm_deliveries
-        'FALSE',                                                                         -- check_sales_grp_deliv_conf
-        NULL,                                                                            -- handl_unit_at_co_delivery
-        'FALSE',                                                                         -- update_price_from_sbi
-        'FALSE',                                                                         -- rec_adv_auto_match_diff
-        'FALSE',                                                                         -- rec_adv_auto_matching
-        NULL,                                                                            -- rec_adv_matching_option
-        NULL,                                                                            -- receiving_advice_type
-        NULL,                                                                            -- self_billing_match_option
-        'FALSE',                                                                         -- adv_inv_full_pay
-        'MANUALLY',                                                                      -- release_internal_order
-        NULL,                                                                            -- backorder_option
-        'FALSE',                                                                         -- receive_pack_size_chg
-        'Y',                                                                             -- summarized_freight_charges
-        'SHIPMENT',                                                                      -- print_delivered_lines
-        'TRUE',                                                                          -- email_order_conf
-        'FALSE',                                                                         -- email_invoice
-        'FALSE',                                                                         -- allow_auto_sub_of_parts
-        'FALSE',                                                                         -- b2b_auto_create_co_from_sq
-        'FALSE',                                                                         -- print_withholding_tax
-        'SPECIFIED ON COMPANY',                                                          -- consol_rental_ivc_serial
-        SUBSTRING(TRIM(COALESCE(fc.name_1, '')), 1, 100)                                -- name
+             THEN 'TRUE' ELSE 'FALSE' END AS cr_stop,
+        public.get_default_value('clean_data.cust_ord_customer', 'invoice_sort', 'N') AS invoice_sort,
+        public.get_default_value('clean_data.cust_ord_customer', 'order_conf_flag', 'Y') AS order_conf_flag,
+        public.get_default_value('clean_data.cust_ord_customer', 'pack_list_flag', 'Y') AS pack_list_flag,
+        public.get_default_value('clean_data.cust_ord_customer', 'category', 'E') AS category,
+        public.get_default_value('clean_data.cust_ord_customer', 'edi_auto_order_approval', 'MANUALLY') AS edi_auto_order_approval,
+        public.get_default_value('clean_data.cust_ord_customer', 'edi_auto_change_approval', 'MANUALLY') AS edi_auto_change_approval,
+        public.get_default_value('clean_data.cust_ord_customer', 'template_customer', 'NOT_TEMPLATE') AS template_customer,
+        public.get_default_value('clean_data.cust_ord_customer', 'quick_registered_customer', 'NORMAL') AS quick_registered_customer,
+        public.get_default_value('clean_data.cust_ord_customer', 'commission_receiver', 'DONOTCREATE') AS commission_receiver,
+        public.get_default_value('clean_data.cust_ord_customer', 'summarized_source_lines', 'Y') AS summarized_source_lines,
+        public.get_default_value('clean_data.cust_ord_customer', 'send_change_message', 'N') AS send_change_message,
+        public.get_default_value('clean_data.cust_ord_customer', 'replicate_doc_text', NULL) AS replicate_doc_text,
+        public.get_default_value('clean_data.cust_ord_customer', 'mul_tier_del_notification', 'FALSE') AS mul_tier_del_notification,
+        public.get_default_value('clean_data.cust_ord_customer', 'match_type', NULL) AS match_type,
+        public.get_default_value('clean_data.cust_ord_customer', 'print_amounts_incl_tax', 'FALSE') AS print_amounts_incl_tax,
+        public.get_default_value('clean_data.cust_ord_customer', 'confirm_deliveries', 'FALSE') AS confirm_deliveries,
+        public.get_default_value('clean_data.cust_ord_customer', 'check_sales_grp_deliv_conf', 'FALSE') AS check_sales_grp_deliv_conf,
+        public.get_default_value('clean_data.cust_ord_customer', 'handl_unit_at_co_delivery', NULL) AS handl_unit_at_co_delivery,
+        public.get_default_value('clean_data.cust_ord_customer', 'update_price_from_sbi', 'FALSE') AS update_price_from_sbi,
+        public.get_default_value('clean_data.cust_ord_customer', 'rec_adv_auto_match_diff', 'FALSE') AS rec_adv_auto_match_diff,
+        public.get_default_value('clean_data.cust_ord_customer', 'rec_adv_auto_matching', 'FALSE') AS rec_adv_auto_matching,
+        public.get_default_value('clean_data.cust_ord_customer', 'rec_adv_matching_option', NULL) AS rec_adv_matching_option,
+        public.get_default_value('clean_data.cust_ord_customer', 'receiving_advice_type', NULL) AS receiving_advice_type,
+        public.get_default_value('clean_data.cust_ord_customer', 'self_billing_match_option', NULL) AS self_billing_match_option,
+        public.get_default_value('clean_data.cust_ord_customer', 'adv_inv_full_pay', 'FALSE') AS adv_inv_full_pay,
+        public.get_default_value('clean_data.cust_ord_customer', 'release_internal_order', 'MANUALLY') AS release_internal_order,
+        public.get_default_value('clean_data.cust_ord_customer', 'backorder_option', NULL) AS backorder_option,
+        public.get_default_value('clean_data.cust_ord_customer', 'receive_pack_size_chg', 'FALSE') AS receive_pack_size_chg,
+        public.get_default_value('clean_data.cust_ord_customer', 'summarized_freight_charges', 'Y') AS summarized_freight_charges,
+        public.get_default_value('clean_data.cust_ord_customer', 'print_delivered_lines', 'SHIPMENT') AS print_delivered_lines,
+        public.get_default_value('clean_data.cust_ord_customer', 'email_order_conf', 'TRUE') AS email_order_conf,
+        public.get_default_value('clean_data.cust_ord_customer', 'email_invoice', 'FALSE') AS email_invoice,
+        public.get_default_value('clean_data.cust_ord_customer', 'allow_auto_sub_of_parts', 'FALSE') AS allow_auto_sub_of_parts,
+        public.get_default_value('clean_data.cust_ord_customer', 'b2b_auto_create_co_from_sq', 'FALSE') AS b2b_auto_create_co_from_sq,
+        public.get_default_value('clean_data.cust_ord_customer', 'print_withholding_tax', 'FALSE') AS print_withholding_tax,
+        public.get_default_value('clean_data.cust_ord_customer', 'consol_rental_ivc_serial', 'SPECIFIED ON COMPANY') AS consol_rental_ivc_serial,
+        SUBSTRING(TRIM(COALESCE(fc.name_1, '')), 1, 100) AS name
     FROM fc
     LEFT JOIN raw_data.knvv knvv
         ON fc.kunnr = knvv.KUNNR
