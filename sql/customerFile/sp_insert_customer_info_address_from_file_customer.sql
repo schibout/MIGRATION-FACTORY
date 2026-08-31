@@ -43,32 +43,43 @@ BEGIN
         JURISDICTION_CODE
     )
     WITH fc AS (
-        -- Table pivot : raw_data.file_customer (168 clients), deja enrichie en
-        -- jointure externe par raw_data.client_phl / client_adresse_phl.
-        -- customer_id et address_id sont deja calcules par la vue.
+        -- 1 ligne = 1 ADRESSE. Les clients rapproches a PHL reprennent TOUTES
+        -- leurs adresses raw_data.client_adresse_phl (addr_id = address_id
+        -- PHL) ; les clients sans rapprochement gardent l'unique adresse du
+        -- fichier. Le client reste identifie par customer_id (numerotation
+        -- IFS du fichier).
         SELECT *
-        FROM clean_data.v_customer_source
+        FROM clean_data.v_customer_address_source
         WHERE customer_id IS NOT NULL
     )
-    -- Cascade appliquee a chaque colonne : FICHIER -> PHL -> SAP (ADRC/KNA1).
-    -- Les colonnes phl_* passaient auparavant AVANT celles du fichier : c'etait
-    -- sans effet tant qu'elles n'etaient alimentees que sur la branche PHL de la
-    -- vue (supprimee depuis). Maintenant qu'elles completent les clients du
-    -- fichier, l'ordre est retabli : le fichier fait autorite.
-    SELECT DISTINCT ON (fc.customer_id, fc.address_id)
+    -- Cascade appliquee a chaque colonne : PHL -> FICHIER -> SAP (ADRC/KNA1).
+    -- L'ADRESSE fait autorite cote PHL (decision 2026-08-31) : le fichier ne
+    -- sert plus que de repli, pour les clients non rapproches et pour les
+    -- colonnes que PHL ne renseigne pas (zip_code, county, state, address3 a
+    -- address6, ean_location, jurisdiction_code : vides sur les 670 lignes).
+    SELECT DISTINCT ON (fc.customer_id, fc.addr_id)
         fc.customer_id as CUSTOMER_ID,
-        fc.address_id as ADDRESS_ID,
-        COALESCE(NULLIF(TRIM(fc.name_1),''), NULLIF(TRIM(fc.phl_addr_name),''), TRIM(k.NAME1)) as NAME,
+        fc.addr_id as ADDRESS_ID,
+        COALESCE(NULLIF(TRIM(fc.addr_name),''), NULLIF(TRIM(fc.name_1),''), TRIM(k.NAME1)) as NAME,
         -- client_adresse_phl fournit deja l'adresse au format IFS : elle est
-        -- reprise telle quelle, mais seulement si le fichier ne dit rien.
-        COALESCE(NULLIF(CONCAT_WS(' ', fc.street, fc.postal_code), ''),
-                 NULLIF(TRIM(fc.phl_address),''),
-                 NULLIF(CONCAT_WS(' ', TRIM(a.STREET), TRIM(a.HOUSE_NUM1)), '')) as ADDRESS,
-        public.get_default_value('clean_data.customer_info_address', 'ean_location', NULL) as EAN_LOCATION,
+        -- reprise telle quelle.
+        -- REGLE DE REPLI (fc.addr_id = fc.address_id) : le fichier et SAP ne
+        -- decrivent QUE l'adresse principale du client. Les reprendre sur une
+        -- adresse PHL secondaire produirait une adresse fausse (rue de Sens
+        -- collee a l'etablissement de Bagnolet) : le repli fichier/SAP n'est
+        -- donc autorise que sur l'adresse principale.
+        COALESCE(NULLIF(TRIM(fc.addr_address),''),
+                 CASE WHEN fc.addr_id = fc.address_id THEN
+                     COALESCE(NULLIF(CONCAT_WS(' ', fc.street, fc.postal_code), ''),
+                              NULLIF(CONCAT_WS(' ', TRIM(a.STREET), TRIM(a.HOUSE_NUM1)), ''))
+                 END) as ADDRESS,
+        COALESCE(NULLIF(TRIM(fc.addr_ean_location),''),
+                 public.get_default_value('clean_data.customer_info_address', 'ean_location', NULL)) as EAN_LOCATION,
         -- Deux formats de date coexistent dans le fichier : 'YYYYMMDD' et
         -- RFC 1123 'Fri, 01 Sep 2023 00:00:00 GMT' (150 des 168 lignes). Ne
         -- tester que YYYYMMDD perdait la date du fichier au profit de SAP.
         -- 'Mon' suppose lc_time anglophone (le serveur est en en_US.UTF-8).
+        -- La date reste celle du CLIENT : client_adresse_phl n'en porte pas.
         COALESCE(
             CASE
                 WHEN fc.created_on ~ '^[0-9]{8}$'
@@ -84,39 +95,76 @@ BEGIN
         public.get_default_value('clean_data.customer_info_address', 'valid_to', NULL)::date as VALID_TO,
         fc.customer_id as PARTY,
         COALESCE(
-            NULLIF(CONCAT_WS(', ', fc.street, fc.city, fc.postal_code), ''),
-            NULLIF(TRIM(fc.phl_address_lov),''),
-            NULLIF(CONCAT_WS(', ', TRIM(a.STREET), TRIM(a.CITY1), TRIM(a.POST_CODE1)), '')
+            NULLIF(TRIM(fc.addr_address_lov),''),
+            CASE WHEN fc.addr_id = fc.address_id THEN
+                COALESCE(NULLIF(CONCAT_WS(', ', fc.street, fc.city, fc.postal_code), ''),
+                         NULLIF(CONCAT_WS(', ', TRIM(a.STREET), TRIM(a.CITY1), TRIM(a.POST_CODE1)), ''))
+            END
         ) as ADDRESS_LOV,
-        -- Le fichier ne porte pas d'indicateur de domaine par defaut : il est
-        -- deduit de la presence du code societe, PHL ne servant que de repli.
+        -- Indicateur d'adresse par defaut : celui de PHL, adresse par adresse.
+        -- Sans PHL, le fichier n'en porte pas : il est deduit de la presence
+        -- du code societe.
         COALESCE(
+            fc.addr_default_domain,
             CASE WHEN NULLIF(TRIM(fc.bukrs), '') IS NOT NULL THEN 'TRUE' END,
-            fc.phl_default_domain,
             'FALSE'
         ) as DEFAULT_DOMAIN,
         -- file_customer.country est un CODE ('FR') sur les 168 lignes, pas un
         -- libelle : il alimente COUNTRY_DB, pas COUNTRY. Le libelle vient donc
-        -- de SAP (T005T, SPRAS='F'), puis de PHL, comme dans customer_info.
-        COALESCE(NULLIF(TRIM(t_country.LANDX),''), fc.phl_cli_country) as COUNTRY,
-        public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1)) as COUNTRY_DB,
-        public.get_default_value('clean_data.customer_info_address', 'party_type', 'Customer') as PARTY_TYPE,
-        COALESCE(NULLIF(TRIM(fc.phl_party_type_db),''),
+        -- de PHL (client_adresse_phl.country = 'FRANCE'), puis de SAP (T005T,
+        -- SPRAS='F'), puis du client PHL.
+        COALESCE(NULLIF(TRIM(fc.addr_country),''),
+                 NULLIF(TRIM(t_country.LANDX),''),
+                 fc.phl_cli_country) as COUNTRY,
+        COALESCE(NULLIF(TRIM(fc.addr_country_db),''),
+                 public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1))) as COUNTRY_DB,
+        COALESCE(NULLIF(TRIM(fc.addr_party_type),''),
+                 public.get_default_value('clean_data.customer_info_address', 'party_type', 'Customer')) as PARTY_TYPE,
+        COALESCE(NULLIF(TRIM(fc.addr_party_type_db),''),
                  public.get_default_value('clean_data.customer_info_address', 'party_type_db', 'CUSTOMER')) as PARTY_TYPE_DB,
         public.get_default_value('clean_data.customer_info_address', 'secondary_contact', NULL) as SECONDARY_CONTACT,
         public.get_default_value('clean_data.customer_info_address', 'primary_contact', NULL) as PRIMARY_CONTACT,
-        COALESCE(SUBSTRING(fc.street, 1, 35), SUBSTRING(TRIM(a.STREET), 1, 35)) as ADDRESS1,
-        COALESCE(SUBSTRING(NULLIF(TRIM(fc.phl_address2),''), 1, 35), SUBSTRING(NULLIF(TRIM(a.HOUSE_NUM1),''), 1, 35), '') as ADDRESS2,
-        COALESCE(TRIM(a.HOUSE_NUM2), '') as ADDRESS3,
-        COALESCE(TRIM(a.LOCATION), '') as ADDRESS4,
-        COALESCE(TRIM(a.BUILDING), '') as ADDRESS5,
-        COALESCE(TRIM(a.FLOOR), '') as ADDRESS6,
-        COALESCE(SUBSTRING(fc.postal_code, 1, 35), SUBSTRING(TRIM(a.POST_CODE1), 1, 35)) as ZIP_CODE,
-        COALESCE(SUBSTRING(fc.city, 1, 35), SUBSTRING(TRIM(a.CITY1), 1, 35)) as CITY,
-        COALESCE(SUBSTRING(fc.region, 1, 35), SUBSTRING(TRIM(a.REGION), 1, 35)) as STATE,
-        COALESCE(SUBSTRING(fc.region, 1, 35), SUBSTRING(TRIM(a.REGION), 1, 35)) as COUNTY,
-        public.get_default_value('clean_data.customer_info_address', 'jurisdiction_code', NULL) as JURISDICTION_CODE
-    FROM fc  -- SOURCE PILOTE : fichier file_customer
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_address1),''), 1, 35),
+                 CASE WHEN fc.addr_id = fc.address_id
+                      THEN COALESCE(SUBSTRING(fc.street, 1, 35), SUBSTRING(TRIM(a.STREET), 1, 35)) END) as ADDRESS1,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_address2),''), 1, 35),
+                 CASE WHEN fc.addr_id = fc.address_id
+                      THEN SUBSTRING(NULLIF(TRIM(a.HOUSE_NUM1),''), 1, 35) END, '') as ADDRESS2,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_address3),''), 1, 35),
+                 CASE WHEN fc.addr_id = fc.address_id THEN TRIM(a.HOUSE_NUM2) END, '') as ADDRESS3,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_address4),''), 1, 35),
+                 CASE WHEN fc.addr_id = fc.address_id THEN TRIM(a.LOCATION) END, '') as ADDRESS4,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_address5),''), 1, 35),
+                 CASE WHEN fc.addr_id = fc.address_id THEN TRIM(a.BUILDING) END, '') as ADDRESS5,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_address6),''), 1, 35),
+                 CASE WHEN fc.addr_id = fc.address_id THEN TRIM(a.FLOOR) END, '') as ADDRESS6,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_zip_code),''), 1, 35),
+                 CASE WHEN fc.addr_id = fc.address_id
+                      THEN COALESCE(SUBSTRING(fc.postal_code, 1, 35), SUBSTRING(TRIM(a.POST_CODE1), 1, 35)) END) as ZIP_CODE,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_city),''), 1, 35),
+                 CASE WHEN fc.addr_id = fc.address_id
+                      THEN COALESCE(SUBSTRING(fc.city, 1, 35), SUBSTRING(TRIM(a.CITY1), 1, 35)) END) as CITY,
+        -- STATE / COUNTY : PHL ne les porte pas. Pour une adresse francaise on
+        -- reprend la regle du fichier (departement = 2 premiers chiffres du
+        -- code postal) ; le champ region du fichier ne vaut que pour l'adresse
+        -- principale.
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_state),''), 1, 35),
+                 CASE WHEN fc.addr_origin = 'PHL'
+                       AND fc.addr_zip_code ~ '^[0-9]{5}$'
+                       AND COALESCE(fc.addr_country_db, 'FR') = 'FR'
+                      THEN LEFT(fc.addr_zip_code, 2) END,
+                 CASE WHEN fc.addr_id = fc.address_id
+                      THEN COALESCE(SUBSTRING(fc.region, 1, 35), SUBSTRING(TRIM(a.REGION), 1, 35)) END) as STATE,
+        COALESCE(SUBSTRING(NULLIF(TRIM(fc.addr_county),''), 1, 35),
+                 CASE WHEN fc.addr_origin = 'PHL'
+                       AND fc.addr_zip_code ~ '^[0-9]{5}$'
+                       AND COALESCE(fc.addr_country_db, 'FR') = 'FR'
+                      THEN LEFT(fc.addr_zip_code, 2) END,
+                 CASE WHEN fc.addr_id = fc.address_id
+                      THEN COALESCE(SUBSTRING(fc.region, 1, 35), SUBSTRING(TRIM(a.REGION), 1, 35)) END) as COUNTY,
+        COALESCE(NULLIF(TRIM(fc.addr_jurisdiction_code),''),
+                 public.get_default_value('clean_data.customer_info_address', 'jurisdiction_code', NULL)) as JURISDICTION_CODE
+    FROM fc  -- SOURCE PILOTE : adresses PHL, repli fichier
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR
         AND (k.LOEVM IS NULL OR k.LOEVM = '')
@@ -125,8 +173,8 @@ BEGIN
     LEFT JOIN raw_data.T005T t_country
         ON COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1) = t_country.LAND1
         AND t_country.SPRAS = 'F'
-    WHERE fc.address_id IS NOT NULL
-    ORDER BY fc.customer_id, fc.address_id;
+    WHERE fc.addr_id IS NOT NULL
+    ORDER BY fc.customer_id, fc.addr_id;
 
     GET DIAGNOSTICS v_processed_count = ROW_COUNT;
 

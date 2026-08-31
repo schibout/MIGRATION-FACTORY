@@ -30,7 +30,11 @@
 --
 -- La vue expose exactement les colonnes de raw_data.file_customer, plus :
 --   customer_id     identifiant client deja calcule
---   address_id      identifiant d'adresse deja calcule
+--   address_id      adresse PRINCIPALE : address_id PHL si le client est
+--                   rapproche, sinon le numero d'adresse du fichier. Les
+--                   procedures qui referencent UNE adresse (types, taxes,
+--                   paiement, commande) s'appuient dessus. Pour charger
+--                   TOUTES les adresses, voir clean_data.v_customer_address_source
 --   source_systeme  toujours 'FILE' (conserve : plusieurs procedures le lisent)
 --   phl_*           champs d'ADRESSE issus de client_adresse_phl
 --   phl_cli_*       champs CLIENT issus de client_phl
@@ -111,7 +115,16 @@ SELECT
     COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs), ''),
              NULLIF(TRIM(f.num_corrige), ''),
              TRIM(f.kunnr))                                   AS customer_id,
-    COALESCE(NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''), '1') AS address_id,
+    -- ADRESSE PRINCIPALE du client. Depuis que les adresses sont reprises de
+    -- PHL (clean_data.v_customer_address_source), c'est l'address_id PHL
+    -- retenu par la LATERAL ci-dessous (default_domain=VRAI, sinon le plus
+    -- petit) des qu'un rapprochement existe. Toutes les tables satellites qui
+    -- referencent une adresse (types, taxes, paiement, commande) pointent
+    -- ainsi sur une ligne reellement chargee dans customer_info_address.
+    -- Repli : le numero d'adresse du fichier, puis '1'.
+    COALESCE(NULLIF(TRIM(pa.address_id), ''),
+             NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''),
+             '1')                                             AS address_id,
     'FILE'::TEXT                                              AS source_systeme,
     -- ---- champs d'ADRESSE issus de client_adresse_phl ----
     -- Seules les colonnes reellement alimentees sont reprises : address3 a
@@ -137,6 +150,9 @@ SELECT
     NULLIF(UPPER(TRIM(p.customer_category_db)), '')::TEXT         AS phl_customer_category_db,
     NULLIF(UPPER(TRIM(p.b2b_customer_db)), '')::TEXT              AS phl_b2b_customer_db,
     NULLIF(UPPER(TRIM(p.identifier_ref_validation_db)), '')::TEXT AS phl_identifier_ref_validation_db,
+    -- Code client PHL retenu : cle de jointure vers raw_data.client_adresse_phl
+    -- pour clean_data.v_customer_address_source (toutes les adresses du client).
+    NULLIF(TRIM(p.customer_id), '')::TEXT             AS phl_cli_customer_id,
     NULLIF(TRIM(p.name), '')::TEXT                    AS phl_cli_name,
     p.creation_date::DATE                             AS phl_cli_creation_date,
     NULLIF(TRIM(p.association_no), '')::TEXT          AS phl_cli_association_no,
