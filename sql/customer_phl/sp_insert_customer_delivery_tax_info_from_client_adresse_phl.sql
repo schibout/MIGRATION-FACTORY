@@ -30,15 +30,15 @@ BEGIN
     SELECT DISTINCT ON (cp.customer_id, cap.address_id, COALESCE(cap.country_db, 'FR'))
         cp.customer_id as CUSTOMER_ID,
         cap.address_id as ADDRESS_ID,
-        'TRIMET' as COMPANY,
-        NULL as SUPPLY_COUNTRY,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'company', 'TRIMET') as COMPANY,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'supply_country', NULL) as SUPPLY_COUNTRY,
         COALESCE(cap.country_db, 'FR') as SUPPLY_COUNTRY_DB,
         COALESCE(cap.country_db, 'FR') as CUS_COUNTRY_CODE,
-        'TAX' as TAX_LIABILITY,
-        NULL as TAX_BOOK_ID,
-        NULL as TAX_BOOK_TYPE,
-        NULL as TAX_STRUCTURE_ID,
-        NULL as TAX_CALC_STRUCTURE_ID
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_liability', 'TAX') as TAX_LIABILITY,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_book_id', NULL) as TAX_BOOK_ID,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_book_type', NULL)::numeric as TAX_BOOK_TYPE,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_structure_id', NULL) as TAX_STRUCTURE_ID,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_calc_structure_id', NULL) as TAX_CALC_STRUCTURE_ID
     FROM raw_data.client_phl cp
     INNER JOIN raw_data.client_adresse_phl cap ON cap.customer_id = cp.customer_id
     WHERE cp.customer_id IS NOT NULL

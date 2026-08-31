@@ -29,13 +29,13 @@ BEGIN
     SELECT DISTINCT ON (ifs.customer_number, COALESCE(ifs.numero_adresse, k.ADRNR), COALESCE(k.LAND1, ifs.country, 'FR'))
         ifs.customer_number as CUSTOMER_ID,
         COALESCE(ifs.numero_adresse, k.ADRNR) as ADDRESS_ID,
-        'TRIMET' as COMPANY,
+        public.get_default_value('clean_data.customer_addr_tax_number', 'company', 'TRIMET') as COMPANY,
         COALESCE(k.LAND1, ifs.country, 'FR') as SUPPLY_COUNTRY,
         COALESCE(k.LAND1, ifs.country, 'FR') as DELIVERY_COUNTRY,
-        '' as TAX_ID_TYPE,
+        public.get_default_value('clean_data.customer_addr_tax_number', 'tax_id_type', '') as TAX_ID_TYPE,
         SUBSTRING(COALESCE(k.STCEG, k.STCD1, ifs.tax_number_1, 'NO_TAX_ID'), 1, 50) as TAX_ID_NUMBER,
-        'True' as DEFAULT_TAX_ID_NUMBER,
-        'TRUE' as DEFAULT_TAX_ID_NUMBER_DB
+        public.get_default_value('clean_data.customer_addr_tax_number', 'default_tax_id_number', 'True') as DEFAULT_TAX_ID_NUMBER,
+        public.get_default_value('clean_data.customer_addr_tax_number', 'default_tax_id_number_db', 'TRUE') as DEFAULT_TAX_ID_NUMBER_DB
     FROM clean_data.ifs_customer ifs  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k 
         ON ifs.customer_number = k.KUNNR

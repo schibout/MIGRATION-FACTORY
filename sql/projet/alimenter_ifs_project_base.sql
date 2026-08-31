@@ -76,7 +76,7 @@ BEGIN
         SUBSTRING('*', 1, 10) as calendar_id,
         
         -- PROGRAM_ID: CAPEX
-        'CAPEX' as program_id,
+        public.get_default_value('clean_data.project_base', 'program_id', 'CAPEX') as program_id,
         
         -- CATEGORY1_ID: Recherche via table de transcodification
         COALESCE(
@@ -85,7 +85,7 @@ BEGIN
         ) as category1_id,
         
         -- CATEGORY2_ID: MECA
-        'MECA' as category2_id,
+        public.get_default_value('clean_data.project_base', 'category2_id', 'MECA') as category2_id,
         
         -- PLANNED_COST: Budget initial SharePoint
         COALESCE(sp.budget_initial, sp.budget_total_sap, 0) as planned_cost,
@@ -94,16 +94,16 @@ BEGIN
         COALESCE(sp.start_date, sp.created)::DATE as date_created,
         
         -- BASELINE_REVISION_NUMBER: '0' par défaut
-        '0' as baseline_revision_number,
+        public.get_default_value('clean_data.project_base', 'baseline_revision_number', '0') as baseline_revision_number,
         
         -- EARNED_VALUE_METHOD: 'Planned' par défaut (OBLIGATOIRE)
-        'Planned' as earned_value_method,
+        public.get_default_value('clean_data.project_base', 'earned_value_method', 'Planned') as earned_value_method,
         
         -- EARNED_VALUE_METHOD_DB: 'PLANNED'
         SUBSTRING('PLANNED', 1, 20) as earned_value_method_db,
         
         -- MATERIAL_ALLOCATION: 'Within Project' par défaut (OBLIGATOIRE)
-        'Within Project' as material_allocation,
+        public.get_default_value('clean_data.project_base', 'material_allocation', 'Within Project') as material_allocation,
         
         -- MATERIAL_ALLOCATION_DB: 'WITHIN_PROJECT'
         SUBSTRING('WITHIN_PROJECT', 1, 25) as material_allocation_db,
@@ -133,13 +133,13 @@ BEGIN
         SUBSTRING('FALSE', 1, 5) as proj_unique_sale_db,
         
         -- MULTI_CURRENCY_BUDGETING: 'FALSE' par défaut (OBLIGATOIRE)
-        'FALSE' as multi_currency_budgeting,
+        public.get_default_value('clean_data.project_base', 'multi_currency_budgeting', 'FALSE') as multi_currency_budgeting,
         
         -- MULTI_CURRENCY_BUDGETING_DB: 'FALSE'
         SUBSTRING('FALSE', 1, 5) as multi_currency_budgeting_db,
         
         -- PROJECT_MISC_COMP_METHOD: 'Manually Planned' par défaut (OBLIGATOIRE)
-        'Manually Planned' as project_misc_comp_method,
+        public.get_default_value('clean_data.project_base', 'project_misc_comp_method', 'Manually Planned') as project_misc_comp_method,
         
         -- PROJECT_MISC_COMP_METHOD_DB: 'MANUALLY_PLANNED'
         SUBSTRING('MANUALLY_PLANNED', 1, 20) as project_misc_comp_method_db,
@@ -148,7 +148,7 @@ BEGIN
         SUBSTRING('FALSE', 1, 20) as plan_project_transaction_db,
         
         -- WORK_DAY_TO_HOURS_CONV: 7 (au lieu de 8)
-        7 as work_day_to_hours_conv
+        public.get_default_value('clean_data.project_base', 'work_day_to_hours_conv', '7')::numeric as work_day_to_hours_conv
         
     FROM raw_data.sharepoint_projets sp
     LEFT JOIN raw_data.sharepoint_users pm_user 

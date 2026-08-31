@@ -25,11 +25,11 @@ BEGIN
     SELECT DISTINCT ON (cap.customer_id, cap.address_id)
         cap.customer_id as CUSTOMER_ID,
         cap.address_id as ADDRESS_ID,
-        NULL as ADDRESS_TYPE_CODE,
+        public.get_default_value('clean_data.customer_info_address_type', 'address_type_code', NULL) as ADDRESS_TYPE_CODE,
         v_address_type_code_db as ADDRESS_TYPE_CODE_DB,
         cap.customer_id as PARTY,
-        'TRUE' as DEF_ADDRESS,
-        'FALSE' as DEFAULT_DOMAIN
+        public.get_default_value('clean_data.customer_info_address_type', 'def_address', 'TRUE') as DEF_ADDRESS,
+        public.get_default_value('clean_data.customer_info_address_type', 'default_domain', 'FALSE') as DEFAULT_DOMAIN
     FROM raw_data.client_adresse_phl cap
     WHERE cap.customer_id IS NOT NULL
     AND cap.address_id IS NOT NULL

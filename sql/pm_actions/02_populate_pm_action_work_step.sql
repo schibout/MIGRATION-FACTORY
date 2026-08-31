@@ -2,10 +2,10 @@ CREATE OR REPLACE PROCEDURE clean_data.populate_pm_action_work_step()
  LANGUAGE plpgsql
 AS $procedure$
 DECLARE
-    v_org_contract        VARCHAR := 'SJ';
-    v_pm_revision         VARCHAR := '1';
-    v_connection_type     VARCHAR := 'Functional Object';
-    v_connection_type_db  VARCHAR := 'FUNCTIONAL';
+    v_org_contract        VARCHAR := public.get_default_value('clean_data.pm_action_work_step', 'mch_code_contract', 'SJ');
+    v_pm_revision         VARCHAR := public.get_default_value('clean_data.pm_action_work_step', 'pm_revision', '1');
+    v_connection_type     VARCHAR := public.get_default_value('clean_data.pm_action_work_step', 'connection_type', 'Functional Object');
+    v_connection_type_db  VARCHAR := public.get_default_value('clean_data.pm_action_work_step', 'connection_type_db', 'FUNCTIONAL');
     v_count INTEGER := 0;
 BEGIN
     TRUNCATE TABLE clean_data.pm_action_work_step;

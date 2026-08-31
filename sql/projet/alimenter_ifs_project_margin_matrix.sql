@@ -84,7 +84,7 @@ BEGIN
         
         -- Métadonnées
         md5(pb.company || pb.project_id || 'margin')::uuid as objid,
-        '1' as objversion,
+        public.get_default_value('clean_data.project_margin_matrix', 'objversion', '1') as objversion,
         CURRENT_TIMESTAMP as last_updated,
         CURRENT_TIMESTAMP as created_at
         

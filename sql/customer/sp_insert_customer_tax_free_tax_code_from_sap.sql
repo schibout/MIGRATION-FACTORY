@@ -26,10 +26,10 @@ BEGIN
     SELECT DISTINCT ON (ifs.customer_number, COALESCE(ifs.numero_adresse, k.ADRNR))
         ifs.customer_number as CUSTOMER_ID,
         COALESCE(ifs.numero_adresse, k.ADRNR) as ADDRESS_ID,
-        'TRIMET' as COMPANY,
+        public.get_default_value('clean_data.customer_tax_free_tax_code', 'company', 'TRIMET') as COMPANY,
         COALESCE(k.LAND1, ifs.country, 'FR') as SUPPLY_COUNTRY,
-        'Delivery Type' as DELIVERY_TYPE,
-        NULL as VAT_FREE_VAT_CODE
+        public.get_default_value('clean_data.customer_tax_free_tax_code', 'delivery_type', 'Delivery Type') as DELIVERY_TYPE,
+        public.get_default_value('clean_data.customer_tax_free_tax_code', 'vat_free_vat_code', NULL, 'CUSTOMER') as VAT_FREE_VAT_CODE
     FROM clean_data.ifs_customer ifs  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k 
         ON ifs.customer_number = k.KUNNR

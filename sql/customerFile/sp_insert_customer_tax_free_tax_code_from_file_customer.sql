@@ -33,10 +33,10 @@ BEGIN
     SELECT
         sub.customer_id as CUSTOMER_ID,
         sub.address_id as ADDRESS_ID,
-        'TRIMET' as COMPANY,
+        public.get_default_value('clean_data.customer_tax_free_tax_code', 'company', 'TRIMET') as COMPANY,
         sub.supply_country as SUPPLY_COUNTRY,
         dt.delivery_type as DELIVERY_TYPE,
-        'N' as VAT_FREE_VAT_CODE
+        public.get_default_value('clean_data.customer_tax_free_tax_code', 'vat_free_vat_code', 'N', 'CUSTOMERFILE') as VAT_FREE_VAT_CODE
     FROM (
         SELECT DISTINCT ON (fc.customer_id, fc.address_id)
             fc.customer_id,

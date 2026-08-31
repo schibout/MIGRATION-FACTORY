@@ -2,12 +2,14 @@ CREATE OR REPLACE PROCEDURE clean_data.populate_pm_action()
  LANGUAGE plpgsql
 AS $procedure$
 DECLARE
-    -- Constantes de configuration IFS (ajuster avant le run réel)
-    v_org_contract        VARCHAR := 'SJ';
-    v_org_code            VARCHAR := 'FR_MAINT';
-    v_pm_revision         VARCHAR := '1';
-    v_connection_type     VARCHAR := 'Functional Object';
-    v_connection_type_db  VARCHAR := 'FUNCTIONAL';
+    -- Constantes de configuration IFS : paramétrables depuis l'écran
+    -- Configuration > Valeurs par défaut (public.get_default_value) ; le 3e argument
+    -- reste l'ancienne valeur codée en dur, donc comportement inchangé sans paramétrage.
+    v_org_contract        VARCHAR := public.get_default_value('clean_data.pm_action', 'org_contract', 'SJ');
+    v_org_code            VARCHAR := public.get_default_value('clean_data.pm_action', 'org_code', 'FR_MAINT');
+    v_pm_revision         VARCHAR := public.get_default_value('clean_data.pm_action', 'pm_revision', '1');
+    v_connection_type     VARCHAR := public.get_default_value('clean_data.pm_action', 'connection_type', 'Functional Object');
+    v_connection_type_db  VARCHAR := public.get_default_value('clean_data.pm_action', 'connection_type_db', 'FUNCTIONAL');
     v_count INTEGER := 0;
     v_reject_count INTEGER := 0;
 BEGIN

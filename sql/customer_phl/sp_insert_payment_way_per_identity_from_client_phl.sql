@@ -28,12 +28,12 @@ BEGIN
         is_deleted
     )
     SELECT DISTINCT ON (cp.customer_id)
-        'TRIMET' as company,
+        public.get_default_value('clean_data.payment_way_per_identity', 'company', 'TRIMET') as company,
         cp.customer_id as identity,
-        'Customer' as party_type,
-        'CUSTOMER' as party_type_db,
-        'BANK_TRANSFER' as way_id,
-        'TRUE' as default_payment_way,
+        public.get_default_value('clean_data.payment_way_per_identity', 'party_type', 'Customer', 'CUSTOMER_PHL') as party_type,
+        public.get_default_value('clean_data.payment_way_per_identity', 'party_type_db', 'CUSTOMER', 'CUSTOMER_PHL') as party_type_db,
+        public.get_default_value('clean_data.payment_way_per_identity', 'way_id', 'BANK_TRANSFER', 'CUSTOMER_PHL') as way_id,
+        public.get_default_value('clean_data.payment_way_per_identity', 'default_payment_way', 'TRUE') as default_payment_way,
         CURRENT_TIMESTAMP as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp,
         'SYSTEM' as created_by,

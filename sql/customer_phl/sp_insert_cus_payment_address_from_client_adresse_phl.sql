@@ -31,11 +31,11 @@ BEGIN
         bank_account_valid_date
     )
     SELECT DISTINCT ON (cp.customer_id, cap.address_id)
-        'TRIMET' as company,
+        public.get_default_value('clean_data.cus_payment_address', 'company', 'TRIMET') as company,
         cp.customer_id as identity,
-        'Customer' as party_type,
-        'CUSTOMER' as party_type_db,
-        'SEPA' as way_id,
+        public.get_default_value('clean_data.cus_payment_address', 'party_type', 'Customer') as party_type,
+        public.get_default_value('clean_data.cus_payment_address', 'party_type_db', 'CUSTOMER') as party_type_db,
+        public.get_default_value('clean_data.cus_payment_address', 'way_id', 'SEPA') as way_id,
         cap.address_id as address_id,
         CONCAT_WS(' - ', COALESCE(cap.name, cp.name), COALESCE(cap.city, '')) as description,
         CASE
@@ -48,12 +48,12 @@ BEGIN
             ) = 1 THEN 'TRUE'
             ELSE 'FALSE'
         END as default_address,
-        NULL as account,
-        NULL as bic_code,
-        'FALSE' as blocked_for_use,
-        NULL as bank_account_validated,
-        'NOT VALIDATED' as bank_account_validated_db,
-        NULL as bank_account_valid_date
+        public.get_default_value('clean_data.cus_payment_address', 'account', NULL) as account,
+        public.get_default_value('clean_data.cus_payment_address', 'bic_code', NULL) as bic_code,
+        public.get_default_value('clean_data.cus_payment_address', 'blocked_for_use', 'FALSE') as blocked_for_use,
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_validated', NULL) as bank_account_validated,
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_validated_db', 'NOT VALIDATED', 'CUSTOMER_PHL') as bank_account_validated_db,
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_valid_date', NULL)::date as bank_account_valid_date
     FROM raw_data.client_phl cp
     INNER JOIN raw_data.client_adresse_phl cap ON cap.customer_id = cp.customer_id
     WHERE cp.customer_id IS NOT NULL

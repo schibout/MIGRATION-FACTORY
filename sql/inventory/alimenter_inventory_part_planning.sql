@@ -104,30 +104,30 @@ BEGIN
         
         -- Tailles de lot (sources SAP MARC)
         COALESCE(NULLIF(marc.bstmi, '')::numeric, 0) as lot_size,
-        'Manual Lot Size' as lot_size_auto,
-        'N' as lot_size_auto_db,
+        public.get_default_value('clean_data.invent_part_plan', 'lot_size_auto', 'Manual Lot Size') as lot_size_auto,
+        public.get_default_value('clean_data.invent_part_plan', 'lot_size_auto_db', 'N') as lot_size_auto_db,
         COALESCE(NULLIF(marc.bstma, '')::numeric, 0) as max_order_qty,
         COALESCE(NULLIF(marc.bstmi, '')::numeric, 0) as min_order_qty,
-        0 as mul_order_qty,
+        public.get_default_value('clean_data.invent_part_plan', 'mul_order_qty', '0')::numeric as mul_order_qty,
         COALESCE(NULLIF(marc.bstmi, '')::numeric, 0) as std_order_size,
         
         -- Point de commande et stock
         COALESCE(NULLIF(marc.minbe, '')::numeric, 0) as order_point_qty,
-        'Manual Order Point' as order_point_qty_auto,
-        'N' as order_point_qty_auto_db,
+        public.get_default_value('clean_data.invent_part_plan', 'order_point_qty_auto', 'Manual Order Point') as order_point_qty_auto,
+        public.get_default_value('clean_data.invent_part_plan', 'order_point_qty_auto_db', 'N') as order_point_qty_auto_db,
         COALESCE(NULLIF(marc.eisbe, '')::numeric, 0) as safety_stock,
-        'Manual Safety Stock' as safety_stock_auto,
-        'N' as safety_stock_auto_db,
+        public.get_default_value('clean_data.invent_part_plan', 'safety_stock_auto', 'Manual Safety Stock') as safety_stock_auto,
+        public.get_default_value('clean_data.invent_part_plan', 'safety_stock_auto_db', 'N') as safety_stock_auto_db,
         
         -- Délais et couverture
         COALESCE(NULLIF(marc.shflg, '')::numeric, 0) as safety_lead_time,
-        0 as maxweek_supply,
+        public.get_default_value('clean_data.invent_part_plan', 'maxweek_supply', '0')::numeric as maxweek_supply,
         
         -- Coûts
-        0 as setup_cost,
-        0 as carry_rate,
-        0 as service_rate,
-        0 as shrinkage_fac,
+        public.get_default_value('clean_data.invent_part_plan', 'setup_cost', '0')::numeric as setup_cost,
+        public.get_default_value('clean_data.invent_part_plan', 'carry_rate', '0')::numeric as carry_rate,
+        public.get_default_value('clean_data.invent_part_plan', 'service_rate', '0')::numeric as service_rate,
+        public.get_default_value('clean_data.invent_part_plan', 'shrinkage_fac', '0')::numeric as shrinkage_fac,
         
         -- Méthode de planification (MARC.DISMM)
         CASE 
@@ -140,14 +140,14 @@ BEGIN
             -- Par défaut → M
             ELSE 'M'
         END as planning_method,
-        'True' as planning_method_auto,
-        'TRUE' as planning_method_auto_db,
+        public.get_default_value('clean_data.invent_part_plan', 'planning_method_auto', 'True') as planning_method_auto,
+        public.get_default_value('clean_data.invent_part_plan', 'planning_method_auto_db', 'TRUE') as planning_method_auto_db,
         
         -- Type d'approvisionnement
-        'Requisition' as order_requisition,
-        'R' as order_requisition_db,
-        'Release' as proposal_release,
-        'RELEASE' as proposal_release_db,
+        public.get_default_value('clean_data.invent_part_plan', 'order_requisition', 'Requisition') as order_requisition,
+        public.get_default_value('clean_data.invent_part_plan', 'order_requisition_db', 'R') as order_requisition_db,
+        public.get_default_value('clean_data.invent_part_plan', 'proposal_release', 'Release') as proposal_release,
+        public.get_default_value('clean_data.invent_part_plan', 'proposal_release_db', 'RELEASE') as proposal_release_db,
         
         -- Split fabrication/achat
         CASE 
@@ -158,16 +158,16 @@ BEGIN
             WHEN marc.beskz = 'E' THEN 0    -- 0% acheté si production
             ELSE 100                         -- 100% acheté sinon
         END as percent_acquired,
-        'No Split' as split_manuf_acquired,
-        'NO_SPLIT' as split_manuf_acquired_db,
-        'Requisition' as acquired_supply_type,
-        'R' as acquired_supply_type_db,
-        'Requisition' as manuf_supply_type,
-        'R' as manuf_supply_type_db,
+        public.get_default_value('clean_data.invent_part_plan', 'split_manuf_acquired', 'No Split') as split_manuf_acquired,
+        public.get_default_value('clean_data.invent_part_plan', 'split_manuf_acquired_db', 'NO_SPLIT') as split_manuf_acquired_db,
+        public.get_default_value('clean_data.invent_part_plan', 'acquired_supply_type', 'Requisition') as acquired_supply_type,
+        public.get_default_value('clean_data.invent_part_plan', 'acquired_supply_type_db', 'R') as acquired_supply_type_db,
+        public.get_default_value('clean_data.invent_part_plan', 'manuf_supply_type', 'Requisition') as manuf_supply_type,
+        public.get_default_value('clean_data.invent_part_plan', 'manuf_supply_type_db', 'R') as manuf_supply_type_db,
         
         -- Capacité de planification
-        'Infinite Capacity' as sched_capacity,
-        'I' as sched_capacity_db
+        public.get_default_value('clean_data.invent_part_plan', 'sched_capacity', 'Infinite Capacity') as sched_capacity,
+        public.get_default_value('clean_data.invent_part_plan', 'sched_capacity_db', 'I') as sched_capacity_db
         
     FROM raw_data.mara mara
     INNER JOIN raw_data.marc marc

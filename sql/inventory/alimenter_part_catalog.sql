@@ -59,25 +59,25 @@ BEGIN
             WHEN va.avec_gestion_lot = 'OUI' THEN 'LOT TRACKING'
             ELSE 'NOT LOT TRACKING'
         END as lot_tracking_code_db,
-        'MANUAL' as serial_rule_db,
-        'NOT SERIAL TRACKING' as serial_tracking_code_db,
-        'NOT SERIAL TRACKING' as eng_serial_tracking_code_db,
-        'NOT CONFIGURED' as configurable_db,
-        'NOT_ALLOW_COND_CODE' as condition_code_usage_db,
-        'NO_SUBLOTS' as sub_lot_rule_db,
+        public.get_default_value('clean_data.part_catalog', 'serial_rule_db', 'MANUAL') as serial_rule_db,
+        public.get_default_value('clean_data.part_catalog', 'serial_tracking_code_db', 'NOT SERIAL TRACKING') as serial_tracking_code_db,
+        public.get_default_value('clean_data.part_catalog', 'eng_serial_tracking_code_db', 'NOT SERIAL TRACKING') as eng_serial_tracking_code_db,
+        public.get_default_value('clean_data.part_catalog', 'configurable_db', 'NOT CONFIGURED') as configurable_db,
+        public.get_default_value('clean_data.part_catalog', 'condition_code_usage_db', 'NOT_ALLOW_COND_CODE') as condition_code_usage_db,
+        public.get_default_value('clean_data.part_catalog', 'sub_lot_rule_db', 'NO_SUBLOTS') as sub_lot_rule_db,
         -- Allow Many Lots per Production Order : actif des que l'article est suivi en lot
         CASE
             WHEN va.avec_gestion_lot = 'OUI' THEN 'MULTI_LOTS'
             ELSE 'ONE_LOT'
         END as lot_quantity_rule_db,
-        'NOT POSITION PART' as position_part_db,
-        'FALSE' as catch_unit_enabled_db,
-        'TRACKING_OFF' as multilevel_tracking_db,
-        'ONE_LOT_ALLOWED' as component_lot_rule_db,
-        'TRUE' as stop_arrival_issued_serial_db,
-        'FALSE' as allow_as_not_consumed_db,
-        'FALSE' as receipt_issue_serial_track_db,
-        'TRUE' as stop_new_serial_in_rma_db
+        public.get_default_value('clean_data.part_catalog', 'position_part_db', 'NOT POSITION PART') as position_part_db,
+        public.get_default_value('clean_data.part_catalog', 'catch_unit_enabled_db', 'FALSE') as catch_unit_enabled_db,
+        public.get_default_value('clean_data.part_catalog', 'multilevel_tracking_db', 'TRACKING_OFF') as multilevel_tracking_db,
+        public.get_default_value('clean_data.part_catalog', 'component_lot_rule_db', 'ONE_LOT_ALLOWED', 'INVENTORY') as component_lot_rule_db,
+        public.get_default_value('clean_data.part_catalog', 'stop_arrival_issued_serial_db', 'TRUE') as stop_arrival_issued_serial_db,
+        public.get_default_value('clean_data.part_catalog', 'allow_as_not_consumed_db', 'FALSE') as allow_as_not_consumed_db,
+        public.get_default_value('clean_data.part_catalog', 'receipt_issue_serial_track_db', 'FALSE') as receipt_issue_serial_track_db,
+        public.get_default_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db', 'TRUE') as stop_new_serial_in_rma_db
         
     FROM clean_data.ifs_article_maitre va
     WHERE va.numero_article IS NOT NULL

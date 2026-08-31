@@ -47,7 +47,7 @@ BEGIN
     SELECT
         ROW_NUMBER() OVER (ORDER BY src.project_id, src.activity_source, src.milestone_id) AS activity_seq,
         src.project_id,
-        '10' AS sub_project_id,
+        public.get_default_value('clean_data.project_activity', 'sub_project_id', '10') AS sub_project_id,
         COALESCE(
             public.get_transcodification('Activity', src.activity_source, 'ASAP', 'IFS'),
             src.activity_source
@@ -58,14 +58,14 @@ BEGIN
         src.activity_date AS early_finish,
         src.activity_date AS actual_start,
         src.activity_date AS actual_finish,
-        NULL::NUMERIC AS task_id,
-        'ALL_CONNECTED_OBJECTS' AS progress_method_db,
-        'CONNECTED_OBJECTS' AS planned_cost_driver_db,
-        'INCLUDE' AS exclude_periodical_cap_db,
-        'FALSE' AS exclude_resource_progress_db,
-        'FALSE' AS exclude_from_integrations_db,
-        'ACTIVITY' AS node_type_db,
-        'INHERIT' AS mandatory_invoice_comment_db
+        public.get_default_value('clean_data.project_activity', 'task_id', NULL)::numeric AS task_id,
+        public.get_default_value('clean_data.project_activity', 'progress_method_db', 'ALL_CONNECTED_OBJECTS') AS progress_method_db,
+        public.get_default_value('clean_data.project_activity', 'planned_cost_driver_db', 'CONNECTED_OBJECTS') AS planned_cost_driver_db,
+        public.get_default_value('clean_data.project_activity', 'exclude_periodical_cap_db', 'INCLUDE') AS exclude_periodical_cap_db,
+        public.get_default_value('clean_data.project_activity', 'exclude_resource_progress_db', 'FALSE') AS exclude_resource_progress_db,
+        public.get_default_value('clean_data.project_activity', 'exclude_from_integrations_db', 'FALSE') AS exclude_from_integrations_db,
+        public.get_default_value('clean_data.project_activity', 'node_type_db', 'ACTIVITY') AS node_type_db,
+        public.get_default_value('clean_data.project_activity', 'mandatory_invoice_comment_db', 'INHERIT') AS mandatory_invoice_comment_db
     FROM (
         SELECT DISTINCT ON (x.project_id, x.activity_source)
             x.*

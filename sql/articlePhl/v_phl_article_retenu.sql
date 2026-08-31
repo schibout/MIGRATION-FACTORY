@@ -10,6 +10,12 @@
 -- numero d'article est renseigne. Les doublons exacts restants sont geres par
 -- le DISTINCT ON (TRIM("N. ARTICLE")) des procedures alimenter_*_phl.
 -- La colonne radical_article est conservee pour compatibilite.
+--
+-- 2026-08-27 : pas de reprise du CODE FAMILLE 19 (lingots) -> les articles PHL
+-- dont "FAMILLE" vaut 19 sont exclus de la vue, donc de toutes les procedures
+-- alimenter_*_phl (part_catalog, inventory_part, purchase_part, sales_part,
+-- manuf_part_attribute). Aucune ligne concernee dans le fichier PHL actuel
+-- (familles presentes : 23, RF, 22, 21, 20).
 -- ============================================================================
 
 DROP VIEW IF EXISTS raw_data.v_phl_article_retenu;
@@ -82,4 +88,5 @@ CREATE VIEW raw_data.v_phl_article_retenu AS
     phl."CODE FCI",
     TRIM(BOTH FROM phl."N. ARTICLE") AS radical_article
    FROM raw_data.phl_article phl
-  WHERE NULLIF(TRIM(BOTH FROM phl."N. ARTICLE"), ''::text) IS NOT NULL;
+  WHERE NULLIF(TRIM(BOTH FROM phl."N. ARTICLE"), ''::text) IS NOT NULL
+    AND COALESCE(TRIM(BOTH FROM phl."FAMILLE"), ''::text) <> '19'::text;

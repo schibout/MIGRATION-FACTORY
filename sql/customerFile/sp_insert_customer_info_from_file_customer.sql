@@ -51,47 +51,95 @@ BEGIN
         FROM clean_data.v_customer_source
         WHERE customer_id IS NOT NULL
     )
+    -- Cascade appliquee a chaque colonne : FICHIER -> PHL -> SAP -> valeur par
+    -- defaut d'ecran (public.get_default_value). Le fichier fait autorite, PHL
+    -- (raw_data.client_phl, rapproche sur kunnr = numero_sap par la vue) comble
+    -- ce que le fichier ne porte pas, SAP (KNA1) sert de dernier recours metier,
+    -- et la valeur d'ecran n'intervient que si aucune source n'a repondu.
     SELECT DISTINCT ON (fc.customer_id)
         fc.customer_id as CUSTOMER_ID,
-        COALESCE(NULLIF(TRIM(fc.name_1),''), TRIM(k.NAME1)) as NAME,
+        COALESCE(NULLIF(TRIM(fc.name_1),''), fc.phl_cli_name, TRIM(k.NAME1)) as NAME,
         COALESCE(
-            CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END,
+            -- Date du fichier. Deux formats coexistent : 'YYYYMMDD' (branche PHL
+            -- de la vue) et RFC 1123 'Fri, 01 Sep 2023 00:00:00 GMT' (le fichier
+            -- reel, 150 des 168 lignes ; l'ancien code ne testait que YYYYMMDD et
+            -- perdait donc systematiquement la date du referentiel au profit de SAP).
+            -- 'Mon' suppose lc_time anglophone (le serveur est en en_US.UTF-8).
+            CASE
+                WHEN fc.created_on ~ '^[0-9]{8}$'
+                    THEN TO_DATE(fc.created_on, 'YYYYMMDD')
+                WHEN fc.created_on ~ '[0-9]{2} [A-Za-z]{3} [0-9]{4}'
+                    THEN TO_DATE(substring(fc.created_on from '[0-9]{2} [A-Za-z]{3} [0-9]{4}'), 'DD Mon YYYY')
+            END,
+            fc.phl_cli_creation_date,
             CASE WHEN k.ERDAT IS NOT NULL AND k.ERDAT != '' AND LENGTH(TRIM(k.ERDAT)) = 8
             THEN TO_DATE(k.ERDAT, 'YYYYMMDD')
             ELSE NULL END
         ) as CREATION_DATE,
-        COALESCE(NULLIF(TRIM(fc.tax_number_1),''), TRIM(k.STCD1), TRIM(k.STCD2)) as ASSOCIATION_NO,
+        COALESCE(NULLIF(TRIM(fc.tax_number_1),''), fc.phl_cli_association_no, TRIM(k.STCD1), TRIM(k.STCD2)) as ASSOCIATION_NO,
         fc.customer_id as PARTY,
         COALESCE(fc.phl_client_default_domain, 'FALSE') as DEFAULT_DOMAIN,
-        NULL as DEFAULT_LANGUAGE,
-        public.get_transcodification('LANGUAGE', COALESCE(fc.language, k.SPRAS)) as DEFAULT_LANGUAGE_DB,
-        NULL as COUNTRY,
-        -- Certains codes pays SAP (ex: 'SZ') n'existent pas dans IFS → NULL pour éviter ORA-20111 IsoCountry.NOTEXIST
-        CASE WHEN public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1)) IN ('SZ') THEN NULL
-             ELSE public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1))
-        END as COUNTRY_DB,
-        'Customer' as PARTY_TYPE,
-        'CUSTOMER' as PARTY_TYPE_DB,
-        NULL as CORPORATE_FORM,
-        COALESCE(NULLIF(TRIM(fc.vat_number),''), k.STCEG) as IDENTIFIER_REFERENCE,
-        '' as IDENTIFIER_REF_VALIDATION,
-        COALESCE(fc.phl_identifier_ref_validation_db, '') as IDENTIFIER_REF_VALIDATION_DB,
-        NULL as PICTURE_ID,
-        'False' as ONE_TIME,
-        COALESCE(fc.phl_one_time_db, 'FALSE') as ONE_TIME_DB,
-        null as CUSTOMER_CATEGORY,
-        COALESCE(fc.phl_customer_category_db, 'CUSTOMER') as CUSTOMER_CATEGORY_DB,
-        'FALSE' as B2B_CUSTOMER,
-        COALESCE(fc.phl_b2b_customer_db, 'FALSE') as B2B_CUSTOMER_DB,
-        NULL as CUSTOMER_TAX_USAGE_TYPE,
-        NULL as BUSINESS_CLASSIFICATION,
+        COALESCE(fc.phl_cli_default_language,
+                 public.get_default_value('clean_data.customer_info', 'default_language', NULL)) as DEFAULT_LANGUAGE,
+        -- Le code langue du fichier est un code SAP ('F', 'E') -> transcodification.
+        -- client_phl porte deja le code IFS ('fr', 'en') -> repris tel quel.
         COALESCE(
-            CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END,
+            public.get_transcodification('LANGUAGE', NULLIF(TRIM(fc.language), '')),
+            fc.phl_cli_default_language_db,
+            public.get_transcodification('LANGUAGE', k.SPRAS)
+        ) as DEFAULT_LANGUAGE_DB,
+        COALESCE(fc.phl_cli_country,
+                 public.get_default_value('clean_data.customer_info', 'country', NULL)) as COUNTRY,
+        -- Certains codes pays SAP (ex: 'SZ') n'existent pas dans IFS → NULL pour éviter ORA-20111 IsoCountry.NOTEXIST
+        NULLIF(
+            COALESCE(
+                public.get_transcodification('COUNTRY', NULLIF(TRIM(fc.country), '')),
+                fc.phl_cli_country_db,
+                public.get_transcodification('COUNTRY', k.LAND1)
+            ), 'SZ') as COUNTRY_DB,
+        COALESCE(fc.phl_cli_party_type,
+                 public.get_default_value('clean_data.customer_info', 'party_type', 'Customer', 'CUSTOMERFILE')) as PARTY_TYPE,
+        COALESCE(fc.phl_cli_party_type_db,
+                 public.get_default_value('clean_data.customer_info', 'party_type_db', 'CUSTOMER')) as PARTY_TYPE_DB,
+        COALESCE(fc.phl_cli_corporate_form,
+                 public.get_default_value('clean_data.customer_info', 'corporate_form', NULL)) as CORPORATE_FORM,
+        COALESCE(NULLIF(TRIM(fc.vat_number),''), fc.phl_cli_identifier_reference, k.STCEG) as IDENTIFIER_REFERENCE,
+        COALESCE(fc.phl_cli_identifier_ref_validation,
+                 public.get_default_value('clean_data.customer_info', 'identifier_ref_validation', '', 'CUSTOMERFILE')) as IDENTIFIER_REF_VALIDATION,
+        COALESCE(fc.phl_identifier_ref_validation_db, '') as IDENTIFIER_REF_VALIDATION_DB,
+        COALESCE(fc.phl_cli_picture_id,
+                 public.get_default_value('clean_data.customer_info', 'picture_id', NULL))::numeric as PICTURE_ID,
+        COALESCE(fc.phl_cli_one_time,
+                 public.get_default_value('clean_data.customer_info', 'one_time', 'False', 'CUSTOMERFILE')) as ONE_TIME,
+        COALESCE(fc.phl_one_time_db, 'FALSE') as ONE_TIME_DB,
+        COALESCE(fc.phl_cli_customer_category,
+                 public.get_default_value('clean_data.customer_info', 'customer_category', NULL)) as CUSTOMER_CATEGORY,
+        COALESCE(fc.phl_customer_category_db, 'CUSTOMER') as CUSTOMER_CATEGORY_DB,
+        COALESCE(fc.phl_cli_b2b_customer,
+                 public.get_default_value('clean_data.customer_info', 'b2b_customer', 'FALSE', 'CUSTOMERFILE')) as B2B_CUSTOMER,
+        COALESCE(fc.phl_b2b_customer_db, 'FALSE') as B2B_CUSTOMER_DB,
+        COALESCE(fc.phl_cli_customer_tax_usage_type,
+                 public.get_default_value('clean_data.customer_info', 'customer_tax_usage_type', NULL)) as CUSTOMER_TAX_USAGE_TYPE,
+        COALESCE(fc.phl_cli_business_classification,
+                 public.get_default_value('clean_data.customer_info', 'business_classification', NULL)) as BUSINESS_CLASSIFICATION,
+        COALESCE(
+            -- Date du fichier. Deux formats coexistent : 'YYYYMMDD' (branche PHL
+            -- de la vue) et RFC 1123 'Fri, 01 Sep 2023 00:00:00 GMT' (le fichier
+            -- reel, 150 des 168 lignes ; l'ancien code ne testait que YYYYMMDD et
+            -- perdait donc systematiquement la date du referentiel au profit de SAP).
+            -- 'Mon' suppose lc_time anglophone (le serveur est en en_US.UTF-8).
+            CASE
+                WHEN fc.created_on ~ '^[0-9]{8}$'
+                    THEN TO_DATE(fc.created_on, 'YYYYMMDD')
+                WHEN fc.created_on ~ '[0-9]{2} [A-Za-z]{3} [0-9]{4}'
+                    THEN TO_DATE(substring(fc.created_on from '[0-9]{2} [A-Za-z]{3} [0-9]{4}'), 'DD Mon YYYY')
+            END,
+            fc.phl_cli_date_of_registration,
             CASE WHEN k.ERDAT IS NOT NULL AND k.ERDAT != '' AND LENGTH(TRIM(k.ERDAT)) = 8
             THEN TO_DATE(k.ERDAT, 'YYYYMMDD')
             ELSE NULL END
         ) as DATE_OF_REGISTRATION,
-        NULL as MAIN_REPRESENTATIVE,
+        public.get_default_value('clean_data.customer_info', 'main_representative', NULL) as MAIN_REPRESENTATIVE,
         -- Identifiants legacy : conserves tels quels, y compris apres la
         -- renumerotation (sp_renumber_all_customer_ids_file n'y touche plus).
         -- as400 = code client PHL resolu par clean_data.get_legacy_as400_id

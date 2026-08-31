@@ -108,3 +108,7 @@ sales_part	price_change_date	timestamp without time zone	::timestamp
 sales_part	price_conv_factor	numeric	::numeric
 sales_part	rental_list_price	numeric	::numeric
 sales_part	rental_list_price_incl_tax	numeric	::numeric
+cust_ord_customer	cycle_period	numeric	::numeric
+cust_ord_customer	date_del	date	::date
+cust_ord_customer	discount	numeric	::numeric
+cust_ord_customer	last_ivc_date	date	::date

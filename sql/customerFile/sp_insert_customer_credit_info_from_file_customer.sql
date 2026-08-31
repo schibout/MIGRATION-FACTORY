@@ -47,28 +47,28 @@ BEGIN
         allowed_due_amount
     )
     SELECT DISTINCT ON (fc.bukrs, fc.customer_id)
-        'TRIMET'  as company,
+        public.get_default_value('clean_data.customer_credit_info', 'company', 'TRIMET')  as company,
         fc.customer_id as identity,
-        'Customer' as party_type,
-        'CUSTOMER' as party_type_db,
-        NULL as last4q_sales,
-        NULL as note_text,
+        public.get_default_value('clean_data.customer_credit_info', 'party_type', 'Customer') as party_type,
+        public.get_default_value('clean_data.customer_credit_info', 'party_type_db', 'CUSTOMER') as party_type_db,
+        public.get_default_value('clean_data.customer_credit_info', 'last4q_sales', NULL)::numeric as last4q_sales,
+        public.get_default_value('clean_data.customer_credit_info', 'note_text', NULL) as note_text,
         knb1.KNRZE as credit_number,
-        NULL as credit_rating,
-        NULL as avg_days_for_payment,
-        NULL as credit_comments,
-        NULL as credit_analyst_code,
-        NULL as message_type,
-        NULL as credit_limit,
+        public.get_default_value('clean_data.customer_credit_info', 'credit_rating', NULL) as credit_rating,
+        public.get_default_value('clean_data.customer_credit_info', 'avg_days_for_payment', NULL) as avg_days_for_payment,
+        public.get_default_value('clean_data.customer_credit_info', 'credit_comments', NULL) as credit_comments,
+        public.get_default_value('clean_data.customer_credit_info', 'credit_analyst_code', NULL) as credit_analyst_code,
+        public.get_default_value('clean_data.customer_credit_info', 'message_type', NULL) as message_type,
+        public.get_default_value('clean_data.customer_credit_info', 'credit_limit', NULL)::numeric as credit_limit,
         knb1.SPERR as credit_block,
-        NULL as next_review_date,
-        NULL as corp_credit_relation_exist,
-        NULL as credit_relationship_type,
-        NULL as credit_relationship_type_db,
-        NULL as parent_company,
-        NULL as parent_identity,
-        NULL as allowed_due_days,
-        NULL as allowed_due_amount
+        public.get_default_value('clean_data.customer_credit_info', 'next_review_date', NULL)::date as next_review_date,
+        public.get_default_value('clean_data.customer_credit_info', 'corp_credit_relation_exist', NULL) as corp_credit_relation_exist,
+        public.get_default_value('clean_data.customer_credit_info', 'credit_relationship_type', NULL) as credit_relationship_type,
+        public.get_default_value('clean_data.customer_credit_info', 'credit_relationship_type_db', NULL) as credit_relationship_type_db,
+        public.get_default_value('clean_data.customer_credit_info', 'parent_company', NULL) as parent_company,
+        public.get_default_value('clean_data.customer_credit_info', 'parent_identity', NULL) as parent_identity,
+        public.get_default_value('clean_data.customer_credit_info', 'allowed_due_days', NULL)::numeric as allowed_due_days,
+        public.get_default_value('clean_data.customer_credit_info', 'allowed_due_amount', NULL)::numeric as allowed_due_amount
     FROM fc
     LEFT JOIN raw_data.KNB1 knb1
         ON fc.kunnr = knb1.KUNNR

@@ -27,11 +27,11 @@ BEGIN
     SELECT DISTINCT ON (ifs.customer_number, COALESCE(ifs.numero_adresse, k.ADRNR), COALESCE(k.LAND1, ifs.country, 'FR'))
         ifs.customer_number as customer_id,
         COALESCE(ifs.numero_adresse, k.ADRNR) as address_id,
-        'TRIMET' as company,
+        public.get_default_value('clean_data.customer_delivery_fee_code', 'company', 'TRIMET') as company,
         COALESCE(k.LAND1, ifs.country, 'FR') as supply_country,
-        NULL as fee_code,
+        public.get_default_value('clean_data.customer_delivery_fee_code', 'fee_code', NULL) as fee_code,
         SUBSTRING(COALESCE(k.STCEG, k.STCD1, ifs.tax_number_1), 1, 10) as tax_id_number,
-        NULL as tax_code_selection
+        public.get_default_value('clean_data.customer_delivery_fee_code', 'tax_code_selection', NULL) as tax_code_selection
     FROM clean_data.ifs_customer ifs
     LEFT JOIN raw_data.KNA1 k 
         ON ifs.customer_number = k.KUNNR

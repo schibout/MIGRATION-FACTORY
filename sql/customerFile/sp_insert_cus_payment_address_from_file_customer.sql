@@ -39,11 +39,11 @@ BEGIN
         bank_account_valid_date
     )
     SELECT DISTINCT ON (fc.customer_id, COALESCE(NULLIF(TRIM(fc.payment_methods),''), knb1.ZWELS, 'TRANSFER'), fc.address_id)
-        'TRIMET' as company,
+        public.get_default_value('clean_data.cus_payment_address', 'company', 'TRIMET') as company,
         fc.customer_id as identity,
-        'Customer' as party_type,
-        'CUSTOMER' as party_type_db,
-        'SEPA' as way_id,
+        public.get_default_value('clean_data.cus_payment_address', 'party_type', 'Customer') as party_type,
+        public.get_default_value('clean_data.cus_payment_address', 'party_type_db', 'CUSTOMER') as party_type_db,
+        public.get_default_value('clean_data.cus_payment_address', 'way_id', 'SEPA') as way_id,
         fc.address_id as address_id,
         CONCAT_WS(' - ', COALESCE(k.NAME1, fc.name_1), COALESCE(k.ORT01, fc.city)) as description,
         CASE
@@ -67,12 +67,12 @@ BEGIN
             '',
             COALESCE(knbk.BANKN, '')
         ) as account,
-        NULL as bic_code,
-        'FALSE' as blocked_for_use,
-        NULL as bank_account_validated,
+        public.get_default_value('clean_data.cus_payment_address', 'bic_code', NULL) as bic_code,
+        public.get_default_value('clean_data.cus_payment_address', 'blocked_for_use', 'FALSE') as blocked_for_use,
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_validated', NULL) as bank_account_validated,
         -- 'NOT VALIDATED' n'est pas un FndBoolean valide dans IFS → 'FALSE' (compte non validé)
-        'FALSE' as bank_account_validated_db,
-        NULL as bank_account_valid_date
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_validated_db', 'FALSE', 'CUSTOMERFILE') as bank_account_validated_db,
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_valid_date', NULL)::date as bank_account_valid_date
     FROM fc
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

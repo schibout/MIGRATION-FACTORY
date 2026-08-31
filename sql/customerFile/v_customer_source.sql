@@ -16,6 +16,17 @@
 --                   leur propre code sans passer par nouveau_compte_ifs)
 --   address_id      identifiant d'adresse deja calcule
 --   source_systeme  'FILE' ou 'PHL', pour tracer et filtrer si besoin
+--   phl_*           champs d'ADRESSE issus de client_adresse_phl
+--   phl_cli_*       champs CLIENT issus de client_phl
+--
+-- ENRICHISSEMENT PHL DES CLIENTS DU FICHIER
+-- Les colonnes phl_cli_* (et phl_client_default_domain, phl_one_time_db,
+-- phl_customer_category_db, phl_b2b_customer_db, phl_identifier_ref_validation_db)
+-- sont desormais alimentees AUSSI sur la branche FILE, par rapprochement strict
+-- file_customer.kunnr = client_phl.numero_sap (89 des 168 clients du fichier).
+-- Elles ne remplacent jamais la donnee du fichier : elles sont exposees a part,
+-- pour que les procedures appliquent la cascade FICHIER -> PHL -> SAP -> valeur
+-- par defaut d'ecran (public.get_default_value).
 --
 -- Grain : 1 ligne par (client, adresse). Cote FILE le fichier ne porte qu'une
 -- adresse par client ; cote PHL un client peut en avoir plusieurs (jusqu'a 171).
@@ -103,13 +114,50 @@ SELECT
     NULL::TEXT                                                AS phl_addr_name,
     NULL::TEXT                                                AS phl_default_domain,
     NULL::TEXT                                                AS phl_party_type_db,
-    -- champs client propres a client_phl (NULL cote fichier)
-    NULL::TEXT                                                AS phl_client_default_domain,
-    NULL::TEXT                                                AS phl_one_time_db,
-    NULL::TEXT                                                AS phl_customer_category_db,
-    NULL::TEXT                                                AS phl_b2b_customer_db,
-    NULL::TEXT                                                AS phl_identifier_ref_validation_db
+    -- champs client propres a client_phl, repris par rapprochement
+    -- file_customer.kunnr = client_phl.numero_sap (cf. LATERAL ci-dessous).
+    -- Les booleens PHL sont en casse mixte ('True'/'False') alors qu'IFS les
+    -- attend en MAJUSCULES cote _db -> UPPER().
+    UPPER(TRIM(p.default_domain))::TEXT               AS phl_client_default_domain,
+    UPPER(TRIM(p.one_time_db))::TEXT                  AS phl_one_time_db,
+    UPPER(TRIM(p.customer_category_db))::TEXT         AS phl_customer_category_db,
+    UPPER(TRIM(p.b2b_customer_db))::TEXT              AS phl_b2b_customer_db,
+    UPPER(TRIM(p.identifier_ref_validation_db))::TEXT AS phl_identifier_ref_validation_db,
+    -- ---- colonnes client PHL ajoutees pour la cascade FICHIER -> PHL -> SAP ----
+    NULLIF(TRIM(p.name), '')::TEXT                    AS phl_cli_name,
+    p.creation_date::DATE                             AS phl_cli_creation_date,
+    NULLIF(TRIM(p.association_no), '')::TEXT          AS phl_cli_association_no,
+    NULLIF(TRIM(p.default_language), '')::TEXT        AS phl_cli_default_language,
+    NULLIF(TRIM(p.default_language_db), '')::TEXT     AS phl_cli_default_language_db,
+    NULLIF(TRIM(p.country), '')::TEXT                 AS phl_cli_country,
+    NULLIF(TRIM(p.country_db), '')::TEXT              AS phl_cli_country_db,
+    NULLIF(TRIM(p.party_type), '')::TEXT              AS phl_cli_party_type,
+    NULLIF(UPPER(TRIM(p.party_type_db)), '')::TEXT    AS phl_cli_party_type_db,
+    NULLIF(TRIM(p.corporate_form), '')::TEXT          AS phl_cli_corporate_form,
+    NULLIF(TRIM(p.identifier_reference), '')::TEXT    AS phl_cli_identifier_reference,
+    NULLIF(TRIM(p.identifier_ref_validation), '')::TEXT AS phl_cli_identifier_ref_validation,
+    NULLIF(TRIM(p.picture_id), '')::TEXT              AS phl_cli_picture_id,
+    NULLIF(TRIM(p.one_time), '')::TEXT                AS phl_cli_one_time,
+    NULLIF(TRIM(p.customer_category), '')::TEXT       AS phl_cli_customer_category,
+    NULLIF(TRIM(p.b2b_customer), '')::TEXT            AS phl_cli_b2b_customer,
+    NULLIF(TRIM(p.customer_tax_usage_type), '')::TEXT AS phl_cli_customer_tax_usage_type,
+    NULLIF(TRIM(p.business_classification), '')::TEXT AS phl_cli_business_classification,
+    p.date_of_registration::DATE                      AS phl_cli_date_of_registration
 FROM raw_data.file_customer f
+-- Rapprochement strict du client fichier avec son homologue PHL sur le n° SAP.
+-- LATERAL + LIMIT 1 (et non un LEFT JOIN simple) : 152 lignes client_phl pour
+-- seulement 149 numero_sap distincts, un JOIN dupliquerait les lignes du
+-- fichier et fausserait les 19 autres procedures qui lisent cette vue.
+-- L'ordre sur customer_id rend le choix deterministe, comme
+-- clean_data.get_legacy_as400_id.
+LEFT JOIN LATERAL (
+    SELECT cp2.*
+    FROM raw_data.client_phl cp2
+    WHERE NULLIF(TRIM(f.kunnr), '') IS NOT NULL
+      AND TRIM(cp2.numero_sap) = TRIM(f.kunnr)
+    ORDER BY TRIM(cp2.customer_id)
+    LIMIT 1
+) p ON TRUE
 WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs), ''),
                NULLIF(TRIM(f.num_corrige), ''),
                TRIM(f.kunnr)) IS NOT NULL
@@ -231,7 +279,28 @@ SELECT
     UPPER(TRIM(cp.one_time_db))::TEXT                  AS phl_one_time_db,
     UPPER(TRIM(cp.customer_category_db))::TEXT         AS phl_customer_category_db,
     UPPER(TRIM(cp.b2b_customer_db))::TEXT              AS phl_b2b_customer_db,
-    UPPER(TRIM(cp.identifier_ref_validation_db))::TEXT AS phl_identifier_ref_validation_db
+    UPPER(TRIM(cp.identifier_ref_validation_db))::TEXT AS phl_identifier_ref_validation_db,
+    -- ---- memes colonnes que la branche FILE, pour que les procedures
+    -- ---- appliquent une cascade identique des deux cotes ----
+    NULLIF(TRIM(cp.name), '')::TEXT                    AS phl_cli_name,
+    cp.creation_date::DATE                             AS phl_cli_creation_date,
+    NULLIF(TRIM(cp.association_no), '')::TEXT          AS phl_cli_association_no,
+    NULLIF(TRIM(cp.default_language), '')::TEXT        AS phl_cli_default_language,
+    NULLIF(TRIM(cp.default_language_db), '')::TEXT     AS phl_cli_default_language_db,
+    NULLIF(TRIM(cp.country), '')::TEXT                 AS phl_cli_country,
+    NULLIF(TRIM(cp.country_db), '')::TEXT              AS phl_cli_country_db,
+    NULLIF(TRIM(cp.party_type), '')::TEXT              AS phl_cli_party_type,
+    NULLIF(UPPER(TRIM(cp.party_type_db)), '')::TEXT    AS phl_cli_party_type_db,
+    NULLIF(TRIM(cp.corporate_form), '')::TEXT          AS phl_cli_corporate_form,
+    NULLIF(TRIM(cp.identifier_reference), '')::TEXT    AS phl_cli_identifier_reference,
+    NULLIF(TRIM(cp.identifier_ref_validation), '')::TEXT AS phl_cli_identifier_ref_validation,
+    NULLIF(TRIM(cp.picture_id), '')::TEXT              AS phl_cli_picture_id,
+    NULLIF(TRIM(cp.one_time), '')::TEXT                AS phl_cli_one_time,
+    NULLIF(TRIM(cp.customer_category), '')::TEXT       AS phl_cli_customer_category,
+    NULLIF(TRIM(cp.b2b_customer), '')::TEXT            AS phl_cli_b2b_customer,
+    NULLIF(TRIM(cp.customer_tax_usage_type), '')::TEXT AS phl_cli_customer_tax_usage_type,
+    NULLIF(TRIM(cp.business_classification), '')::TEXT AS phl_cli_business_classification,
+    cp.date_of_registration::DATE                      AS phl_cli_date_of_registration
 FROM raw_data.client_phl cp
 JOIN raw_data.client_adresse_phl ca
      ON ca.customer_id = cp.customer_id

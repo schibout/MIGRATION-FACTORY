@@ -111,8 +111,8 @@ BEGIN
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(COALESCE(NULLIF(mvke.vrkme, ''), mara.meins))), '')),
             UPPER(TRIM(COALESCE(NULLIF(mvke.vrkme, ''), mara.meins)))
         ), 1, 10) as sales_unit_meas,
-        '903028' as catalog_group,
-        '*' as sales_price_group_id,
+        public.get_default_value('clean_data.sales_part', 'catalog_group', '903028') as catalog_group,
+        public.get_default_value('clean_data.sales_part', 'sales_price_group_id', '*') as sales_price_group_id,
         
         -- Article lié (pour Inventory part)
         CASE 
@@ -122,16 +122,16 @@ BEGIN
         END as part_no,
         
         -- Flags et statuts (_DB uniquement) : tous les articles actifs
-        'Y' as activeind_db,
+        public.get_default_value('clean_data.sales_part', 'activeind_db', 'Y') as activeind_db,
         CASE 
             WHEN mara.mtart IN ('FERT', 'HALB', 'ROH') THEN 'INV'
             ELSE 'NON'
         END as catalog_type_db,
         
         -- Facteurs de conversion
-        1 as conv_factor,
-        1 as inverted_conv_factor,
-        1 as price_conv_factor,
+        public.get_default_value('clean_data.sales_part', 'conv_factor', '1')::numeric as conv_factor,
+        public.get_default_value('clean_data.sales_part', 'inverted_conv_factor', '1')::numeric as inverted_conv_factor,
+        public.get_default_value('clean_data.sales_part', 'price_conv_factor', '1')::numeric as price_conv_factor,
         -- PRICE_UNIT_MEAS: MVKE.VRKME sinon MARA.MEINS via transcodification UOM (SAP->IFS), sinon unité d'entrée
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(COALESCE(NULLIF(mvke.vrkme, ''), mara.meins))), '')),
@@ -139,18 +139,18 @@ BEGIN
         ), 1, 10) as price_unit_meas,
         
         -- Prix (par défaut à 0)
-        0 as list_price,
-        0 as list_price_incl_tax,
-        0 as rental_list_price,
-        0 as rental_list_price_incl_tax,
-        NULL::numeric as cost,
-        NULL::numeric as expected_average_price,
+        public.get_default_value('clean_data.sales_part', 'list_price', '0')::numeric as list_price,
+        public.get_default_value('clean_data.sales_part', 'list_price_incl_tax', '0')::numeric as list_price_incl_tax,
+        public.get_default_value('clean_data.sales_part', 'rental_list_price', '0')::numeric as rental_list_price,
+        public.get_default_value('clean_data.sales_part', 'rental_list_price_incl_tax', '0')::numeric as rental_list_price_incl_tax,
+        public.get_default_value('clean_data.sales_part', 'cost', NULL)::numeric as cost,
+        public.get_default_value('clean_data.sales_part', 'expected_average_price', NULL)::numeric as expected_average_price,
         
         -- Taxes (_DB uniquement)
-        'TRUE' as taxable_db,
-        'C05' as tax_code,
-        NULL as tax_class_id,
-        'FALSE' as use_price_incl_tax_db,
+        public.get_default_value('clean_data.sales_part', 'taxable_db', 'TRUE') as taxable_db,
+        public.get_default_value('clean_data.sales_part', 'tax_code', 'C05') as tax_code,
+        public.get_default_value('clean_data.sales_part', 'tax_class_id', NULL) as tax_class_id,
+        public.get_default_value('clean_data.sales_part', 'use_price_incl_tax_db', 'FALSE') as use_price_incl_tax_db,
         
         -- Dates
         CASE 
@@ -158,40 +158,40 @@ BEGIN
             THEN TO_TIMESTAMP(mara.ersda, 'YYYYMMDD')
             ELSE CURRENT_TIMESTAMP
         END as date_entered,
-        NULL::timestamp as price_change_date,
+        public.get_default_value('clean_data.sales_part', 'price_change_date', NULL)::timestamp as price_change_date,
         
         -- Tolérances et quantités
-        0 as close_tolerance,
-        NULL::numeric as minimum_qty,
+        public.get_default_value('clean_data.sales_part', 'close_tolerance', '0')::numeric as close_tolerance,
+        public.get_default_value('clean_data.sales_part', 'minimum_qty', NULL)::numeric as minimum_qty,
         
         -- Options d'approvisionnement (_DB uniquement)
-        'NOTSUPPLIED' as sourcing_option_db,
+        public.get_default_value('clean_data.sales_part', 'sourcing_option_db', 'NOTSUPPLIED') as sourcing_option_db,
         
         -- Options de création (_DB uniquement)
-        'DONOTCREATESMOBJECT' as create_sm_object_option_db,
-        'FALSE' as quick_registered_part_db,
+        public.get_default_value('clean_data.sales_part', 'create_sm_object_option_db', 'DONOTCREATESMOBJECT') as create_sm_object_option_db,
+        public.get_default_value('clean_data.sales_part', 'quick_registered_part_db', 'FALSE') as quick_registered_part_db,
         
         -- Exports et options avancées (_DB uniquement)
-        'FALSE' as export_to_external_app_db,
-        'TRUE' as allow_inc_pkg_rsrv_picklst,
-        'TRUE' as allow_incomp_pkg_delivery,
-        'FALSE' as pack_comp_in_shpmnt,
+        public.get_default_value('clean_data.sales_part', 'export_to_external_app_db', 'FALSE') as export_to_external_app_db,
+        public.get_default_value('clean_data.sales_part', 'allow_inc_pkg_rsrv_picklst', 'TRUE') as allow_inc_pkg_rsrv_picklst,
+        public.get_default_value('clean_data.sales_part', 'allow_incomp_pkg_delivery', 'TRUE') as allow_incomp_pkg_delivery,
+        public.get_default_value('clean_data.sales_part', 'pack_comp_in_shpmnt', 'FALSE') as pack_comp_in_shpmnt,
         
         -- Type de vente (_DB uniquement)
-        'SALES' as sales_type_db,
+        public.get_default_value('clean_data.sales_part', 'sales_type_db', 'SALES') as sales_type_db,
         
         -- Article principal (_DB uniquement)
-        'TRUE' as primary_catalog_db,
+        public.get_default_value('clean_data.sales_part', 'primary_catalog_db', 'TRUE') as primary_catalog_db,
         
         -- Infos diverses
-        NULL as delivery_type,
+        public.get_default_value('clean_data.sales_part', 'delivery_type', NULL) as delivery_type,
         CASE 
             WHEN mara.mtart NOT IN ('FERT', 'HALB', 'ROH') THEN 'GOODS'
             ELSE NULL
         END as non_inv_part_type_db,
         mara.extwg as customs_stat_no,
-        'FR' as country_of_origin,
-        NULL as statistical_code
+        public.get_default_value('clean_data.sales_part', 'country_of_origin', 'FR') as country_of_origin,
+        public.get_default_value('clean_data.sales_part', 'statistical_code', NULL) as statistical_code
         
     FROM raw_data.mara mara
     INNER JOIN raw_data.articles_vente_sap avs

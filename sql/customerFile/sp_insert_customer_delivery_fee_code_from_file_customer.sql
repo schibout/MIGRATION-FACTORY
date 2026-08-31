@@ -34,11 +34,11 @@ BEGIN
     SELECT DISTINCT ON (fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')))
         fc.customer_id as customer_id,
         fc.address_id as address_id,
-        'TRIMET' as company,
+        public.get_default_value('clean_data.customer_delivery_fee_code', 'company', 'TRIMET') as company,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as supply_country,
         COALESCE(NULLIF(TRIM(fc.code_tva_ifs), ''), 'C05') as fee_code,  -- code taxe repris du fichier file_customer (fallback C05)
         SUBSTRING(COALESCE(k.STCEG, k.STCD1, fc.tax_number_1), 1, 10) as tax_id_number,
-        NULL as tax_code_selection
+        public.get_default_value('clean_data.customer_delivery_fee_code', 'tax_code_selection', NULL) as tax_code_selection
     FROM fc
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

@@ -47,16 +47,16 @@ BEGIN
         COALESCE(knvv.BZIRK, fc.sales_district) as district_code,
         COALESCE(NULLIF(TRIM(fc.region),''), k.REGIO) as region_code,
         COALESCE(knvv.VSBED, '01') as ship_via_code,
-        NULL as contact,
-        NULL as route_id,
-        NULL as delivery_time,
-        'Include' as intrastat_exempt,
-        'INCLUDE' as intrastat_exempt_db,
-        NULL as shipment_uncon_struct,
-        'FALSE' as shipment_uncon_struct_db,
+        public.get_default_value('clean_data.cust_ord_customer_address', 'contact', NULL) as contact,
+        public.get_default_value('clean_data.cust_ord_customer_address', 'route_id', NULL) as route_id,
+        public.get_default_value('clean_data.cust_ord_customer_address', 'delivery_time', NULL)::date as delivery_time,
+        public.get_default_value('clean_data.cust_ord_customer_address', 'intrastat_exempt', 'Include', 'CUSTOMERFILE') as intrastat_exempt,
+        public.get_default_value('clean_data.cust_ord_customer_address', 'intrastat_exempt_db', 'INCLUDE', 'CUSTOMERFILE') as intrastat_exempt_db,
+        public.get_default_value('clean_data.cust_ord_customer_address', 'shipment_uncon_struct', NULL) as shipment_uncon_struct,
+        public.get_default_value('clean_data.cust_ord_customer_address', 'shipment_uncon_struct_db', 'FALSE') as shipment_uncon_struct_db,
         COALESCE(knvv.INCO2, NULLIF(TRIM(fc.incoterms_2),'')) as del_terms_location,
-        NULL as cust_calendar_id,
-        NULL as shipment_type
+        public.get_default_value('clean_data.cust_ord_customer_address', 'cust_calendar_id', NULL) as cust_calendar_id,
+        public.get_default_value('clean_data.cust_ord_customer_address', 'shipment_type', NULL) as shipment_type
     FROM fc
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

@@ -32,11 +32,11 @@ BEGIN
         bank_account_valid_date
     )
     SELECT DISTINCT ON (ifs.customer_number, COALESCE(ifs.payment_methods, knb1.ZWELS, 'TRANSFER'), COALESCE(ifs.numero_adresse, k.ADRNR))
-        'TRIMET' as company,
+        public.get_default_value('clean_data.cus_payment_address', 'company', 'TRIMET') as company,
         ifs.customer_number as identity,
-        'Customer' as party_type,
-        'CUSTOMER' as party_type_db,
-        'SEPA' as way_id,
+        public.get_default_value('clean_data.cus_payment_address', 'party_type', 'Customer') as party_type,
+        public.get_default_value('clean_data.cus_payment_address', 'party_type_db', 'CUSTOMER') as party_type_db,
+        public.get_default_value('clean_data.cus_payment_address', 'way_id', 'SEPA') as way_id,
         COALESCE(ifs.numero_adresse, k.ADRNR) as address_id,
         CONCAT_WS(' - ', COALESCE(k.NAME1, ifs.name_1), COALESCE(k.ORT01, ifs.city)) as description,
         CASE
@@ -56,11 +56,11 @@ BEGIN
             '', 
             COALESCE(knbk.BANKN, '')
         ) as account,
-        NULL as bic_code,
-        'FALSE' as blocked_for_use,
-        NULL as bank_account_validated,
-        'NOT VALIDATED' as bank_account_validated_db,
-        NULL as bank_account_valid_date
+        public.get_default_value('clean_data.cus_payment_address', 'bic_code', NULL) as bic_code,
+        public.get_default_value('clean_data.cus_payment_address', 'blocked_for_use', 'FALSE') as blocked_for_use,
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_validated', NULL) as bank_account_validated,
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_validated_db', 'NOT VALIDATED', 'CUSTOMER') as bank_account_validated_db,
+        public.get_default_value('clean_data.cus_payment_address', 'bank_account_valid_date', NULL)::date as bank_account_valid_date
     FROM clean_data.ifs_customer ifs
     LEFT JOIN raw_data.KNA1 k 
         ON ifs.customer_number = k.KUNNR

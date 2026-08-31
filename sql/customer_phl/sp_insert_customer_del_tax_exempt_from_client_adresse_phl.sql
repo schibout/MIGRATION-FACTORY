@@ -30,15 +30,15 @@ BEGIN
     SELECT DISTINCT ON (cp.customer_id, cap.address_id, COALESCE(ic.code_pays, cap.country_db, 'FR'), COALESCE(ic.numero_tva_1, ic.numero_tva_2, 'NO_CERT'))
         cp.customer_id as CUSTOMER_ID,
         cap.address_id as ADDRESS_ID,
-        'TRIMET' as COMPANY,
+        public.get_default_value('clean_data.customer_del_tax_exempt', 'company', 'TRIMET') as COMPANY,
         COALESCE(ic.code_pays, cap.country_db, 'FR') as SUPPLY_COUNTRY,
         SUBSTRING(COALESCE(ic.numero_tva_ue, ic.numero_tva_1, ic.numero_tva_2, 'NO_CERT'), 1, 20) as TAX_EXEMPTION_CERT_NO,
         SUBSTRING(COALESCE(ic.code_pays, cap.country_db, 'FR'), 1, 100) as CERTIFICATION_JURISDICTION,
         cp.creation_date as CERTIFICATION_DATE,
         COALESCE(cp.creation_date + INTERVAL '1 year', CURRENT_DATE + INTERVAL '1 year') as EXPIRATION_DATE,
-        '' as EXEMPT_CERTIFICATE_TYPE,
-        'BLANKET CERTIFICATE' as EXEMPT_CERTIFICATE_TYPE_DB,
-        0 as CERTIFICATE_AMOUNT
+        public.get_default_value('clean_data.customer_del_tax_exempt', 'exempt_certificate_type', '') as EXEMPT_CERTIFICATE_TYPE,
+        public.get_default_value('clean_data.customer_del_tax_exempt', 'exempt_certificate_type_db', 'BLANKET CERTIFICATE') as EXEMPT_CERTIFICATE_TYPE_DB,
+        public.get_default_value('clean_data.customer_del_tax_exempt', 'certificate_amount', '0')::numeric as CERTIFICATE_AMOUNT
     FROM clean_data.ifs_clients ic
     INNER JOIN raw_data.client_phl cp ON cp.numero_sap = ic.numero_client
     LEFT JOIN raw_data.client_adresse_phl cap ON cap.customer_id = cp.customer_id

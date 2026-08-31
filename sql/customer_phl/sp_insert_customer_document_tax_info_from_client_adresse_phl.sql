@@ -31,16 +31,16 @@ BEGIN
     SELECT DISTINCT ON (cp.customer_id, cap.address_id, COALESCE(cap.country_db, 'FR'))
         cp.customer_id as CUSTOMER_ID,
         cap.address_id as ADDRESS_ID,
-        'TRIMET' as COMPANY,
-        NULL as SUPPLY_COUNTRY,
+        public.get_default_value('clean_data.customer_document_tax_info', 'company', 'TRIMET') as COMPANY,
+        public.get_default_value('clean_data.customer_document_tax_info', 'supply_country', NULL) as SUPPLY_COUNTRY,
         COALESCE(cap.country_db, 'FR') as SUPPLY_COUNTRY_DB,
-        NULL as DELIVERY_COUNTRY,
+        public.get_default_value('clean_data.customer_document_tax_info', 'delivery_country', NULL) as DELIVERY_COUNTRY,
         COALESCE(cap.country_db, 'FR') as DELIVERY_COUNTRY_DB,
-        NULL as TAX_ID_TYPE,
-        NULL as VAT_NO,
-        NULL as VALIDATED_DATE,
-        NULL as TAX_ID_ERROR_MESSAGE,
-        NULL as TAX_OFFICE_ID
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_id_type', NULL) as TAX_ID_TYPE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'vat_no', NULL) as VAT_NO,
+        public.get_default_value('clean_data.customer_document_tax_info', 'validated_date', NULL)::date as VALIDATED_DATE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_id_error_message', NULL) as TAX_ID_ERROR_MESSAGE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_office_id', NULL) as TAX_OFFICE_ID
     FROM raw_data.client_phl cp
     INNER JOIN raw_data.client_adresse_phl cap ON cap.customer_id = cp.customer_id
     WHERE cp.customer_id IS NOT NULL

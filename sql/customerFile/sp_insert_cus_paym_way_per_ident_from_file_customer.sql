@@ -26,12 +26,12 @@ BEGIN
         default_payment_way
     )
     SELECT DISTINCT
-        'TRIMET' as company,
+        public.get_default_value('clean_data.cus_paym_way_per_ident', 'company', 'TRIMET') as company,
         fc.customer_id as identity,
-        'Customer' as party_type,
-        'CUSTOMER' as party_type_db,
-        'SEPA' as way_id,
-        'TRUE' as default_payment_way
+        public.get_default_value('clean_data.cus_paym_way_per_ident', 'party_type', 'Customer') as party_type,
+        public.get_default_value('clean_data.cus_paym_way_per_ident', 'party_type_db', 'CUSTOMER') as party_type_db,
+        public.get_default_value('clean_data.cus_paym_way_per_ident', 'way_id', 'SEPA') as way_id,
+        public.get_default_value('clean_data.cus_paym_way_per_ident', 'default_payment_way', 'TRUE') as default_payment_way
     FROM fc
     LEFT JOIN raw_data.knb1
         ON fc.kunnr = knb1.KUNNR

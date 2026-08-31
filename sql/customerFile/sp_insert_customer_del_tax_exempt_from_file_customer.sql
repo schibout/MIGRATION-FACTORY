@@ -38,7 +38,7 @@ BEGIN
     SELECT DISTINCT ON (fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')), COALESCE(NULLIF(TRIM(fc.vat_number),''), NULLIF(TRIM(fc.tax_number_1),''), NULLIF(TRIM(fc.tax_number_2),''), 'NO_CERT'))
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
-        'TRIMET' as COMPANY,
+        public.get_default_value('clean_data.customer_del_tax_exempt', 'company', 'TRIMET') as COMPANY,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as SUPPLY_COUNTRY,
         SUBSTRING(COALESCE(NULLIF(TRIM(fc.vat_number),''), NULLIF(TRIM(fc.tax_number_1),''), NULLIF(TRIM(fc.tax_number_2),''), 'NO_CERT'), 1, 20) as TAX_EXEMPTION_CERT_NO,
         SUBSTRING(public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')), 1, 100) as CERTIFICATION_JURISDICTION,
@@ -48,9 +48,9 @@ BEGIN
         CASE WHEN fc.created_on ~ '^[0-9]{8}$'
             THEN TO_TIMESTAMP(fc.created_on, 'YYYYMMDD') + INTERVAL '1 year'
             ELSE NULL END as EXPIRATION_DATE,
-        '' as EXEMPT_CERTIFICATE_TYPE,
-        'BLANKET CERTIFICATE' as EXEMPT_CERTIFICATE_TYPE_DB,
-        0 as CERTIFICATE_AMOUNT
+        public.get_default_value('clean_data.customer_del_tax_exempt', 'exempt_certificate_type', '') as EXEMPT_CERTIFICATE_TYPE,
+        public.get_default_value('clean_data.customer_del_tax_exempt', 'exempt_certificate_type_db', 'BLANKET CERTIFICATE') as EXEMPT_CERTIFICATE_TYPE_DB,
+        public.get_default_value('clean_data.customer_del_tax_exempt', 'certificate_amount', '0')::numeric as CERTIFICATE_AMOUNT
     FROM fc  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

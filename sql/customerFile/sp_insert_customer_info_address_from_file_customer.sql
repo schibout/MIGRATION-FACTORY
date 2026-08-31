@@ -58,14 +58,14 @@ BEGIN
         COALESCE(NULLIF(TRIM(fc.phl_address),''),
                  CONCAT_WS(' ', fc.street, fc.postal_code),
                  CONCAT_WS(' ', TRIM(a.STREET), TRIM(a.HOUSE_NUM1))) as ADDRESS,
-        NULL as EAN_LOCATION,
+        public.get_default_value('clean_data.customer_info_address', 'ean_location', NULL) as EAN_LOCATION,
         COALESCE(
             CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END,
             CASE WHEN k.ERDAT IS NOT NULL AND k.ERDAT != '' AND LENGTH(TRIM(k.ERDAT)) = 8
             THEN TO_DATE(k.ERDAT, 'YYYYMMDD')
             ELSE NULL END
         ) as VALID_FROM,
-        NULL as VALID_TO,
+        public.get_default_value('clean_data.customer_info_address', 'valid_to', NULL)::date as VALID_TO,
         fc.customer_id as PARTY,
         COALESCE(
             NULLIF(TRIM(fc.phl_address_lov),''),
@@ -78,10 +78,10 @@ BEGIN
         ) as DEFAULT_DOMAIN,
         COALESCE(NULLIF(TRIM(fc.country),''), t_country.LANDX) as COUNTRY,
         public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1)) as COUNTRY_DB,
-        'Customer' as PARTY_TYPE,
+        public.get_default_value('clean_data.customer_info_address', 'party_type', 'Customer') as PARTY_TYPE,
         COALESCE(NULLIF(TRIM(fc.phl_party_type_db),''), 'CUSTOMER') as PARTY_TYPE_DB,
-        NULL as SECONDARY_CONTACT,
-        NULL as PRIMARY_CONTACT,
+        public.get_default_value('clean_data.customer_info_address', 'secondary_contact', NULL) as SECONDARY_CONTACT,
+        public.get_default_value('clean_data.customer_info_address', 'primary_contact', NULL) as PRIMARY_CONTACT,
         COALESCE(SUBSTRING(fc.street, 1, 35), SUBSTRING(TRIM(a.STREET), 1, 35)) as ADDRESS1,
         COALESCE(SUBSTRING(NULLIF(TRIM(fc.phl_address2),''), 1, 35), SUBSTRING(TRIM(a.HOUSE_NUM1), 1, 35), '') as ADDRESS2,
         COALESCE(TRIM(a.HOUSE_NUM2), '') as ADDRESS3,
@@ -92,7 +92,7 @@ BEGIN
         COALESCE(SUBSTRING(fc.city, 1, 35), SUBSTRING(TRIM(a.CITY1), 1, 35)) as CITY,
         COALESCE(SUBSTRING(fc.region, 1, 35), SUBSTRING(TRIM(a.REGION), 1, 35)) as STATE,
         COALESCE(SUBSTRING(fc.region, 1, 35), SUBSTRING(TRIM(a.REGION), 1, 35)) as COUNTY,
-        NULL as JURISDICTION_CODE
+        public.get_default_value('clean_data.customer_info_address', 'jurisdiction_code', NULL) as JURISDICTION_CODE
     FROM fc  -- SOURCE PILOTE : fichier file_customer
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

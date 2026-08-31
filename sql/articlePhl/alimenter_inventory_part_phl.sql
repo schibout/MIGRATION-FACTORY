@@ -146,7 +146,14 @@ BEGIN
             ELSE 'N'
         END as oe_alloc_assign_flag_db,
         NULLIF(REPLACE(TRIM(COALESCE(phl."DIAMETRE", '')), ',', '.'), '')::numeric as c_diameter,
-        public.get_default_value('clean_data.inventory_part', 'c_density', '2.7')::numeric as c_density,
+        -- Densite : requise uniquement pour les plaques / tes / lingots (familles 20, 24, 19)
+        -- -> variante STANDARD (valeur theorique 2.7). Les fils (21, 22, 23, RF) n'ont pas
+        -- de densite -> variante FIL (fallback NULL). Les deux valeurs sont parametrables
+        -- via l'ecran /configuration/valeurs-defaut (public.get_default_value).
+        CASE WHEN NULLIF(TRIM(COALESCE(phl."FAMILLE", '')), '') IN ('19', '20', '24')
+             THEN public.get_default_value('clean_data.inventory_part', 'c_density', '2.7')::numeric
+             ELSE public.get_default_value('clean_data.inventory_part', 'c_density', NULL, 'FIL')::numeric
+        END as c_density,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 4), '') as c_alloy_serie_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
@@ -171,18 +178,18 @@ BEGIN
         public.get_default_value('clean_data.inventory_part', 'planner_buyer', '*') as planner_buyer,
         public.get_default_value('clean_data.inventory_part', 'asset_class', 'S') as asset_class,
         public.get_default_value('clean_data.inventory_part', 'country_of_origin', NULL) as country_of_origin,
-        '1' as type_code_db,
+        public.get_default_value('clean_data.inventory_part', 'type_code_db', '1', 'ARTICLEPHL') as type_code_db,
         public.get_default_value('clean_data.inventory_part', 'supply_code_db', 'IO') as supply_code_db,
         public.get_default_value('clean_data.inventory_part', 'expected_leadtime', '0')::numeric as expected_leadtime,
         public.get_default_value('clean_data.inventory_part', 'manuf_leadtime', '0')::numeric as manuf_leadtime,
         public.get_default_value('clean_data.inventory_part', 'purch_leadtime', '0')::numeric as purch_leadtime,
-        'Y' as lead_time_code_db,
+        public.get_default_value('clean_data.inventory_part', 'lead_time_code_db', 'Y', 'ARTICLEPHL') as lead_time_code_db,
         public.get_default_value('clean_data.inventory_part', 'inventory_valuation_method_db', 'ST') as inventory_valuation_method_db,
         public.get_default_value('clean_data.inventory_part', 'count_variance', '0')::numeric as count_variance,
         public.get_default_value('clean_data.inventory_part', 'cycle_code_db', 'N') as cycle_code_db,
         public.get_default_value('clean_data.inventory_part', 'cycle_period', '0')::numeric as cycle_period,
         public.get_default_value('clean_data.inventory_part', 'qty_calc_rounding', '0')::numeric as qty_calc_rounding,
-        'Y' as zero_cost_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'zero_cost_flag_db', 'Y', 'ARTICLEPHL') as zero_cost_flag_db,
         public.get_default_value('clean_data.inventory_part', 'onhand_analysis_flag_db', 'N') as onhand_analysis_flag_db,
         public.get_default_value('clean_data.inventory_part', 'shortage_flag_db', 'Y') as shortage_flag_db,
         public.get_default_value('clean_data.inventory_part', 'forecast_consumption_flag_db', 'FORECAST') as forecast_consumption_flag_db,
@@ -236,7 +243,14 @@ BEGIN
             ), 1, 10)
         END as unit_meas,
             NULLIF(REPLACE(TRIM(COALESCE(phl."DIAMETRE", '')), ',', '.'), '')::numeric as c_diameter,
-            public.get_default_value('clean_data.inventory_part', 'c_density', '2.7')::numeric as c_density,
+            -- Densite : requise uniquement pour les plaques / tes / lingots (familles 20, 24, 19)
+            -- -> variante STANDARD (valeur theorique 2.7). Les fils (21, 22, 23, RF) n'ont pas
+            -- de densite -> variante FIL (fallback NULL). Les deux valeurs sont parametrables
+            -- via l'ecran /configuration/valeurs-defaut (public.get_default_value).
+            CASE WHEN NULLIF(TRIM(COALESCE(phl."FAMILLE", '')), '') IN ('19', '20', '24')
+                 THEN public.get_default_value('clean_data.inventory_part', 'c_density', '2.7')::numeric
+                 ELSE public.get_default_value('clean_data.inventory_part', 'c_density', NULL, 'FIL')::numeric
+            END as c_density,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 4), '') as c_alloy_serie_code,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,

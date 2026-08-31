@@ -48,7 +48,7 @@ BEGIN
             THEN 'TRUE'
             ELSE 'FALSE'
         END as def_address,
-        'FALSE' as default_domain
+        public.get_default_value('clean_data.customer_info_address_type', 'default_domain', 'FALSE') as default_domain
     FROM fc
     WHERE fc.customer_id IS NOT NULL
     AND fc.address_id IS NOT NULL

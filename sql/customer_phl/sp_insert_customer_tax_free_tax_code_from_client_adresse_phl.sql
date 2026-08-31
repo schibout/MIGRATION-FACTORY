@@ -25,10 +25,10 @@ BEGIN
     SELECT DISTINCT ON (cp.customer_id, cap.address_id)
         cp.customer_id as CUSTOMER_ID,
         cap.address_id as ADDRESS_ID,
-        'TRIMET' as COMPANY,
+        public.get_default_value('clean_data.customer_tax_free_tax_code', 'company', 'TRIMET') as COMPANY,
         COALESCE(cap.country_db, 'FR') as SUPPLY_COUNTRY,
-        'Delivery Type' as DELIVERY_TYPE,
-        NULL as VAT_FREE_VAT_CODE
+        public.get_default_value('clean_data.customer_tax_free_tax_code', 'delivery_type', 'Delivery Type') as DELIVERY_TYPE,
+        public.get_default_value('clean_data.customer_tax_free_tax_code', 'vat_free_vat_code', NULL, 'CUSTOMER_PHL') as VAT_FREE_VAT_CODE
     FROM raw_data.client_phl cp
     INNER JOIN raw_data.client_adresse_phl cap ON cap.customer_id = cp.customer_id
     WHERE cp.customer_id IS NOT NULL

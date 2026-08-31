@@ -47,14 +47,14 @@ BEGIN
         COALESCE(ifs.numero_adresse, k.ADRNR) as ADDRESS_ID,
         COALESCE(TRIM(k.NAME1), ifs.name_1) as NAME,
         COALESCE(CONCAT_WS(' ', TRIM(a.STREET), TRIM(a.HOUSE_NUM1)), CONCAT_WS(' ', ifs.street, ifs.postal_code)) as ADDRESS,
-        NULL as EAN_LOCATION,
+        public.get_default_value('clean_data.customer_info_address', 'ean_location', NULL) as EAN_LOCATION,
         COALESCE(
             CASE WHEN k.ERDAT IS NOT NULL AND k.ERDAT != '' AND LENGTH(TRIM(k.ERDAT)) = 8
             THEN TO_DATE(k.ERDAT, 'YYYYMMDD')
             ELSE NULL END,
             ifs.created_on
         ) as VALID_FROM,
-        NULL as VALID_TO,
+        public.get_default_value('clean_data.customer_info_address', 'valid_to', NULL)::date as VALID_TO,
         ifs.customer_number as PARTY,
         COALESCE(
             CONCAT_WS(', ', TRIM(a.STREET), TRIM(a.CITY1), TRIM(a.POST_CODE1)),
@@ -66,10 +66,10 @@ BEGIN
         END as DEFAULT_DOMAIN,
         COALESCE(t_country.LANDX, ifs.country) as COUNTRY,
         COALESCE(k.LAND1, ifs.country) as COUNTRY_DB,
-        'Customer' as PARTY_TYPE,
-        'CUSTOMER' as PARTY_TYPE_DB,
-        NULL as SECONDARY_CONTACT,
-        NULL as PRIMARY_CONTACT,
+        public.get_default_value('clean_data.customer_info_address', 'party_type', 'Customer') as PARTY_TYPE,
+        public.get_default_value('clean_data.customer_info_address', 'party_type_db', 'CUSTOMER') as PARTY_TYPE_DB,
+        public.get_default_value('clean_data.customer_info_address', 'secondary_contact', NULL) as SECONDARY_CONTACT,
+        public.get_default_value('clean_data.customer_info_address', 'primary_contact', NULL) as PRIMARY_CONTACT,
         COALESCE(SUBSTRING(TRIM(a.STREET), 1, 35), SUBSTRING(ifs.street, 1, 35)) as ADDRESS1,
         COALESCE(SUBSTRING(TRIM(a.HOUSE_NUM1), 1, 35), '') as ADDRESS2,
         COALESCE(TRIM(a.HOUSE_NUM2), '') as ADDRESS3,
@@ -80,7 +80,7 @@ BEGIN
         COALESCE(SUBSTRING(TRIM(a.CITY1), 1, 35), SUBSTRING(ifs.city, 1, 35)) as CITY,
         COALESCE(SUBSTRING(TRIM(a.REGION), 1, 35), SUBSTRING(ifs.region, 1, 35)) as STATE,
         COALESCE(SUBSTRING(TRIM(a.REGION), 1, 35), SUBSTRING(ifs.region, 1, 35)) as COUNTY,
-        NULL as JURISDICTION_CODE
+        public.get_default_value('clean_data.customer_info_address', 'jurisdiction_code', NULL) as JURISDICTION_CODE
     FROM clean_data.ifs_customer ifs  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k 
         ON ifs.customer_number = k.KUNNR

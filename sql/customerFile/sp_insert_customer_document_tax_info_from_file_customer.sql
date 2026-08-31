@@ -39,16 +39,16 @@ BEGIN
     SELECT DISTINCT ON (fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')))
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
-        'TRIMET' as COMPANY,
-        NULL as SUPPLY_COUNTRY,
+        public.get_default_value('clean_data.customer_document_tax_info', 'company', 'TRIMET') as COMPANY,
+        public.get_default_value('clean_data.customer_document_tax_info', 'supply_country', NULL) as SUPPLY_COUNTRY,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as SUPPLY_COUNTRY_DB,
-        NULL as DELIVERY_COUNTRY,
+        public.get_default_value('clean_data.customer_document_tax_info', 'delivery_country', NULL) as DELIVERY_COUNTRY,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as DELIVERY_COUNTRY_DB,
-        NULL as TAX_ID_TYPE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_id_type', NULL) as TAX_ID_TYPE,
         UPPER(COALESCE(NULLIF(TRIM(fc.vat_number),''), k.STCEG, k.STCD1)) as VAT_NO,  -- IFS exige le format majuscule
-        NULL as VALIDATED_DATE,
-        NULL as TAX_ID_ERROR_MESSAGE,
-        NULL as TAX_OFFICE_ID
+        public.get_default_value('clean_data.customer_document_tax_info', 'validated_date', NULL)::date as VALIDATED_DATE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_id_error_message', NULL) as TAX_ID_ERROR_MESSAGE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_office_id', NULL) as TAX_OFFICE_ID
     FROM fc  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

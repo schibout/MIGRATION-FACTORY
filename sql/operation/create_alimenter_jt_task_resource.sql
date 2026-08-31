@@ -146,15 +146,15 @@ BEGIN
                     THEN replace(trim(anzma), ',', '.')::numeric
                 ELSE 1::numeric
             END AS planned_quantity,
-            0::numeric AS offset_value,
+            public.get_default_value('clean_data.jt_task_resource', 'offset_value', '0') AS offset_value,
             CASE
                 WHEN upper(coalesce(resource_type_db, '')) = 'EQUIPMENT' THEN 'EQUIPMENT'
                 ELSE 'PERSON'
             END AS demand_type_db,
             resource_group_seq,
             CASE WHEN trim(coalesce(aufnr, '')) ~ '^[0-9]+$' THEN trim(aufnr)::numeric END AS wo_no,
-            'INTERNALLY_SOURCED'::varchar(20) AS sourcing_option_db,
-            'FALSE'::varchar(20) AS crew_time_invoicing
+            public.get_default_value('clean_data.jt_task_resource', 'sourcing_option_db', 'INTERNALLY_SOURCED') AS sourcing_option_db,
+            public.get_default_value('clean_data.jt_task_resource', 'crew_time_invoicing', 'FALSE') AS crew_time_invoicing
         FROM src
     )
     SELECT

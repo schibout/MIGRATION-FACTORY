@@ -10,6 +10,8 @@ Pour les articles PHL retenus (`raw_data.v_phl_article_retenu`, statut commença
 - `unit_meas` doit suivre la transcodification UOM sans upper-case forcé sur la valeur source PHL : `public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), ''))`, fallback `phl."U/M"`, puis `PCE`.
 - Pour PHL, la transcodification active `UOM / SAP / IFS / source_value = 't'` doit retourner `target_value = 't'` et non `kg`.
 - Ces valeurs doivent être présentes à l'INSERT et dans l'UPDATE des lignes déjà existantes.
+- `c_density` n'est alimentée que pour les **plaques, tés et lingots** (`FAMILLE` = 20, 24, 19) : `public.get_default_value('clean_data.inventory_part', 'c_density', '2.7')` (variante `STANDARD`, valeur théorique 2.7). Pour les **fils** (`FAMILLE` = 21, 22, 23, RF) la densité n'est pas requise : `public.get_default_value('clean_data.inventory_part', 'c_density', NULL, 'FIL')` -> `NULL`. Les deux branches passent par `get_default_value` et restent modifiables depuis `/configuration/valeurs-defaut`.
+- **Pas de reprise du code famille 19** (lingots) : les lignes `FAMILLE = '19'` sont exclues dès la vue `raw_data.v_phl_article_retenu`, donc de toutes les procédures `alimenter_*_phl`.
 
 ## Champs custom PHL déjà mappés
 

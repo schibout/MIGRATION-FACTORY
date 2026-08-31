@@ -76,52 +76,52 @@ BEGIN
         SUBSTRING(COALESCE(NULLIF(eine.waers, ''), 'EUR'), 1, 3) as currency_code,
         
         -- STATUS_CODE: 2
-        '2' as status_code,
+        public.get_default_value('clean_data.purchase_part_supplier', 'status_code', '2') as status_code,
         
         -- PRIMARY_VENDOR_DB: Y par défaut (fournisseur principal)
-        'Y' as primary_vendor_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'primary_vendor_db', 'Y') as primary_vendor_db,
         
         -- LEADTIME_AUTO_DB: N (délai manuel)
-        'N' as leadtime_auto_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'leadtime_auto_db', 'N') as leadtime_auto_db,
         
         -- RECEIVE_CASE_DB: INVDIR (réception directe en stock)
-        'INVDIR' as receive_case_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'receive_case_db', 'INVDIR') as receive_case_db,
         
         -- EXTERNAL_SERVICE_ALLOWED_DB: FALSE
-        'FALSE' as external_service_allowed_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'external_service_allowed_db', 'FALSE') as external_service_allowed_db,
         
         -- PART_OWNERSHIP_DB: COMPANY OWNED
-        'COMPANY OWNED' as part_ownership_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'part_ownership_db', 'COMPANY OWNED') as part_ownership_db,
         
         -- DIST_ORDER_RECEIPT_TYPE_DB: NO AUTOMATIC RECPT
-        'NO AUTOMATIC RECPT' as dist_order_receipt_type_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'dist_order_receipt_type_db', 'NO AUTOMATIC RECPT') as dist_order_receipt_type_db,
         
         -- MULTISITE_PLANNED_PART_DB: NOT_MULTISITE_PLAN
-        'NOT_MULTISITE_PLAN' as multisite_planned_part_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'multisite_planned_part_db', 'NOT_MULTISITE_PLAN') as multisite_planned_part_db,
         
         -- QUICK_REGISTERED_PART_DB: FALSE
-        'FALSE' as quick_registered_part_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'quick_registered_part_db', 'FALSE') as quick_registered_part_db,
         
         -- PURCHASE_PAYMENT_TYPE_DB: NORMAL
-        'NORMAL' as purchase_payment_type_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'purchase_payment_type_db', 'NORMAL') as purchase_payment_type_db,
         
         -- ACQUISITION_TYPE_DB: PURCHASE
-        'PURCHASE' as acquisition_type_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'acquisition_type_db', 'PURCHASE') as acquisition_type_db,
         
         -- RENTAL_PRIMARY_VENDOR_DB: N
-        'N' as rental_primary_vendor_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'rental_primary_vendor_db', 'N') as rental_primary_vendor_db,
         
         -- USE_PRICE_INCL_TAX_DB: FALSE
-        'FALSE' as use_price_incl_tax_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'use_price_incl_tax_db', 'FALSE') as use_price_incl_tax_db,
         
         -- QUALIFIED_SUPPLIER_DB: FALSE
-        'FALSE' as qualified_supplier_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'qualified_supplier_db', 'FALSE') as qualified_supplier_db,
         
         -- EXT_SVC_PRIMARY_VENDOR_DB: FALSE
-        'FALSE' as ext_svc_primary_vendor_db,
+        public.get_default_value('clean_data.purchase_part_supplier', 'ext_svc_primary_vendor_db', 'FALSE') as ext_svc_primary_vendor_db,
         
         -- ISSUE_PACKAGING_MATERIAL_DB: FALSE
-        'FALSE' as issue_packaging_material_db
+        public.get_default_value('clean_data.purchase_part_supplier', 'issue_packaging_material_db', 'FALSE') as issue_packaging_material_db
         
     FROM raw_data.eina eina
     INNER JOIN raw_data.eine eine 

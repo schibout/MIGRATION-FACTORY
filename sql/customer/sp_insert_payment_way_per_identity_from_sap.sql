@@ -22,14 +22,14 @@ BEGIN
         UPDATED_AT
     )
     SELECT 
-        'TRIMET' as COMPANY,
+        public.get_default_value('clean_data.payment_way_per_identity', 'company', 'TRIMET') as COMPANY,
         TRIM(k.KUNNR) as IDENTITY,
-        'Customer' as PARTY_TYPE,
-        'CUSTOMER' as PARTY_TYPE_DB,
+        public.get_default_value('clean_data.payment_way_per_identity', 'party_type', 'Customer', 'CUSTOMER') as PARTY_TYPE,
+        public.get_default_value('clean_data.payment_way_per_identity', 'party_type_db', 'CUSTOMER', 'CUSTOMER') as PARTY_TYPE_DB,
         COALESCE(kb.ZTERM, 'BANK_TRANSFER') as WAY_ID,
-        'TRUE' as DEFAULT_PAYMENT_WAY,
+        public.get_default_value('clean_data.payment_way_per_identity', 'default_payment_way', 'TRUE') as DEFAULT_PAYMENT_WAY,
         TO_DATE(k.ERDAT, 'YYYYMMDD') as VALID_FROM,
-        NULL as VALID_TO,
+        public.get_default_value('clean_data.payment_way_per_identity', 'valid_to', NULL) as VALID_TO,
         TRUE as IS_ACTIVE,
         CURRENT_TIMESTAMP as CREATED_AT,
         CURRENT_TIMESTAMP as UPDATED_AT

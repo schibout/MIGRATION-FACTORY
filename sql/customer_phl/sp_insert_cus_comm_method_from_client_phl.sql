@@ -32,19 +32,19 @@ BEGIN
         address_id
     )
     SELECT DISTINCT ON (cp.customer_id, cap.address_id)
-        NULL AS party_type,
-        'CUSTOMER' AS party_type_db,
+        public.get_default_value('clean_data.cus_comm_method', 'party_type', NULL) AS party_type,
+        public.get_default_value('clean_data.cus_comm_method', 'party_type_db', 'CUSTOMER') AS party_type_db,
         cp.customer_id AS identity,
-        NULL::NUMERIC AS comm_id,
-        NULL AS value,
-        NULL AS method_id,
-        NULL AS description,
-        NULL::DATE AS valid_from,
-        NULL::DATE AS valid_to,
-        'FALSE' AS method_default,
-        'FALSE' AS address_default,
+        public.get_default_value('clean_data.cus_comm_method', 'comm_id', NULL)::numeric AS comm_id,
+        public.get_default_value('clean_data.cus_comm_method', 'value', NULL) AS value,
+        public.get_default_value('clean_data.cus_comm_method', 'method_id', NULL) AS method_id,
+        public.get_default_value('clean_data.cus_comm_method', 'description', NULL) AS description,
+        public.get_default_value('clean_data.cus_comm_method', 'valid_from', NULL)::date AS valid_from,
+        public.get_default_value('clean_data.cus_comm_method', 'valid_to', NULL)::date AS valid_to,
+        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'FALSE') AS method_default,
+        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'FALSE') AS address_default,
         COALESCE(cap.name, cp.name) AS name,
-        'PHONE' AS method_id_db,
+        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'PHONE') AS method_id_db,
         cap.address_id AS address_id
     FROM raw_data.client_phl cp
     INNER JOIN raw_data.client_adresse_phl cap ON cap.customer_id = cp.customer_id
