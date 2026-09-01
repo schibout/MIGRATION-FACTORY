@@ -67,6 +67,10 @@ errors=0
 
 # Liste des fichiers dans l'ordre d'exécution
 files=(
+    # Preparation de la donnee brute : complete les identifiants vides de
+    # raw_data.file_customer (kunnr, siren, SIRET). A appeler AVANT le
+    # chargement ETL ; ne depend d'aucun autre objet.
+    "sp_enrich_file_customer_ids.sql"
     # Fonctions et vues : doivent exister AVANT les procedures qui les utilisent
     "fn_get_legacy_as400_id.sql"
     "v_customer_source.sql"
