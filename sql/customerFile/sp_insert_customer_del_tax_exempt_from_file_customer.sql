@@ -24,7 +24,6 @@ BEGIN
         CERTIFICATION_JURISDICTION,
         CERTIFICATION_DATE,
         EXPIRATION_DATE,
-        EXEMPT_CERTIFICATE_TYPE,
         EXEMPT_CERTIFICATE_TYPE_DB,
         CERTIFICATE_AMOUNT
     )
@@ -48,7 +47,6 @@ BEGIN
         CASE WHEN fc.created_on ~ '^[0-9]{8}$'
             THEN TO_TIMESTAMP(fc.created_on, 'YYYYMMDD') + INTERVAL '1 year'
             ELSE NULL END as EXPIRATION_DATE,
-        public.get_default_value('clean_data.customer_del_tax_exempt', 'exempt_certificate_type', '') as EXEMPT_CERTIFICATE_TYPE,
         public.get_default_value('clean_data.customer_del_tax_exempt', 'exempt_certificate_type_db', 'BLANKET CERTIFICATE') as EXEMPT_CERTIFICATE_TYPE_DB,
         public.get_default_value('clean_data.customer_del_tax_exempt', 'certificate_amount', '0')::numeric as CERTIFICATE_AMOUNT
     FROM fc  -- TABLE MAÎTRE

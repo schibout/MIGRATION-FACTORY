@@ -25,7 +25,6 @@ BEGIN
     INSERT INTO clean_data.customer_credit_info (
         company,
         identity,
-        party_type,
         party_type_db,
         last4q_sales,
         note_text,
@@ -39,7 +38,6 @@ BEGIN
         credit_block,
         next_review_date,
         corp_credit_relation_exist,
-        credit_relationship_type,
         credit_relationship_type_db,
         parent_company,
         parent_identity,
@@ -49,7 +47,6 @@ BEGIN
     SELECT DISTINCT ON (fc.bukrs, fc.customer_id)
         public.get_default_value('clean_data.customer_credit_info', 'company', 'TRIMET')  as company,
         fc.customer_id as identity,
-        public.get_default_value('clean_data.customer_credit_info', 'party_type', 'Customer') as party_type,
         public.get_default_value('clean_data.customer_credit_info', 'party_type_db', 'CUSTOMER') as party_type_db,
         public.get_default_value('clean_data.customer_credit_info', 'last4q_sales', NULL)::numeric as last4q_sales,
         public.get_default_value('clean_data.customer_credit_info', 'note_text', NULL) as note_text,
@@ -63,7 +60,6 @@ BEGIN
         knb1.SPERR as credit_block,
         public.get_default_value('clean_data.customer_credit_info', 'next_review_date', NULL)::date as next_review_date,
         public.get_default_value('clean_data.customer_credit_info', 'corp_credit_relation_exist', NULL) as corp_credit_relation_exist,
-        public.get_default_value('clean_data.customer_credit_info', 'credit_relationship_type', NULL) as credit_relationship_type,
         public.get_default_value('clean_data.customer_credit_info', 'credit_relationship_type_db', NULL) as credit_relationship_type_db,
         public.get_default_value('clean_data.customer_credit_info', 'parent_company', NULL) as parent_company,
         public.get_default_value('clean_data.customer_credit_info', 'parent_identity', NULL) as parent_identity,

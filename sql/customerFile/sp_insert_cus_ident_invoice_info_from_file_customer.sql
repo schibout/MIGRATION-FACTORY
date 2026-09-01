@@ -20,7 +20,6 @@ BEGIN
     INSERT INTO clean_data.cus_ident_invoice_info (
         company,
         identity,
-        party_type,
         party_type_db,
         invoice_fee,
         expire_date,
@@ -32,7 +31,6 @@ BEGIN
         rounding_tax_code,
         def_currency,
         paym_dev_days,
-        identity_type,
         identity_type_db,
         def_preliminary_code,
         automatic_invoice,
@@ -43,7 +41,6 @@ BEGIN
         tax_exempt_valid_from,
         tax_exempt_valid_to,
         second_tin,
-        report_and_withhold,
         report_and_withhold_db,
         numeration_group,
         tax_book_id,
@@ -55,7 +52,6 @@ BEGIN
     SELECT DISTINCT ON (fc.bukrs, fc.customer_id)
         public.get_default_value('clean_data.cus_ident_invoice_info', 'company', 'TRIMET') as company,
         fc.customer_id as identity,
-        public.get_default_value('clean_data.cus_ident_invoice_info', 'party_type', 'Customer') as party_type,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'party_type_db', 'CUSTOMER') as party_type_db,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'invoice_fee', 'FALSE') as invoice_fee,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'expire_date', NULL)::date as expire_date,
@@ -69,8 +65,6 @@ BEGIN
         public.get_default_value('clean_data.cus_ident_invoice_info', 'rounding_tax_code', NULL) as rounding_tax_code,
         COALESCE(knvv.WAERS, 'EUR') as def_currency,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'paym_dev_days', NULL)::numeric as paym_dev_days,
-        -- 'CUSTOMER' n'existe pas comme IdentityType dans IFS → valeur valide 'EXTERN'
-        public.get_default_value('clean_data.cus_ident_invoice_info', 'identity_type', 'External', 'CUSTOMERFILE') as identity_type,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'identity_type_db', 'EXTERN', 'CUSTOMERFILE') as identity_type_db,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'def_preliminary_code', NULL) as def_preliminary_code,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'automatic_invoice', 'N') as automatic_invoice,
@@ -81,7 +75,6 @@ BEGIN
         public.get_default_value('clean_data.cus_ident_invoice_info', 'tax_exempt_valid_from', NULL)::date as tax_exempt_valid_from,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'tax_exempt_valid_to', NULL)::date as tax_exempt_valid_to,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'second_tin', 'FALSE') as second_tin,
-        public.get_default_value('clean_data.cus_ident_invoice_info', 'report_and_withhold', 'Blocked', 'CUSTOMERFILE') as report_and_withhold,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'report_and_withhold_db', 'BLOCKED', 'CUSTOMERFILE') as report_and_withhold_db,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'numeration_group', NULL) as numeration_group,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'tax_book_id', NULL) as tax_book_id,

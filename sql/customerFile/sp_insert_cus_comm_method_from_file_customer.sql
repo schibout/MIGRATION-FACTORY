@@ -11,12 +11,10 @@ BEGIN
     TRUNCATE TABLE clean_data.cus_comm_method;
     RAISE NOTICE 'Table cus_comm_method vidée';
     INSERT INTO clean_data.cus_comm_method (
-        party_type,
         party_type_db,
         identity,
         comm_id,
         value,
-        method_id,
         description,
         valid_from,
         valid_to,
@@ -34,12 +32,10 @@ BEGIN
         WHERE customer_id IS NOT NULL
     )
     SELECT
-        public.get_default_value('clean_data.cus_comm_method', 'party_type', NULL) AS party_type,
         public.get_default_value('clean_data.cus_comm_method', 'party_type_db', 'CUSTOMER') AS party_type_db,
         fc.customer_id AS identity,
         ROW_NUMBER() OVER (ORDER BY fc.customer_id) AS comm_id,
         COALESCE(NULLIF(TRIM(fc.telephone),''), adr2.telnr_long, adr2.tel_number, k.TELF1) AS value,
-        public.get_default_value('clean_data.cus_comm_method', 'method_id', 'Phone', 'PHONE_PRINCIPAL') AS method_id,
         public.get_default_value('clean_data.cus_comm_method', 'description', 'Téléphone principal', 'PHONE_PRINCIPAL') AS description,
         CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END AS valid_from,
         public.get_default_value('clean_data.cus_comm_method', 'valid_to', NULL)::date AS valid_to,

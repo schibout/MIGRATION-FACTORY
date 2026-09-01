@@ -20,7 +20,6 @@ BEGIN
     INSERT INTO clean_data.cus_paym_way_per_ident (
         company,
         identity,
-        party_type,
         party_type_db,
         way_id,
         default_payment_way
@@ -28,7 +27,6 @@ BEGIN
     SELECT DISTINCT
         public.get_default_value('clean_data.cus_paym_way_per_ident', 'company', 'TRIMET') as company,
         fc.customer_id as identity,
-        public.get_default_value('clean_data.cus_paym_way_per_ident', 'party_type', 'Customer') as party_type,
         public.get_default_value('clean_data.cus_paym_way_per_ident', 'party_type_db', 'CUSTOMER') as party_type_db,
         public.get_default_value('clean_data.cus_paym_way_per_ident', 'way_id', 'SEPA') as way_id,
         public.get_default_value('clean_data.cus_paym_way_per_ident', 'default_payment_way', 'TRUE') as default_payment_way

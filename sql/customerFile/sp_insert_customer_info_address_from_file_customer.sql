@@ -24,9 +24,7 @@ BEGIN
         PARTY,
         ADDRESS_LOV,
         DEFAULT_DOMAIN,
-        COUNTRY,
         COUNTRY_DB,
-        PARTY_TYPE,
         PARTY_TYPE_DB,
         SECONDARY_CONTACT,
         PRIMARY_CONTACT,
@@ -109,17 +107,8 @@ BEGIN
             CASE WHEN NULLIF(TRIM(fc.bukrs), '') IS NOT NULL THEN 'TRUE' END,
             'FALSE'
         ) as DEFAULT_DOMAIN,
-        -- file_customer.country est un CODE ('FR') sur les 168 lignes, pas un
-        -- libelle : il alimente COUNTRY_DB, pas COUNTRY. Le libelle vient donc
-        -- de PHL (client_adresse_phl.country = 'FRANCE'), puis de SAP (T005T,
-        -- SPRAS='F'), puis du client PHL.
-        COALESCE(NULLIF(TRIM(fc.addr_country),''),
-                 NULLIF(TRIM(t_country.LANDX),''),
-                 fc.phl_cli_country) as COUNTRY,
         COALESCE(NULLIF(TRIM(fc.addr_country_db),''),
                  public.get_transcodification('COUNTRY', COALESCE(NULLIF(TRIM(fc.country),''), k.LAND1))) as COUNTRY_DB,
-        COALESCE(NULLIF(TRIM(fc.addr_party_type),''),
-                 public.get_default_value('clean_data.customer_info_address', 'party_type', 'Customer')) as PARTY_TYPE,
         COALESCE(NULLIF(TRIM(fc.addr_party_type_db),''),
                  public.get_default_value('clean_data.customer_info_address', 'party_type_db', 'CUSTOMER')) as PARTY_TYPE_DB,
         public.get_default_value('clean_data.customer_info_address', 'secondary_contact', NULL) as SECONDARY_CONTACT,
