@@ -2,12 +2,13 @@
 -- Vue : clean_data.v_customer_source
 -- Source des clients pour les 20 procedures *_from_file_customer.
 --
--- TABLE PIVOT : raw_data.file_customer -> 168 clients, 1 ligne par client.
+-- TABLE PIVOT : raw_data.file_customer -> 196 clients, 1 ligne par client
+-- (365 lignes brutes dedoublonnees ci-dessous, cf. DEDOUBLONNAGE DU FICHIER).
 -- Le fichier est la SEULE source de lignes. SAP et PHL ne creent jamais de
 -- client : ils viennent en JOINTURE EXTERNE completer ce que le fichier ne
 -- porte pas.
 --
---   PIVOT      raw_data.file_customer         168 lignes (autorite)
+--   PIVOT      raw_data.file_customer         196 clients (autorite)
 --   ENRICH PHL raw_data.client_phl            LEFT JOIN LATERAL (1 ligne max)
 --              raw_data.client_adresse_phl    LEFT JOIN LATERAL (1 ligne max)
 --   ENRICH SAP raw_data.KNA1 / ADRC / T005T   joints dans chaque procedure
@@ -27,6 +28,7 @@
 -- (nouveaux clients, absents de SAP). LATERAL + LIMIT 1 et non LEFT JOIN :
 -- 152 lignes client_phl pour 149 numero_sap distincts, un JOIN dupliquerait
 -- les lignes du fichier et fausserait les 19 autres procedures.
+-- 92 des 196 clients du fichier sont rapproches a PHL.
 --
 -- La vue expose exactement les colonnes de raw_data.file_customer, plus :
 --   customer_id     identifiant client deja calcule
@@ -46,6 +48,28 @@
 -- =====================================================
 
 CREATE OR REPLACE VIEW clean_data.v_customer_source AS
+
+-- DEDOUBLONNAGE DU FICHIER : raw_data.file_customer empile les chargements
+-- successifs (l'import ne purge pas la table). Au 2026-09-01 elle porte 365
+-- lignes pour 196 clients : 168 clients y figurent deux fois, une version du
+-- 2026-06-21 et une du 2026-09-01. Sans ce DISTINCT ON, la vue rend 365
+-- lignes et les 20 procedures choisissent arbitrairement l'ancienne ou la
+-- nouvelle version. On retient le chargement le PLUS RECENT.
+WITH fichier AS (
+    SELECT DISTINCT ON (COALESCE(NULLIF(TRIM(f0.nouveau_compte_ifs), ''),
+                                 NULLIF(TRIM(f0.num_corrige), ''),
+                                 TRIM(f0.kunnr)))
+           f0.*
+    FROM raw_data.file_customer f0
+    WHERE COALESCE(NULLIF(TRIM(f0.nouveau_compte_ifs), ''),
+                   NULLIF(TRIM(f0.num_corrige), ''),
+                   TRIM(f0.kunnr)) IS NOT NULL
+    ORDER BY COALESCE(NULLIF(TRIM(f0.nouveau_compte_ifs), ''),
+                      NULLIF(TRIM(f0.num_corrige), ''),
+                      TRIM(f0.kunnr)),
+             f0.loaded_at DESC NULLS LAST,
+             f0.raw_id DESC
+)
 
 SELECT
     f.raw_id,
@@ -115,33 +139,37 @@ SELECT
     COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs), ''),
              NULLIF(TRIM(f.num_corrige), ''),
              TRIM(f.kunnr))                                   AS customer_id,
-    -- ADRESSE PRINCIPALE du client. Depuis que les adresses sont reprises de
-    -- PHL (clean_data.v_customer_address_source), c'est l'address_id PHL
-    -- retenu par la LATERAL ci-dessous (default_domain=VRAI, sinon le plus
-    -- petit) des qu'un rapprochement existe. Toutes les tables satellites qui
-    -- referencent une adresse (types, taxes, paiement, commande) pointent
-    -- ainsi sur une ligne reellement chargee dans customer_info_address.
+    -- ADRESSE PRINCIPALE du client. C'est l'identifiant d'adresse PHL
+    -- (client_adresse_phl.id_client) retenu par la LATERAL ci-dessous -- le
+    -- plus petit dans l'ordre alphabetique, soit '01' quand il existe -- des
+    -- qu'un rapprochement existe. Toutes les tables satellites qui referencent
+    -- une adresse (types, taxes, paiement, commande) pointent ainsi sur une
+    -- ligne reellement chargee dans customer_info_address. Le CONTENU de cette
+    -- adresse principale vient, lui, du fichier (cf.
+    -- sp_insert_customer_info_address_from_file_customer).
     -- Repli : le numero d'adresse du fichier, puis '1'.
-    COALESCE(NULLIF(TRIM(pa.address_id), ''),
+    COALESCE(NULLIF(TRIM(pa.id_client), ''),
              NULLIF(split_part(TRIM(f.numero_adresse), '.', 1), ''),
              '1')                                             AS address_id,
     'FILE'::TEXT                                              AS source_systeme,
     -- ---- champs d'ADRESSE issus de client_adresse_phl ----
-    -- Seules les colonnes reellement alimentees sont reprises : address3 a
-    -- address6, county, state, zip_code, ean_location, jurisdiction_code,
-    -- primary_contact et secondary_contact sont vides sur les 217 lignes.
-    NULLIF(TRIM(pa.address), '')::TEXT                AS phl_address,
-    NULLIF(TRIM(pa.address_lov), '')::TEXT            AS phl_address_lov,
-    NULLIF(TRIM(pa.address2), '')::TEXT               AS phl_address2,
-    NULLIF(TRIM(pa.name), '')::TEXT                   AS phl_addr_name,
-    -- 'VRAI'/'FAUX' -> booleen IFS attendu en MAJUSCULES
-    (CASE UPPER(TRIM(COALESCE(pa.default_domain, '')))
-        WHEN 'VRAI' THEN 'TRUE'
-        WHEN 'TRUE' THEN 'TRUE'
-        WHEN 'FAUX' THEN 'FALSE'
-        WHEN 'FALSE' THEN 'FALSE'
-     END)::TEXT                                       AS phl_default_domain,
-    NULLIF(UPPER(TRIM(pa.party_type_db)), '')::TEXT   AS phl_party_type_db,
+    -- Colonnes de compatibilite : aucune procedure ne les lit (les adresses
+    -- passent par clean_data.v_customer_address_source). Elles sont conservees
+    -- parce que CREATE OR REPLACE VIEW interdit de supprimer une colonne.
+    NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(pa.adresse), ''),
+                               NULLIF(TRIM(pa.adresse_suite), ''),
+                               NULLIF(TRIM(pa.code_postal), ''),
+                               NULLIF(TRIM(pa.ville), ''))), '')::TEXT AS phl_address,
+    NULLIF(TRIM(CONCAT_WS(', ', NULLIF(TRIM(pa.adresse), ''),
+                                NULLIF(TRIM(pa.ville), ''),
+                                NULLIF(TRIM(pa.code_postal), ''))), '')::TEXT AS phl_address_lov,
+    NULLIF(TRIM(pa.adresse_suite), '')::TEXT          AS phl_address2,
+    NULLIF(TRIM(pa.nom), '')::TEXT                    AS phl_addr_name,
+    -- La nouvelle raw_data.client_adresse_phl ne porte plus d'indicateur
+    -- d'adresse par defaut ni de type de tiers : les procedures les derivent
+    -- (code societe du fichier) ou prennent la valeur d'ecran.
+    NULL::TEXT                                        AS phl_default_domain,
+    NULL::TEXT                                        AS phl_party_type_db,
     -- ---- champs CLIENT issus de client_phl ----
     -- Les booleens PHL sont en casse mixte ('True'/'False') alors qu'IFS les
     -- attend en MAJUSCULES cote _db -> UPPER().
@@ -179,7 +207,7 @@ SELECT
     -- echouer le remplacement ("cannot change name of view column") et laisse
     -- l'ancienne vue en place -> ne jamais reordonner les colonnes ci-dessus.
     NULLIF(TRIM(p.customer_id), '')::TEXT             AS phl_cli_customer_id
-FROM raw_data.file_customer f
+FROM fichier f
 -- Nom du fichier normalise une seule fois (majuscules, sans accents ni
 -- ponctuation), pour que les deux cotes de la comparaison restent coherents.
 CROSS JOIN LATERAL (
@@ -227,18 +255,20 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) p ON TRUE
 -- ---------- Enrichissement ADRESSE depuis PHL (jointure externe) ----------
--- Un client PHL peut porter plusieurs adresses (jusqu'a 171) alors que le
--- fichier n'en porte qu'une : on retient l'adresse par defaut, sinon la
--- premiere par address_id, pour garder le grain "1 ligne par client".
+-- Un client PHL peut porter plusieurs adresses alors que le fichier n'en
+-- porte qu'une : on retient la premiere par id_client, pour garder le grain
+-- "1 ligne par client". La nouvelle raw_data.client_adresse_phl ne porte plus
+-- d'indicateur d'adresse par defaut ; l'ordre alphabetique fait remonter les
+-- identifiants numeriques ('01', '02') avant les mnemoniques ('AM', 'BU'), ce
+-- qui reconduit le choix de l'ancienne table.
+-- CLE : le code client PHL est ca2.mnemo, l'identifiant d'ADRESSE est
+-- ca2.id_client (nommage trompeur, verifie sur les 670 lignes).
 LEFT JOIN LATERAL (
     SELECT ca2.*
     FROM raw_data.client_adresse_phl ca2
     WHERE p.customer_id IS NOT NULL
-      AND ca2.customer_id = p.customer_id
-    ORDER BY
-        CASE WHEN UPPER(TRIM(COALESCE(ca2.default_domain, ''))) IN ('VRAI', 'TRUE')
-             THEN 0 ELSE 1 END,
-        TRIM(ca2.address_id)
+      AND TRIM(ca2.mnemo) = TRIM(p.customer_id)
+    ORDER BY TRIM(ca2.id_client)
     LIMIT 1
 ) pa ON TRUE
 WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs), ''),
@@ -246,10 +276,10 @@ WHERE COALESCE(NULLIF(TRIM(f.nouveau_compte_ifs), ''),
                TRIM(f.kunnr)) IS NOT NULL;
 
 COMMENT ON VIEW clean_data.v_customer_source IS
-'Source clients du module customerFile. Table pivot : raw_data.file_customer (168 clients, 1 ligne par client). raw_data.client_phl et client_adresse_phl sont joints en externe (n SAP, puis nom normalise) pour completer, sans jamais creer de ligne.';
+'Source clients du module customerFile. Table pivot : raw_data.file_customer (196 clients, 1 ligne par client apres dedoublonnage sur le chargement le plus recent). raw_data.client_phl et client_adresse_phl sont joints en externe (n SAP, puis nom normalise) pour completer, sans jamais creer de ligne.';
 
 -- Controles
 -- SELECT count(*) AS lignes, count(DISTINCT customer_id) AS clients FROM clean_data.v_customer_source;
---   Attendu : 168 / 168.
+--   Attendu : 196 / 196 (une ligne par client, sans doublon de chargement).
 -- SELECT COALESCE(phl_match_kind, 'AUCUN') AS voie, count(*)
 --   FROM clean_data.v_customer_source GROUP BY 1 ORDER BY 1;

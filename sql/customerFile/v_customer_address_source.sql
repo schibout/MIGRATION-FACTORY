@@ -17,16 +17,27 @@
 -- Le client reste identifie par customer_id (numerotation IFS du fichier) :
 -- seul l'identifiant d'ADRESSE vient de PHL.
 --
--- REPLI : PHL ne renseigne que address1, address2, city, country, country_db,
--- address (texte complet) et address_lov. zip_code (reconstitue ici depuis le
--- texte `address`, voir addr_zip_code), county, state, address3 a address6,
--- ean_location et jurisdiction_code sont vides sur les 670 lignes.
--- Les colonnes addr_* valent donc NULL et les procedures appliquent la
--- cascade PHL -> FICHIER -> SAP (ADRC/KNA1) -> public.get_default_value.
--- ATTENTION : le code postal et le departement du FICHIER ne valent que pour
--- l'adresse principale. Les reprendre sur les autres adresses PHL donnerait un
--- code postal faux (89108 pour une adresse a Bagnolet) : les procedures ne
--- retombent sur le fichier que si PHL ne dit rien du tout.
+-- STRUCTURE DE raw_data.client_adresse_phl (rechargee le 2026-09-01, l'ancien
+-- format a largeur fixe est conserve sous raw_data.client_adresse_phl_old) :
+--   mnemo         code client PHL   -> cle vers client_phl.customer_id
+--   id_client     identifiant d'ADRESSE (nommage trompeur) -> addr_id
+--   nom, adresse, adresse_suite, code_postal, ville, pays, id_ville (ISO 2)
+--   siren, siret, tva
+-- Le code postal et la ville sont enfin des colonnes a part entiere : le
+-- decoupage a largeur fixe de l'ancienne table (substring 75-82) a disparu.
+--
+-- REPLI : la nouvelle table ne porte ni address3 a address6, ni county/state,
+-- ni ean_location, ni jurisdiction_code, ni indicateur d'adresse par defaut,
+-- ni type de tiers. Les colonnes addr_* correspondantes valent NULL et les
+-- procedures completent avec le fichier / SAP / la valeur d'ecran.
+-- CASCADE (revision 2026-09-01) : sur l'ADRESSE PRINCIPALE le FICHIER fait
+-- autorite, PHL ne vient qu'ensuite :
+--     FICHIER -> PHL -> SAP (ADRC/KNA1) -> public.get_default_value
+-- ATTENTION : le fichier ne decrit QUE l'adresse principale. Ses colonnes
+-- (rue, code postal, ville, region) ne doivent jamais etre appliquees aux
+-- autres adresses PHL, sous peine de code postal faux (89108 pour une adresse
+-- a Bagnolet) : les procedures reservent la branche fichier/SAP aux lignes
+-- ou addr_id = address_id.
 --
 -- Colonnes ajoutees a celles de clean_data.v_customer_source :
 --   addr_origin  'PHL' ou 'FILE' (controle qualite)
@@ -50,44 +61,49 @@ WITH src AS (
 SELECT
     s.*,
     'PHL'::TEXT                                       AS addr_origin,
-    COALESCE(NULLIF(TRIM(ca.address_id), ''), '1')::TEXT AS addr_id,
-    NULLIF(TRIM(ca.name), '')::TEXT                   AS addr_name,
-    NULLIF(TRIM(ca.address), '')::TEXT                AS addr_address,
-    NULLIF(TRIM(ca.address_lov), '')::TEXT            AS addr_address_lov,
-    NULLIF(TRIM(ca.address1), '')::TEXT               AS addr_address1,
-    NULLIF(TRIM(ca.address2), '')::TEXT               AS addr_address2,
-    NULLIF(TRIM(ca.address3), '')::TEXT               AS addr_address3,
-    NULLIF(TRIM(ca.address4), '')::TEXT               AS addr_address4,
-    NULLIF(TRIM(ca.address5), '')::TEXT               AS addr_address5,
-    NULLIF(TRIM(ca.address6), '')::TEXT               AS addr_address6,
-    -- CODE POSTAL : la colonne zip_code de PHL est vide sur les 670 lignes,
-    -- mais le texte `address` est a largeur fixe et le contient :
-    --   1-37 address1 | 38-74 address2 | 75-82 code postal | 83+ ville
-    -- Verifie sur la totalite des lignes (address1 et city reconstitues a
-    -- l'identique). 646 des 670 adresses ont ainsi un code postal ; sans lui
-    -- les procedures retombent sur le fichier puis sur SAP.
-    COALESCE(NULLIF(TRIM(ca.zip_code), ''),
-             NULLIF(TRIM(substring(ca.address from 75 for 8)), ''))::TEXT AS addr_zip_code,
-    NULLIF(TRIM(ca.city), '')::TEXT                   AS addr_city,
-    NULLIF(TRIM(ca.county), '')::TEXT                 AS addr_county,
-    NULLIF(TRIM(ca.state), '')::TEXT                  AS addr_state,
-    NULLIF(TRIM(ca.country), '')::TEXT                AS addr_country,
-    NULLIF(UPPER(TRIM(ca.country_db)), '')::TEXT      AS addr_country_db,
-    NULLIF(TRIM(ca.ean_location), '')::TEXT           AS addr_ean_location,
-    NULLIF(TRIM(ca.jurisdiction_code), '')::TEXT      AS addr_jurisdiction_code,
-    -- 'VRAI'/'FAUX' -> booleen IFS attendu en MAJUSCULES
-    (CASE UPPER(TRIM(COALESCE(ca.default_domain, '')))
-        WHEN 'VRAI'  THEN 'TRUE'
-        WHEN 'TRUE'  THEN 'TRUE'
-        WHEN 'FAUX'  THEN 'FALSE'
-        WHEN 'FALSE' THEN 'FALSE'
-     END)::TEXT                                       AS addr_default_domain,
-    NULLIF(TRIM(ca.party_type), '')::TEXT             AS addr_party_type,
-    NULLIF(UPPER(TRIM(ca.party_type_db)), '')::TEXT   AS addr_party_type_db
+    COALESCE(NULLIF(TRIM(ca.id_client), ''), '1')::TEXT AS addr_id,
+    NULLIF(TRIM(ca.nom), '')::TEXT                    AS addr_name,
+    -- Texte d'adresse complet reconstitue depuis les colonnes de la nouvelle
+    -- table (l'ancienne le portait deja formate, a largeur fixe).
+    NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ca.adresse), ''),
+                               NULLIF(TRIM(ca.adresse_suite), ''),
+                               NULLIF(TRIM(ca.code_postal), ''),
+                               NULLIF(TRIM(ca.ville), ''))), '')::TEXT AS addr_address,
+    NULLIF(TRIM(CONCAT_WS(', ', NULLIF(TRIM(ca.adresse), ''),
+                                NULLIF(TRIM(ca.ville), ''),
+                                NULLIF(TRIM(ca.code_postal), ''))), '')::TEXT AS addr_address_lov,
+    NULLIF(TRIM(ca.adresse), '')::TEXT                AS addr_address1,
+    NULLIF(TRIM(ca.adresse_suite), '')::TEXT          AS addr_address2,
+    -- address3 a address6 : absentes de la nouvelle table.
+    NULL::TEXT                                        AS addr_address3,
+    NULL::TEXT                                        AS addr_address4,
+    NULL::TEXT                                        AS addr_address5,
+    NULL::TEXT                                        AS addr_address6,
+    -- CODE POSTAL : colonne a part entiere depuis le rechargement du
+    -- 2026-09-01. 646 des 670 adresses en portent un ; sans lui les
+    -- procedures retombent sur le fichier puis sur SAP.
+    NULLIF(TRIM(ca.code_postal), '')::TEXT            AS addr_zip_code,
+    NULLIF(TRIM(ca.ville), '')::TEXT                  AS addr_city,
+    -- county / state : absents de la nouvelle table. Les procedures
+    -- reconstituent le departement depuis le code postal francais.
+    NULL::TEXT                                        AS addr_county,
+    NULL::TEXT                                        AS addr_state,
+    NULLIF(TRIM(ca.pays), '')::TEXT                   AS addr_country,
+    -- id_ville porte en realite le code pays ISO 2 (nommage trompeur).
+    -- ANOMALIE SOURCE : 4 adresses 'COTE D''IVOIRE' portent id_ville = 'FR'.
+    NULLIF(UPPER(TRIM(ca.id_ville)), '')::TEXT        AS addr_country_db,
+    -- ean_location / jurisdiction_code / indicateur d'adresse par defaut /
+    -- type de tiers : absents de la nouvelle table -> fichier ou valeur d'ecran.
+    NULL::TEXT                                        AS addr_ean_location,
+    NULL::TEXT                                        AS addr_jurisdiction_code,
+    NULL::TEXT                                        AS addr_default_domain,
+    NULL::TEXT                                        AS addr_party_type,
+    NULL::TEXT                                        AS addr_party_type_db
 FROM src s
+-- CLE : mnemo = code client PHL, id_client = identifiant d'ADRESSE.
 JOIN raw_data.client_adresse_phl ca
   ON s.phl_cli_customer_id IS NOT NULL
- AND TRIM(ca.customer_id) = s.phl_cli_customer_id
+ AND TRIM(ca.mnemo) = s.phl_cli_customer_id
 
 UNION ALL
 
@@ -125,7 +141,8 @@ COMMENT ON VIEW clean_data.v_customer_address_source IS
 -- Controles
 -- SELECT addr_origin, count(*) AS adresses, count(DISTINCT customer_id) AS clients
 --   FROM clean_data.v_customer_address_source GROUP BY 1 ORDER BY 1;
---   Attendu : PHL ~445 adresses / ~90 clients, FILE ~78 adresses / autant de clients.
+--   Attendu (2026-09-01) : PHL 455 adresses / 92 clients, FILE 104 adresses.
+--   Total 559 lignes.
 -- Aucun doublon de cle :
 -- SELECT customer_id, addr_id, count(*) FROM clean_data.v_customer_address_source
 --   GROUP BY 1,2 HAVING count(*) > 1;
