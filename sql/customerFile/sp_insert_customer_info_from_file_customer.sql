@@ -106,8 +106,11 @@ BEGIN
         COALESCE(NULLIF(TRIM(fc.vat_number),''), fc.phl_cli_identifier_reference, k.STCEG) as IDENTIFIER_REFERENCE,
         COALESCE(fc.phl_identifier_ref_validation_db,
                  public.get_default_value('clean_data.customer_info', 'identifier_ref_validation_db', '')) as IDENTIFIER_REF_VALIDATION_DB,
-        COALESCE(fc.phl_cli_picture_id,
-                 public.get_default_value('clean_data.customer_info', 'picture_id', NULL))::numeric as PICTURE_ID,
+        -- get_default_value renvoie du TEXT : une valeur d'ecran vide ('')
+        -- fait echouer le cast ("invalid input syntax for type numeric").
+        -- NULLIF ramene la chaine vide a NULL avant le ::numeric.
+        NULLIF(COALESCE(fc.phl_cli_picture_id,
+                 public.get_default_value('clean_data.customer_info', 'picture_id', NULL)), '')::numeric as PICTURE_ID,
         COALESCE(fc.phl_one_time_db,
                  public.get_default_value('clean_data.customer_info', 'one_time_db', 'FALSE')) as ONE_TIME_DB,
         COALESCE(fc.phl_customer_category_db,

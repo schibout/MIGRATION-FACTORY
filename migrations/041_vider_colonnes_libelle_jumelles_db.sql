@@ -9,14 +9,17 @@
 --
 -- Regle de remplissage :
 --   - colonne NULLABLE -> NULL
---   - colonne NOT NULL -> '' (chaine vide), le NULL etant interdit.
+--   - colonne NOT NULL -> '' (chaine vide), le NULL etant interdit ;
+--     les 23 colonnes NOT NULL sont toutes textuelles, la seule colonne
+--     numerique du lot (supplier_info_address.output_media) est nullable.
 --     23 colonnes concernees, toutes de type character varying :
 --     customer_agreement (7), project_margin_matrix (6), project_base (4),
 --     pm_action_planning (2), pm_action, pm_action_resource,
 --     inventory_part_in_stock, routing_head.
 --
--- Perimetre mesure le 2026-09-01 : 460 colonnes sur 65 tables
--- (437 nullables + 23 NOT NULL). Les VUES sont exclues
+-- Perimetre reel, mesure par une execution a blanc le 2026-09-01 :
+-- 460 colonnes sur 68 tables (437 nullables + 23 NOT NULL),
+-- 314 663 lignes mises a jour. Les VUES sont exclues
 -- (table_type = 'BASE TABLE') : elles se recalculent d'elles-memes.
 --
 -- Ne touche QUE les donnees deja chargees. Pour que les prochains
@@ -107,8 +110,10 @@ BEGIN
         WHERE c.table_schema = 'clean_data'
         ORDER BY 1, 2
     LOOP
+        -- ::text : une des colonnes jumelees est numerique
+        -- (supplier_info_address.output_media) et n'accepte pas <> ''
         EXECUTE format(
-            'SELECT count(*) FROM clean_data.%I WHERE %I IS NOT NULL AND %I <> ''''',
+            'SELECT count(*) FROM clean_data.%I WHERE %I IS NOT NULL AND %I::text <> ''''',
             r.table_name, r.column_name, r.column_name) INTO v_reste;
         IF v_reste > 0 THEN
             v_ko := v_ko + 1;
