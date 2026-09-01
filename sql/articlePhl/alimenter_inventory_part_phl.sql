@@ -155,7 +155,7 @@ BEGIN
              ELSE public.get_default_value('clean_data.inventory_part', 'c_density', NULL, 'FIL')::numeric
         END as c_density,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
-        NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 4), '') as c_alloy_serie_code,
+        phl."SERIE ALL" as c_alloy_serie_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
         NULLIF(REPLACE(TRIM(COALESCE(phl."EPAISSEUR", '')), ',', '.'), '')::numeric as c_epaisseur_brut,
         NULLIF(REPLACE(TRIM(COALESCE(phl."LONGUEUR", '')), ',', '.'), '')::numeric as c_longueur_brut,
@@ -252,7 +252,7 @@ BEGIN
                  ELSE public.get_default_value('clean_data.inventory_part', 'c_density', NULL, 'FIL')::numeric
             END as c_density,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
-            NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 4), '') as c_alloy_serie_code,
+            phl."SERIE ALL" as c_alloy_serie_code,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
             NULLIF(REPLACE(TRIM(COALESCE(phl."EPAISSEUR", '')), ',', '.'), '')::numeric as c_epaisseur_brut,
             NULLIF(REPLACE(TRIM(COALESCE(phl."LONGUEUR", '')), ',', '.'), '')::numeric as c_longueur_brut,

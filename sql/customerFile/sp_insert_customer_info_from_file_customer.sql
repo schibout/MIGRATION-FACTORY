@@ -163,11 +163,14 @@ BEGIN
         -- pipeline (backend/etl_modules/etl_file_customer.py).
         -- Identifiants legacy : conserves tels quels.
         -- as400 = code client PHL resolu par clean_data.get_legacy_as400_id
-        --         (recherche par n° SAP, repli par nom). PAS de repli sur
-        --         l'identifiant du fichier : sans correspondance PHL, on laisse
-        --         vide plutot que d'y stocker un identifiant qui n'est pas un code AS400.
+        --         (recherche par n° SAP, repli par nom). A defaut de
+        --         correspondance PHL, on retombe sur le terme de recherche du
+        --         fichier (search_term), qui porte le code court du client.
         -- sap   = identifiant SAP du fichier (kunnr, NULL si le client n'existe pas dans SAP)
-        clean_data.get_legacy_as400_id(fc.kunnr, fc.name_1) as cf_legacy_customer_as400_mn,
+        COALESCE(
+            clean_data.get_legacy_as400_id(fc.kunnr, fc.name_1),
+            NULLIF(TRIM(fc.search_term), '')
+        ) as cf_legacy_customer_as400_mn,
         fc.kunnr as cf_legacy_customer_sap_id
     -- TABLE PIVOT : le fichier. SAP n'est jamais qu'une jointure EXTERNE : il
     -- complete les colonnes absentes du fichier, il ne cree aucun client.
