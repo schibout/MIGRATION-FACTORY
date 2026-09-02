@@ -94,7 +94,13 @@ COMMENT ON COLUMN clean_data.ifs_fournisseurs.numero_compte_fournisseur IS
 --   lfbk  = lien fournisseur -> compte bancaire
 --   tiban = IBAN, cle (banks, bankl, bankn)
 --   bnka  = referentiel banques : nom (banka) et code SWIFT
-CREATE OR REPLACE FUNCTION clean_data.fn_coordonnees_bancaires_sap(p_lifnr TEXT)
+-- DROP obligatoire : CREATE OR REPLACE ne sait pas modifier les colonnes d'un
+-- RETURNS TABLE (« cannot change return type of existing function »). Sans lui,
+-- l'ancienne version a 3 colonnes (iban, swift, nom) reste en place et le
+-- chargement echoue sur « column banque.nom_banque does not exist ».
+DROP FUNCTION IF EXISTS clean_data.fn_coordonnees_bancaires_sap(TEXT);
+
+CREATE FUNCTION clean_data.fn_coordonnees_bancaires_sap(p_lifnr TEXT)
 RETURNS TABLE (
     iban        TEXT,
     swift       TEXT,

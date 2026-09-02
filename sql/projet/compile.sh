@@ -44,12 +44,12 @@ execute_sql() {
     # Définir le mot de passe pour psql
     export PGPASSWORD="$DB_PASSWORD"
     
-    if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$file" > /dev/null 2>&1; then
+    if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$file" > /dev/null 2>&1; then
         log_info "✅ $filename compilé avec succès"
         return 0
     else
         log_error "❌ Erreur lors de la compilation de $filename"
-        psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$file"
+        psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$file"
         return 1
     fi
 }
