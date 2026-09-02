@@ -62,6 +62,21 @@ class _DiskFileStore:
 temp_file_storage = _DiskFileStore(os.path.join(tempfile.gettempdir(), 'import_generic_store'))
 
 
+def drop_empty_rows(df: 'pd.DataFrame') -> 'pd.DataFrame':
+    """
+    Supprime les lignes entierement vides du DataFrame.
+
+    Les exports Excel/CSV se terminent souvent par des lignes sans aucune valeur
+    (cellules NaN ou chaines blanches) : elles produiraient des lignes vides en base.
+    L'index d'origine est conserve pour que les numeros de ligne affiches
+    correspondent toujours au fichier source.
+    """
+    if df.empty:
+        return df
+    blank = df.apply(lambda col: col.isna() | (col.astype(str).str.strip() == ''))
+    return df[~blank.all(axis=1)]
+
+
 def to_text(value: Any) -> str:
     """
     Convertit une valeur lue dans un fichier en texte pour une colonne texte.
@@ -166,6 +181,15 @@ def analyze_file():
             current_app.logger.error(f"Erreur lecture fichier: {e}")
             return jsonify({'error': f'Erreur lors de la lecture du fichier: {str(e)}'}), 400
         
+        # Ecarter les lignes entierement vides (fins de fichiers Excel/CSV)
+        raw_row_count = len(df)
+        df = drop_empty_rows(df)
+        empty_rows_skipped = raw_row_count - len(df)
+        if empty_rows_skipped:
+            current_app.logger.info(
+                f"{empty_rows_skipped} ligne(s) vide(s) ignoree(s) dans {filename}"
+            )
+        
         # Analyser les colonnes
         columns = []
         for col in df.columns:
@@ -204,6 +228,7 @@ def analyze_file():
             'fileSize': file_size,
             'columns': columns,
             'rowCount': len(df),
+            'emptyRowsSkipped': empty_rows_skipped,
             'encoding': detected_encoding if extension == 'csv' else None,
             'delimiter': delimiter if extension == 'csv' else None
         }), 200
@@ -639,6 +664,7 @@ def execute_import():
         updated_count = 0
         inserted_count = 0
         error_count = 0
+        skipped_count = 0
         errors_detail = []
         
         with get_db_connection() as conn:
@@ -711,7 +737,7 @@ def execute_import():
                         target_col = target_cols[i]
                         target_type = target_types.get(target_col, 'text')
                         
-                        if pd.isna(value):
+                        if pd.isna(value) or (isinstance(value, str) and not value.strip()):
                             values.append(None)
                         else:
                             # Conversion selon le type cible
@@ -737,6 +763,12 @@ def execute_import():
                             else:
                                 values.append(to_text(value))
                     
+                    # Ligne vide sur toutes les colonnes mappees : rien a inserer
+                    if all(v is None for v in values):
+                        skipped_count += 1
+                        cursor.execute("RELEASE SAVEPOINT row_sp")
+                        continue
+
                     if import_mode == 'update_only' and conflict_columns:
                         # Pour UPDATE ONLY, réorganiser les valeurs
                         conflict_values = [values[target_cols.index(col)] for col in conflict_columns]
@@ -791,7 +823,13 @@ def execute_import():
         elif import_mode == 'update_only':
             message = f'Import terminé: {updated_count} lignes mises à jour'
         
-        current_app.logger.info(f"Import terminé: {success_count} succès, {error_count} erreurs, mode={import_mode}")
+        if skipped_count:
+            message += f' ({skipped_count} ligne(s) vide(s) ignoree(s))'
+        
+        current_app.logger.info(
+            f"Import terminé: {success_count} succès, {skipped_count} lignes vides ignorées, "
+            f"{error_count} erreurs, mode={import_mode}"
+        )
         
         return jsonify({
             'success': True,
@@ -800,6 +838,7 @@ def execute_import():
             'insertedCount': inserted_count,
             'updatedCount': updated_count,
             'errorCount': error_count,
+            'skippedCount': skipped_count,
             'errors': errors_detail,
             'targetTable': target_table,
             'mode': import_mode
