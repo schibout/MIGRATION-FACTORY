@@ -78,5 +78,11 @@ def update_default_value(value_id):
         return jsonify(dv.to_dict()), 200
     except SQLAlchemyError as e:
         db.session.rollback()
+        # Le trigger public.trg_etl_default_values_valider (migration 049) refuse
+        # une valeur non castable vers le type de la colonne cible : son message
+        # explique quoi faire, on le remonte tel quel plutot qu'un 500 opaque.
+        if getattr(getattr(e, 'orig', None), 'pgcode', None) == '22P02':
+            message = getattr(e.orig.diag, 'message_primary', None) or str(e.orig)
+            return jsonify({"error": message}), 400
         current_app.logger.error(f"Erreur update default-value {value_id}: {e}")
         return jsonify({"error": "Erreur lors de la mise à jour"}), 500

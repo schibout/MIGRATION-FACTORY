@@ -84,6 +84,11 @@ const DefaultValuesManagement: React.FC = () => {
     setEstNull(row.type_valeur === 'NULL');
   };
 
+  const messageErreur = (e: unknown, repli: string): string => {
+    const detail = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    return detail || repli;
+  };
+
   const enregistrer = async () => {
     if (!edition) return;
     try {
@@ -95,8 +100,8 @@ const DefaultValuesManagement: React.FC = () => {
       setMessage({ texte: 'Valeur mise à jour', type: 'success' });
       setEdition(null);
       charger();
-    } catch {
-      setMessage({ texte: 'Erreur lors de la mise à jour', type: 'error' });
+    } catch (e) {
+      setMessage({ texte: messageErreur(e, 'Erreur lors de la mise à jour'), type: 'error' });
     }
   };
 
@@ -104,8 +109,8 @@ const DefaultValuesManagement: React.FC = () => {
     try {
       await defaultValueService.update(row.id, { is_active: !row.is_active });
       charger();
-    } catch {
-      setMessage({ texte: "Erreur lors du changement d'état", type: 'error' });
+    } catch (e) {
+      setMessage({ texte: messageErreur(e, "Erreur lors du changement d'état"), type: 'error' });
     }
   };
 
