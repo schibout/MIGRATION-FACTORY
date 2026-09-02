@@ -1,17 +1,15 @@
 -- =====================================================
--- 044 - public.get_default_value : plus de repli sur la valeur codee en dur
+-- 044 - public.get_default_value : suppression de l'argument de repli
 --
--- AVANT : aucune ligne parametree (ou ligne inactive) -> retour de p_fallback,
+-- AVANT : get_default_value(p_table, p_colonne, p_fallback, p_variante)
+--         Aucune ligne parametree (ou ligne inactive) -> retour de p_fallback,
 --         c'est-a-dire la constante historiquement codee en dur dans le script
 --         ETL appelant. L'ecran /configuration/valeurs-defaut n'etait donc pas
 --         la seule source de verite : une valeur pouvait venir du code.
 --
--- APRES : la fonction ne renvoie QUE ce qui est parametre. Si la ligne existe
---         et est active, sa valeur ; sinon NULL (valeur vide).
---
--- p_fallback est CONSERVE dans la signature -- les ~977 appels des modules ETL
--- le passent en 3e argument -- mais il n'est PLUS utilise. Le supprimer
--- imposerait de reecrire tous les appels.
+-- APRES : get_default_value(p_table, p_colonne, p_variante)
+--         La fonction ne renvoie QUE ce qui est parametre : la valeur de la
+--         ligne active, sinon NULL (valeur vide).
 --
 -- Pourquoi NULL et pas '' : get_default_value retourne du TEXT et PostgreSQL
 -- n'a aucun cast implicite ''->numeric/date/timestamp. Une chaine vide ferait
@@ -28,10 +26,16 @@
 --   *   0 ligne inactive sur colonne NOT NULL
 -- => neutre sur tout le contenu actuel de public.etl_default_values.
 --
--- PREREQUIS : tout appel a get_default_value doit avoir sa ligne seedee, sinon
--- il renverra desormais NULL. Jouer la migration 043 AVANT celle-ci
--- (clean_data.supplier/currency_code et
---  clean_data.identity_invoice_info/def_currency), puis verifier avec
+-- L'ANCIENNE SIGNATURE EST SUPPRIMEE : les 1050 appels des 59 scripts ETL ont
+-- ete reecrits sans le 3e argument (le 4e, la variante, prend sa place). Toute
+-- procedure encore compilee avec l'ancien appel echouera avec
+--   function public.get_default_value(..., unknown, unknown) does not exist
+-- -> RECOMPILER TOUS LES MODULES apres cette migration : sql/compile_all.sh
+--
+-- Aucune vue ne reference la fonction (verifie sur la base), le DROP passe.
+--
+-- PREREQUIS : tout appel doit avoir sa ligne seedee, sinon il renvoie NULL.
+-- Jouer la migration 043 AVANT celle-ci, puis controler avec
 --   python sql/config/verifier_valeurs_defaut.py
 --
 -- Rollback en bas de fichier.
@@ -39,10 +43,11 @@
 
 BEGIN;
 
+DROP FUNCTION IF EXISTS public.get_default_value(VARCHAR, VARCHAR, TEXT, VARCHAR);
+
 CREATE OR REPLACE FUNCTION public.get_default_value(
     p_table    VARCHAR,
     p_colonne  VARCHAR,
-    p_fallback TEXT    DEFAULT NULL,
     p_variante VARCHAR DEFAULT 'STANDARD'
 )
 RETURNS TEXT
@@ -63,8 +68,7 @@ BEGIN
       AND is_active = TRUE;
 
     -- Aucune ligne paramétrée (ou inactive) : valeur vide.
-    -- p_fallback n'est volontairement PAS utilisé : l'écran
-    -- /configuration/valeurs-defaut est la seule source de vérité.
+    -- L'écran /configuration/valeurs-defaut est la seule source de vérité.
     IF NOT FOUND THEN
         RETURN NULL;
     END IF;
@@ -80,15 +84,19 @@ EXCEPTION
 END;
 $function$;
 
-COMMENT ON FUNCTION public.get_default_value(VARCHAR, VARCHAR, TEXT, VARCHAR) IS
-'Retourne la valeur par defaut parametree dans public.etl_default_values pour (table_cible, colonne, variante), ou NULL si aucune ligne active. Le 3e argument p_fallback est conserve pour compatibilite des appels mais N''EST PLUS utilise depuis la migration 044.';
+COMMENT ON FUNCTION public.get_default_value(VARCHAR, VARCHAR, VARCHAR) IS
+'Valeur par defaut ETL parametrable (ecran Configuration > Valeurs par defaut). Retourne NULL si non configuree, inactive ou en erreur : aucun repli code en dur depuis la migration 044.';
 
 COMMIT;
 
 -- =====================================================
--- ROLLBACK : retablir le repli sur p_fallback
+-- ROLLBACK : retablir la signature a 4 arguments avec repli
+-- ATTENTION : necessite aussi de restaurer les appels des scripts ETL
+--             (git revert du commit qui a retire le 3e argument).
 -- =====================================================
 -- BEGIN;
+--
+-- DROP FUNCTION IF EXISTS public.get_default_value(VARCHAR, VARCHAR, VARCHAR);
 --
 -- CREATE OR REPLACE FUNCTION public.get_default_value(
 --     p_table    VARCHAR,

@@ -97,19 +97,18 @@ def main():
     if seed is None:
         return 1
     dossiers = modules(sys.argv[1] if len(sys.argv) > 1 else None)
-    appels, manquantes, divergences = verifier(dossiers, seed)
+    appels, manquantes = verifier(dossiers, seed)
     restants = litteraux_restants(dossiers)
 
     print(f"{appels} appels a get_default_value, {len(seed)} lignes seedees")
-    for titre, liste in (("SANS ligne seedee (invisible dans l'ecran)", manquantes),
-                         ("DIVERGENCE repli / seed", divergences),
+    for titre, liste in (("SANS ligne seedee (l'ETL ecrira NULL)", manquantes),
                          ("litteraux encore codes en dur", restants)):
         print(f"{len(liste)} {titre}")
         for item in liste[:40]:
             print(f"   {item}")
         if len(liste) > 40:
             print(f"   ... et {len(liste) - 40} autres")
-    return 1 if (manquantes or divergences or restants) else 0
+    return 1 if (manquantes or restants) else 0
 
 
 if __name__ == '__main__':

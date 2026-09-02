@@ -56,6 +56,7 @@ FICHIERS_SEED = [
     RACINE / 'migrations' / '036_seed_default_value_c_density_fil.sql',
     RACINE / 'migrations' / '037_seed_valeurs_defaut_a_arbitrer.sql',
     RACINE / 'migrations' / '038_seed_valeurs_defaut_cust_ord_customer_file.sql',
+    RACINE / 'migrations' / '043_seed_devise_defaut_supplier.sql',
 ]
 
 
@@ -141,13 +142,6 @@ def charger_inventaire(dossier: Path):
     return retenus, ignores
 
 
-def repli_sql(type_defaut: str, valeur: str) -> str:
-    """Le 3e argument de get_default_value : NULL nu, ou la valeur quotee."""
-    if type_defaut == 'NULL_EXPLICITE':
-        return 'NULL'
-    return "'" + valeur.replace("'", "''") + "'"
-
-
 def traiter(dossier: Path, dry_run: bool, types=None, seeds=None):
     casts = charger_casts(types)
     if casts is None:
@@ -195,9 +189,13 @@ def traiter(dossier: Path, dry_run: bool, types=None, seeds=None):
                         f" [{variante}] litteral={attendu!r} != seed={obtenu!r}")
                     continue
 
+            # Depuis la migration 044, get_default_value n'a plus d'argument de repli :
+            # la valeur vient uniquement de public.etl_default_values (d'ou le controle
+            # de divergence litteral/seed juste au-dessus, qui refuse de generer un appel
+            # dont la ligne seedee ne porte pas la valeur d'origine).
             arg_variante = '' if variante == 'STANDARD' else f", '{variante}'"
-            appel = (f"public.get_default_value('{p['table_cible']}', '{p['colonne']}', "
-                     f"{repli_sql(p['type_valeur_defaut'], valeur)}{arg_variante}){cast}")
+            appel = (f"public.get_default_value('{p['table_cible']}', "
+                     f"'{p['colonne']}'{arg_variante}){cast}")
             remplacements.append((p['ligne_projection'], p['regle_sql'], appel, p['colonne']))
 
         # De la fin vers le debut : les numeros de ligne restent valides pendant la reecriture.
