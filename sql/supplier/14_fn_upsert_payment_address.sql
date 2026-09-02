@@ -138,7 +138,13 @@ BEGIN
                     rec.lifnr,  -- supplier_id (numéro de compte fournisseur)
                     public.get_default_value('clean_data.payment_address', 'party_type_db', 'BANQUE'),
                     public.get_default_value('clean_data.payment_address', 'way_id', 'BANQUE'),
-                    rec.lifnr,  -- address_id
+                    -- address_id : le meme identifiant qu'a l'etape 1
+                    -- (ifs_fournisseurs.address_id = lfa1.adrnr). On y ecrivait
+                    -- le numero de fournisseur, qui ne correspond a aucune ligne
+                    -- de supplier_info_address : la cle ON CONFLICT portant sur
+                    -- address_id, l'etape 2 creait une 2e ligne au lieu de
+                    -- completer celle de l'etape 1 avec les donnees bancaires.
+                    rec.address_id,
                     public.get_default_value('clean_data.payment_address', 'party_type', 'BANQUE'),
                     COALESCE(rec.bank_name, 'Compte bancaire ' || rec.bank_seq),
                     CASE WHEN rec.bank_seq = 1 THEN 'TRUE' ELSE 'FALSE' END,

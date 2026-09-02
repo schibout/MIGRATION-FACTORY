@@ -79,6 +79,37 @@ COMMENT ON COLUMN clean_data.ifs_fournisseurs.numero_compte_ifs IS
 COMMENT ON COLUMN clean_data.ifs_fournisseurs.numero_compte_fournisseur IS
     'Numero de compte SAP (LIFNR) complete a 10 caracteres, cle de jointure vers raw_data.lfa1';
 
+-- ----------------------------------------------------------------------------
+-- Coordonnees bancaires d'un fournisseur, depuis SAP
+-- ----------------------------------------------------------------------------
+-- ifs_fournisseurs porte UNE ligne par fournisseur, alors que raw_data.lfbk en
+-- contient plusieurs pour 1065 fournisseurs. Cette fonction choisit un compte
+-- de facon deterministe : d'abord ceux qui ont un IBAN, puis le plus petit type
+-- de banque partenaire (bvtyp), puis la cle et le numero de compte.
+--   lfbk  = lien fournisseur -> compte bancaire
+--   tiban = IBAN, cle (banks, bankl, bankn)
+--   bnka  = referentiel banques : nom (banka) et code SWIFT
+CREATE OR REPLACE FUNCTION clean_data.fn_coordonnees_bancaires_sap(p_lifnr TEXT)
+RETURNS TABLE (iban TEXT, swift TEXT, nom TEXT)
+LANGUAGE sql
+STABLE
+AS $function$
+    SELECT NULLIF(TRIM(t.iban), ''),
+           NULLIF(TRIM(k.swift), ''),
+           NULLIF(TRIM(k.banka), '')
+      FROM raw_data.lfbk l
+      LEFT JOIN raw_data.tiban t
+             ON t.banks = l.banks AND t.bankl = l.bankl AND t.bankn = l.bankn
+      LEFT JOIN raw_data.bnka k
+             ON k.banks = l.banks AND k.bankl = l.bankl
+     WHERE l.lifnr::text = p_lifnr
+     ORDER BY (NULLIF(TRIM(t.iban), '') IS NULL), l.bvtyp NULLS LAST, l.bankl, l.bankn
+     LIMIT 1;
+$function$;
+
+COMMENT ON FUNCTION clean_data.fn_coordonnees_bancaires_sap(TEXT) IS
+    'Compte bancaire retenu pour un fournisseur SAP (lfbk + tiban + bnka) : celui qui porte un IBAN, sinon le premier par bvtyp/bankl/bankn.';
+
 CREATE OR REPLACE FUNCTION clean_data.alimenter_ifs_fournisseurs()
  RETURNS void
  LANGUAGE plpgsql
@@ -165,7 +196,14 @@ BEGIN
       -- depuis le fichier), avec repli sur la valeur brute du fichier.
       COALESCE(mp.numero_compte_ifs::text, NULLIF(TRIM(sf.numero_compte_ifs), '')) as numero_compte_ifs,
 
-        public.get_default_value('clean_data.ifs_fournisseurs', 'address_id') as address_id,
+      -- Numéro d'adresse SAP (lfa1.adrnr) : le fichier de sélection ne porte pas
+      -- d'identifiant d'adresse. Repli sur la constante paramétrable pour les
+      -- rares fournisseurs sans adrnr. Les scripts 04, 06, 14 et 15 reprennent
+      -- cette colonne, l'identifiant reste donc cohérent dans tout le module.
+      COALESCE(
+          NULLIF(TRIM(a.adrnr), ''),
+          public.get_default_value('clean_data.ifs_fournisseurs', 'address_id')
+      ) as address_id,
 
       -- === PRIORITÉ 1: selection_fournisseurs_stg | PRIORITÉ 2: SAP ===
 
@@ -248,9 +286,15 @@ BEGIN
       NULLIF(TRIM(sf.critere_recherche), '')      as critere_recherche,
       NULLIF(TRIM(sf.langue), '')                 as langue,
       NULLIF(TRIM(sf.email), '')                  as email,
-      NULLIF(TRIM(sf.iban_paiement), '')          as iban_paiement,
-      NULLIF(TRIM(sf.swift_bic), '')              as swift_bic,
-      NULLIF(TRIM(sf.nom_banque), '')             as nom_banque,
+
+      -- === Coordonnees bancaires : fichier > SAP ==============================
+      -- Les colonnes bancaires du fichier de selection sont vides (verifie :
+      -- 0 IBAN / 0 SWIFT / 0 nom de banque sur les 1716 lignes) ; le COALESCE
+      -- garde neanmoins la priorite au fichier s'il venait a etre complete.
+      COALESCE(NULLIF(TRIM(sf.iban_paiement), ''), banque.iban)   as iban_paiement,
+      COALESCE(NULLIF(TRIM(sf.swift_bic), ''),     banque.swift)  as swift_bic,
+      COALESCE(NULLIF(TRIM(sf.nom_banque), ''),    banque.nom)    as nom_banque,
+
       NULLIF(TRIM(sf.mode_paiement), '')          as mode_paiement,
       'FICHIER'                                   as source
 
@@ -280,7 +324,8 @@ BEGIN
          )
        GROUP BY m.ekorg, m.zterm, m.inco1, m.inco2
        LIMIT 1
-   ) sap_data ON TRUE;
+   ) sap_data ON TRUE
+   LEFT JOIN LATERAL clean_data.fn_coordonnees_bancaires_sap(k.lifnr) banque ON TRUE;
 
    GET DIAGNOSTICS v_nb_fichier = ROW_COUNT;
 
@@ -301,7 +346,8 @@ BEGIN
       cle_pays, siret, tva, societe, organisation_achats,
       conditions_paiement_compta, conditions_paiement_achats,
       incoterms_1, incoterms_2, telephone_1, telephone_2, date_creation_sap,
-      destinataire_paiement, language_sap, source
+      destinataire_paiement, language_sap,
+      iban_paiement, swift_bic, nom_banque, source
    )
    SELECT
       public.get_default_value('clean_data.ifs_fournisseurs', 'company') as company,
@@ -310,7 +356,11 @@ BEGIN
       -- Numéro émis par la séquence, figé dans la table d'affectation
       mp.numero_compte_ifs::text as numero_compte_ifs,
 
-      public.get_default_value('clean_data.ifs_fournisseurs', 'address_id') as address_id,
+      -- Numéro d'adresse SAP (lfa1.adrnr), repli sur la constante paramétrable
+      COALESCE(
+          NULLIF(TRIM(a.adrnr), ''),
+          public.get_default_value('clean_data.ifs_fournisseurs', 'address_id')
+      ) as address_id,
 
       -- Uniquement SAP : le fichier de sélection ne connaît pas ces fournisseurs
       a.name1 as nom_1,
@@ -337,10 +387,17 @@ BEGIN
       END as date_creation_sap,
       sap_data.destinataire_paiement,
       public.get_transcodification('LANGUAGE', a.spras) as language_sap,
+
+      -- Coordonnées bancaires SAP (lfbk + tiban + bnka)
+      banque.iban  as iban_paiement,
+      banque.swift as swift_bic,
+      banque.nom   as nom_banque,
+
       'SAP_NOUVEAU' as source
 
    FROM raw_data.lfa1 a
    JOIN clean_data.ifs_fournisseur_id_map mp ON mp.numero_compte_sap = a.lifnr::text
+   LEFT JOIN LATERAL clean_data.fn_coordonnees_bancaires_sap(a.lifnr::text) banque ON TRUE
    LEFT JOIN LATERAL (
        SELECT
            string_agg(DISTINCT b.bukrs::text, ', '::text ORDER BY (b.bukrs::text)) as societe,

@@ -24,7 +24,11 @@ BEGIN
     )
     SELECT 
         SUBSTRING(f.numero_compte_fournisseur, 1, 20) as supplier_id,
-        public.get_default_value('clean_data.supplier_info_address', 'address_id') as address_id,
+        -- Numéro d'adresse SAP, résolu une seule fois dans ifs_fournisseurs
+        -- (lfa1.adrnr, repli sur la constante paramétrable). Les scripts 05, 07,
+        -- 08, 13 et 14 dérivent de cette colonne : la garder alignée sur
+        -- ifs_fournisseurs évite qu'ils pointent vers un identifiant absent.
+        SUBSTRING(f.address_id, 1, 50) as address_id,
         SUBSTRING(COALESCE(a.name1, f.nom_1), 1, 100) as name,
         SUBSTRING(
             TRIM(COALESCE(a.street, f.rue) || ' ' || 
@@ -83,8 +87,10 @@ BEGIN
     RAISE NOTICE '=== STATISTIQUES DÉTAILLÉES ===';
     RAISE NOTICE 'Total fournisseurs avec adresses: %', 
                  (SELECT COUNT(DISTINCT supplier_id) FROM clean_data.supplier_info_address);
-    RAISE NOTICE 'Adresses avec ID fixe 01: %', 
-                 (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE address_id = '01');
+    RAISE NOTICE 'Adresses avec un numéro SAP (adrnr): %',
+                 (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE address_id ~ '^[0-9]{10}$');
+    RAISE NOTICE 'Adresses retombées sur la valeur par défaut: %',
+                 (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE address_id !~ '^[0-9]{10}$');
     
 EXCEPTION
     WHEN OTHERS THEN
