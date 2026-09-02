@@ -37,10 +37,10 @@ BEGIN
     SELECT DISTINCT ON (fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')))
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
-        public.get_default_value('clean_data.customer_document_tax_info', 'company', 'TRIMET') as COMPANY,
+        public.get_default_value('clean_data.customer_document_tax_info', 'company') as COMPANY,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as SUPPLY_COUNTRY_DB,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as DELIVERY_COUNTRY_DB,
-        public.get_default_value('clean_data.customer_document_tax_info', 'tax_id_type', NULL) as TAX_ID_TYPE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_id_type') as TAX_ID_TYPE,
         -- NUMERO DE TVA. Cascade : fichier -> SAP STCEG -> PHL -> SAP STCD1.
         -- IFS exige le format majuscule.
         -- PHL (raw_data.client_adresse_phl.tva, rapproche par mnemo =
@@ -62,9 +62,9 @@ BEGIN
                  THEN NULLIF(TRIM(phl_tva.tva), '') END,
             NULLIF(TRIM(k.STCD1), '')
         )) as VAT_NO,
-        public.get_default_value('clean_data.customer_document_tax_info', 'validated_date', NULL)::date as VALIDATED_DATE,
-        public.get_default_value('clean_data.customer_document_tax_info', 'tax_id_error_message', NULL) as TAX_ID_ERROR_MESSAGE,
-        public.get_default_value('clean_data.customer_document_tax_info', 'tax_office_id', NULL) as TAX_OFFICE_ID
+        public.get_default_value('clean_data.customer_document_tax_info', 'validated_date')::date as VALIDATED_DATE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_id_error_message') as TAX_ID_ERROR_MESSAGE,
+        public.get_default_value('clean_data.customer_document_tax_info', 'tax_office_id') as TAX_OFFICE_ID
     FROM fc  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

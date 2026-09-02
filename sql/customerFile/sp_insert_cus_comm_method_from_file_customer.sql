@@ -32,17 +32,17 @@ BEGIN
         WHERE customer_id IS NOT NULL
     )
     SELECT
-        public.get_default_value('clean_data.cus_comm_method', 'party_type_db', 'CUSTOMER') AS party_type_db,
+        public.get_default_value('clean_data.cus_comm_method', 'party_type_db') AS party_type_db,
         fc.customer_id AS identity,
         ROW_NUMBER() OVER (ORDER BY fc.customer_id) AS comm_id,
         COALESCE(NULLIF(TRIM(fc.telephone),''), adr2.telnr_long, adr2.tel_number, k.TELF1) AS value,
-        public.get_default_value('clean_data.cus_comm_method', 'description', 'Téléphone principal', 'PHONE_PRINCIPAL') AS description,
+        public.get_default_value('clean_data.cus_comm_method', 'description', 'PHONE_PRINCIPAL') AS description,
         CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END AS valid_from,
-        public.get_default_value('clean_data.cus_comm_method', 'valid_to', NULL)::date AS valid_to,
-        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'TRUE', 'PHONE_PRINCIPAL') AS method_default,
-        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'TRUE', 'PHONE_PRINCIPAL') AS address_default,
+        public.get_default_value('clean_data.cus_comm_method', 'valid_to')::date AS valid_to,
+        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'PHONE_PRINCIPAL') AS method_default,
+        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'PHONE_PRINCIPAL') AS address_default,
         COALESCE(NULLIF(TRIM(fc.name_1),''), k.NAME1) AS name,
-        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'PHONE', 'PHONE_PRINCIPAL') AS method_id_db,
+        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'PHONE_PRINCIPAL') AS method_id_db,
         fc.address_id AS address_id
     FROM fc
     LEFT JOIN raw_data.kna1 k ON fc.kunnr = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')
@@ -51,17 +51,17 @@ BEGIN
     AND COALESCE(NULLIF(TRIM(fc.telephone),''), adr2.telnr_long, adr2.tel_number, k.TELF1) != ''
     UNION ALL
     SELECT
-        public.get_default_value('clean_data.cus_comm_method', 'party_type_db', 'CUSTOMER') AS party_type_db,
+        public.get_default_value('clean_data.cus_comm_method', 'party_type_db') AS party_type_db,
         fc.customer_id AS identity,
         ROW_NUMBER() OVER (ORDER BY fc.customer_id) AS comm_id,
         COALESCE(NULLIF(TRIM(fc.telephone_2),''), adr2.telnr_long, adr2.tel_number, k.TELF2) AS value,
-        public.get_default_value('clean_data.cus_comm_method', 'description', 'Téléphone secondaire', 'PHONE_SECONDAIRE') AS description,
+        public.get_default_value('clean_data.cus_comm_method', 'description', 'PHONE_SECONDAIRE') AS description,
         CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END AS valid_from,
-        public.get_default_value('clean_data.cus_comm_method', 'valid_to', NULL)::date AS valid_to,
-        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'FALSE', 'PHONE_SECONDAIRE') AS method_default,
-        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'FALSE', 'PHONE_SECONDAIRE') AS address_default,
+        public.get_default_value('clean_data.cus_comm_method', 'valid_to')::date AS valid_to,
+        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'PHONE_SECONDAIRE') AS method_default,
+        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'PHONE_SECONDAIRE') AS address_default,
         COALESCE(NULLIF(TRIM(fc.name_1),''), k.NAME1) AS name,
-        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'PHONE', 'PHONE_SECONDAIRE') AS method_id_db,
+        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'PHONE_SECONDAIRE') AS method_id_db,
         fc.address_id AS address_id
     FROM fc
     LEFT JOIN raw_data.kna1 k ON fc.kunnr = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')
@@ -71,17 +71,17 @@ BEGIN
     AND COALESCE(NULLIF(TRIM(fc.telephone_2),''), adr2.telnr_long, adr2.tel_number, k.TELF2) != COALESCE(NULLIF(TRIM(fc.telephone),''), k.TELF1)
     UNION ALL
     SELECT
-        public.get_default_value('clean_data.cus_comm_method', 'party_type_db', 'CUSTOMER') AS party_type_db,
+        public.get_default_value('clean_data.cus_comm_method', 'party_type_db') AS party_type_db,
         fc.customer_id AS identity,
         ROW_NUMBER() OVER (ORDER BY fc.customer_id) AS comm_id,
         COALESCE(NULLIF(TRIM(fc.fax),''), adr3.faxnr_long, adr3.fax_number, k.TELFX) AS value,
-        public.get_default_value('clean_data.cus_comm_method', 'description', 'Fax', 'FAX') AS description,
+        public.get_default_value('clean_data.cus_comm_method', 'description', 'FAX') AS description,
         CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END AS valid_from,
-        public.get_default_value('clean_data.cus_comm_method', 'valid_to', NULL)::date AS valid_to,
-        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'FALSE', 'FAX') AS method_default,
-        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'FALSE', 'FAX') AS address_default,
+        public.get_default_value('clean_data.cus_comm_method', 'valid_to')::date AS valid_to,
+        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'FAX') AS method_default,
+        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'FAX') AS address_default,
         COALESCE(NULLIF(TRIM(fc.name_1),''), k.NAME1) AS name,
-        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'FAX', 'FAX') AS method_id_db,
+        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'FAX') AS method_id_db,
         fc.address_id AS address_id
     FROM fc
     LEFT JOIN raw_data.kna1 k ON fc.kunnr = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')
@@ -90,17 +90,17 @@ BEGIN
     AND COALESCE(NULLIF(TRIM(fc.fax),''), adr3.faxnr_long, adr3.fax_number, k.TELFX) != ''
     UNION ALL
     SELECT
-        public.get_default_value('clean_data.cus_comm_method', 'party_type_db', 'CUSTOMER') AS party_type_db,
+        public.get_default_value('clean_data.cus_comm_method', 'party_type_db') AS party_type_db,
         fc.customer_id AS identity,
         ROW_NUMBER() OVER (ORDER BY fc.customer_id) AS comm_id,
         adr6.smtp_addr AS value,
-        public.get_default_value('clean_data.cus_comm_method', 'description', 'Email principal', 'EMAIL_PRINCIPAL') AS description,
+        public.get_default_value('clean_data.cus_comm_method', 'description', 'EMAIL_PRINCIPAL') AS description,
         CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END AS valid_from,
-        public.get_default_value('clean_data.cus_comm_method', 'valid_to', NULL)::date AS valid_to,
-        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'TRUE', 'EMAIL_PRINCIPAL') AS method_default,
-        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'TRUE', 'EMAIL_PRINCIPAL') AS address_default,
+        public.get_default_value('clean_data.cus_comm_method', 'valid_to')::date AS valid_to,
+        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'EMAIL_PRINCIPAL') AS method_default,
+        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'EMAIL_PRINCIPAL') AS address_default,
         COALESCE(NULLIF(TRIM(fc.name_1),''), k.NAME1) AS name,
-        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'E_MAIL', 'EMAIL_PRINCIPAL') AS method_id_db,
+        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'EMAIL_PRINCIPAL') AS method_id_db,
         fc.address_id AS address_id
     FROM fc
     LEFT JOIN raw_data.kna1 k ON fc.kunnr = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')
@@ -109,17 +109,17 @@ BEGIN
     -- TELEX et TELETEX supprimés : CommMethodCode 'TELEX'/'TELETEX' n'existe pas dans IFS → ORA-20111
     UNION ALL
     SELECT
-        public.get_default_value('clean_data.cus_comm_method', 'party_type_db', 'CUSTOMER') AS party_type_db,
+        public.get_default_value('clean_data.cus_comm_method', 'party_type_db') AS party_type_db,
         fc.customer_id AS identity,
         ROW_NUMBER() OVER (ORDER BY fc.customer_id) AS comm_id,
         adrc.tel_number AS value,
-        public.get_default_value('clean_data.cus_comm_method', 'description', 'Téléphone (adresse)', 'PHONE_ADRESSE') AS description,
+        public.get_default_value('clean_data.cus_comm_method', 'description', 'PHONE_ADRESSE') AS description,
         CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END AS valid_from,
-        public.get_default_value('clean_data.cus_comm_method', 'valid_to', NULL)::date AS valid_to,
-        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'FALSE', 'PHONE_ADRESSE') AS method_default,
-        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'FALSE', 'PHONE_ADRESSE') AS address_default,
+        public.get_default_value('clean_data.cus_comm_method', 'valid_to')::date AS valid_to,
+        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'PHONE_ADRESSE') AS method_default,
+        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'PHONE_ADRESSE') AS address_default,
         COALESCE(NULLIF(TRIM(fc.name_1),''), k.NAME1) AS name,
-        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'PHONE', 'PHONE_ADRESSE') AS method_id_db,
+        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'PHONE_ADRESSE') AS method_id_db,
         fc.address_id AS address_id
     FROM fc
     LEFT JOIN raw_data.kna1 k ON fc.kunnr = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')
@@ -129,17 +129,17 @@ BEGIN
     AND adrc.tel_number NOT IN (COALESCE(NULLIF(TRIM(fc.telephone),''), ''), COALESCE(NULLIF(TRIM(fc.telephone_2),''), ''), COALESCE(k.TELF1, ''), COALESCE(k.TELF2, ''))
     UNION ALL
     SELECT
-        public.get_default_value('clean_data.cus_comm_method', 'party_type_db', 'CUSTOMER') AS party_type_db,
+        public.get_default_value('clean_data.cus_comm_method', 'party_type_db') AS party_type_db,
         fc.customer_id AS identity,
         ROW_NUMBER() OVER (ORDER BY fc.customer_id) AS comm_id,
         adrc.fax_number AS value,
-        public.get_default_value('clean_data.cus_comm_method', 'description', 'Fax (adresse)', 'FAX_ADRESSE') AS description,
+        public.get_default_value('clean_data.cus_comm_method', 'description', 'FAX_ADRESSE') AS description,
         CASE WHEN fc.created_on ~ '^[0-9]{8}$' THEN TO_DATE(fc.created_on, 'YYYYMMDD') ELSE NULL END AS valid_from,
-        public.get_default_value('clean_data.cus_comm_method', 'valid_to', NULL)::date AS valid_to,
-        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'FALSE', 'FAX_ADRESSE') AS method_default,
-        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'FALSE', 'FAX_ADRESSE') AS address_default,
+        public.get_default_value('clean_data.cus_comm_method', 'valid_to')::date AS valid_to,
+        public.get_default_value('clean_data.cus_comm_method', 'method_default', 'FAX_ADRESSE') AS method_default,
+        public.get_default_value('clean_data.cus_comm_method', 'address_default', 'FAX_ADRESSE') AS address_default,
         COALESCE(NULLIF(TRIM(fc.name_1),''), k.NAME1) AS name,
-        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'FAX', 'FAX_ADRESSE') AS method_id_db,
+        public.get_default_value('clean_data.cus_comm_method', 'method_id_db', 'FAX_ADRESSE') AS method_id_db,
         fc.address_id AS address_id
     FROM fc
     LEFT JOIN raw_data.kna1 k ON fc.kunnr = k.KUNNR AND (k.LOEVM IS NULL OR k.LOEVM = '')

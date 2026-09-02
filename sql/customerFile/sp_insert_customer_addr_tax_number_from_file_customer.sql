@@ -35,12 +35,12 @@ BEGIN
     SELECT DISTINCT ON (fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')))
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
-        public.get_default_value('clean_data.customer_addr_tax_number', 'company', 'TRIMET') as COMPANY,
+        public.get_default_value('clean_data.customer_addr_tax_number', 'company') as COMPANY,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as SUPPLY_COUNTRY,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as DELIVERY_COUNTRY,
-        public.get_default_value('clean_data.customer_addr_tax_number', 'tax_id_type', '') as TAX_ID_TYPE,
+        public.get_default_value('clean_data.customer_addr_tax_number', 'tax_id_type') as TAX_ID_TYPE,
         SUBSTRING(COALESCE(NULLIF(TRIM(fc.vat_number),''), NULLIF(TRIM(fc.tax_number_1),''), k.STCEG, k.STCD1, 'NO_TAX_ID'), 1, 50) as TAX_ID_NUMBER,
-        public.get_default_value('clean_data.customer_addr_tax_number', 'default_tax_id_number_db', 'TRUE') as DEFAULT_TAX_ID_NUMBER_DB
+        public.get_default_value('clean_data.customer_addr_tax_number', 'default_tax_id_number_db') as DEFAULT_TAX_ID_NUMBER_DB
     FROM fc  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

@@ -97,19 +97,19 @@ BEGIN
         -- DESCRIPTION: MAKT.MAKTX (FR) sinon MARA.MATNR
         SUBSTRING(COALESCE(makt.maktx, mara.matnr), 1, 200) as description,
         -- ENG_ATTRIBUTE: vide
-        public.get_default_value('clean_data.purchase_part', 'eng_attribute', NULL) as eng_attribute,
+        public.get_default_value('clean_data.purchase_part', 'eng_attribute') as eng_attribute,
         -- NOTE_ID: vide (numeric)
-        public.get_default_value('clean_data.purchase_part', 'note_id', NULL)::numeric as note_id,
+        public.get_default_value('clean_data.purchase_part', 'note_id')::numeric as note_id,
         -- QC_CODE: vide
-        public.get_default_value('clean_data.purchase_part', 'qc_code', NULL) as qc_code,
+        public.get_default_value('clean_data.purchase_part', 'qc_code') as qc_code,
         -- STAT_GRP: vide
-        public.get_default_value('clean_data.purchase_part', 'stat_grp', NULL) as stat_grp,
+        public.get_default_value('clean_data.purchase_part', 'stat_grp') as stat_grp,
         -- CLOSE_CODE: Automatic (libellé IFS de Y)
-        public.get_default_value('clean_data.purchase_part', 'close_code', 'Automatic') as close_code,
+        public.get_default_value('clean_data.purchase_part', 'close_code') as close_code,
         -- CLOSE_CODE_DB: Y
-        public.get_default_value('clean_data.purchase_part', 'close_code_db', 'Y') as close_code_db,
+        public.get_default_value('clean_data.purchase_part', 'close_code_db') as close_code_db,
         -- CLOSE_TOLERANCE: 0
-        public.get_default_value('clean_data.purchase_part', 'close_tolerance', '0')::numeric as close_tolerance,
+        public.get_default_value('clean_data.purchase_part', 'close_tolerance')::numeric as close_tolerance,
         -- DATE_CRE: MARA.ERSDA (date création article SAP)
         CASE
             WHEN mara.ersda IS NOT NULL AND mara.ersda <> '' THEN TO_DATE(mara.ersda, 'YYYYMMDD')
@@ -125,80 +125,80 @@ BEGIN
             ELSE 'Y'
         END as inventory_flag_db,
         -- NOTE_TEXT: vide
-        public.get_default_value('clean_data.purchase_part', 'note_text', NULL) as note_text,
+        public.get_default_value('clean_data.purchase_part', 'note_text') as note_text,
         -- QC_DATE: vide
-        public.get_default_value('clean_data.purchase_part', 'qc_date', NULL)::timestamp as qc_date,
+        public.get_default_value('clean_data.purchase_part', 'qc_date')::timestamp as qc_date,
         -- DEFAULT_BUY_UNIT_MEAS: MARA.BSTME sinon MEINS via transcodification UOM (SAP->IFS), sinon unité d'entrée
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(COALESCE(NULLIF(mara.bstme, ''), mara.meins))), '')),
             UPPER(TRIM(COALESCE(NULLIF(mara.bstme, ''), mara.meins)))
         ), 1, 10) as default_buy_unit_meas,
         -- OVER_DELIVERY_TOLERANCE: 0
-        public.get_default_value('clean_data.purchase_part', 'over_delivery_tolerance', '0')::numeric as over_delivery_tolerance,
+        public.get_default_value('clean_data.purchase_part', 'over_delivery_tolerance')::numeric as over_delivery_tolerance,
         -- OVER_DELIVERY / _DB: Yes / YES
-        public.get_default_value('clean_data.purchase_part', 'over_delivery', 'Yes') as over_delivery,
-        public.get_default_value('clean_data.purchase_part', 'over_delivery_db', 'YES') as over_delivery_db,
+        public.get_default_value('clean_data.purchase_part', 'over_delivery') as over_delivery,
+        public.get_default_value('clean_data.purchase_part', 'over_delivery_db') as over_delivery_db,
         -- BUYER_CODE: vide
-        public.get_default_value('clean_data.purchase_part', 'buyer_code', NULL) as buyer_code,
+        public.get_default_value('clean_data.purchase_part', 'buyer_code') as buyer_code,
         -- PROCESS_TYPE: STD
-        public.get_default_value('clean_data.purchase_part', 'process_type', 'STD') as process_type,
+        public.get_default_value('clean_data.purchase_part', 'process_type') as process_type,
         -- STD_NAME_DESCRIPTION: vide
-        public.get_default_value('clean_data.purchase_part', 'std_name_description', NULL) as std_name_description,
+        public.get_default_value('clean_data.purchase_part', 'std_name_description') as std_name_description,
         -- STANDARD_PACK_SIZE: 1
-        public.get_default_value('clean_data.purchase_part', 'standard_pack_size', '1')::numeric as standard_pack_size,
+        public.get_default_value('clean_data.purchase_part', 'standard_pack_size')::numeric as standard_pack_size,
         -- TECHNICAL_COORDINATOR_ID: vide
-        public.get_default_value('clean_data.purchase_part', 'technical_coordinator_id', NULL) as technical_coordinator_id,
+        public.get_default_value('clean_data.purchase_part', 'technical_coordinator_id') as technical_coordinator_id,
         -- TAXABLE / _DB: Yes / TRUE
-        public.get_default_value('clean_data.purchase_part', 'taxable', 'Yes') as taxable,
-        public.get_default_value('clean_data.purchase_part', 'taxable_db', 'TRUE') as taxable_db,
+        public.get_default_value('clean_data.purchase_part', 'taxable') as taxable,
+        public.get_default_value('clean_data.purchase_part', 'taxable_db') as taxable_db,
         -- DOP_PEGGED_PO_UPDATE_FLAG / _DB: Planned / PLANNED
-        public.get_default_value('clean_data.purchase_part', 'dop_pegged_po_update_flag', 'Planned') as dop_pegged_po_update_flag,
-        public.get_default_value('clean_data.purchase_part', 'dop_pegged_po_update_flag_db', 'PLANNED') as dop_pegged_po_update_flag_db,
+        public.get_default_value('clean_data.purchase_part', 'dop_pegged_po_update_flag') as dop_pegged_po_update_flag,
+        public.get_default_value('clean_data.purchase_part', 'dop_pegged_po_update_flag_db') as dop_pegged_po_update_flag_db,
         -- ACQUISITION_TYPE / _DB: Purchase / PURCHASE
-        public.get_default_value('clean_data.purchase_part', 'acquisition_type', 'Purchase') as acquisition_type,
-        public.get_default_value('clean_data.purchase_part', 'acquisition_type_db', 'PURCHASE') as acquisition_type_db,
+        public.get_default_value('clean_data.purchase_part', 'acquisition_type') as acquisition_type,
+        public.get_default_value('clean_data.purchase_part', 'acquisition_type_db') as acquisition_type_db,
         -- ACTION_NON_AUTHORIZED / _DB: Warning / WARNING
-        public.get_default_value('clean_data.purchase_part', 'action_non_authorized', 'Warning') as action_non_authorized,
-        public.get_default_value('clean_data.purchase_part', 'action_non_authorized_db', 'WARNING') as action_non_authorized_db,
+        public.get_default_value('clean_data.purchase_part', 'action_non_authorized') as action_non_authorized,
+        public.get_default_value('clean_data.purchase_part', 'action_non_authorized_db') as action_non_authorized_db,
         -- ACTION_AUTHORIZED / _DB: Warning / WARNING
-        public.get_default_value('clean_data.purchase_part', 'action_authorized', 'Warning') as action_authorized,
-        public.get_default_value('clean_data.purchase_part', 'action_authorized_db', 'WARNING') as action_authorized_db,
+        public.get_default_value('clean_data.purchase_part', 'action_authorized') as action_authorized,
+        public.get_default_value('clean_data.purchase_part', 'action_authorized_db') as action_authorized_db,
         -- EXTERNAL_RESOURCE / _DB: DIEN => Yes/TRUE sinon No/FALSE
         CASE WHEN mara.mtart = 'DIEN' THEN 'Yes' ELSE 'No' END as external_resource,
         CASE WHEN mara.mtart = 'DIEN' THEN 'TRUE' ELSE 'FALSE' END as external_resource_db,
         -- COMPANY: TRIMET
-        public.get_default_value('clean_data.purchase_part', 'company', 'TRIMET') as company,
+        public.get_default_value('clean_data.purchase_part', 'company') as company,
         -- STATISTICAL_CODE / STATISTICAL_CODE_MANUF: vide
-        public.get_default_value('clean_data.purchase_part', 'statistical_code', NULL) as statistical_code,
-        public.get_default_value('clean_data.purchase_part', 'statistical_code_manuf', NULL) as statistical_code_manuf,
+        public.get_default_value('clean_data.purchase_part', 'statistical_code') as statistical_code,
+        public.get_default_value('clean_data.purchase_part', 'statistical_code_manuf') as statistical_code_manuf,
         -- QUALITY_SYSTEM_LEVEL_ID / QSL_APPROVAL_TEMPLATE: vide
-        public.get_default_value('clean_data.purchase_part', 'quality_system_level_id', NULL) as quality_system_level_id,
-        public.get_default_value('clean_data.purchase_part', 'qsl_approval_template', NULL) as qsl_approval_template,
+        public.get_default_value('clean_data.purchase_part', 'quality_system_level_id') as quality_system_level_id,
+        public.get_default_value('clean_data.purchase_part', 'qsl_approval_template') as qsl_approval_template,
         -- QUALIFIED_MANUFACTURER / _DB: No / FALSE
-        public.get_default_value('clean_data.purchase_part', 'qualified_manufacturer', 'No') as qualified_manufacturer,
-        public.get_default_value('clean_data.purchase_part', 'qualified_manufacturer_db', 'FALSE') as qualified_manufacturer_db,
+        public.get_default_value('clean_data.purchase_part', 'qualified_manufacturer') as qualified_manufacturer,
+        public.get_default_value('clean_data.purchase_part', 'qualified_manufacturer_db') as qualified_manufacturer_db,
         -- QMR_APPROVAL_TEMPLATE: vide
-        public.get_default_value('clean_data.purchase_part', 'qmr_approval_template', NULL) as qmr_approval_template,
+        public.get_default_value('clean_data.purchase_part', 'qmr_approval_template') as qmr_approval_template,
         -- QUALIFIED_SUPPLIER / _DB: No / FALSE
-        public.get_default_value('clean_data.purchase_part', 'qualified_supplier', 'No') as qualified_supplier,
-        public.get_default_value('clean_data.purchase_part', 'qualified_supplier_db', 'FALSE') as qualified_supplier_db,
+        public.get_default_value('clean_data.purchase_part', 'qualified_supplier') as qualified_supplier,
+        public.get_default_value('clean_data.purchase_part', 'qualified_supplier_db') as qualified_supplier_db,
         -- QSR_APPROVAL_TEMPLATE: vide
-        public.get_default_value('clean_data.purchase_part', 'qsr_approval_template', NULL) as qsr_approval_template,
+        public.get_default_value('clean_data.purchase_part', 'qsr_approval_template') as qsr_approval_template,
         -- ACQUISITION_ORIGIN: vide
-        public.get_default_value('clean_data.purchase_part', 'acquisition_origin', NULL)::numeric as acquisition_origin,
+        public.get_default_value('clean_data.purchase_part', 'acquisition_origin')::numeric as acquisition_origin,
         -- ACQUISITION_REASON_ID: vide
-        public.get_default_value('clean_data.purchase_part', 'acquisition_reason_id', NULL) as acquisition_reason_id,
+        public.get_default_value('clean_data.purchase_part', 'acquisition_reason_id') as acquisition_reason_id,
         -- PACKAGE_PART_FLAG / _DB: No / FALSE
-        public.get_default_value('clean_data.purchase_part', 'package_part_flag', 'No') as package_part_flag,
-        public.get_default_value('clean_data.purchase_part', 'package_part_flag_db', 'FALSE') as package_part_flag_db,
+        public.get_default_value('clean_data.purchase_part', 'package_part_flag') as package_part_flag,
+        public.get_default_value('clean_data.purchase_part', 'package_part_flag_db') as package_part_flag_db,
         -- NBS_CODE: vide
-        public.get_default_value('clean_data.purchase_part', 'nbs_code', NULL) as nbs_code,
+        public.get_default_value('clean_data.purchase_part', 'nbs_code') as nbs_code,
         -- OBJVERSION: vide (généré par IFS)
-        public.get_default_value('clean_data.purchase_part', 'objversion', NULL) as objversion,
+        public.get_default_value('clean_data.purchase_part', 'objversion') as objversion,
         -- OBJID: vide (généré par IFS)
-        public.get_default_value('clean_data.purchase_part', 'objid', NULL) as objid,
+        public.get_default_value('clean_data.purchase_part', 'objid') as objid,
         -- STD_NAME_ID: vide
-        public.get_default_value('clean_data.purchase_part', 'std_name_id', NULL) as std_name_id
+        public.get_default_value('clean_data.purchase_part', 'std_name_id') as std_name_id
     FROM clean_data.ifs_article_maitre ifs
     INNER JOIN raw_data.mara mara
         ON mara.matnr::text = ifs.numero_article

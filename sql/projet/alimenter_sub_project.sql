@@ -45,10 +45,10 @@ BEGIN
         ) as manager,
         
         -- FINANCIALLY_COMPLETED_DB: FALSE
-        public.get_default_value('clean_data.sub_project', 'financially_completed_db', 'FALSE') as financially_completed_db,
+        public.get_default_value('clean_data.sub_project', 'financially_completed_db') as financially_completed_db,
         
         -- EXCLUDE_FROM_INTEGRATIONS_DB: FALSE
-        public.get_default_value('clean_data.sub_project', 'exclude_from_integrations_db', 'FALSE') as exclude_from_integrations_db
+        public.get_default_value('clean_data.sub_project', 'exclude_from_integrations_db') as exclude_from_integrations_db
         
     FROM clean_data.project_base pb
     LEFT JOIN raw_data.sharepoint_projets sp 

@@ -42,20 +42,20 @@ BEGIN
         updated_timestamp
     )
     SELECT DISTINCT ON (sia.supplier_id)
-        public.get_default_value('clean_data.payment_address', 'company', 'TRIMET', 'ADRESSE_DEFAUT') as company,
+        public.get_default_value('clean_data.payment_address', 'company', 'ADRESSE_DEFAUT') as company,
         sia.supplier_id as identity,
-        public.get_default_value('clean_data.payment_address', 'party_type_db', 'SUPPLIER', 'ADRESSE_DEFAUT') as party_type_db,
-        public.get_default_value('clean_data.payment_address', 'way_id', 'SEPA', 'ADRESSE_DEFAUT') as way_id,
+        public.get_default_value('clean_data.payment_address', 'party_type_db', 'ADRESSE_DEFAUT') as party_type_db,
+        public.get_default_value('clean_data.payment_address', 'way_id', 'ADRESSE_DEFAUT') as way_id,
         sia.address_id as address_id,
-        public.get_default_value('clean_data.payment_address', 'party_type', 'Supplier', 'ADRESSE_DEFAUT') as party_type,
-        public.get_default_value('clean_data.payment_address', 'description', 'Adresse de paiement par défaut', 'ADRESSE_DEFAUT') as description,
-        public.get_default_value('clean_data.payment_address', 'default_address', 'TRUE', 'ADRESSE_DEFAUT') as default_address,
-        public.get_default_value('clean_data.payment_address', 'account', NULL, 'ADRESSE_DEFAUT') as account,
-        public.get_default_value('clean_data.payment_address', 'bic_code', NULL, 'ADRESSE_DEFAUT') as bic_code,
-        public.get_default_value('clean_data.payment_address', 'blocked_for_use', 'FALSE', 'ADRESSE_DEFAUT') as blocked_for_use,
-        public.get_default_value('clean_data.payment_address', 'mapping_type', 'DEFAULT', 'ADRESSE_DEFAUT') as mapping_type,
-        public.get_default_value('clean_data.payment_address', 'bank_account_validated', 'Not Validated', 'ADRESSE_DEFAUT') as bank_account_validated,
-        public.get_default_value('clean_data.payment_address', 'bank_account_validated_db', 'FALSE', 'ADRESSE_DEFAUT') as bank_account_validated_db,
+        public.get_default_value('clean_data.payment_address', 'party_type', 'ADRESSE_DEFAUT') as party_type,
+        public.get_default_value('clean_data.payment_address', 'description', 'ADRESSE_DEFAUT') as description,
+        public.get_default_value('clean_data.payment_address', 'default_address', 'ADRESSE_DEFAUT') as default_address,
+        public.get_default_value('clean_data.payment_address', 'account', 'ADRESSE_DEFAUT') as account,
+        public.get_default_value('clean_data.payment_address', 'bic_code', 'ADRESSE_DEFAUT') as bic_code,
+        public.get_default_value('clean_data.payment_address', 'blocked_for_use', 'ADRESSE_DEFAUT') as blocked_for_use,
+        public.get_default_value('clean_data.payment_address', 'mapping_type', 'ADRESSE_DEFAUT') as mapping_type,
+        public.get_default_value('clean_data.payment_address', 'bank_account_validated', 'ADRESSE_DEFAUT') as bank_account_validated,
+        public.get_default_value('clean_data.payment_address', 'bank_account_validated_db', 'ADRESSE_DEFAUT') as bank_account_validated_db,
         CURRENT_TIMESTAMP as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp
     FROM clean_data.supplier_info_address sia
@@ -136,18 +136,18 @@ BEGIN
                 ) VALUES (
                     rec.company,
                     rec.lifnr,  -- supplier_id (numéro de compte fournisseur)
-                    public.get_default_value('clean_data.payment_address', 'party_type_db', 'SUPPLIER', 'BANQUE'),
-                    public.get_default_value('clean_data.payment_address', 'way_id', 'SEPA', 'BANQUE'),
+                    public.get_default_value('clean_data.payment_address', 'party_type_db', 'BANQUE'),
+                    public.get_default_value('clean_data.payment_address', 'way_id', 'BANQUE'),
                     rec.lifnr,  -- address_id
-                    public.get_default_value('clean_data.payment_address', 'party_type', 'Supplier', 'BANQUE'),
+                    public.get_default_value('clean_data.payment_address', 'party_type', 'BANQUE'),
                     COALESCE(rec.bank_name, 'Compte bancaire ' || rec.bank_seq),
                     CASE WHEN rec.bank_seq = 1 THEN 'TRUE' ELSE 'FALSE' END,
                     COALESCE(v_iban, rec.bankn),  -- IBAN si disponible, sinon numéro de compte
                     rec.swift,  -- Code SWIFT dans bic_code
-                    public.get_default_value('clean_data.payment_address', 'blocked_for_use', 'FALSE', 'BANQUE'),
-                    public.get_default_value('clean_data.payment_address', 'mapping_type', 'BANK_TRANSFER', 'BANQUE'),
-                    public.get_default_value('clean_data.payment_address', 'bank_account_validated', 'Not Validated', 'BANQUE'),
-                    public.get_default_value('clean_data.payment_address', 'bank_account_validated_db', 'FALSE', 'BANQUE'),
+                    public.get_default_value('clean_data.payment_address', 'blocked_for_use', 'BANQUE'),
+                    public.get_default_value('clean_data.payment_address', 'mapping_type', 'BANQUE'),
+                    public.get_default_value('clean_data.payment_address', 'bank_account_validated', 'BANQUE'),
+                    public.get_default_value('clean_data.payment_address', 'bank_account_validated_db', 'BANQUE'),
                     CURRENT_TIMESTAMP,
                     CURRENT_TIMESTAMP
                 )

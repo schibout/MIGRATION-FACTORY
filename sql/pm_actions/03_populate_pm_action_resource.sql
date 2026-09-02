@@ -2,9 +2,9 @@ CREATE OR REPLACE PROCEDURE clean_data.populate_pm_action_resource()
  LANGUAGE plpgsql
 AS $procedure$
 DECLARE
-    v_pm_revision     VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'pm_revision', '1');
-    v_demand_type     VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'demand_type', 'Work Order');
-    v_demand_type_db  VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'demand_type_db', 'WORK_ORDER');
+    v_pm_revision     VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'pm_revision');
+    v_demand_type     VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'demand_type');
+    v_demand_type_db  VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'demand_type_db');
     v_count INTEGER := 0;
 BEGIN
     TRUNCATE TABLE clean_data.pm_action_resource;

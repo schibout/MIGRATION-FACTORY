@@ -34,14 +34,14 @@ BEGIN
     SELECT DISTINCT ON (fc.customer_id, fc.address_id, public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')))
         fc.customer_id as CUSTOMER_ID,
         fc.address_id as ADDRESS_ID,
-        public.get_default_value('clean_data.customer_delivery_tax_info', 'company', 'TRIMET') as COMPANY,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'company') as COMPANY,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as SUPPLY_COUNTRY_DB,
         public.get_transcodification('COUNTRY', COALESCE(k.LAND1, fc.country, 'FR')) as CUS_COUNTRY_CODE,
-        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_liability', 'TAX') as TAX_LIABILITY,
-        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_book_id', NULL) as TAX_BOOK_ID,
-        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_book_type', NULL)::numeric as TAX_BOOK_TYPE,
-        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_structure_id', NULL) as TAX_STRUCTURE_ID,
-        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_calc_structure_id', NULL) as TAX_CALC_STRUCTURE_ID
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_liability') as TAX_LIABILITY,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_book_id') as TAX_BOOK_ID,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_book_type')::numeric as TAX_BOOK_TYPE,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_structure_id') as TAX_STRUCTURE_ID,
+        public.get_default_value('clean_data.customer_delivery_tax_info', 'tax_calc_structure_id') as TAX_CALC_STRUCTURE_ID
     FROM fc  -- TABLE MAÎTRE
     LEFT JOIN raw_data.KNA1 k
         ON fc.kunnr = k.KUNNR

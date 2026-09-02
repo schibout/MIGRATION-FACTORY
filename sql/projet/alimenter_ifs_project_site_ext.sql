@@ -34,9 +34,9 @@ BEGIN
             END,
             1, 5
         ) as site,
-        public.get_default_value('clean_data.project_site_ext', 'project_site_type_db', 'DEFAULTSITE') as project_site_type_db,
-        public.get_default_value('clean_data.project_site_ext', 'use_std_inv_in_pmrp_db', 'FALSE') as use_std_inv_in_pmrp_db,
-        public.get_default_value('clean_data.project_site_ext', 'auto_trans_from_std_inv_db', 'FALSE') as auto_trans_from_std_inv_db
+        public.get_default_value('clean_data.project_site_ext', 'project_site_type_db') as project_site_type_db,
+        public.get_default_value('clean_data.project_site_ext', 'use_std_inv_in_pmrp_db') as use_std_inv_in_pmrp_db,
+        public.get_default_value('clean_data.project_site_ext', 'auto_trans_from_std_inv_db') as auto_trans_from_std_inv_db
         
     FROM clean_data.project_base pb
     LEFT JOIN raw_data.sharepoint_projets sp

@@ -61,14 +61,14 @@ BEGIN
         FALSE as is_deleted,
         SUBSTRING(f.cle_pays, 1, 2) as country_db,
         SUBSTRING(f.siret, 1, 20) as association_no,
-        public.get_default_value('clean_data.supplier_info_general', 'party', NULL) as party,
-        public.get_default_value('clean_data.supplier_info_general', 'default_domain', 'FALSE') as default_domain,
-        public.get_default_value('clean_data.supplier_info_general', 'default_language', 'FR') as default_language,
-        public.get_default_value('clean_data.supplier_info_general', 'default_language_db', 'FR') as default_language_db,
-        public.get_default_value('clean_data.supplier_info_general', 'party_type', 'Supplier') as party_type,
-        public.get_default_value('clean_data.supplier_info_general', 'party_type_db', 'SUPPLIER') as party_type_db,
+        public.get_default_value('clean_data.supplier_info_general', 'party') as party,
+        public.get_default_value('clean_data.supplier_info_general', 'default_domain') as default_domain,
+        public.get_default_value('clean_data.supplier_info_general', 'default_language') as default_language,
+        public.get_default_value('clean_data.supplier_info_general', 'default_language_db') as default_language_db,
+        public.get_default_value('clean_data.supplier_info_general', 'party_type') as party_type,
+        public.get_default_value('clean_data.supplier_info_general', 'party_type_db') as party_type_db,
         SUBSTRING(f.siret, 1, 20) as suppliers_own_id,
-        public.get_default_value('clean_data.supplier_info_general', 'corporate_form', NULL) as corporate_form,
+        public.get_default_value('clean_data.supplier_info_general', 'corporate_form') as corporate_form,
         SUBSTRING(
             CASE 
                 WHEN f.siret IS NOT NULL AND f.siret != '' THEN f.siret
@@ -81,15 +81,15 @@ BEGIN
             WHEN f.tva IS NOT NULL AND f.tva != '' THEN 'PARTIAL'
             ELSE 'NOT_VERIFIED'
         END as identifier_ref_validation,
-        public.get_default_value('clean_data.supplier_info_general', 'identifier_ref_validation_db', 'NONE') as identifier_ref_validation_db,
-        public.get_default_value('clean_data.supplier_info_general', 'picture_id', NULL)::NUMERIC(20,0) as picture_id,
-        public.get_default_value('clean_data.supplier_info_general', 'one_time', 'FALSE') as one_time,
-        public.get_default_value('clean_data.supplier_info_general', 'one_time_db', 'FALSE') as one_time_db,
-        public.get_default_value('clean_data.supplier_info_general', 'supplier_category', 'Supplier') as supplier_category,
-        public.get_default_value('clean_data.supplier_info_general', 'supplier_category_db', 'SUPPLIER') as supplier_category_db,
-        public.get_default_value('clean_data.supplier_info_general', 'b2b_supplier', 'FALSE') as b2b_supplier,
-        public.get_default_value('clean_data.supplier_info_general', 'b2b_supplier_db', 'FALSE') as b2b_supplier_db,
-        public.get_default_value('clean_data.supplier_info_general', 'business_classification', NULL) as business_classification
+        public.get_default_value('clean_data.supplier_info_general', 'identifier_ref_validation_db') as identifier_ref_validation_db,
+        public.get_default_value('clean_data.supplier_info_general', 'picture_id')::NUMERIC(20,0) as picture_id,
+        public.get_default_value('clean_data.supplier_info_general', 'one_time') as one_time,
+        public.get_default_value('clean_data.supplier_info_general', 'one_time_db') as one_time_db,
+        public.get_default_value('clean_data.supplier_info_general', 'supplier_category') as supplier_category,
+        public.get_default_value('clean_data.supplier_info_general', 'supplier_category_db') as supplier_category_db,
+        public.get_default_value('clean_data.supplier_info_general', 'b2b_supplier') as b2b_supplier,
+        public.get_default_value('clean_data.supplier_info_general', 'b2b_supplier_db') as b2b_supplier_db,
+        public.get_default_value('clean_data.supplier_info_general', 'business_classification') as business_classification
         
     FROM clean_data.ifs_fournisseurs f;
     

@@ -2,9 +2,9 @@ CREATE OR REPLACE PROCEDURE clean_data.populate_pm_action_role()
  LANGUAGE plpgsql
 AS $procedure$
 DECLARE
-    v_org_contract  VARCHAR := public.get_default_value('clean_data.pm_action_role', 'org_contract', 'SJ');
-    v_org_code      VARCHAR := public.get_default_value('clean_data.pm_action_role', 'org_code', 'FR_MAINT');
-    v_pm_revision   VARCHAR := public.get_default_value('clean_data.pm_action_role', 'pm_revision', '1');
+    v_org_contract  VARCHAR := public.get_default_value('clean_data.pm_action_role', 'org_contract');
+    v_org_code      VARCHAR := public.get_default_value('clean_data.pm_action_role', 'org_code');
+    v_pm_revision   VARCHAR := public.get_default_value('clean_data.pm_action_role', 'pm_revision');
     v_count INTEGER := 0;
 BEGIN
     TRUNCATE TABLE clean_data.pm_action_role;

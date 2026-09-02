@@ -51,20 +51,20 @@ BEGIN
     SELECT 
         sia.supplier_id,
         sia.address_id,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'Delivery', 'DELIVERY') as address_type_code,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'DELIVERY', 'DELIVERY') as address_type_code_db,
-        public.get_default_value('clean_data.supplier_info_address_type', 'party', '', 'DELIVERY') as party,
-        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'TRUE', 'DELIVERY') as def_address,
-        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'TRUE', 'DELIVERY') as default_domain,
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'DELIVERY') as address_type_code,
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'DELIVERY') as address_type_code_db,
+        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'DELIVERY') as party,
+        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'DELIVERY') as def_address,
+        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'DELIVERY') as default_domain,
         sia.supplier_id || '_' || sia.address_id || '_D' as address_type_id,
         NOW() as created_timestamp,
         NOW() as updated_timestamp,
         'etl_supplier_base' as created_by,
         'etl_supplier_base' as updated_by,
         FALSE as is_deleted,
-        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'FALSE', 'DELIVERY') as invoice,
-        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'FALSE', 'DELIVERY') as visit,
-        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'FALSE', 'DELIVERY') as pay
+        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'DELIVERY') as invoice,
+        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'DELIVERY') as visit,
+        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'DELIVERY') as pay
     FROM clean_data.supplier_info_address sia
     WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
     
@@ -98,20 +98,20 @@ BEGIN
     SELECT 
         sia.supplier_id,
         sia.address_id,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'Document', 'INVOICE') as address_type_code,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'INVOICE', 'INVOICE') as address_type_code_db,
-        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'FALSE', 'INVOICE') as party,
-        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'TRUE', 'INVOICE') as def_address,
-        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'TRUE', 'INVOICE') as default_domain,
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'INVOICE') as address_type_code,
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'INVOICE') as address_type_code_db,
+        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'INVOICE') as party,
+        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'INVOICE') as def_address,
+        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'INVOICE') as default_domain,
         sia.supplier_id || '_' || sia.address_id || '_I' as address_type_id,
         NOW() as created_timestamp,
         NOW() as updated_timestamp,
         'etl_supplier_base' as created_by,
         'etl_supplier_base' as updated_by,
         FALSE as is_deleted,
-        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'TRUE', 'INVOICE') as invoice,
-        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'FALSE', 'INVOICE') as visit,
-        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'FALSE', 'INVOICE') as pay
+        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'INVOICE') as invoice,
+        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'INVOICE') as visit,
+        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'INVOICE') as pay
     FROM clean_data.supplier_info_address sia
     WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
     
@@ -145,20 +145,20 @@ BEGIN
     SELECT 
         sia.supplier_id,
         sia.address_id,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'Visit', 'VISIT') as address_type_code,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'VISIT', 'VISIT') as address_type_code_db,
-        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'FALSE', 'VISIT') as party,
-        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'TRUE', 'VISIT') as def_address,
-        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'TRUE', 'VISIT') as default_domain,
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'VISIT') as address_type_code,
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'VISIT') as address_type_code_db,
+        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'VISIT') as party,
+        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'VISIT') as def_address,
+        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'VISIT') as default_domain,
         sia.supplier_id || '_' || sia.address_id || '_V' as address_type_id,
         NOW() as created_timestamp,
         NOW() as updated_timestamp,
         'etl_supplier_base' as created_by,
         'etl_supplier_base' as updated_by,
         FALSE as is_deleted,
-        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'FALSE', 'VISIT') as invoice,
-        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'TRUE', 'VISIT') as visit,
-        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'FALSE', 'VISIT') as pay
+        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'VISIT') as invoice,
+        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'VISIT') as visit,
+        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'VISIT') as pay
     FROM clean_data.supplier_info_address sia
     WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
     
@@ -192,20 +192,20 @@ BEGIN
     SELECT 
         sia.supplier_id,
         sia.address_id,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'Pay', 'PAY') as address_type_code,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'PAY', 'PAY') as address_type_code_db,
-        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'FALSE', 'PAY') as party,
-        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'TRUE', 'PAY') as def_address,
-        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'TRUE', 'PAY') as default_domain,
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'PAY') as address_type_code,
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'PAY') as address_type_code_db,
+        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'PAY') as party,
+        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'PAY') as def_address,
+        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'PAY') as default_domain,
         sia.supplier_id || '_' || sia.address_id || '_P' as address_type_id,
         NOW() as created_timestamp,
         NOW() as updated_timestamp,
         'etl_supplier_base' as created_by,
         'etl_supplier_base' as updated_by,
         FALSE as is_deleted,
-        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'FALSE', 'PAY') as invoice,
-        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'FALSE', 'PAY') as visit,
-        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'TRUE', 'PAY') as pay
+        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'PAY') as invoice,
+        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'PAY') as visit,
+        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'PAY') as pay
     FROM clean_data.supplier_info_address sia
     WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
     

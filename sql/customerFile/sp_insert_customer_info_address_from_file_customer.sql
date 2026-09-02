@@ -86,7 +86,7 @@ BEGIN
             END) as ADDRESS,
         -- Absent du fichier : PHL puis valeur d'ecran.
         COALESCE(NULLIF(TRIM(fc.addr_ean_location),''),
-                 public.get_default_value('clean_data.customer_info_address', 'ean_location', NULL)) as EAN_LOCATION,
+                 public.get_default_value('clean_data.customer_info_address', 'ean_location')) as EAN_LOCATION,
         -- Deux formats de date coexistent dans le fichier : 'YYYYMMDD' et
         -- RFC 1123 'Fri, 01 Sep 2023 00:00:00 GMT' (150 des 168 lignes). Ne
         -- tester que YYYYMMDD perdait la date du fichier au profit de SAP.
@@ -104,7 +104,7 @@ BEGIN
             THEN TO_DATE(k.ERDAT, 'YYYYMMDD')
             ELSE NULL END
         ) as VALID_FROM,
-        public.get_default_value('clean_data.customer_info_address', 'valid_to', NULL)::date as VALID_TO,
+        public.get_default_value('clean_data.customer_info_address', 'valid_to')::date as VALID_TO,
         fc.customer_id as PARTY,
         COALESCE(
             CASE WHEN fc.addr_id = fc.address_id
@@ -136,9 +136,9 @@ BEGIN
             public.get_transcodification('COUNTRY', k.LAND1)) as COUNTRY_DB,
         -- Absent du fichier : PHL puis valeur d'ecran.
         COALESCE(NULLIF(TRIM(fc.addr_party_type_db),''),
-                 public.get_default_value('clean_data.customer_info_address', 'party_type_db', 'CUSTOMER')) as PARTY_TYPE_DB,
-        public.get_default_value('clean_data.customer_info_address', 'secondary_contact', NULL) as SECONDARY_CONTACT,
-        public.get_default_value('clean_data.customer_info_address', 'primary_contact', NULL) as PRIMARY_CONTACT,
+                 public.get_default_value('clean_data.customer_info_address', 'party_type_db')) as PARTY_TYPE_DB,
+        public.get_default_value('clean_data.customer_info_address', 'secondary_contact') as SECONDARY_CONTACT,
+        public.get_default_value('clean_data.customer_info_address', 'primary_contact') as PRIMARY_CONTACT,
         COALESCE(CASE WHEN fc.addr_id = fc.address_id
                       THEN SUBSTRING(NULLIF(TRIM(fc.street),''), 1, 35) END,
                  SUBSTRING(NULLIF(TRIM(fc.addr_address1),''), 1, 35),
@@ -189,7 +189,7 @@ BEGIN
                       THEN SUBSTRING(NULLIF(TRIM(a.REGION),''), 1, 35) END) as COUNTY,
         -- Absent du fichier : PHL puis valeur d'ecran.
         COALESCE(NULLIF(TRIM(fc.addr_jurisdiction_code),''),
-                 public.get_default_value('clean_data.customer_info_address', 'jurisdiction_code', NULL)) as JURISDICTION_CODE
+                 public.get_default_value('clean_data.customer_info_address', 'jurisdiction_code')) as JURISDICTION_CODE
     FROM fc  -- SOURCE PILOTE des LIGNES : adresses PHL, repli fichier.
              -- Le CONTENU de l'adresse principale vient, lui, du fichier.
     LEFT JOIN raw_data.KNA1 k

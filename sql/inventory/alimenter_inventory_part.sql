@@ -95,34 +95,34 @@ BEGIN
             UPPER(TRIM(mara.meins))
         ), 1, 10) as unit_meas,
         -- PART_STATUS: A
-        public.get_default_value('clean_data.inventory_part', 'part_status', 'A') as part_status,
+        public.get_default_value('clean_data.inventory_part', 'part_status') as part_status,
         
         -- PLANNER_BUYER: *
-        public.get_default_value('clean_data.inventory_part', 'planner_buyer', '*') as planner_buyer,
+        public.get_default_value('clean_data.inventory_part', 'planner_buyer') as planner_buyer,
         
         -- ASSET_CLASS: S
-        public.get_default_value('clean_data.inventory_part', 'asset_class', 'S') as asset_class,
+        public.get_default_value('clean_data.inventory_part', 'asset_class') as asset_class,
         
         -- COUNTRY_OF_ORIGIN: MARC.HERKL
         SUBSTRING(marc.herkl, 1, 10) as country_of_origin,
         
         -- TYPE_CODE_DB: 4
-        public.get_default_value('clean_data.inventory_part', 'type_code_db', '4') as type_code_db,
+        public.get_default_value('clean_data.inventory_part', 'type_code_db') as type_code_db,
         
         -- SUPPLY_CODE_DB: IO
-        public.get_default_value('clean_data.inventory_part', 'supply_code_db', 'IO') as supply_code_db,
+        public.get_default_value('clean_data.inventory_part', 'supply_code_db') as supply_code_db,
         
         -- EXPECTED_LEADTIME: MARC.WEBAZ
         COALESCE(marc.webaz::numeric, 0) as expected_leadtime,
         
         -- MANUF_LEADTIME: 0
-        public.get_default_value('clean_data.inventory_part', 'manuf_leadtime', '0')::numeric as manuf_leadtime,
+        public.get_default_value('clean_data.inventory_part', 'manuf_leadtime')::numeric as manuf_leadtime,
         
         -- PURCH_LEADTIME: 0
-        public.get_default_value('clean_data.inventory_part', 'purch_leadtime', '0')::numeric as purch_leadtime,
+        public.get_default_value('clean_data.inventory_part', 'purch_leadtime')::numeric as purch_leadtime,
         
         -- LEAD_TIME_CODE_DB: P
-        public.get_default_value('clean_data.inventory_part', 'lead_time_code_db', 'P') as lead_time_code_db,
+        public.get_default_value('clean_data.inventory_part', 'lead_time_code_db') as lead_time_code_db,
         
         -- INVENTORY_VALUATION_METHOD_DB: S => ST, V => AV (selon code prix SAP)
         CASE 
@@ -132,76 +132,76 @@ BEGIN
         END as inventory_valuation_method_db,
         
         -- COUNT_VARIANCE: 0
-        public.get_default_value('clean_data.inventory_part', 'count_variance', '0')::numeric as count_variance,
+        public.get_default_value('clean_data.inventory_part', 'count_variance')::numeric as count_variance,
         
         -- CYCLE_CODE_DB: N
-        public.get_default_value('clean_data.inventory_part', 'cycle_code_db', 'N') as cycle_code_db,
+        public.get_default_value('clean_data.inventory_part', 'cycle_code_db') as cycle_code_db,
         
         -- CYCLE_PERIOD: 0
-        public.get_default_value('clean_data.inventory_part', 'cycle_period', '0')::numeric as cycle_period,
+        public.get_default_value('clean_data.inventory_part', 'cycle_period')::numeric as cycle_period,
         
         -- QTY_CALC_ROUNDING: 0
-        public.get_default_value('clean_data.inventory_part', 'qty_calc_rounding', '0')::numeric as qty_calc_rounding,
+        public.get_default_value('clean_data.inventory_part', 'qty_calc_rounding')::numeric as qty_calc_rounding,
         
         -- ZERO_COST_FLAG_DB: N
-        public.get_default_value('clean_data.inventory_part', 'zero_cost_flag_db', 'N') as zero_cost_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'zero_cost_flag_db') as zero_cost_flag_db,
         
         -- OE_ALLOC_ASSIGN_FLAG_DB: N
-        public.get_default_value('clean_data.inventory_part', 'oe_alloc_assign_flag_db', 'N') as oe_alloc_assign_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'oe_alloc_assign_flag_db') as oe_alloc_assign_flag_db,
         
         -- ONHAND_ANALYSIS_FLAG_DB: N
-        public.get_default_value('clean_data.inventory_part', 'onhand_analysis_flag_db', 'N') as onhand_analysis_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'onhand_analysis_flag_db') as onhand_analysis_flag_db,
         
         -- SHORTAGE_FLAG_DB: Y
-        public.get_default_value('clean_data.inventory_part', 'shortage_flag_db', 'Y') as shortage_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'shortage_flag_db') as shortage_flag_db,
         
         -- FORECAST_CONSUMPTION_FLAG_DB: FORECAST
-        public.get_default_value('clean_data.inventory_part', 'forecast_consumption_flag_db', 'FORECAST') as forecast_consumption_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'forecast_consumption_flag_db') as forecast_consumption_flag_db,
         
         -- STOCK_MANAGEMENT_DB: Y
-        public.get_default_value('clean_data.inventory_part', 'stock_management_db', 'Y') as stock_management_db,
+        public.get_default_value('clean_data.inventory_part', 'stock_management_db') as stock_management_db,
         
         -- DOP_CONNECTION_DB: AUT
-        public.get_default_value('clean_data.inventory_part', 'dop_connection_db', 'AUT') as dop_connection_db,
+        public.get_default_value('clean_data.inventory_part', 'dop_connection_db') as dop_connection_db,
         
         -- NEGATIVE_ON_HAND_DB: NEG ONHAND NOT OK
-        public.get_default_value('clean_data.inventory_part', 'negative_on_hand_db', 'NEG ONHAND NOT OK') as negative_on_hand_db,
+        public.get_default_value('clean_data.inventory_part', 'negative_on_hand_db') as negative_on_hand_db,
         
         -- INVOICE_CONSIDERATION_DB: TRANSACTION BASED
-        public.get_default_value('clean_data.inventory_part', 'invoice_consideration_db', 'TRANSACTION BASED') as invoice_consideration_db,
+        public.get_default_value('clean_data.inventory_part', 'invoice_consideration_db') as invoice_consideration_db,
         
         -- INVENTORY_PART_COST_LEVEL_DB: COST PER PART
-        public.get_default_value('clean_data.inventory_part', 'inventory_part_cost_level_db', 'COST PER PART') as inventory_part_cost_level_db,
+        public.get_default_value('clean_data.inventory_part', 'inventory_part_cost_level_db') as inventory_part_cost_level_db,
         
         -- EXT_SERVICE_COST_METHOD_DB: EXCLUDE SERVICE COST
-        public.get_default_value('clean_data.inventory_part', 'ext_service_cost_method_db', 'EXCLUDE SERVICE COST') as ext_service_cost_method_db,
+        public.get_default_value('clean_data.inventory_part', 'ext_service_cost_method_db') as ext_service_cost_method_db,
         
         -- AUTOMATIC_CAPABILITY_CHECK_DB: NO AUTOMATIC CAPABILITY CHECK
-        public.get_default_value('clean_data.inventory_part', 'automatic_capability_check_db', 'NO AUTOMATIC CAPABILITY CHECK') as automatic_capability_check_db,
+        public.get_default_value('clean_data.inventory_part', 'automatic_capability_check_db') as automatic_capability_check_db,
         
         -- DOP_NETTING_DB: NONET
-        public.get_default_value('clean_data.inventory_part', 'dop_netting_db', 'NONET') as dop_netting_db,
+        public.get_default_value('clean_data.inventory_part', 'dop_netting_db') as dop_netting_db,
         
         -- CO_RESERVE_ONH_ANALYS_FLAG_DB: N
-        public.get_default_value('clean_data.inventory_part', 'co_reserve_onh_analys_flag_db', 'N') as co_reserve_onh_analys_flag_db,
+        public.get_default_value('clean_data.inventory_part', 'co_reserve_onh_analys_flag_db') as co_reserve_onh_analys_flag_db,
         
         -- MANDATORY_EXPIRATION_DATE_DB: FALSE
-        public.get_default_value('clean_data.inventory_part', 'mandatory_expiration_date_db', 'FALSE') as mandatory_expiration_date_db,
+        public.get_default_value('clean_data.inventory_part', 'mandatory_expiration_date_db') as mandatory_expiration_date_db,
         
         -- EXCL_SHIP_PACK_PROPOSAL_DB: FALSE
-        public.get_default_value('clean_data.inventory_part', 'excl_ship_pack_proposal_db', 'FALSE') as excl_ship_pack_proposal_db,
+        public.get_default_value('clean_data.inventory_part', 'excl_ship_pack_proposal_db') as excl_ship_pack_proposal_db,
 
         -- RESET_CONFIG_STD_COST_DB: FALSE
-        public.get_default_value('clean_data.inventory_part', 'reset_config_std_cost_db', 'FALSE') as reset_config_std_cost_db,
+        public.get_default_value('clean_data.inventory_part', 'reset_config_std_cost_db') as reset_config_std_cost_db,
         
         -- LIFECYCLE_STAGE_DB: DEVELOPMENT
-        public.get_default_value('clean_data.inventory_part', 'lifecycle_stage_db', 'DEVELOPMENT') as lifecycle_stage_db,
+        public.get_default_value('clean_data.inventory_part', 'lifecycle_stage_db') as lifecycle_stage_db,
         
         -- FREQUENCY_CLASS_DB: VERY SLOW MOVER
-        public.get_default_value('clean_data.inventory_part', 'frequency_class_db', 'VERY SLOW MOVER') as frequency_class_db,
+        public.get_default_value('clean_data.inventory_part', 'frequency_class_db') as frequency_class_db,
         
         -- AVAIL_ACTIVITY_STATUS_DB: CHANGED
-        public.get_default_value('clean_data.inventory_part', 'avail_activity_status_db', 'CHANGED') as avail_activity_status_db,
+        public.get_default_value('clean_data.inventory_part', 'avail_activity_status_db') as avail_activity_status_db,
         
         -- ABC_CLASS: MARC.MAABC
         SUBSTRING(marc.maabc, 1, 1) as abc_class,

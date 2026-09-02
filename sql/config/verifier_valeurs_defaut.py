@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Verifie que toutes les valeurs par defaut des scripts ETL sont pilotables par l'ecran.
 
-Pour chaque appel `public.get_default_value(table, colonne, repli[, variante])` trouve dans
+Pour chaque appel `public.get_default_value(table, colonne[, variante])` trouve dans
 `sql/<module>/*.sql`, controle qu'il existe une ligne correspondante dans les migrations de
-seed de `public.etl_default_values`, et que la valeur seedee est IDENTIQUE au repli code en
-dur. Sans ligne seedee, l'ecran Configuration > Valeurs par defaut n'affiche rien et seul le
-repli s'applique ; avec une valeur differente, l'ecran ment sur ce que fait reellement l'ETL.
+seed de `public.etl_default_values`.
+
+Depuis la migration 044, la fonction n'a plus d'argument de repli : sans ligne seedee active
+elle renvoie NULL. Un appel orphelin ne produit donc plus la constante historique mais une
+valeur vide -> ce controle est la seule protection contre ce silence.
 
 Signale aussi les litteraux qui n'ont jamais ete parametres, via l'inventaire de chaque
 module (lignes `A_ARBITRER` comprises, contrairement a apply_default_values.py).
@@ -27,17 +29,10 @@ from extract_default_values import COLONNES_TECHNIQUES  # noqa: E402
 
 RACINE = Path(__file__).resolve().parents[2]
 
-# public.get_default_value('clean_data.x', 'col', 'repli'|NULL[, 'VARIANTE'])
+# public.get_default_value('clean_data.x', 'col'[, 'VARIANTE'])
 APPEL = re.compile(
-    r"public\.get_default_value\(\s*'([^']+)'\s*,\s*'([^']+)'\s*,\s*"
-    r"(NULL|'(?:[^']|'')*')\s*(?:,\s*'([A-Z0-9_]+)'\s*)?\)")
-
-
-def litteral(brut):
-    """Le 3e argument tel qu'il sera lu par la fonction : None pour NULL."""
-    if brut == 'NULL':
-        return None
-    return brut[1:-1].replace("''", "'")
+    r"public\.get_default_value\(\s*'([^']+)'\s*,\s*'([^']+)'\s*"
+    r"(?:,\s*'([A-Z0-9_]+)'\s*)?\)")
 
 
 def modules(cible=None):
@@ -50,28 +45,20 @@ def modules(cible=None):
 
 
 def verifier(dossiers, seed):
-    manquantes, divergences, appels = [], [], 0
+    manquantes, appels = [], 0
     for dossier in dossiers:
         for fichier in sorted(dossier.glob('*.sql')):
             texte = fichier.read_text(encoding='utf-8')
             for numero, ligne in enumerate(texte.splitlines(), 1):
                 if ligne.lstrip().startswith('--'):   # exemples en commentaire
                     continue
-                for table, colonne, repli, variante in APPEL.findall(ligne):
+                for table, colonne, variante in APPEL.findall(ligne):
                     appels += 1
                     variante = variante or 'STANDARD'
-                    seedee = seed.get((table, colonne, variante))
                     ou = f"{fichier.relative_to(RACINE)}:{numero}"
-                    if seedee is None:
+                    if seed.get((table, colonne, variante)) is None:
                         manquantes.append(f"{ou} {table}.{colonne} [{variante}]")
-                        continue
-                    type_seed, valeur_seed = seedee
-                    attendu = None if type_seed == 'NULL' else valeur_seed
-                    if attendu != litteral(repli):
-                        divergences.append(
-                            f"{ou} {table}.{colonne} [{variante}] "
-                            f"repli={litteral(repli)!r} != seed={attendu!r}")
-    return appels, manquantes, divergences
+    return appels, manquantes
 
 
 def litteraux_restants(dossiers):

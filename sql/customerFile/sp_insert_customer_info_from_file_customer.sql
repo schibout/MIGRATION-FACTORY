@@ -84,7 +84,7 @@ BEGIN
         COALESCE(NULLIF(TRIM(fc.tax_number_1),''), fc.phl_cli_association_no, TRIM(k.STCD1), TRIM(k.STCD2)) as ASSOCIATION_NO,
         fc.customer_id as PARTY,
         COALESCE(fc.phl_client_default_domain,
-                 public.get_default_value('clean_data.customer_info', 'default_domain', 'FALSE')) as DEFAULT_DOMAIN,
+                 public.get_default_value('clean_data.customer_info', 'default_domain')) as DEFAULT_DOMAIN,
         -- Le code langue du fichier est un code SAP ('F', 'E') -> transcodification.
         -- client_phl porte deja le code IFS ('fr', 'en') -> repris tel quel.
         COALESCE(
@@ -100,27 +100,27 @@ BEGIN
                 public.get_transcodification('COUNTRY', k.LAND1)
             ), 'SZ') as COUNTRY_DB,
         COALESCE(fc.phl_cli_party_type_db,
-                 public.get_default_value('clean_data.customer_info', 'party_type_db', 'CUSTOMER')) as PARTY_TYPE_DB,
+                 public.get_default_value('clean_data.customer_info', 'party_type_db')) as PARTY_TYPE_DB,
         COALESCE(fc.phl_cli_corporate_form,
-                 public.get_default_value('clean_data.customer_info', 'corporate_form', NULL)) as CORPORATE_FORM,
+                 public.get_default_value('clean_data.customer_info', 'corporate_form')) as CORPORATE_FORM,
         COALESCE(NULLIF(TRIM(fc.vat_number),''), fc.phl_cli_identifier_reference, k.STCEG) as IDENTIFIER_REFERENCE,
         COALESCE(fc.phl_identifier_ref_validation_db,
-                 public.get_default_value('clean_data.customer_info', 'identifier_ref_validation_db', '')) as IDENTIFIER_REF_VALIDATION_DB,
+                 public.get_default_value('clean_data.customer_info', 'identifier_ref_validation_db')) as IDENTIFIER_REF_VALIDATION_DB,
         -- get_default_value renvoie du TEXT : une valeur d'ecran vide ('')
         -- fait echouer le cast ("invalid input syntax for type numeric").
         -- NULLIF ramene la chaine vide a NULL avant le ::numeric.
         NULLIF(COALESCE(fc.phl_cli_picture_id,
-                 public.get_default_value('clean_data.customer_info', 'picture_id', NULL)), '')::numeric as PICTURE_ID,
+                 public.get_default_value('clean_data.customer_info', 'picture_id')), '')::numeric as PICTURE_ID,
         COALESCE(fc.phl_one_time_db,
-                 public.get_default_value('clean_data.customer_info', 'one_time_db', 'FALSE')) as ONE_TIME_DB,
+                 public.get_default_value('clean_data.customer_info', 'one_time_db')) as ONE_TIME_DB,
         COALESCE(fc.phl_customer_category_db,
-                 public.get_default_value('clean_data.customer_info', 'customer_category_db', 'CUSTOMER')) as CUSTOMER_CATEGORY_DB,
+                 public.get_default_value('clean_data.customer_info', 'customer_category_db')) as CUSTOMER_CATEGORY_DB,
         COALESCE(fc.phl_b2b_customer_db,
-                 public.get_default_value('clean_data.customer_info', 'b2b_customer_db', 'FALSE')) as B2B_CUSTOMER_DB,
+                 public.get_default_value('clean_data.customer_info', 'b2b_customer_db')) as B2B_CUSTOMER_DB,
         COALESCE(fc.phl_cli_customer_tax_usage_type,
-                 public.get_default_value('clean_data.customer_info', 'customer_tax_usage_type', NULL)) as CUSTOMER_TAX_USAGE_TYPE,
+                 public.get_default_value('clean_data.customer_info', 'customer_tax_usage_type')) as CUSTOMER_TAX_USAGE_TYPE,
         COALESCE(fc.phl_cli_business_classification,
-                 public.get_default_value('clean_data.customer_info', 'business_classification', NULL)) as BUSINESS_CLASSIFICATION,
+                 public.get_default_value('clean_data.customer_info', 'business_classification')) as BUSINESS_CLASSIFICATION,
         COALESCE(
             -- Date du fichier. Deux formats coexistent : 'YYYYMMDD' (branche PHL
             -- de la vue) et RFC 1123 'Fri, 01 Sep 2023 00:00:00 GMT' (le fichier
@@ -138,7 +138,7 @@ BEGIN
             THEN TO_DATE(k.ERDAT, 'YYYYMMDD')
             ELSE NULL END
         ) as DATE_OF_REGISTRATION,
-        public.get_default_value('clean_data.customer_info', 'main_representative', NULL) as MAIN_REPRESENTATIVE,
+        public.get_default_value('clean_data.customer_info', 'main_representative') as MAIN_REPRESENTATIVE,
         -- CUSTOMER_ID est le numero de compte IFS du fichier et n'est plus
         -- renumerote : sp_renumber_all_customer_ids_file a ete retiree du
         -- pipeline (backend/etl_modules/etl_file_customer.py).

@@ -38,21 +38,21 @@ BEGIN
     )
     -- TÉLÉPHONE (Phone) - depuis raw_data.adr2
     SELECT 
-        public.get_default_value('clean_data.comm_method', 'party_type_db', 'SUPPLIER', 'PHONE') as party_type_db,
+        public.get_default_value('clean_data.comm_method', 'party_type_db', 'PHONE') as party_type_db,
         f.numero_compte_fournisseur as identity,
         adr2.tel_number as value,
-        public.get_default_value('clean_data.comm_method', 'method_id_db', 'PHONE', 'PHONE') as method_id_db,
-        public.get_default_value('clean_data.comm_method', 'party_type', 'Supplier', 'PHONE') as party_type,
+        public.get_default_value('clean_data.comm_method', 'method_id_db', 'PHONE') as method_id_db,
+        public.get_default_value('clean_data.comm_method', 'party_type', 'PHONE') as party_type,
         CASE
             WHEN adr2.flgdefault = 'X' THEN 'Téléphone principal du fournisseur'
             ELSE 'Téléphone du fournisseur'
         END as description,
         CURRENT_DATE as valid_from,
-        public.get_default_value('clean_data.comm_method', 'valid_to', '2099-12-31', 'PHONE')::date as valid_to,
+        public.get_default_value('clean_data.comm_method', 'valid_to', 'PHONE')::date as valid_to,
         CASE WHEN adr2.flgdefault = 'X' THEN 'TRUE' ELSE 'FALSE' END as method_default,
-        public.get_default_value('clean_data.comm_method', 'address_default', 'FALSE', 'PHONE') as address_default,
+        public.get_default_value('clean_data.comm_method', 'address_default', 'PHONE') as address_default,
         f.nom_1 as name,
-        public.get_default_value('clean_data.comm_method', 'method_id', 'Phone', 'PHONE') as method_id,
+        public.get_default_value('clean_data.comm_method', 'method_id', 'PHONE') as method_id,
         f.address_id as address_id,
         f.numero_compte_fournisseur as supplier_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,
@@ -69,21 +69,21 @@ BEGIN
     UNION ALL
     -- FAX (Fax) - depuis raw_data.adr3
     SELECT 
-        public.get_default_value('clean_data.comm_method', 'party_type_db', 'SUPPLIER', 'FAX') as party_type_db,
+        public.get_default_value('clean_data.comm_method', 'party_type_db', 'FAX') as party_type_db,
         f.numero_compte_fournisseur as identity,
         adr3.fax_number as value,
-        public.get_default_value('clean_data.comm_method', 'method_id_db', 'FAX', 'FAX') as method_id_db,
-        public.get_default_value('clean_data.comm_method', 'party_type', 'Supplier', 'FAX') as party_type,
+        public.get_default_value('clean_data.comm_method', 'method_id_db', 'FAX') as method_id_db,
+        public.get_default_value('clean_data.comm_method', 'party_type', 'FAX') as party_type,
         CASE
             WHEN adr3.flgdefault = 'X' THEN 'Numéro de télécopie principal du fournisseur'
             ELSE 'Numéro de télécopie du fournisseur'
         END as description,
         CURRENT_DATE as valid_from,
-        public.get_default_value('clean_data.comm_method', 'valid_to', '2099-12-31', 'FAX')::date as valid_to,
+        public.get_default_value('clean_data.comm_method', 'valid_to', 'FAX')::date as valid_to,
         CASE WHEN adr3.flgdefault = 'X' THEN 'TRUE' ELSE 'FALSE' END as method_default,
-        public.get_default_value('clean_data.comm_method', 'address_default', 'FALSE', 'FAX') as address_default,
+        public.get_default_value('clean_data.comm_method', 'address_default', 'FAX') as address_default,
         f.nom_1 as name,
-        public.get_default_value('clean_data.comm_method', 'method_id', 'Fax', 'FAX') as method_id,
+        public.get_default_value('clean_data.comm_method', 'method_id', 'FAX') as method_id,
         f.address_id as address_id,
         f.numero_compte_fournisseur as supplier_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,
@@ -100,21 +100,21 @@ BEGIN
     UNION ALL
     -- EMAIL (E-Mail) - depuis raw_data.adr6
     SELECT 
-        public.get_default_value('clean_data.comm_method', 'party_type_db', 'SUPPLIER', 'E_MAIL') as party_type_db,
+        public.get_default_value('clean_data.comm_method', 'party_type_db', 'E_MAIL') as party_type_db,
         f.numero_compte_fournisseur as identity,
         adr6.smtp_addr as value,
-        public.get_default_value('clean_data.comm_method', 'method_id_db', 'E_MAIL', 'E_MAIL') as method_id_db,
-        public.get_default_value('clean_data.comm_method', 'party_type', 'Supplier', 'E_MAIL') as party_type,
+        public.get_default_value('clean_data.comm_method', 'method_id_db', 'E_MAIL') as method_id_db,
+        public.get_default_value('clean_data.comm_method', 'party_type', 'E_MAIL') as party_type,
         CASE
             WHEN adr6.flgdefault = 'X' THEN 'Adresse électronique principale du fournisseur'
             ELSE 'Adresse électronique du fournisseur'
         END as description,
         CURRENT_DATE as valid_from,
-        public.get_default_value('clean_data.comm_method', 'valid_to', '2099-12-31', 'E_MAIL')::date as valid_to,
+        public.get_default_value('clean_data.comm_method', 'valid_to', 'E_MAIL')::date as valid_to,
         CASE WHEN adr6.flgdefault = 'X' THEN 'TRUE' ELSE 'FALSE' END as method_default,
         CASE WHEN adr6.flgdefault = 'X' THEN 'TRUE' ELSE 'FALSE' END as address_default,
         f.nom_1 as name,
-        public.get_default_value('clean_data.comm_method', 'method_id', 'E-Mail', 'E_MAIL') as method_id,
+        public.get_default_value('clean_data.comm_method', 'method_id', 'E_MAIL') as method_id,
         f.address_id as address_id,
         f.numero_compte_fournisseur as supplier_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,

@@ -154,7 +154,7 @@ BEGIN
       email, iban_paiement, swift_bic, nom_banque, mode_paiement, source
    )
    SELECT
-      public.get_default_value('clean_data.ifs_fournisseurs', 'company', 'TRIMET') as company,
+      public.get_default_value('clean_data.ifs_fournisseurs', 'company') as company,
 
       -- Numéro SAP complété à 10 caractères : le staging le porte non complété
       -- ("45036"), alors que lfa1.lifnr et les scripts 03->15 attendent la forme
@@ -165,7 +165,7 @@ BEGIN
       -- depuis le fichier), avec repli sur la valeur brute du fichier.
       COALESCE(mp.numero_compte_ifs::text, NULLIF(TRIM(sf.numero_compte_ifs), '')) as numero_compte_ifs,
 
-        public.get_default_value('clean_data.ifs_fournisseurs', 'address_id', '01') as address_id,
+        public.get_default_value('clean_data.ifs_fournisseurs', 'address_id') as address_id,
 
       -- === PRIORITÉ 1: selection_fournisseurs_stg | PRIORITÉ 2: SAP ===
 
@@ -304,13 +304,13 @@ BEGIN
       destinataire_paiement, language_sap, source
    )
    SELECT
-      public.get_default_value('clean_data.ifs_fournisseurs', 'company', 'TRIMET') as company,
+      public.get_default_value('clean_data.ifs_fournisseurs', 'company') as company,
       a.lifnr::text as numero_compte_fournisseur,
 
       -- Numéro émis par la séquence, figé dans la table d'affectation
       mp.numero_compte_ifs::text as numero_compte_ifs,
 
-      public.get_default_value('clean_data.ifs_fournisseurs', 'address_id', '01') as address_id,
+      public.get_default_value('clean_data.ifs_fournisseurs', 'address_id') as address_id,
 
       -- Uniquement SAP : le fichier de sélection ne connaît pas ces fournisseurs
       a.name1 as nom_1,
