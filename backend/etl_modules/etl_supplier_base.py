@@ -249,6 +249,15 @@ class SupplierBaseETL:
                         self._add_log_message(notice_text, "info")
                     conn_psycopg2.notices[:] = []
                     
+                    # 7bis. Numéros fiscaux par type (TVA UE / SIREN / SIRET)
+                    logger.info("Appel de la procédure clean_data.sp_insert_supplier_addr_tax_number")
+                    self._add_log_message("Alimentation de supplier_addr_tax_number...", "info")
+                    cursor.execute("CALL clean_data.sp_insert_supplier_addr_tax_number()")
+                    self._add_log_message("✅ supplier_addr_tax_number alimenté", "success")
+                    for notice in conn_psycopg2.notices:
+                        self._add_log_message(notice.strip(), "info")
+                    conn_psycopg2.notices[:] = []
+
                     # 8. Insérer les données dans la table SUPPLIER
                     logger.info("Appel de la procédure clean_data.sp_insert_supplier_from_sap")
                     self._add_log_message("Insertion dans la table SUPPLIER...", "info")

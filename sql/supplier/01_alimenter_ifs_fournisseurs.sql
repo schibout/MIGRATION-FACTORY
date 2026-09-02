@@ -24,7 +24,12 @@ ALTER TABLE clean_data.ifs_fournisseurs
     ADD COLUMN IF NOT EXISTS swift_bic              VARCHAR(20),
     ADD COLUMN IF NOT EXISTS nom_banque             VARCHAR(100),
     ADD COLUMN IF NOT EXISTS mode_paiement          VARCHAR(50),
-    ADD COLUMN IF NOT EXISTS source                 VARCHAR(20);
+    ADD COLUMN IF NOT EXISTS source                 VARCHAR(20),
+    -- Coordonnees bancaires SAP (LFBK / TIBAN / BNKA)
+    ADD COLUMN IF NOT EXISTS numero_compte_bancaire VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS code_banque            VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS pays_banque            VARCHAR(3),
+    ADD COLUMN IF NOT EXISTS titulaire_compte       VARCHAR(60);
 
 -- ----------------------------------------------------------------------------
 -- Cle primaire : le numero de compte SAP (LIFNR)
@@ -90,25 +95,46 @@ COMMENT ON COLUMN clean_data.ifs_fournisseurs.numero_compte_fournisseur IS
 --   tiban = IBAN, cle (banks, bankl, bankn)
 --   bnka  = referentiel banques : nom (banka) et code SWIFT
 CREATE OR REPLACE FUNCTION clean_data.fn_coordonnees_bancaires_sap(p_lifnr TEXT)
-RETURNS TABLE (iban TEXT, swift TEXT, nom TEXT)
+RETURNS TABLE (
+    iban        TEXT,
+    swift       TEXT,
+    nom_banque  TEXT,
+    compte      TEXT,
+    code_banque TEXT,
+    pays_banque TEXT,
+    titulaire   TEXT
+)
 LANGUAGE sql
 STABLE
 AS $function$
-    SELECT NULLIF(TRIM(t.iban), ''),
-           NULLIF(TRIM(k.swift), ''),
-           NULLIF(TRIM(k.banka), '')
+    SELECT
+        -- IBAN reel de SAP (TIBAN) en priorite ; pour les comptes francais qui
+        -- n'y figurent pas, repli sur le calcul depuis code banque + compte.
+        COALESCE(
+            NULLIF(TRIM(t.iban), ''),
+            CASE WHEN l.banks = 'FR' AND l.bankl IS NOT NULL AND l.bankn IS NOT NULL
+                 THEN clean_data.fn_calculate_iban('FR', l.bankl, '00000', l.bankn)
+            END
+        ),
+        NULLIF(TRIM(k.swift), ''),
+        NULLIF(TRIM(k.banka), ''),
+        NULLIF(TRIM(l.bankn), ''),
+        NULLIF(TRIM(l.bankl), ''),
+        NULLIF(TRIM(l.banks), ''),
+        NULLIF(TRIM(l.koinh), '')
       FROM raw_data.lfbk l
       LEFT JOIN raw_data.tiban t
              ON t.banks = l.banks AND t.bankl = l.bankl AND t.bankn = l.bankn
       LEFT JOIN raw_data.bnka k
              ON k.banks = l.banks AND k.bankl = l.bankl
      WHERE l.lifnr::text = p_lifnr
+       AND NULLIF(TRIM(l.bankn), '') IS NOT NULL
      ORDER BY (NULLIF(TRIM(t.iban), '') IS NULL), l.bvtyp NULLS LAST, l.bankl, l.bankn
      LIMIT 1;
 $function$;
 
 COMMENT ON FUNCTION clean_data.fn_coordonnees_bancaires_sap(TEXT) IS
-    'Compte bancaire retenu pour un fournisseur SAP (lfbk + tiban + bnka) : celui qui porte un IBAN, sinon le premier par bvtyp/bankl/bankn.';
+    'Compte bancaire retenu pour un fournisseur SAP (lfbk + tiban + bnka) : celui qui porte un IBAN, sinon le premier par bvtyp/bankl/bankn. Source unique partagee par ifs_fournisseurs (script 01) et payment_address (script 14).';
 
 CREATE OR REPLACE FUNCTION clean_data.alimenter_ifs_fournisseurs()
  RETURNS void
@@ -182,7 +208,8 @@ BEGIN
       destinataire_paiement, language_sap,
       code_tva_sap, france_etranger, numero_siren, complement_adresse,
       condition_paiement_sap, telephone_3, critere_recherche, langue,
-      email, iban_paiement, swift_bic, nom_banque, mode_paiement, source
+      email, iban_paiement, swift_bic, nom_banque, mode_paiement, source,
+      numero_compte_bancaire, code_banque, pays_banque, titulaire_compte
    )
    SELECT
       public.get_default_value('clean_data.ifs_fournisseurs', 'company') as company,
@@ -291,12 +318,18 @@ BEGIN
       -- Les colonnes bancaires du fichier de selection sont vides (verifie :
       -- 0 IBAN / 0 SWIFT / 0 nom de banque sur les 1716 lignes) ; le COALESCE
       -- garde neanmoins la priorite au fichier s'il venait a etre complete.
-      COALESCE(NULLIF(TRIM(sf.iban_paiement), ''), banque.iban)   as iban_paiement,
-      COALESCE(NULLIF(TRIM(sf.swift_bic), ''),     banque.swift)  as swift_bic,
-      COALESCE(NULLIF(TRIM(sf.nom_banque), ''),    banque.nom)    as nom_banque,
+      COALESCE(NULLIF(TRIM(sf.iban_paiement), ''), banque.iban)       as iban_paiement,
+      COALESCE(NULLIF(TRIM(sf.swift_bic), ''),     banque.swift)      as swift_bic,
+      COALESCE(NULLIF(TRIM(sf.nom_banque), ''),    banque.nom_banque) as nom_banque,
 
       NULLIF(TRIM(sf.mode_paiement), '')          as mode_paiement,
-      'FICHIER'                                   as source
+      'FICHIER'                                   as source,
+
+      -- Reste du compte retenu : uniquement SAP (absent du fichier)
+      banque.compte      as numero_compte_bancaire,
+      banque.code_banque as code_banque,
+      banque.pays_banque as pays_banque,
+      banque.titulaire   as titulaire_compte
 
    FROM raw_data.selection_fournisseurs_stg sf
    CROSS JOIN LATERAL (
@@ -347,7 +380,8 @@ BEGIN
       conditions_paiement_compta, conditions_paiement_achats,
       incoterms_1, incoterms_2, telephone_1, telephone_2, date_creation_sap,
       destinataire_paiement, language_sap,
-      iban_paiement, swift_bic, nom_banque, source
+      iban_paiement, swift_bic, nom_banque, source,
+      numero_compte_bancaire, code_banque, pays_banque, titulaire_compte
    )
    SELECT
       public.get_default_value('clean_data.ifs_fournisseurs', 'company') as company,
@@ -389,11 +423,16 @@ BEGIN
       public.get_transcodification('LANGUAGE', a.spras) as language_sap,
 
       -- Coordonnées bancaires SAP (lfbk + tiban + bnka)
-      banque.iban  as iban_paiement,
-      banque.swift as swift_bic,
-      banque.nom   as nom_banque,
+      banque.iban       as iban_paiement,
+      banque.swift      as swift_bic,
+      banque.nom_banque as nom_banque,
 
-      'SAP_NOUVEAU' as source
+      'SAP_NOUVEAU' as source,
+
+      banque.compte      as numero_compte_bancaire,
+      banque.code_banque as code_banque,
+      banque.pays_banque as pays_banque,
+      banque.titulaire   as titulaire_compte
 
    FROM raw_data.lfa1 a
    JOIN clean_data.ifs_fournisseur_id_map mp ON mp.numero_compte_sap = a.lifnr::text

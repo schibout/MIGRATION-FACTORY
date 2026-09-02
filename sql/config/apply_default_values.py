@@ -57,6 +57,7 @@ FICHIERS_SEED = [
     RACINE / 'migrations' / '037_seed_valeurs_defaut_a_arbitrer.sql',
     RACINE / 'migrations' / '038_seed_valeurs_defaut_cust_ord_customer_file.sql',
     RACINE / 'migrations' / '043_seed_devise_defaut_supplier.sql',
+    RACINE / 'migrations' / '045_seed_supplier_addr_tax_number.sql',
 ]
 
 

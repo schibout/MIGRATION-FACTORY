@@ -108,35 +108,29 @@ BEGIN
     -- que clean_data.fn_coordonnees_bancaires_sap (script 01) pour que
     -- payment_address et ifs_fournisseurs portent le MEME compte :
     -- d'abord celui qui a un IBAN, puis bvtyp, bankl, bankn.
+    -- Les coordonnees bancaires sont deja resolues et stockees dans
+    -- ifs_fournisseurs par le script 01, via
+    -- clean_data.fn_coordonnees_bancaires_sap (chaine LFBK -> TIBAN -> BNKA,
+    -- un compte par fournisseur car address_id = lfa1.adrnr en porte un seul).
+    -- On relit ces colonnes au lieu de refaire la jointure : les deux tables
+    -- ne peuvent plus diverger sur le compte retenu ni sur l'IBAN.
     FOR rec IN (
-        SELECT DISTINCT ON (f.numero_compte_fournisseur)
+        SELECT
             COALESCE(f.company, 'TRIMET') as company,
             f.numero_compte_fournisseur as lifnr,
             f.address_id,
-            l.banks,
-            l.bankl,
-            l.bankn,
-            l.bkont,
-            l.bvtyp,
-            l.xezer,
-            l.koinh,
-            b.banka as bank_name,
-            b.swift,
-            b.stras as bank_street,
-            b.ort01 as bank_city,
-            b.provz as bank_region,
-            NULLIF(TRIM(t.iban), '') as iban_sap,
+            f.pays_banque            as banks,
+            f.code_banque            as bankl,
+            f.numero_compte_bancaire as bankn,
+            f.titulaire_compte       as koinh,
+            f.nom_banque             as bank_name,
+            f.swift_bic              as swift,
+            f.iban_paiement          as iban_sap,
             1 as bank_seq
         FROM clean_data.ifs_fournisseurs f
-        INNER JOIN raw_data.lfbk l ON f.numero_compte_fournisseur = l.lifnr
-        LEFT JOIN raw_data.tiban t
-               ON t.banks = l.banks AND t.bankl = l.bankl AND t.bankn = l.bankn
-        LEFT JOIN raw_data.bnka b ON l.banks = b.banks AND l.bankl = b.bankl
         WHERE f.numero_compte_fournisseur IS NOT NULL
-          AND l.bankn IS NOT NULL
-          AND TRIM(l.bankn) != ''
-        ORDER BY f.numero_compte_fournisseur,
-                 (NULLIF(TRIM(t.iban), '') IS NULL), l.bvtyp NULLS LAST, l.bankl, l.bankn
+          AND NULLIF(TRIM(f.numero_compte_bancaire), '') IS NOT NULL
+        ORDER BY f.numero_compte_fournisseur
     ) LOOP
         BEGIN
             processed_count := processed_count + 1;
@@ -150,16 +144,10 @@ BEGIN
             DECLARE
                 v_iban TEXT;
             BEGIN
-                -- IBAN reel de SAP (TIBAN) en priorite. Le calcul ne sert plus
-                -- que de repli pour les comptes francais absents de TIBAN :
-                -- l'IBAN saisi dans SAP fait foi sur une cle recalculee.
-                IF rec.iban_sap IS NOT NULL THEN
-                    v_iban := rec.iban_sap;
-                ELSIF rec.banks = 'FR' AND rec.bankl IS NOT NULL AND rec.bankn IS NOT NULL THEN
-                    v_iban := clean_data.fn_calculate_iban('FR', rec.bankl, '00000', rec.bankn);
-                ELSE
-                    v_iban := NULL;
-                END IF;
+                -- IBAN deja resolu dans ifs_fournisseurs : TIBAN en priorite,
+                -- repli sur le calcul pour les comptes FR absents de TIBAN.
+                -- La regle vit dans fn_coordonnees_bancaires_sap, pas ici.
+                v_iban := rec.iban_sap;
                 
                 -- Insertion/mise à jour des données bancaires
                 INSERT INTO clean_data.payment_address (

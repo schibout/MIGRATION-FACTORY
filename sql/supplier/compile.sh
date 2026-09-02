@@ -89,6 +89,7 @@ files=(
     "13_fn_upsert_supplier_delivery_tax_code.sql"
     "14_fn_upsert_payment_address.sql"
     "15_fn_upsert_supplier_tax_info.sql"
+    "16_sp_insert_supplier_addr_tax_number.sql"
     "sp_update_supplier_id_cascade.sql"
     "sp_keep_supplier_sample.sql"
 )
