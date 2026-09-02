@@ -78,9 +78,9 @@ EXEMPLES = [
  "SELECT statut_validation, COUNT(*) AS nb FROM raw_data.selection_fournisseurs GROUP BY statut_validation ORDER BY nb DESC",
  "Avancement du nettoyage : comptage par statut_validation dans selection_fournisseurs."),
 
-("Top 10 des fournisseurs par chiffre d'affaires 2024",
- "SELECT numero_compte_fournisseur, nom_1, ca_2024, nb_commandes_2024, devise_principale FROM clean_data.ifs_fournisseurs ORDER BY ca_2024 DESC NULLS LAST LIMIT 10",
- "Classement par CA 2024 depuis la table transformée ifs_fournisseurs (colonnes numériques natives)."),
+("Quels fournisseurs ont été ajoutés depuis SAP après la sélection ?",
+ "SELECT numero_compte_fournisseur, numero_compte_ifs, nom_1, cle_pays, date_creation_sap FROM clean_data.ifs_fournisseurs WHERE source = 'SAP_NOUVEAU' ORDER BY date_creation_sap DESC",
+ "Fournisseurs de ifs_fournisseurs absents du fichier de sélection, repris depuis SAP (colonne source)."),
 
 ("Combien de fournisseurs ont été créés dans SAP en 2023 ?",
  f"SELECT COUNT(*) AS nb FROM raw_data.lfa1 WHERE {M} {A} AND erdat LIKE '2023%'",

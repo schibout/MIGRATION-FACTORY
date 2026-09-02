@@ -76,7 +76,7 @@ Noms de tables/champs souvent en MAJUSCULES -> ILIKE ou UPPER().
 
 === CLEAN_DATA (donnees transformees IFS) ===
 mapping_codification_articles (25248) : matnr, designation_sap, type_article, groupe_article, categorie, sous_categorie, codification_ifs (code IFS final, NULL = non codifie), codification_manuelle (bool)
-ifs_fournisseurs (1716) : numero_compte_fournisseur, nom_1, localite, code_postal, cle_pays, siret, tva, organisation_achats, devise_principale, ca_2020..ca_2025, nb_commandes_2020..nb_commandes_2025, derniere_date_commande
+ifs_fournisseurs (1854) : numero_compte_fournisseur (= LIFNR sur 10 car.), numero_compte_ifs (id IFS 600001+), nom_1, rue, localite, code_postal, cle_pays, siret, tva, societe, organisation_achats, email, iban_paiement, mode_paiement, date_creation_sap, source (FICHIER | SAP_NOUVEAU)
 Cibles IFS : ifs_article (83522), ifs_article_maitre (16100), inventory_part (1681), purchase_part (16095), purchase_part_supplier (30432), part_catalog (12733), sales_part (330), equipment_functional (18808)
 v_article (vue 360) : numero_article, designation, type_article, groupe_article, stock_quantite_total, valeur_stock_total, fournisseur_principal, statut_utilisation, actif_achat, avec_stock
 clean_data."v_fournisseurs_enrichis" : colonnes avec espaces/accents -> guillemets doubles, ex: "Numéro de compte fournisseur", "Nom 1", "N° SIRET", "Email"

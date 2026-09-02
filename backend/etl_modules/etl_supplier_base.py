@@ -404,7 +404,8 @@ class SupplierBaseETL:
             with self.pg_engine.connect() as conn:
                 with conn.begin():
                     
-                    # 2. Appel de la procédure alimenter_ifs_fournisseurs
+                    # 1. Appel de la procédure alimenter_ifs_fournisseurs
+                    #    (PRÉREQUIS : toutes les étapes suivantes lisent ifs_fournisseurs)
                     logger.info("Appel de la fonction clean_data.alimenter_ifs_fournisseurs")
                     result = conn.execute(text("SELECT clean_data.alimenter_ifs_fournisseurs()"))
                     processed_count = result.fetchone()[0] if result else 0

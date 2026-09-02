@@ -29,7 +29,9 @@ BEGIN
         public.get_default_value('clean_data.identity_invoice_info', 'invoice_fee', NULL) as INVOICE_FEE,
         COALESCE(NULLIF(TRIM(sf.condition_paiement_ifs), ''), f.conditions_paiement_achats, 'NET30') as PAY_TERM_ID,
         COALESCE(NULLIF(TRIM(sf.code_tva_ifs), ''), '') as DEF_VAT_CODE,
-        COALESCE(f.devise_principale, 'EUR') as DEF_CURRENCY,
+        -- ifs_fournisseurs.devise_principale a été supprimée (colonne KPI jamais
+        -- alimentée) : le COALESCE retombait toujours sur 'EUR'.
+        public.get_default_value('clean_data.identity_invoice_info', 'def_currency', 'EUR') as DEF_CURRENCY,
         public.get_default_value('clean_data.identity_invoice_info', 'identity_type', 'FALSE') as IDENTITY_TYPE,
         public.get_default_value('clean_data.identity_invoice_info', 'voting_share_percentage', '') as VOTING_SHARE_PERCENTAGE,
         public.get_default_value('clean_data.identity_invoice_info', 'automatic_invoice', 'N') as AUTOMATIC_INVOICE,

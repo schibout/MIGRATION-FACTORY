@@ -64,7 +64,10 @@ BEGIN
     SELECT DISTINCT
         f.numero_compte_fournisseur as vendor_no,
         public.get_default_value('clean_data.supplier', 'buyer_code', '*') as buyer_code,
-        COALESCE(f.devise_principale, 'EUR') as currency_code,
+        -- ifs_fournisseurs.devise_principale a été supprimée (colonne KPI jamais
+        -- alimentée : le bloc de calcul est commenté dans le script 01). Le
+        -- COALESCE retombait donc toujours sur 'EUR' -> valeur inchangée.
+        public.get_default_value('clean_data.supplier', 'currency_code', 'EUR') as currency_code,
         public.get_default_value('clean_data.supplier', 'supp_grp', 'DEFAULT') as supp_grp,
         public.get_default_value('clean_data.supplier', 'supplier_group', 'EXTERNAL') as supplier_group,
         public.get_default_value('clean_data.supplier', 'additional_cost_amount', '0')::numeric as additional_cost_amount,

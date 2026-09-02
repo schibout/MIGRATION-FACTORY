@@ -26,6 +26,52 @@ ALTER TABLE clean_data.ifs_fournisseurs
     ADD COLUMN IF NOT EXISTS mode_paiement          VARCHAR(50),
     ADD COLUMN IF NOT EXISTS source                 VARCHAR(20);
 
+-- ----------------------------------------------------------------------------
+-- Cle primaire : le numero de compte SAP (LIFNR)
+-- ----------------------------------------------------------------------------
+-- Un fournisseur = une ligne. La contrainte fait echouer bruyamment tout
+-- doublon introduit par le fichier de selection ou par le complement SAP,
+-- au lieu de le laisser se propager aux scripts 03->15.
+ALTER TABLE clean_data.ifs_fournisseurs
+    ALTER COLUMN numero_compte_fournisseur SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+          FROM pg_constraint c
+          JOIN pg_class t      ON t.oid = c.conrelid
+          JOIN pg_namespace n  ON n.oid = t.relnamespace
+         WHERE n.nspname = 'clean_data'
+           AND t.relname = 'ifs_fournisseurs'
+           AND c.contype = 'p'
+    ) THEN
+        ALTER TABLE clean_data.ifs_fournisseurs
+            ADD CONSTRAINT pk_ifs_fournisseurs PRIMARY KEY (numero_compte_fournisseur);
+        RAISE NOTICE 'Cle primaire pk_ifs_fournisseurs creee sur numero_compte_fournisseur';
+    END IF;
+END $$;
+
+-- ----------------------------------------------------------------------------
+-- Attribution des identifiants IFS
+-- ----------------------------------------------------------------------------
+-- La fonction TRUNCATE puis reinsere a chaque execution : sans memoire, un
+-- nextval() reattribuerait des numeros differents a chaque rechargement. La
+-- table d'affectation fige le couple LIFNR -> numero IFS ; la sequence ne sert
+-- qu'a emettre un numero pour un fournisseur jamais vu.
+CREATE SEQUENCE IF NOT EXISTS clean_data.seq_numero_compte_ifs
+    START WITH 600001 INCREMENT BY 1 MINVALUE 600001 NO CYCLE;
+
+CREATE TABLE IF NOT EXISTS clean_data.ifs_fournisseur_id_map (
+    numero_compte_sap VARCHAR(10)  PRIMARY KEY,
+    numero_compte_ifs INTEGER      NOT NULL UNIQUE,
+    source            VARCHAR(20)  NOT NULL,
+    created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE clean_data.ifs_fournisseur_id_map IS
+    'Affectation definitive LIFNR SAP -> numero de compte IFS. Ne jamais purger : un numero deja attribue ne doit plus changer.';
+
 COMMENT ON COLUMN clean_data.ifs_fournisseurs.source IS
     'Origine de la ligne : FICHIER (selection_fournisseurs_stg) ou SAP_NOUVEAU (cree dans SAP apres la selection)';
 COMMENT ON COLUMN clean_data.ifs_fournisseurs.numero_compte_ifs IS
@@ -41,12 +87,58 @@ DECLARE
    -- Date de création SAP à partir de laquelle un fournisseur absent du fichier
    -- de sélection est quand même repris (le fichier a été arrêté avant).
    v_date_creation_min CONSTANT DATE := DATE '2025-10-07';
-   -- Dernier identifiant IFS attribué par le fichier : les fournisseurs ajoutés
-   -- depuis SAP poursuivent la séquence à partir de là.
-   v_max_ifs INTEGER;
    v_nb_fichier INTEGER := 0;
    v_nb_sap INTEGER := 0;
+   v_nb_nouveaux_ids INTEGER := 0;
 BEGIN
+   -- =========================================================================
+   -- 0. Attribution des identifiants IFS (avant toute insertion)
+   -- =========================================================================
+   -- 0.a Les numéros arbitrés par le métier dans le fichier font foi : ils
+   --     entrent tels quels dans la table d'affectation. ON CONFLICT DO NOTHING
+   --     garantit qu'un numéro déjà attribué n'est jamais réécrit.
+   INSERT INTO clean_data.ifs_fournisseur_id_map (numero_compte_sap, numero_compte_ifs, source)
+   SELECT LPAD(TRIM(sf.numero_compte_sap), 10, '0'),
+          sf.numero_compte_ifs::INTEGER,
+          'FICHIER'
+     FROM raw_data.selection_fournisseurs_stg sf
+    WHERE TRIM(COALESCE(sf.numero_compte_ifs, '')) ~ '^[0-9]+$'
+   ON CONFLICT (numero_compte_sap) DO NOTHING;
+
+   -- 0.b Recaler la séquence au-dessus du dernier numéro attribué. setval sur
+   --     le MAX de la table d'affectation : aucun numéro déjà distribué ne peut
+   --     être réémis, et on ne crée pas de trou inutile.
+   PERFORM setval('clean_data.seq_numero_compte_ifs',
+                  COALESCE((SELECT MAX(numero_compte_ifs) FROM clean_data.ifs_fournisseur_id_map), 600000));
+
+   -- 0.c Émettre un numéro pour les fournisseurs SAP récents encore inconnus.
+   --     Le sous-select ordonné par LIFNR fait suivre à la séquence l'ordre du
+   --     numéro SAP, comme le fichier le fait déjà (600000 + rang par LIFNR).
+   INSERT INTO clean_data.ifs_fournisseur_id_map (numero_compte_sap, numero_compte_ifs, source)
+   SELECT t.lifnr,
+          nextval('clean_data.seq_numero_compte_ifs'),
+          'SAP_NOUVEAU'
+     FROM (
+         SELECT a.lifnr::text as lifnr
+           FROM raw_data.lfa1 a
+          WHERE CASE
+                    WHEN TRIM(COALESCE(a.erdat, '')) ~ '^[0-9]{8}$' AND TRIM(a.erdat) <> '00000000'
+                        THEN TO_DATE(TRIM(a.erdat), 'YYYYMMDD')
+                    WHEN TRIM(COALESCE(a.erdat, '')) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+                        THEN TO_DATE(TRIM(a.erdat), 'YYYY-MM-DD')
+                    ELSE NULL
+                END >= v_date_creation_min
+            AND COALESCE(a.loevm, '') <> 'X'
+            AND NOT EXISTS (
+                SELECT 1 FROM clean_data.ifs_fournisseur_id_map mp
+                 WHERE mp.numero_compte_sap = a.lifnr::text
+            )
+          ORDER BY a.lifnr::text
+     ) t
+   ON CONFLICT (numero_compte_sap) DO NOTHING;
+
+   GET DIAGNOSTICS v_nb_nouveaux_ids = ROW_COUNT;
+
    -- Vider et réinsérer
    TRUNCATE TABLE clean_data.ifs_fournisseurs;
    -- Insérer données de base depuis selection_fournisseurs_stg (source principale)
@@ -69,8 +161,9 @@ BEGIN
       -- SAP ("0000045036"). Sans le LPAD, aucune jointure SAP ne remonte.
       k.lifnr as numero_compte_fournisseur,
 
-      -- Identifiant IFS arbitré par le métier, repris tel quel du fichier
-      NULLIF(TRIM(sf.numero_compte_ifs), '') as numero_compte_ifs,
+      -- Identifiant IFS : lu dans la table d'affectation (alimentée en 0.a
+      -- depuis le fichier), avec repli sur la valeur brute du fichier.
+      COALESCE(mp.numero_compte_ifs::text, NULLIF(TRIM(sf.numero_compte_ifs), '')) as numero_compte_ifs,
 
         public.get_default_value('clean_data.ifs_fournisseurs', 'address_id', '01') as address_id,
 
@@ -165,6 +258,7 @@ BEGIN
    CROSS JOIN LATERAL (
        SELECT LPAD(TRIM(sf.numero_compte_sap), 10, '0') as lifnr
    ) k
+   LEFT JOIN clean_data.ifs_fournisseur_id_map mp ON mp.numero_compte_sap = k.lifnr
    LEFT JOIN raw_data.lfa1 a ON a.lifnr::text = k.lifnr
    LEFT JOIN LATERAL (
        -- Sous-requête pour récupérer les données agrégées SAP (fallback si pas dans selection_fournisseurs_stg)
@@ -198,13 +292,10 @@ BEGIN
    -- avec les seules données SAP (le fichier ne les connaît pas : ni IBAN, ni
    -- email, ni code TVA IFS...).
    --
-   -- Identifiant IFS : le fichier attribue 600000 + rang par LIFNR croissant
-   -- (règle vérifiée sur les 1716 lignes). On poursuit la même séquence.
-   SELECT COALESCE(MAX(numero_compte_ifs::INTEGER), 600000)
-     INTO v_max_ifs
-     FROM clean_data.ifs_fournisseurs
-    WHERE numero_compte_ifs ~ '^[0-9]+$';
-
+   -- Identifiant IFS : émis par clean_data.seq_numero_compte_ifs à l'étape 0.c
+   -- et figé dans la table d'affectation, donc stable d'un rechargement à l'autre.
+   -- Le INNER JOIN sur la table d'affectation garantit qu'aucune ligne n'est
+   -- insérée sans identifiant.
    INSERT INTO clean_data.ifs_fournisseurs (company,
       numero_compte_fournisseur, numero_compte_ifs, address_id, nom_1, rue, localite, code_postal,
       cle_pays, siret, tva, societe, organisation_achats,
@@ -216,8 +307,8 @@ BEGIN
       public.get_default_value('clean_data.ifs_fournisseurs', 'company', 'TRIMET') as company,
       a.lifnr::text as numero_compte_fournisseur,
 
-      -- Poursuite de la séquence du fichier, dans l'ordre du numéro SAP
-      (v_max_ifs + ROW_NUMBER() OVER (ORDER BY a.lifnr::text))::text as numero_compte_ifs,
+      -- Numéro émis par la séquence, figé dans la table d'affectation
+      mp.numero_compte_ifs::text as numero_compte_ifs,
 
       public.get_default_value('clean_data.ifs_fournisseurs', 'address_id', '01') as address_id,
 
@@ -249,6 +340,7 @@ BEGIN
       'SAP_NOUVEAU' as source
 
    FROM raw_data.lfa1 a
+   JOIN clean_data.ifs_fournisseur_id_map mp ON mp.numero_compte_sap = a.lifnr::text
    LEFT JOIN LATERAL (
        SELECT
            string_agg(DISTINCT b.bukrs::text, ', '::text ORDER BY (b.bukrs::text)) as societe,
@@ -291,37 +383,9 @@ BEGIN
 
    RAISE NOTICE 'ifs_fournisseurs : % depuis le fichier + % créés dans SAP depuis le % = % lignes',
                 v_nb_fichier, v_nb_sap, v_date_creation_min, v_nb_fichier + v_nb_sap;
-   /*-- Mettre à jour les KPI
-   UPDATE clean_data.ifs_fournisseurs
-   SET
-       (derniere_date_commande, devise_principale,
-        ca_2025, ca_2024, ca_2023, ca_2022, ca_2021, ca_2020,
-        nb_commandes_2025, nb_commandes_2024, nb_commandes_2023,
-        nb_commandes_2022, nb_commandes_2021, nb_commandes_2020) =
-   (
-       SELECT
-           MAX(e.budat::DATE),
-           MODE() WITHIN GROUP (ORDER BY ek.waers),
-           SUM(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2025 THEN e.dmbtr::NUMERIC ELSE 0 END),
-           SUM(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2024 THEN e.dmbtr::NUMERIC ELSE 0 END),
-           SUM(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2023 THEN e.dmbtr::NUMERIC ELSE 0 END),
-           SUM(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2022 THEN e.dmbtr::NUMERIC ELSE 0 END),
-           SUM(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2021 THEN e.dmbtr::NUMERIC ELSE 0 END),
-           SUM(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2020 THEN e.dmbtr::NUMERIC ELSE 0 END),
-           COUNT(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2025 THEN 1 END),
-           COUNT(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2024 THEN 1 END),
-           COUNT(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2023 THEN 1 END),
-           COUNT(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2022 THEN 1 END),
-           COUNT(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2021 THEN 1 END),
-           COUNT(CASE WHEN EXTRACT(YEAR FROM e.budat::DATE) = 2020 THEN 1 END)
-       FROM raw_data.ekbe e
-       JOIN raw_data.ekko ek ON e.mandt = ek.mandt AND e.ebeln = ek.ebeln
-       WHERE ek.lifnr = ifs_fournisseurs.numero_compte_fournisseur
-         AND e.bewtp = 'E'
-         AND e.shkzg = 'S'
-         AND e.budat IS NOT NULL
-   );
-   UPDATE clean_data.ifs_fournisseurs SET date_maj = CURRENT_TIMESTAMP;*/
+   RAISE NOTICE 'Identifiants IFS : % nouveaux numéros émis par la séquence (dernier attribué : %)',
+                v_nb_nouveaux_ids,
+                (SELECT MAX(numero_compte_ifs) FROM clean_data.ifs_fournisseur_id_map);
    RAISE NOTICE 'Table IFS_fournisseurs alimentée avec succès';
 END;
 $function$
