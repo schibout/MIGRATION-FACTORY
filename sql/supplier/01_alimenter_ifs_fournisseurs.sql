@@ -337,7 +337,23 @@ BEGIN
       banque.pays_banque as pays_banque,
       banque.titulaire   as titulaire_compte
 
-   FROM raw_data.selection_fournisseurs_stg sf
+   -- Une ligne par fournisseur, quoi qu'il arrive.
+   -- Le staging est alimente par import du fichier metier SANS purge prealable :
+   -- un second import s'y EMPILE (constate le 2026-09-02 : 3557 lignes = 1716
+   -- de l'ancien fichier + 1841 du nouveau, chaque fournisseur present deux
+   -- fois), et l'INSERT violait alors pk_ifs_fournisseurs. On retient la ligne
+   -- la plus renseignee (puis la plus recemment inseree, ctid croissant avec
+   -- l'ordre d'import) : deterministe, et sans effet quand le staging est sain.
+   FROM (
+       SELECT DISTINCT ON (LPAD(TRIM(stg.numero_compte_sap), 10, '0'))
+              stg.*
+         FROM raw_data.selection_fournisseurs_stg stg
+        ORDER BY LPAD(TRIM(stg.numero_compte_sap), 10, '0'),
+                 (SELECT COUNT(*)
+                    FROM jsonb_each_text(to_jsonb(stg)) j
+                   WHERE NULLIF(TRIM(j.value), '') IS NOT NULL) DESC,
+                 stg.ctid DESC
+   ) sf
    CROSS JOIN LATERAL (
        SELECT LPAD(TRIM(sf.numero_compte_sap), 10, '0') as lifnr
    ) k
