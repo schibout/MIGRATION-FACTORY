@@ -29,6 +29,11 @@ BEGIN
         public.get_default_value('clean_data.identity_invoice_info', 'invoice_fee') as INVOICE_FEE,
         COALESCE(NULLIF(TRIM(sf.condition_paiement_ifs), ''), f.conditions_paiement_achats, 'NET30') as PAY_TERM_ID,
         COALESCE(NULLIF(TRIM(sf.code_tva_ifs), ''), '') as DEF_VAT_CODE,
+        -- Numero fiscal = numero de TVA intracommunautaire resolu par le script 01
+        -- (selection_fournisseurs.numero_tva_intra > lfa1.stceg).
+        -- fiscal_no est un VARCHAR(16) : 3 fournisseurs (1 FR, 2 CN) portent un
+        -- numero de 18 caracteres et sont tronques.
+        SUBSTRING(NULLIF(TRIM(f.tva), '') FROM 1 FOR 16) as FISCAL_NO,
         -- ifs_fournisseurs.devise_principale a été supprimée (colonne KPI jamais
         -- alimentée) : le COALESCE retombait toujours sur 'EUR'.
         public.get_default_value('clean_data.identity_invoice_info', 'def_currency') as DEF_CURRENCY,
@@ -94,6 +99,7 @@ BEGIN
         INVOICE_FEE,
         PAY_TERM_ID,
         DEF_VAT_CODE,
+        FISCAL_NO,
         DEF_CURRENCY,
         IDENTITY_TYPE,
         VOTING_SHARE_PERCENTAGE,
@@ -136,6 +142,7 @@ BEGIN
         INVOICE_FEE,
         PAY_TERM_ID,
         DEF_VAT_CODE,
+        FISCAL_NO,
         DEF_CURRENCY,
         IDENTITY_TYPE,
         VOTING_SHARE_PERCENTAGE,

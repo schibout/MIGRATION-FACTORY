@@ -28,6 +28,7 @@ BEGIN
         def_authorizer,
         pay_term_id,
         def_vat_code,
+        fiscal_no,
         rounding_tax_code,
         def_currency,
         paym_dev_days,
@@ -62,6 +63,11 @@ BEGIN
         NULLIF(TRIM(fc.terme_reglement), '') as pay_term_id,
         -- Code TVA IFS repris du fichier file_customer (code_tva_ifs)
         NULLIF(TRIM(fc.code_tva_ifs), '') as def_vat_code,
+        -- N° fiscal = numero de TVA intracommunautaire, meme regle que
+        -- customer_tax_info.fiscal_no : stceg, repli stcd1 puis le fichier.
+        -- Colonne VARCHAR(16) cote IFS -> troncature.
+        COALESCE(SUBSTRING(k.STCEG, 1, 16), SUBSTRING(k.STCD1, 1, 16),
+                 SUBSTRING(fc.tax_number_1, 1, 16)) as fiscal_no,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'rounding_tax_code') as rounding_tax_code,
         COALESCE(knvv.WAERS, 'EUR') as def_currency,
         public.get_default_value('clean_data.cus_ident_invoice_info', 'paym_dev_days')::numeric as paym_dev_days,
