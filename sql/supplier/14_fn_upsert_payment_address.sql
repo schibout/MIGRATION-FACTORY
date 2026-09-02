@@ -1,3 +1,30 @@
+-- ============================================================================
+-- Contrainte d'unicite requise par le ON CONFLICT de l'etape 2
+-- ----------------------------------------------------------------------------
+-- Sans elle, l'INSERT ... ON CONFLICT (company, identity, party_type_db,
+-- way_id, address_id) leve
+--   there is no unique or exclusion constraint matching the ON CONFLICT
+--   specification
+-- sur CHAQUE ligne. L'erreur etait avalee par le EXCEPTION WHEN OTHERS de la
+-- boucle : l'etape 2 traitait ses lignes, n'en inserait aucune, et la fonction
+-- se terminait sans echec visible -- aucune donnee bancaire dans IFS.
+-- Les 5 colonnes sont deja sans NULL et la cle est deja unique sur les donnees
+-- en place (verifie : 1854 lignes, 1854 cles distinctes).
+-- ============================================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+         WHERE conrelid = 'clean_data.payment_address'::regclass
+           AND conname  = 'uq_payment_address'
+    ) THEN
+        ALTER TABLE clean_data.payment_address
+            ADD CONSTRAINT uq_payment_address
+            UNIQUE (company, identity, party_type_db, way_id, address_id);
+        RAISE NOTICE 'Contrainte uq_payment_address creee';
+    END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION clean_data.fn_upsert_payment_address()
  RETURNS integer
  LANGUAGE plpgsql
@@ -69,8 +96,20 @@ BEGIN
     -- ÉTAPE 2: Ajouter les données bancaires si disponibles dans lfbk
     RAISE NOTICE 'Étape 2: Ajout des données bancaires depuis lfbk...';
     
+    -- Chaine SAP des donnees bancaires :
+    --   LFBK  = lien fournisseur -> compte (banks, bankl, bankn, bkont)
+    --   TIBAN = IBAN reel, meme cle
+    --   BNKA  = referentiel banques : nom (banka) et code SWIFT
+    --
+    -- DISTINCT ON : un fournisseur peut avoir plusieurs comptes (1065 cas),
+    -- mais address_id vaut lfa1.adrnr, donc UN identifiant par fournisseur ;
+    -- plusieurs comptes viseraient la meme cle ON CONFLICT et seul le dernier
+    -- survivrait. On retient donc un compte, avec la meme regle deterministe
+    -- que clean_data.fn_coordonnees_bancaires_sap (script 01) pour que
+    -- payment_address et ifs_fournisseurs portent le MEME compte :
+    -- d'abord celui qui a un IBAN, puis bvtyp, bankl, bankn.
     FOR rec IN (
-        SELECT DISTINCT
+        SELECT DISTINCT ON (f.numero_compte_fournisseur)
             COALESCE(f.company, 'TRIMET') as company,
             f.numero_compte_fournisseur as lifnr,
             f.address_id,
@@ -86,14 +125,18 @@ BEGIN
             b.stras as bank_street,
             b.ort01 as bank_city,
             b.provz as bank_region,
-            ROW_NUMBER() OVER (PARTITION BY f.numero_compte_fournisseur, l.bankn ORDER BY l.bankl) as bank_seq
+            NULLIF(TRIM(t.iban), '') as iban_sap,
+            1 as bank_seq
         FROM clean_data.ifs_fournisseurs f
         INNER JOIN raw_data.lfbk l ON f.numero_compte_fournisseur = l.lifnr
+        LEFT JOIN raw_data.tiban t
+               ON t.banks = l.banks AND t.bankl = l.bankl AND t.bankn = l.bankn
         LEFT JOIN raw_data.bnka b ON l.banks = b.banks AND l.bankl = b.bankl
         WHERE f.numero_compte_fournisseur IS NOT NULL
-          AND l.bankn IS NOT NULL 
+          AND l.bankn IS NOT NULL
           AND TRIM(l.bankn) != ''
-        ORDER BY f.numero_compte_fournisseur, l.bankn
+        ORDER BY f.numero_compte_fournisseur,
+                 (NULLIF(TRIM(t.iban), '') IS NULL), l.bvtyp NULLS LAST, l.bankl, l.bankn
     ) LOOP
         BEGIN
             processed_count := processed_count + 1;
@@ -107,8 +150,12 @@ BEGIN
             DECLARE
                 v_iban TEXT;
             BEGIN
-                -- Calculer l'IBAN pour les comptes français (FR)
-                IF rec.banks = 'FR' AND rec.bankl IS NOT NULL AND rec.bankn IS NOT NULL THEN
+                -- IBAN reel de SAP (TIBAN) en priorite. Le calcul ne sert plus
+                -- que de repli pour les comptes francais absents de TIBAN :
+                -- l'IBAN saisi dans SAP fait foi sur une cle recalculee.
+                IF rec.iban_sap IS NOT NULL THEN
+                    v_iban := rec.iban_sap;
+                ELSIF rec.banks = 'FR' AND rec.bankl IS NOT NULL AND rec.bankn IS NOT NULL THEN
                     v_iban := clean_data.fn_calculate_iban('FR', rec.bankl, '00000', rec.bankn);
                 ELSE
                     v_iban := NULL;
