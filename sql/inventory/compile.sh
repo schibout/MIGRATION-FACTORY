@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# Script de compilation des procédures stockées clients SAP vers IFS
-# Ce script exécute toutes les procédures dans l'ordre requis
+# Script de compilation des fonctions stockées du module ARTICLES (inventory)
+# SAP vers IFS. Ce script compile toutes les fonctions dans l'ordre de dépendance.
+#
+# Périmètre des articles : raw_data.export_article_qlikview (pilote la liste des
+# articles à migrer, cf. clean_data.alimenter_ifs_article).
+#
+# Les fonctions du module PHL (alimenter_*_phl) sont dans sql/articlePhl/.
 
 # Charger les variables depuis .profile
 if [ -f ~/.profile ]; then
@@ -56,7 +61,7 @@ execute_sql() {
 
 # Début du script
 echo "=========================================="
-echo "  Compilation des procédures CLIENT"
+echo "  Compilation des fonctions ARTICLES"
 echo "=========================================="
 echo ""
 log_info "Connexion: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
@@ -65,10 +70,18 @@ echo ""
 # Compteur d'erreurs
 errors=0
 
-# Liste des fichiers dans l'ordre d'exécution
+# Liste des fichiers dans l'ordre d'exécution (= ordre de dépendance du module)
+#   1. clean_data.alimenter_ifs_article()            -> clean_data.ifs_article_maitre
+#      (périmètre = raw_data.export_article_qlikview)
+#   2. clean_data.alimenter_part_catalog()           -> clean_data.part_catalog (table de base)
+#   3. clean_data.alimenter_inventory_part()         -> clean_data.inventory_part      (EXISTS part_catalog)
+#   4. clean_data.alimenter_inventory_part_planning()-> clean_data.invent_part_plan    (EXISTS inventory_part)
+#   5. clean_data.alimenter_purchase_part()          -> clean_data.purchase_part       (EXISTS part_catalog,
+#                                                       hors articles de vente : NOT EXISTS articles_vente_sap)
+#   6. clean_data.alimenter_purchase_part_supplier() -> clean_data.purchase_part_supplier (EXISTS purchase_part)
+#   7. clean_data.alimenter_sales_part()             -> clean_data.sales_part          (EXISTS part_catalog)
 files=(
     "alimenter_ifs_article.sql"
-    "alimenter_ifs_article_phl.sql"
     "alimenter_part_catalog.sql"
     "alimenter_inventory_part.sql"
     "alimenter_inventory_part_planning.sql"
