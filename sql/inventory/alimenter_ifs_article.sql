@@ -70,15 +70,26 @@ BEGIN
         langue,
         codification_id
     )
-    WITH article_base AS (
-         SELECT DISTINCT ON (LPAD(ad.article, 18, '0'))
-            LPAD(ad.article, 18, '0') AS matnr,
+    -- =====================================================================
+    -- PERIMETRE : seuls les articles presents dans raw_data.export_article_qlikview
+    -- sont retenus (la table pilote la liste des articles a migrer).
+    -- raw_data.article_definitif n'est plus utilisee du tout.
+    -- =====================================================================
+    WITH article_perimetre AS (
+         SELECT LPAD(TRIM(qv.article), 18, '0') AS matnr,
+            max(qv.designation_article) AS designation_article
+           FROM raw_data.export_article_qlikview qv
+          WHERE qv.article IS NOT NULL AND TRIM(qv.article) <> ''::text
+          GROUP BY LPAD(TRIM(qv.article), 18, '0')
+        ), article_base AS (
+         SELECT DISTINCT ON (qp.matnr)
+            qp.matnr,
             m_1.mandt,
-            COALESCE(mk.maktx, ad.designation_article, ad.article) AS maktx,
+            COALESCE(mk.maktx, qp.designation_article, qp.matnr) AS maktx,
             mk.maktg,
             m_1.bismt,
             m_1.mtart,
-            COALESCE(m_1.matkl, ad.groupe_articles_supply_chain) AS matkl,
+            m_1.matkl,
             m_1.mbrsh,
             m_1.meins,
             m_1.bstme,
@@ -86,16 +97,11 @@ BEGIN
             m_1.ernam,
             m_1.laeda,
             m_1.aenam,
-            mk.spras,
-            ad.groupe_produit_1,
-            ad.famille_de_produit,
-            ad.famille,
-            ad.groupe_comptable,
-            ad.compte
-           FROM raw_data.article_definitif ad
-             INNER JOIN raw_data.mara m_1 ON LPAD(ad.article, 18, '0') = m_1.matnr::text AND m_1.mandt::text = '700'::text AND (m_1.lvorm IS NULL OR m_1.lvorm::text = ''::text)
-             LEFT JOIN raw_data.makt mk ON LPAD(ad.article, 18, '0') = mk.matnr::text AND mk.mandt::text = '700'::text AND (mk.spras::text = ANY (ARRAY['F'::character varying, 'E'::character varying, 'D'::character varying]::text[]))
-          ORDER BY LPAD(ad.article, 18, '0'), (
+            mk.spras
+           FROM article_perimetre qp
+             INNER JOIN raw_data.mara m_1 ON qp.matnr = m_1.matnr::text AND m_1.mandt::text = '700'::text AND (m_1.lvorm IS NULL OR m_1.lvorm::text = ''::text)
+             LEFT JOIN raw_data.makt mk ON qp.matnr = mk.matnr::text AND mk.mandt::text = '700'::text AND (mk.spras::text = ANY (ARRAY['F'::character varying, 'E'::character varying, 'D'::character varying]::text[]))
+          ORDER BY qp.matnr, (
                 CASE mk.spras
                     WHEN 'F'::text THEN 1
                     WHEN 'E'::text THEN 2

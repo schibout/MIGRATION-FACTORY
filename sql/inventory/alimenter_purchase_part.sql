@@ -220,6 +220,11 @@ BEGIN
             SELECT 1 FROM clean_data.part_catalog pc
             WHERE pc.part_no = SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25)
         )
+        -- Exclure les articles de vente : ils relevent de SALES_PART, pas de PURCHASE_PART
+        AND NOT EXISTS (
+            SELECT 1 FROM raw_data.articles_vente_sap avs
+            WHERE LPAD(TRIM(avs.article), 18, '0') = mara.matnr::text
+        )
     ORDER BY contract, part_no;
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
     v_end_time := CURRENT_TIMESTAMP;
