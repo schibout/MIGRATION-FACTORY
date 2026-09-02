@@ -62,6 +62,29 @@ class _DiskFileStore:
 temp_file_storage = _DiskFileStore(os.path.join(tempfile.gettempdir(), 'import_generic_store'))
 
 
+def to_text(value: Any) -> str:
+    """
+    Convertit une valeur lue dans un fichier en texte pour une colonne texte.
+
+    pandas (et xlrd pour les .xls) type les colonnes numeriques en float : un entier
+    devient un flottant des qu'une cellule est vide, et str() ajoute alors ".0"
+    (459372 -> "459372.0"). On retire la partie decimale des flottants entiers,
+    sans toucher aux vrais decimaux.
+    """
+    if hasattr(value, 'item'):  # scalaires numpy -> types Python natifs
+        try:
+            value = value.item()
+        except (ValueError, AttributeError):
+            pass
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float) and value.is_integer() and abs(value) < 1e16:
+        return str(int(value))
+    return str(value)
+
+
 def calculate_similarity(a: str, b: str) -> float:
     """Calcule la similarité entre deux chaînes (0 à 1)"""
     a_lower = a.lower().replace('_', '').replace('-', '')
@@ -147,7 +170,7 @@ def analyze_file():
         columns = []
         for col in df.columns:
             sample_values = df[col].dropna().head(5).tolist()
-            sample_values = [str(v) if not pd.isna(v) else None for v in sample_values]
+            sample_values = [to_text(v) if not pd.isna(v) else None for v in sample_values]
             
             detected_type = detect_column_type(df[col].tolist())
             
@@ -538,7 +561,7 @@ def validate_mapping():
                     if pd.isna(value):
                         transformed_row[target] = None
                     else:
-                        transformed_row[target] = str(value)
+                        transformed_row[target] = to_text(value)
             
             preview_data.append({
                 'rowNumber': int(idx) + 1,
@@ -712,7 +735,7 @@ def execute_import():
                             elif target_type == 'boolean':
                                 values.append(bool(value))
                             else:
-                                values.append(str(value))
+                                values.append(to_text(value))
                     
                     if import_mode == 'update_only' and conflict_columns:
                         # Pour UPDATE ONLY, réorganiser les valeurs
