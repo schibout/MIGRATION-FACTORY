@@ -67,8 +67,7 @@ BEGIN
         createur,
         date_modification,
         modificateur,
-        langue,
-        codification_id
+        langue
     )
     -- =====================================================================
     -- PERIMETRE : seuls les articles presents dans raw_data.export_article_qlikview
@@ -235,13 +234,14 @@ BEGIN
         m.ernam AS createur,
         m.laeda AS date_modification,
         m.aenam AS modificateur,
-        m.spras AS langue,
-        
+        m.spras AS langue
+
         -- =====================================================================
-        -- CODIFICATION IFS : Récupération depuis la table de mapping
+        -- CODIFICATION IFS : plus alimentee.
+        -- clean_data.mapping_codification_articles n'est plus utilisee : la
+        -- colonne codification_id reste NULL (aucune procedure aval ne la lit).
         -- =====================================================================
-        mca.codification_ifs AS codification_id
-        
+
     FROM article_base m
         LEFT JOIN raw_data.t134 t134 ON m.mtart::text = t134.mtart AND m.mandt::text = t134.mandt
         LEFT JOIN raw_data.t023t t023 ON m.matkl::text = t023.matkl::text AND m.mandt::text = t023.mandt::text AND t023.spras::text = 'F'::text
@@ -251,7 +251,6 @@ BEGIN
         LEFT JOIN stocks_agg ON m.matnr = stocks_agg.matnr AND m.mandt::text = stocks_agg.mandt::text
         LEFT JOIN ei_principal ON m.matnr = ei_principal.matnr AND m.mandt::text = ei_principal.mandt::text
         LEFT JOIN raw_data.lfa1 lfa ON ei_principal.lifnr::text = lfa.lifnr::text AND ei_principal.mandt::text = lfa.mandt::text AND (lfa.loevm IS NULL OR lfa.loevm::text = ''::text)
-        LEFT JOIN clean_data.mapping_codification_articles mca ON m.matnr = mca.matnr::text
     ORDER BY m.matnr;
     
     -- Compter les enregistrements insérés
