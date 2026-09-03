@@ -9,4 +9,10 @@ from .field_mapping import FieldMapping
 from .transcodification import Transcodification
 from .import_config import ImportFileTypesConfig
 from .business_rule import BusinessRule
-from .etl_default_value import EtlDefaultValue 
+from .etl_default_value import EtlDefaultValue
+from .interface_contract import (
+    InterfaceContractTable,
+    InterfaceContractColumn,
+    InterfaceContractValidation,
+    InterfaceContractEvent,
+) 

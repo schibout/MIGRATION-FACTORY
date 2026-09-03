@@ -166,3 +166,17 @@ Les étapes 1-5 sans coverage/sample donnent déjà un module utilisable ; cover
 - Rôles : réutilisation de `admin`/`operator` + `require_role`, sans nouveau rôle.
 - Import Excel en retour, pour les relecteurs sans compte.
 - Un seul composant tableau en lecture/édition, deep link par table.
+
+## 10. Réalisation (état au 2026-09-03)
+
+La proposition est implémentée en totalité. Ce qui a dû être corrigé en cours de route, par rapport au §2 :
+
+- **`target_column` en `VARCHAR(100)`** : trop court, le classeur regroupe jusqu'à 173 caractères de colonnes sur une même ligne (`code_tva_ifs / code_tva_sap / …`). Élargi à 255 (migration 052).
+- **Deux colonnes du classeur n'avaient pas d'équivalent** en base et étaient perdues à la reprise : « Système source » et « Exemple de valeur ». Ajoutées. « Type / Longueur » reste calculé à la volée depuis `information_schema` — c'est une donnée de la base, pas du contrat.
+- **La jointure vers `etl_default_values` ne pouvait jamais matcher** : `etl_default_values.table_cible` stocke le nom qualifié (`clean_data.supplier_info_general`) alors que le contrat stocke le nom nu plus `schema_cible` à part. De plus une ligne `CONFIG_SUMMARY` résume N colonnes, parfois pour plusieurs variantes (`TVA_UE/SIREN/SIRET`) : le `LEFT JOIN` 1-1 est remplacé par un agrégat latéral (`nb_default_values`), le détail étant servi par l'API.
+- **`UNIQUE(contract_table_id, target_column)` était faux** : l'onglet `14_PAYMENT_ADDRESS` documente deux fois `identity / address_id` (étape 1 puis étape 2). Avec cette clé, la seconde ligne écrasait silencieusement la première — 137 lignes du classeur pour 136 en base. La **section fait partie de la clé naturelle**.
+- **Piège d'horloge sur l'obsolescence** : `column.updated_at` est posé par un trigger PostgreSQL (`CURRENT_TIMESTAMP`, serveur en UTC+2), `validated_at` l'était par `datetime.utcnow()` côté Python. Toute validation naissait donc « obsolète ». Les deux dates viennent maintenant de la même horloge (`db.func.current_timestamp()`).
+
+Points ouverts du §7, tranchés comme proposé : échantillon limité à 20 valeurs distinctes avec masquage par défaut des colonnes sensibles (levable par un admin) ; périmètre initial `supplier` (16 tables, 137 lignes) ; signature purement informative, retirée automatiquement si la définition change après coup.
+
+Vérifié de bout en bout : seed idempotent (2ᵉ passage = 137 lignes inchangées), obsolescence déclenchée par une modification de règle et pas avant, écart de couverture (`ifs_fournisseurs` : 40/45 colonnes documentées, 4 trous réels), aller-retour Excel complet (export → remplissage des colonnes jaunes → réimport → statuts et remarques repris avec le nom du relecteur).
