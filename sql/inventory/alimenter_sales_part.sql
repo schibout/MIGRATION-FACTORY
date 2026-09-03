@@ -105,7 +105,8 @@ BEGIN
         SUBSTRING(LTRIM(mara.matnr, '0'), 1, 25) as catalog_no,
         
         -- Données de base
-        SUBSTRING(COALESCE(makt.maktx, mara.matnr), 1, 200) as catalog_desc,
+        -- Libelle FR si disponible, sinon le numero SAP
+        SUBSTRING(COALESCE(NULLIF(TRIM(makt.maktx), ''), mara.matnr), 1, 200) as catalog_desc,
         -- SALES_UNIT_MEAS: MVKE.VRKME sinon MARA.MEINS via transcodification UOM (SAP->IFS), sinon unité d'entrée
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(COALESCE(NULLIF(mvke.vrkme, ''), mara.meins))), '')),
@@ -196,7 +197,8 @@ BEGIN
     FROM raw_data.mara mara
     INNER JOIN raw_data.articles_vente_sap avs
         ON LPAD(avs.article, 18, '0') = mara.matnr
-    INNER JOIN raw_data.makt makt
+    -- LEFT JOIN volontaire : un article sans libelle FR doit quand meme etre repris
+    LEFT JOIN raw_data.makt makt
         ON mara.matnr = makt.matnr
         AND makt.spras = 'F'
     LEFT JOIN raw_data.mvke mvke
