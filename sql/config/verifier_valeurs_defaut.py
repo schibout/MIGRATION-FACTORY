@@ -34,6 +34,14 @@ APPEL = re.compile(
     r"public\.get_default_value\(\s*'([^']+)'\s*,\s*'([^']+)'\s*"
     r"(?:,\s*'([A-Z0-9_]+)'\s*)?\)")
 
+# public.get_default_value_ctx('clean_data.x', 'col', <site>, <famille>) : resolution
+# matrice site x famille (migration 052). Le repli final reste la constante de
+# public.etl_default_values, l'exigence de seed est donc la meme. Les 3e et 4e
+# arguments sont des expressions SQL, non capturees ; aucun appel genere ne
+# passe de variante, elle vaut donc STANDARD.
+APPEL_CTX = re.compile(
+    r"public\.get_default_value_ctx\(\s*'([^']+)'\s*,\s*'([^']+)'\s*,")
+
 
 def modules(cible=None):
     if cible:
@@ -52,7 +60,10 @@ def verifier(dossiers, seed):
             for numero, ligne in enumerate(texte.splitlines(), 1):
                 if ligne.lstrip().startswith('--'):   # exemples en commentaire
                     continue
-                for table, colonne, variante in APPEL.findall(ligne):
+                appels_ligne = APPEL.findall(ligne) + [
+                    (table, colonne, '') for table, colonne in APPEL_CTX.findall(ligne)
+                ]
+                for table, colonne, variante in appels_ligne:
                     appels += 1
                     variante = variante or 'STANDARD'
                     ou = f"{fichier.relative_to(RACINE)}:{numero}"
@@ -100,7 +111,7 @@ def main():
     appels, manquantes = verifier(dossiers, seed)
     restants = litteraux_restants(dossiers)
 
-    print(f"{appels} appels a get_default_value, {len(seed)} lignes seedees")
+    print(f"{appels} appels a get_default_value[_ctx], {len(seed)} lignes seedees")
     for titre, liste in (("SANS ligne seedee (l'ETL ecrira NULL)", manquantes),
                          ("litteraux encore codes en dur", restants)):
         print(f"{len(liste)} {titre}")

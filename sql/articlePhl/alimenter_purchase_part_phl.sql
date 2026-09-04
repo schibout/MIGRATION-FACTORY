@@ -7,6 +7,7 @@ CREATE OR REPLACE FUNCTION clean_data.alimenter_purchase_part_phl(p_contract tex
 AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
+    v_count_routage_supprime INTEGER := 0;
     v_start_time TIMESTAMP;
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
@@ -78,21 +79,24 @@ BEGIN
         -- part_no: N. ARTICLE = cle des articles PHL
         SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as part_no,
         SUBSTRING(TRIM(COALESCE(NULLIF(phl."DESCRIPTION", ''), phl."DESCRIPTION LANGUE", phl."N. ARTICLE")), 1, 200) as description,
-        -- Valeurs par defaut parametrables via l'ecran /configuration/valeurs-defaut
-        -- (public.get_default_value, fallback = ancienne valeur codee en dur)
-        public.get_default_value('clean_data.purchase_part', 'eng_attribute') as eng_attribute,
-        public.get_default_value('clean_data.purchase_part', 'note_id')::numeric as note_id,
-        public.get_default_value('clean_data.purchase_part', 'qc_code') as qc_code,
-        public.get_default_value('clean_data.purchase_part', 'stat_grp') as stat_grp,
-        public.get_default_value('clean_data.purchase_part', 'close_code') as close_code,
-        public.get_default_value('clean_data.purchase_part', 'close_code_db') as close_code_db,
-        public.get_default_value('clean_data.purchase_part', 'close_tolerance')::numeric as close_tolerance,
-        public.get_default_value('clean_data.purchase_part', 'date_cre')::date as date_cre,
+        -- Valeurs par defaut parametrables :
+        --   1. matrice site x famille  -> /configuration/matrice-site-famille
+        --   2. constante par colonne   -> /configuration/valeurs-defaut
+        --   3. NULL si rien n'est parametre
+        -- (public.get_default_value_ctx, migration 052)
+        public.get_default_value_ctx('clean_data.purchase_part', 'eng_attribute', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as eng_attribute,
+        public.get_default_value_ctx('clean_data.purchase_part', 'note_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as note_id,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qc_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qc_code,
+        public.get_default_value_ctx('clean_data.purchase_part', 'stat_grp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as stat_grp,
+        public.get_default_value_ctx('clean_data.purchase_part', 'close_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as close_code,
+        public.get_default_value_ctx('clean_data.purchase_part', 'close_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as close_code_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'close_tolerance', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as close_tolerance,
+        public.get_default_value_ctx('clean_data.purchase_part', 'date_cre', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::date as date_cre,
         -- PHL = article en stock => inventory_flag Yes/Y
-        public.get_default_value('clean_data.purchase_part', 'inventory_flag') as inventory_flag,
-        public.get_default_value('clean_data.purchase_part', 'inventory_flag_db') as inventory_flag_db,
-        public.get_default_value('clean_data.purchase_part', 'note_text') as note_text,
-        public.get_default_value('clean_data.purchase_part', 'qc_date')::date as qc_date,
+        public.get_default_value_ctx('clean_data.purchase_part', 'inventory_flag', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as inventory_flag,
+        public.get_default_value_ctx('clean_data.purchase_part', 'inventory_flag_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as inventory_flag_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'note_text', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as note_text,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qc_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::date as qc_date,
         -- DEFAULT_BUY_UNIT_MEAS: U/M PHL via transcodification UOM (SAP->IFS)
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(TRIM(phl."U/M"), '')),
@@ -100,45 +104,45 @@ BEGIN
             NULLIF(TRIM(phl."U/M"), ''),
             'PCE'
         ), 1, 10) as default_buy_unit_meas,
-        public.get_default_value('clean_data.purchase_part', 'over_delivery_tolerance')::numeric as over_delivery_tolerance,
-        public.get_default_value('clean_data.purchase_part', 'over_delivery') as over_delivery,
-        public.get_default_value('clean_data.purchase_part', 'over_delivery_db') as over_delivery_db,
-        public.get_default_value('clean_data.purchase_part', 'buyer_code') as buyer_code,
-        public.get_default_value('clean_data.purchase_part', 'process_type') as process_type,
-        public.get_default_value('clean_data.purchase_part', 'std_name_description') as std_name_description,
-        public.get_default_value('clean_data.purchase_part', 'standard_pack_size')::numeric as standard_pack_size,
-        public.get_default_value('clean_data.purchase_part', 'technical_coordinator_id') as technical_coordinator_id,
-        public.get_default_value('clean_data.purchase_part', 'taxable') as taxable,
-        public.get_default_value('clean_data.purchase_part', 'taxable_db') as taxable_db,
-        public.get_default_value('clean_data.purchase_part', 'dop_pegged_po_update_flag') as dop_pegged_po_update_flag,
-        public.get_default_value('clean_data.purchase_part', 'dop_pegged_po_update_flag_db') as dop_pegged_po_update_flag_db,
-        public.get_default_value('clean_data.purchase_part', 'acquisition_type') as acquisition_type,
-        public.get_default_value('clean_data.purchase_part', 'acquisition_type_db') as acquisition_type_db,
-        public.get_default_value('clean_data.purchase_part', 'action_non_authorized') as action_non_authorized,
-        public.get_default_value('clean_data.purchase_part', 'action_non_authorized_db') as action_non_authorized_db,
-        public.get_default_value('clean_data.purchase_part', 'action_authorized') as action_authorized,
-        public.get_default_value('clean_data.purchase_part', 'action_authorized_db') as action_authorized_db,
-        public.get_default_value('clean_data.purchase_part', 'external_resource') as external_resource,
-        public.get_default_value('clean_data.purchase_part', 'external_resource_db') as external_resource_db,
-        public.get_default_value('clean_data.purchase_part', 'company') as company,
-        public.get_default_value('clean_data.purchase_part', 'statistical_code') as statistical_code,
-        public.get_default_value('clean_data.purchase_part', 'statistical_code_manuf') as statistical_code_manuf,
-        public.get_default_value('clean_data.purchase_part', 'quality_system_level_id') as quality_system_level_id,
-        public.get_default_value('clean_data.purchase_part', 'qsl_approval_template') as qsl_approval_template,
-        public.get_default_value('clean_data.purchase_part', 'qualified_manufacturer') as qualified_manufacturer,
-        public.get_default_value('clean_data.purchase_part', 'qualified_manufacturer_db') as qualified_manufacturer_db,
-        public.get_default_value('clean_data.purchase_part', 'qmr_approval_template') as qmr_approval_template,
-        public.get_default_value('clean_data.purchase_part', 'qualified_supplier') as qualified_supplier,
-        public.get_default_value('clean_data.purchase_part', 'qualified_supplier_db') as qualified_supplier_db,
-        public.get_default_value('clean_data.purchase_part', 'qsr_approval_template') as qsr_approval_template,
-        public.get_default_value('clean_data.purchase_part', 'acquisition_origin')::numeric as acquisition_origin,
-        public.get_default_value('clean_data.purchase_part', 'acquisition_reason_id') as acquisition_reason_id,
-        public.get_default_value('clean_data.purchase_part', 'package_part_flag') as package_part_flag,
-        public.get_default_value('clean_data.purchase_part', 'package_part_flag_db') as package_part_flag_db,
-        public.get_default_value('clean_data.purchase_part', 'nbs_code') as nbs_code,
-        public.get_default_value('clean_data.purchase_part', 'objversion') as objversion,
-        public.get_default_value('clean_data.purchase_part', 'objid') as objid,
-        public.get_default_value('clean_data.purchase_part', 'std_name_id') as std_name_id
+        public.get_default_value_ctx('clean_data.purchase_part', 'over_delivery_tolerance', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as over_delivery_tolerance,
+        public.get_default_value_ctx('clean_data.purchase_part', 'over_delivery', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as over_delivery,
+        public.get_default_value_ctx('clean_data.purchase_part', 'over_delivery_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as over_delivery_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'buyer_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as buyer_code,
+        public.get_default_value_ctx('clean_data.purchase_part', 'process_type', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as process_type,
+        public.get_default_value_ctx('clean_data.purchase_part', 'std_name_description', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as std_name_description,
+        public.get_default_value_ctx('clean_data.purchase_part', 'standard_pack_size', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as standard_pack_size,
+        public.get_default_value_ctx('clean_data.purchase_part', 'technical_coordinator_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as technical_coordinator_id,
+        public.get_default_value_ctx('clean_data.purchase_part', 'taxable', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as taxable,
+        public.get_default_value_ctx('clean_data.purchase_part', 'taxable_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as taxable_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'dop_pegged_po_update_flag', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as dop_pegged_po_update_flag,
+        public.get_default_value_ctx('clean_data.purchase_part', 'dop_pegged_po_update_flag_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as dop_pegged_po_update_flag_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'acquisition_type', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as acquisition_type,
+        public.get_default_value_ctx('clean_data.purchase_part', 'acquisition_type_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as acquisition_type_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'action_non_authorized', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as action_non_authorized,
+        public.get_default_value_ctx('clean_data.purchase_part', 'action_non_authorized_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as action_non_authorized_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'action_authorized', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as action_authorized,
+        public.get_default_value_ctx('clean_data.purchase_part', 'action_authorized_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as action_authorized_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'external_resource', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as external_resource,
+        public.get_default_value_ctx('clean_data.purchase_part', 'external_resource_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as external_resource_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'company', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as company,
+        public.get_default_value_ctx('clean_data.purchase_part', 'statistical_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as statistical_code,
+        public.get_default_value_ctx('clean_data.purchase_part', 'statistical_code_manuf', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as statistical_code_manuf,
+        public.get_default_value_ctx('clean_data.purchase_part', 'quality_system_level_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as quality_system_level_id,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qsl_approval_template', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qsl_approval_template,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qualified_manufacturer', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qualified_manufacturer,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qualified_manufacturer_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qualified_manufacturer_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qmr_approval_template', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qmr_approval_template,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qualified_supplier', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qualified_supplier,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qualified_supplier_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qualified_supplier_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'qsr_approval_template', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qsr_approval_template,
+        public.get_default_value_ctx('clean_data.purchase_part', 'acquisition_origin', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as acquisition_origin,
+        public.get_default_value_ctx('clean_data.purchase_part', 'acquisition_reason_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as acquisition_reason_id,
+        public.get_default_value_ctx('clean_data.purchase_part', 'package_part_flag', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as package_part_flag,
+        public.get_default_value_ctx('clean_data.purchase_part', 'package_part_flag_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as package_part_flag_db,
+        public.get_default_value_ctx('clean_data.purchase_part', 'nbs_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as nbs_code,
+        public.get_default_value_ctx('clean_data.purchase_part', 'objversion', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as objversion,
+        public.get_default_value_ctx('clean_data.purchase_part', 'objid', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as objid,
+        public.get_default_value_ctx('clean_data.purchase_part', 'std_name_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as std_name_id
     -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
     FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
@@ -157,14 +161,32 @@ BEGIN
           WHERE pp.contract = p_contract
             AND pp.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       )
+      -- Routage de creation site x famille (/configuration/matrice-site-famille).
+      -- Aucune ligne de matrice pour ce couple -> creation autorisee (COALESCE TRUE),
+      -- donc comportement inchange tant que la matrice n'est pas renseignee.
+      AND COALESCE(public.get_part_type_matrix('clean_data.purchase_part', p_contract,
+                                               NULLIF(TRIM(phl."FAMILLE"), '')), TRUE)
     ORDER BY TRIM(phl."N. ARTICLE");
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
+
+    -- Symetrique du garde ci-dessus : une famille passee a "ne pas creer" doit
+    -- voir ses lignes disparaitre au prochain chargement. La table n'est jamais
+    -- videe (insertion en APPEND), sans cette purge le flag serait sans effet
+    -- sur les articles deja charges. Perimetre strict : articles PHL du site.
+    DELETE FROM clean_data.purchase_part pp
+    USING raw_data.v_phl_article_retenu phl
+    WHERE pp.contract = p_contract
+      AND pp.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
+      AND public.get_part_type_matrix('clean_data.purchase_part', p_contract,
+                                      NULLIF(TRIM(phl."FAMILLE"), '')) IS FALSE;
+    GET DIAGNOSTICS v_count_routage_supprime = ROW_COUNT;
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Alimentation PURCHASE_PART (PHL) terminee avec succes';
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Articles PHL inseres: %', v_count_inserted;
+    RAISE NOTICE 'Lignes supprimees par le routage site x famille: %', v_count_routage_supprime;
     RAISE NOTICE 'Duree d''execution: %', v_duration;
     RAISE NOTICE '====================================================';
 EXCEPTION

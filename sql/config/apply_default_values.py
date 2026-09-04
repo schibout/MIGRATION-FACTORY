@@ -58,6 +58,10 @@ FICHIERS_SEED = [
     RACINE / 'migrations' / '038_seed_valeurs_defaut_cust_ord_customer_file.sql',
     RACINE / 'migrations' / '043_seed_devise_defaut_supplier.sql',
     RACINE / 'migrations' / '045_seed_supplier_addr_tax_number.sql',
+    # 052 ne seede qu'une ligne (manuf_part_attribute.density), mais elle rend la
+    # colonne visible dans l'ecran Matrice Site x Famille et referme le controle
+    # de verifier_valeurs_defaut.py sur les appels get_default_value_ctx().
+    RACINE / 'migrations' / '052_matrice_valeurs_defaut_site_famille.sql',
 ]
 
 

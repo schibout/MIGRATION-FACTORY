@@ -106,6 +106,12 @@ const Configuration: React.FC = () => {
       path: '/configuration/valeurs-defaut',
       icon: <ValeursDefautIcon sx={{ fontSize: 40, color: '#9575cd' }} />,
       description: 'Gérer les valeurs par défaut utilisées par les chargements ETL'
+    },
+    {
+      title: 'Matrice Site × Famille',
+      path: '/configuration/matrice-site-famille',
+      icon: <ValeursDefautIcon sx={{ fontSize: 40, color: '#26a69a' }} />,
+      description: 'Valeurs par défaut et tables à créer selon le site et la famille d\'article'
     }
   ];
 
