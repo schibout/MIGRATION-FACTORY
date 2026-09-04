@@ -58,10 +58,19 @@ FICHIERS_SEED = [
     RACINE / 'migrations' / '038_seed_valeurs_defaut_cust_ord_customer_file.sql',
     RACINE / 'migrations' / '043_seed_devise_defaut_supplier.sql',
     RACINE / 'migrations' / '045_seed_supplier_addr_tax_number.sql',
-    # 052 ne seede qu'une ligne (manuf_part_attribute.density), mais elle rend la
+    RACINE / 'migrations' / '055_seed_valeurs_defaut_composant.sql',
+    RACINE / 'migrations' / '056_seed_valeurs_defaut_composant_part_catalog.sql',
+    RACINE / 'migrations' / '057_seed_valeurs_defaut_composant_multilevel_par_site.sql',
+    RACINE / 'migrations' / '059_seed_valeurs_defaut_composant_inventory_part.sql',
+    RACINE / 'migrations' / '060_seed_valeurs_defaut_composant_purchase_part.sql',
+    RACINE / 'migrations' / '061_seed_valeurs_defaut_composant_sales_part.sql',
+    RACINE / 'migrations' / '062_seed_valeurs_defaut_composant_manuf_part_attribute.sql',
+    RACINE / 'migrations' / '063_seed_valeurs_defaut_composant_condition_code_par_site.sql',
+    RACINE / 'migrations' / '065_seed_valeur_defaut_date_arrete_fournisseurs.sql',
+    # 066 ne seede qu'une ligne (manuf_part_attribute.density), mais elle rend la
     # colonne visible dans l'ecran Matrice Site x Famille et referme le controle
     # de verifier_valeurs_defaut.py sur les appels get_default_value_ctx().
-    RACINE / 'migrations' / '052_matrice_valeurs_defaut_site_famille.sql',
+    RACINE / 'migrations' / '066_matrice_valeurs_defaut_site_famille.sql',
 ]
 
 

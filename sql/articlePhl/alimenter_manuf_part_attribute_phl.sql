@@ -74,7 +74,7 @@ BEGIN
         --   1. matrice site x famille  -> /configuration/matrice-site-famille
         --   2. constante par colonne   -> /configuration/valeurs-defaut
         --   3. NULL si rien n'est parametre
-        -- (public.get_default_value_ctx, migration 052)
+        -- (public.get_default_value_ctx, migration 066)
         public.get_default_value_ctx('clean_data.manuf_part_attribute', 'backflush_part_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as backflush_part_db,              -- All Locations
         public.get_default_value_ctx('clean_data.manuf_part_attribute', 'engineering_info_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as engineering_info_db,          -- Not Mandatory
         public.get_default_value_ctx('clean_data.manuf_part_attribute', 'structure_effectivity_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as structure_effectivity_db,

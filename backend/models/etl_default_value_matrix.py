@@ -8,7 +8,7 @@ class EtlDefaultValueMatrix(db.Model):
 
     Se place au-dessus de EtlDefaultValue : public.get_default_value_ctx() lit
     d'abord cette table (ligne la plus spécifique), puis retombe sur la
-    constante de public.etl_default_values (migration 052).
+    constante de public.etl_default_values (migration 066).
 
     L'unicité de la clé naturelle est portée par un index d'expression
     (uq_etl_default_value_matrix, sur COALESCE(contract,'*') /

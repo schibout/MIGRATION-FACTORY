@@ -66,7 +66,7 @@ pour cela que `get_default_value_ctx()` teste `FOUND` au lieu de faire un
 ## 3. Fichiers
 
 ### Base de données
-- `migrations/052_matrice_valeurs_defaut_site_famille.sql`
+- `migrations/066_matrice_valeurs_defaut_site_famille.sql`
   Les 2 tables, leurs index d'unicité, les 3 fonctions
   (`get_default_value_matrix`, `get_default_value_ctx`, `get_part_type_matrix`),
   le trigger de validation des valeurs, le seed neutre du routage, les
@@ -155,7 +155,7 @@ for type numeric: ""` au milieu d'un chargement).
 
 ```bash
 # 1. Migration (crée tables + fonctions, seed neutre)
-psql -h 10.190.100.58 -U postgres -d <base> -f migrations/052_matrice_valeurs_defaut_site_famille.sql
+psql -h 10.190.100.58 -U postgres -d <base> -f migrations/066_matrice_valeurs_defaut_site_famille.sql
 
 # 2. Recompiler le module articlePhl : les procédures appellent maintenant
 #    get_default_value_ctx() et get_part_type_matrix().

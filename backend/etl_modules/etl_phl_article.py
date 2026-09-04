@@ -66,6 +66,10 @@ class PhlArticleETL:
     # des fonctions SQL alimenter_*_phl(p_contract)).
     CONTRACTS = ('SJ', 'CS')
 
+    # Site dont la passe declenche le vidage prealable des cinq tables cibles
+    # (premiere etape de la chaine articles).
+    CONTRACT_AVEC_VIDAGE = 'SJ'
+
     # Fonctions a appeler, dans l'ordre (part_catalog en premier = table de base).
     # Chaque fonction prend le site en parametre.
     STEP_FUNCTIONS = [
@@ -82,10 +86,22 @@ class PhlArticleETL:
         self.contract = contract
         # Le site est valide contre la liste blanche ci-dessus : l'interpolation
         # dans le SQL est sure.
+        # La passe Saint-Jean est la PREMIERE etape de la chaine articles : elle vide
+        # les cinq tables cibles avant de les remplir. Articles PHL Castel puis
+        # composants s'ajoutent ensuite en append. Charger CS seul n'efface rien.
         self.STEPS = [
+            ("nettoyage du fichier PHL (colonnes non reprises, plaques exclues)",
+             "CALL clean_data.nettoyer_phl_article()")
+        ]
+        if contract == self.CONTRACT_AVEC_VIDAGE:
+            self.STEPS.append(
+                (f"vidage des tables cibles - site {contract}",
+                 "CALL clean_data.vider_tables_articles_phl()")
+            )
+        self.STEPS.extend(
             (label, f"SELECT clean_data.{fonction}('{contract}')")
             for label, fonction in self.STEP_FUNCTIONS
-        ]
+        )
         # Identifiants issus de la source UNIQUE (config.database), qui lit les
         # variables DB_* de l'environnement. Auparavant ce bloc resolvait des
         # variables PG_* que docker-compose ne transmet pas au conteneur, d'ou un

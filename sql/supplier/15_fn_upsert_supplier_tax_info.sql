@@ -34,7 +34,8 @@ BEGIN
         is_deleted
     )
     SELECT 
-        f.numero_compte_fournisseur as supplier_id,
+        -- SUPPLIER_ID = numéro IFS du fichier de sélection (voir script 02).
+        f.numero_compte_ifs as supplier_id,
         f.address_id as address_id,
         COALESCE(f.company, 'TRIMET') as company,
         -- Use Supplier Address for Tax: forcé à TRUE pour tous les fournisseurs
@@ -58,7 +59,7 @@ BEGIN
         'etl_supplier_base' as updated_by,
         FALSE as is_deleted
     FROM clean_data.ifs_fournisseurs f
-    WHERE f.numero_compte_fournisseur IS NOT NULL;
+    WHERE f.numero_compte_ifs IS NOT NULL;
     
     GET DIAGNOSTICS v_processed_count = ROW_COUNT;
     

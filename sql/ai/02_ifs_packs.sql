@@ -50,7 +50,7 @@ INSERT INTO public.ai_packs (domain, content, actif) VALUES ('ifs_fournisseurs',
   "keywords": ["supplier", "fournisseur", "vendor_no", "supplier_info_general"],
   "synonyms": ["fournisseur ifs", "fournisseur migre", "supplier ifs", "fournisseur transforme", "dans supplier"],
   "docs": [
-    "Fournisseurs migres dans IFS : clean_data.supplier (identifiant vendor_no, RENUMEROTE a partir de 600000). L'ancien code LIFNR SAP est conserve dans clean_data.supplier_info_general.supplier_legacy_sap_id (relation 1:1 avec supplier, ~1716 lignes)."
+    "Fournisseurs migres dans IFS : clean_data.supplier (identifiant vendor_no = numero de compte IFS arbitre par le metier dans le fichier de selection, 600001+). L'ancien code LIFNR SAP est conserve dans clean_data.supplier_info_general.supplier_legacy_sap_id (relation 1:1 avec supplier, ~1716 lignes)."
   ],
   "tables": ["clean_data.supplier", "clean_data.supplier_info_general", "clean_data.purchase_part_supplier"],
   "joins": [
@@ -58,7 +58,7 @@ INSERT INTO public.ai_packs (domain, content, actif) VALUES ('ifs_fournisseurs',
     "supplier<->purchase_part_supplier sur vendor_no [article fourni: part_no, contract]"
   ],
   "enums": [
-    "supplier.vendor_no = identifiant IFS (renumerote 600000+) ; supplier.name = raison sociale ; supplier.vat_no = TVA ; supplier.status ; supplier.is_deleted = supprime",
+    "supplier.vendor_no = identifiant IFS du fichier de selection (600001+) ; supplier.name = raison sociale ; supplier.vat_no = TVA ; supplier.status ; supplier.is_deleted = supprime",
     "supplier_info_general.supplier_legacy_sap_id = ancien code fournisseur SAP (LIFNR)"
   ],
   "rules": [

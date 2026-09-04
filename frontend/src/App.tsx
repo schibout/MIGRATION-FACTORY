@@ -35,6 +35,7 @@ import IfsDataClients from './pages/IfsDataClients';
 import IfsDataFournisseurs from './pages/IfsDataFournisseurs';
 import IH02HierarchyPage from './pages/IH02HierarchyPage';
 import ImportArticlesPage from './pages/ImportArticles';
+import InterfaceContractsPage from './pages/InterfaceContracts';
 import ImportClientsSimple from './pages/ImportClientsSimple';
 import ImportDataPage from './pages/ImportData';
 import ImportDetailsPage from './pages/ImportDetailsPage';
@@ -182,6 +183,10 @@ function App() {
           
           {/* Route pour l'explorateur de données */}
           <Route path="data-browser" element={<DataBrowserPage />} />
+
+          {/* Contrats d'interface SAP -> IFS (deep link par table pour envoi
+              d'un lien direct au metier) */}
+          <Route path="interface-contracts/:tableCible?" element={<InterfaceContractsPage />} />
           
           {/* Routes pour l'import des données */}
           <Route path="data-import" element={<ImportDataPage />} />

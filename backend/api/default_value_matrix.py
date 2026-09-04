@@ -1,4 +1,4 @@
-"""Matrice conditionnelle Site x Famille (migration 052).
+"""Matrice conditionnelle Site x Famille (migration 066).
 
 Deux volets, meme cle de resolution (contract, part_family) :
   * /config/matrix/values     -> public.etl_default_value_matrix

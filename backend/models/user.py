@@ -54,12 +54,18 @@ class User(db.Model):
         admin_permissions = [
             'manage_users', 'view_all_data', 'configure_system',
             'view_sap_data', 'view_ifs_data', 'view_dashboards',
-            'export_data', 'manage_mappings', 'manage_transcodification'
+            'export_data', 'manage_mappings', 'manage_transcodification',
+            # Contrats d'interface : l'admin gere la definition technique
+            # (CRUD, import Excel) et peut aussi valider.
+            'validate_contracts', 'manage_contracts'
         ]
         
         operator_permissions = [
             'view_sap_data', 'view_ifs_data', 'view_dashboards',
-            'export_data'
+            'export_data',
+            # Un interlocuteur metier recoit un compte operator : il valide les
+            # contrats d'interface sans acceder a la configuration technique.
+            'validate_contracts'
         ]
         
         if self.role == 'admin':

@@ -5,9 +5,10 @@ CREATE OR REPLACE FUNCTION clean_data.alimenter_part_catalog_phl(p_contract text
  RETURNS void
  LANGUAGE plpgsql
 AS $function$
--- p_contract est accepte pour l'homogeneite avec les autres procedures PHL mais
--- n'influe pas sur le contenu : part_catalog n'a pas de site, l'article est
--- insere une seule fois quel que soit le site charge (garde NOT EXISTS).
+-- part_catalog n'a pas de site : l'article est insere une seule fois quel que soit
+-- le site charge (garde NOT EXISTS). p_contract influe toutefois sur le suivi par
+-- lot : sur Castel TOUS les articles sont suivis par lot, alors que sur Saint-Jean
+-- les rebuts (FORME contient REBUT) ne le sont pas.
 DECLARE
     v_count_inserted INTEGER := 0;
     v_count_rebut_updated INTEGER := 0;
@@ -59,10 +60,14 @@ BEGIN
             ), 1, 30)
         END as unit_code,
         -- Valeurs _db pour les articles PHL (type I et F)
-        -- Les articles de type rebut (FORME contient REBUT) ne sont pas suivis par lot.
+        -- Suivi par lot : sur le site Castel TOUS les articles sont suivis par lot
+        -- (regle metier), y compris les rebuts. Sur Saint-Jean, les articles de type
+        -- rebut (FORME contient REBUT) ne le sont pas.
         -- Valeurs par defaut parametrables via l'ecran /configuration/valeurs-defaut
-        -- (public.get_default_value, fallback = ancienne valeur codee en dur)
+        -- (public.get_default_value)
         CASE
+            WHEN p_contract = 'CS'
+                THEN public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
             WHEN UPPER(COALESCE(phl."FORME", '')) LIKE '%REBUT%' THEN 'NOT LOT TRACKING'
             ELSE public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
         END as lot_tracking_code_db,
@@ -94,17 +99,28 @@ BEGIN
       )
     ORDER BY TRIM(phl."N. ARTICLE");
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
-    -- Corriger aussi les articles rebut deja presents lors d'une re-execution
+    -- Realigner le suivi par lot des articles deja presents lors d'une re-execution
     -- idempotente de la procedure (l'INSERT ci-dessus ignore les part_no existants).
+    -- Meme regle qu'a l'insertion : tout suivi par lot sur Castel, rebuts exclus
+    -- sur Saint-Jean.
     UPDATE clean_data.part_catalog pc
-    SET lot_tracking_code_db = 'NOT LOT TRACKING'
+    SET lot_tracking_code_db = CASE
+            WHEN p_contract = 'CS'
+                THEN public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+            WHEN UPPER(COALESCE(phl."FORME", '')) LIKE '%REBUT%' THEN 'NOT LOT TRACKING'
+            ELSE public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+        END
     FROM raw_data.v_phl_article_retenu phl
     WHERE pc.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
-      AND UPPER(COALESCE(phl."FORME", '')) LIKE '%REBUT%'
-      AND pc.lot_tracking_code_db IS DISTINCT FROM 'NOT LOT TRACKING';
+      AND pc.lot_tracking_code_db IS DISTINCT FROM CASE
+            WHEN p_contract = 'CS'
+                THEN public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+            WHEN UPPER(COALESCE(phl."FORME", '')) LIKE '%REBUT%' THEN 'NOT LOT TRACKING'
+            ELSE public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+        END;
     GET DIAGNOSTICS v_count_rebut_updated = ROW_COUNT;
     -- Corriger aussi l'unite PHL deja presente : U/M = t doit devenir kg dans IFS.
     UPDATE clean_data.part_catalog pc
@@ -139,7 +155,7 @@ BEGIN
     v_duration := v_end_time - v_start_time;
     RAISE NOTICE 'Alimentation PART_CATALOG (PHL) terminee avec succes';
     RAISE NOTICE 'Articles PHL inseres: %', v_count_inserted;
-    RAISE NOTICE 'Articles rebut PHL mis a jour en NOT LOT TRACKING: %', v_count_rebut_updated;
+    RAISE NOTICE 'Suivi par lot realigne (site %): %', p_contract, v_count_rebut_updated;
     RAISE NOTICE 'Duree d''execution: %', v_duration;
 EXCEPTION
     WHEN OTHERS THEN

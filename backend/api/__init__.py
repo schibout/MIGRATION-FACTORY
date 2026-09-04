@@ -35,6 +35,7 @@ from .settings import settings_blueprint
 from .ai_assistant import ai_blueprint
 from .ai_config import ai_config_blueprint
 from .hermes import hermes_blueprint
+from .interface_contracts import interface_contracts_blueprint
 
 def register_blueprints(app):
     """Enregistrement des blueprints d'API dans l'application"""
@@ -58,7 +59,7 @@ def register_blueprints(app):
     app.register_blueprint(business_rules_blueprint, url_prefix=f'{API_PREFIX}/config')
     app.register_blueprint(transcodification_blueprint, url_prefix=f'{API_PREFIX}/config')
     app.register_blueprint(default_values_blueprint, url_prefix=f'{API_PREFIX}/config')
-    # Matrice conditionnelle Site x Famille (valeurs + routage de creation) - migration 052
+    # Matrice conditionnelle Site x Famille (valeurs + routage de creation) - migration 066
     app.register_blueprint(matrix_blueprint, url_prefix=f'{API_PREFIX}/config')
     app.register_blueprint(users_blueprint, url_prefix=f'{API_PREFIX}/users')
     app.register_blueprint(etl_blueprint, url_prefix=f'{API_PREFIX}/config/etl')
@@ -84,6 +85,9 @@ def register_blueprints(app):
     app.register_blueprint(ai_blueprint, url_prefix=f'{API_PREFIX}/ai')
     app.register_blueprint(ai_config_blueprint, url_prefix=f'{API_PREFIX}/ai-config')
     app.register_blueprint(hermes_blueprint, url_prefix=f'{API_PREFIX}/hermes')
+    # Contrats d'interface SAP -> IFS (remplace le classeur Excel fige)
+    app.register_blueprint(interface_contracts_blueprint,
+                           url_prefix=f'{API_PREFIX}/interface-contracts')
 
     # Enregistrement des blueprints SAP
     register_sap_blueprints(app, API_PREFIX)

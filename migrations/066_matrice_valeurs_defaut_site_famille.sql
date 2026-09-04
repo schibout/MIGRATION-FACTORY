@@ -1,5 +1,5 @@
 -- ============================================================================
--- 052 : matrice conditionnelle Site x Famille
+-- 066 : matrice conditionnelle Site x Famille
 --       (valeurs par defaut + routage de creation des tables article)
 --
 -- Voir docs/matrice valeur defaut.md et docs/README_MATRICE_VALEURS_DEFAUT.md
@@ -292,7 +292,7 @@ CREATE TRIGGER trg_etl_part_type_matrix_updated_at
 --    restent en place et s'appliquent en plus de la matrice).
 -- ===========================================================================
 INSERT INTO public.etl_part_type_matrix (target_table, contract, part_family, should_create, description, created_by)
-SELECT v.target_table, NULL, NULL, TRUE, v.description, 'migration_052'
+SELECT v.target_table, NULL, NULL, TRUE, v.description, 'migration_066'
 FROM (VALUES
     ('clean_data.sales_part',           'Repli general : article vendu (comportement historique)'),
     ('clean_data.purchase_part',        'Repli general : article achete (comportement historique)'),
@@ -320,7 +320,7 @@ WHERE NOT EXISTS (
 INSERT INTO public.etl_default_values (module, table_cible, colonne, variante, type_valeur, valeur, description, created_by)
 VALUES ('articlePhl', 'clean_data.manuf_part_attribute', 'density', 'STANDARD', 'NULL', NULL,
         'Densite : valeur mesuree (raw_data.phl_article_densite) en priorite, sinon densite theorique de la matrice Site x Famille. Cette constante n''est que le dernier repli.',
-        'migration_052')
+        'migration_066')
 ON CONFLICT (table_cible, colonne, variante) DO NOTHING;
 
 COMMIT;

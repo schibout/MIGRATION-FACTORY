@@ -83,7 +83,7 @@ BEGIN
         --   1. matrice site x famille  -> /configuration/matrice-site-famille
         --   2. constante par colonne   -> /configuration/valeurs-defaut
         --   3. NULL si rien n'est parametre
-        -- (public.get_default_value_ctx, migration 052)
+        -- (public.get_default_value_ctx, migration 066)
         public.get_default_value_ctx('clean_data.purchase_part', 'eng_attribute', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as eng_attribute,
         public.get_default_value_ctx('clean_data.purchase_part', 'note_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as note_id,
         public.get_default_value_ctx('clean_data.purchase_part', 'qc_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as qc_code,

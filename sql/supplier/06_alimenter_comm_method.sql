@@ -39,7 +39,7 @@ BEGIN
     -- TÉLÉPHONE (Phone) - depuis raw_data.adr2
     SELECT 
         public.get_default_value('clean_data.comm_method', 'party_type_db', 'PHONE') as party_type_db,
-        f.numero_compte_fournisseur as identity,
+        f.numero_compte_ifs as identity,
         adr2.tel_number as value,
         public.get_default_value('clean_data.comm_method', 'method_id_db', 'PHONE') as method_id_db,
         public.get_default_value('clean_data.comm_method', 'party_type', 'PHONE') as party_type,
@@ -54,7 +54,7 @@ BEGIN
         f.nom_1 as name,
         public.get_default_value('clean_data.comm_method', 'method_id', 'PHONE') as method_id,
         f.address_id as address_id,
-        f.numero_compte_fournisseur as supplier_id,
+        f.numero_compte_ifs as supplier_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp,
         'etl_supplier_base' as created_by,
@@ -70,7 +70,7 @@ BEGIN
     -- FAX (Fax) - depuis raw_data.adr3
     SELECT 
         public.get_default_value('clean_data.comm_method', 'party_type_db', 'FAX') as party_type_db,
-        f.numero_compte_fournisseur as identity,
+        f.numero_compte_ifs as identity,
         adr3.fax_number as value,
         public.get_default_value('clean_data.comm_method', 'method_id_db', 'FAX') as method_id_db,
         public.get_default_value('clean_data.comm_method', 'party_type', 'FAX') as party_type,
@@ -85,7 +85,7 @@ BEGIN
         f.nom_1 as name,
         public.get_default_value('clean_data.comm_method', 'method_id', 'FAX') as method_id,
         f.address_id as address_id,
-        f.numero_compte_fournisseur as supplier_id,
+        f.numero_compte_ifs as supplier_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp,
         'etl_supplier_base' as created_by,
@@ -101,7 +101,7 @@ BEGIN
     -- EMAIL (E-Mail) - depuis raw_data.adr6
     SELECT 
         public.get_default_value('clean_data.comm_method', 'party_type_db', 'E_MAIL') as party_type_db,
-        f.numero_compte_fournisseur as identity,
+        f.numero_compte_ifs as identity,
         adr6.smtp_addr as value,
         public.get_default_value('clean_data.comm_method', 'method_id_db', 'E_MAIL') as method_id_db,
         public.get_default_value('clean_data.comm_method', 'party_type', 'E_MAIL') as party_type,
@@ -116,7 +116,7 @@ BEGIN
         f.nom_1 as name,
         public.get_default_value('clean_data.comm_method', 'method_id', 'E_MAIL') as method_id,
         f.address_id as address_id,
-        f.numero_compte_fournisseur as supplier_id,
+        f.numero_compte_ifs as supplier_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp,
         'etl_supplier_base' as created_by,

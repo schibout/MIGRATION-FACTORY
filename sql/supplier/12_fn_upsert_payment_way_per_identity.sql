@@ -31,7 +31,8 @@ BEGIN
     )
     SELECT 
         COALESCE(f.company, 'TRIMET') as company,
-        f.numero_compte_fournisseur as identity,
+        -- IDENTITY = numéro IFS du fichier de sélection (voir script 02).
+        f.numero_compte_ifs as identity,
         public.get_default_value('clean_data.payment_way_per_identity', 'party_type') as party_type,
         public.get_default_value('clean_data.payment_way_per_identity', 'party_type_db') as party_type_db,
         public.get_default_value('clean_data.payment_way_per_identity', 'way_id') as way_id,
@@ -42,7 +43,7 @@ BEGIN
         'System' as updated_by,
         FALSE as is_deleted
     FROM clean_data.ifs_fournisseurs f
-    WHERE f.numero_compte_fournisseur IS NOT NULL;
+    WHERE f.numero_compte_ifs IS NOT NULL;
     
     GET DIAGNOSTICS v_processed_count = ROW_COUNT;
     

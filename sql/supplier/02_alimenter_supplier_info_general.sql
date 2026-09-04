@@ -49,7 +49,11 @@ BEGIN
         business_classification
     )
     SELECT 
-        SUBSTRING(f.numero_compte_fournisseur, 1, 20) as supplier_id,
+        -- SUPPLIER_ID = numéro IFS arbitré par le métier dans le fichier de
+        -- sélection (ifs_fournisseurs.numero_compte_ifs). Il n'est plus
+        -- réattribué en fin de chaîne : sp_renumber_all_suppliers() a été
+        -- retirée du pipeline (backend/etl_modules/etl_supplier_base.py).
+        SUBSTRING(f.numero_compte_ifs, 1, 20) as supplier_id,
         SUBSTRING(f.numero_compte_fournisseur, 1, 20) as supplier_legacy_sap_id,  -- Copier le numéro SAP d'origine
         SUBSTRING(f.nom_1, 1, 100) as name,
         SUBSTRING(f.cle_pays, 1, 2) as country,

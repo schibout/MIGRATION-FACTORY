@@ -61,6 +61,7 @@ errors=0
 # puis part_catalog (table de base référencée par EXISTS), puis les tables filles,
 # puis l'orchestrateur (qui les appelle dans le bon ordre à l'exécution).
 files=(
+    "nettoyer_phl_article.sql"
     "v_phl_article_retenu.sql"
     "alimenter_part_catalog_phl.sql"
     "alimenter_inventory_part_phl.sql"

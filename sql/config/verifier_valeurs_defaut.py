@@ -35,7 +35,7 @@ APPEL = re.compile(
     r"(?:,\s*'([A-Z0-9_]+)'\s*)?\)")
 
 # public.get_default_value_ctx('clean_data.x', 'col', <site>, <famille>) : resolution
-# matrice site x famille (migration 052). Le repli final reste la constante de
+# matrice site x famille (migration 066). Le repli final reste la constante de
 # public.etl_default_values, l'exigence de seed est donc la meme. Les 3e et 4e
 # arguments sont des expressions SQL, non capturees ; aucun appel genere ne
 # passe de variante, elle vaut donc STANDARD.

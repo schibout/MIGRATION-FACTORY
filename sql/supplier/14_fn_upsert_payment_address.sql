@@ -117,6 +117,9 @@ BEGIN
     FOR rec IN (
         SELECT
             COALESCE(f.company, 'TRIMET') as company,
+            -- identity = numéro IFS du fichier (voir script 02) ; lifnr reste
+            -- le numéro SAP, utilisé uniquement dans les traces.
+            f.numero_compte_ifs       as identity_ifs,
             f.numero_compte_fournisseur as lifnr,
             f.address_id,
             f.pays_banque            as banks,
@@ -170,7 +173,7 @@ BEGIN
                     updated_timestamp
                 ) VALUES (
                     rec.company,
-                    rec.lifnr,  -- supplier_id (numéro de compte fournisseur)
+                    rec.identity_ifs,  -- identity = numéro de compte IFS
                     public.get_default_value('clean_data.payment_address', 'party_type_db', 'BANQUE'),
                     public.get_default_value('clean_data.payment_address', 'way_id', 'BANQUE'),
                     -- address_id : le meme identifiant qu'a l'etape 1

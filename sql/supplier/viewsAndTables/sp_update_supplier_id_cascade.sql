@@ -199,6 +199,14 @@ $procedure$;
 
 -- ============================================================================
 -- Procédure pour mettre à jour TOUS les supplier_id avec une séquence à partir de 600000
+-- ----------------------------------------------------------------------------
+-- OBSOLETE : retirée du pipeline (backend/etl_modules/etl_supplier_base.py).
+-- Elle réattribuait 600000, 600001... dans l'ordre du LIFNR et écrasait donc le
+-- numéro IFS arbitré par le métier dans le fichier de sélection. Depuis, le
+-- supplier_id EST ce numéro (ifs_fournisseurs.numero_compte_ifs), posé dès les
+-- scripts 02->16. Ne plus l'appeler : elle décalerait à nouveau tous les
+-- identifiants. sp_update_supplier_id_cascade reste utile pour corriger UN
+-- fournisseur à la main.
 -- ============================================================================
 CREATE OR REPLACE PROCEDURE clean_data.sp_renumber_all_suppliers()
 LANGUAGE plpgsql
@@ -308,6 +316,7 @@ COMMENT ON PROCEDURE clean_data.sp_update_supplier_id_cascade(VARCHAR, VARCHAR) 
 Sauvegarde l''ancien ID dans la colonne SUPPLIER_LEGACY_SAP_ID.';
 
 COMMENT ON PROCEDURE clean_data.sp_renumber_all_suppliers() IS 
-'Procédure pour renuméroter tous les fournisseurs avec une séquence commençant à 600000.
-Utilise sp_update_supplier_id_cascade pour chaque fournisseur.';
+'OBSOLETE - ne plus appeler. Renumerote tous les fournisseurs a partir de 600000 et ecrase
+le numero IFS du fichier de selection, qui est desormais le supplier_id (scripts 02 a 16).
+Retiree du pipeline etl_supplier_base.py.';
 

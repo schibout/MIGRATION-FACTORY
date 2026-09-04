@@ -95,7 +95,8 @@ BEGIN
         -- PART_NO: numero_article SAP (pas de transcodification, l'article garde son ID)
         SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25) as part_no,
         -- DESCRIPTION: MAKT.MAKTX (FR) sinon MARA.MATNR
-        SUBSTRING(COALESCE(makt.maktx, mara.matnr), 1, 200) as description,
+        -- Libelle FR si disponible, sinon designation du referentiel, sinon le numero SAP
+        SUBSTRING(COALESCE(NULLIF(TRIM(makt.maktx), ''), NULLIF(TRIM(ifs.designation), ''), mara.matnr), 1, 200) as description,
         -- ENG_ATTRIBUTE: vide
         public.get_default_value('clean_data.purchase_part', 'eng_attribute') as eng_attribute,
         -- NOTE_ID: vide (numeric)
@@ -203,7 +204,8 @@ BEGIN
     INNER JOIN raw_data.mara mara
         ON mara.matnr::text = ifs.numero_article
         AND mara.mandt = '700'
-    INNER JOIN raw_data.makt makt
+    -- LEFT JOIN volontaire : un article sans libelle FR doit quand meme etre repris
+    LEFT JOIN raw_data.makt makt
         ON mara.matnr = makt.matnr
         AND makt.mandt = '700'
         AND makt.spras = 'F'

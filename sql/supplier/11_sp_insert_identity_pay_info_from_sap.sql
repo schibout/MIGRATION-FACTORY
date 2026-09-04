@@ -63,7 +63,8 @@ BEGIN
     FROM (
         SELECT 
             COALESCE(f.company, 'TRIMET') as COMPANY,
-            f.numero_compte_fournisseur as IDENTITY,
+            -- IDENTITY / SUPPLIER_ID = numéro IFS du fichier (voir script 02).
+            f.numero_compte_ifs as IDENTITY,
             public.get_default_value('clean_data.identity_pay_info', 'party_type') as PARTY_TYPE,
             public.get_default_value('clean_data.identity_pay_info', 'party_type_db') as PARTY_TYPE_DB,
             public.get_default_value('clean_data.identity_pay_info', 'priority')::numeric as PRIORITY,
@@ -100,7 +101,7 @@ BEGIN
             public.get_default_value('clean_data.identity_pay_info', 'output_media_db') as OUTPUT_MEDIA_DB,
             public.get_default_value('clean_data.identity_pay_info', 'default_payment_method') as DEFAULT_PAYMENT_METHOD,
             public.get_default_value('clean_data.identity_pay_info', 'customer_id') as CUSTOMER_ID,
-            f.numero_compte_fournisseur as SUPPLIER_ID,
+            f.numero_compte_ifs as SUPPLIER_ID,
             public.get_default_value('clean_data.identity_pay_info', 'next_payment_matching_id')::numeric as NEXT_PAYMENT_MATCHING_ID,
             public.get_default_value('clean_data.identity_pay_info', 'is_one_inv_per_pay') as IS_ONE_INV_PER_PAY,
             public.get_default_value('clean_data.identity_pay_info', 'is_one_inv_per_pay_db') as IS_ONE_INV_PER_PAY_DB,

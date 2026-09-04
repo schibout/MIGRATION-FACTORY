@@ -60,7 +60,10 @@ BEGIN
         'insert_supplier_tax_info_v1' as updated_by,
         COALESCE(sia.is_deleted, FALSE) as is_deleted
     FROM clean_data.supplier_info_address sia
-    LEFT JOIN clean_data.ifs_fournisseurs ifs ON sia.supplier_id = ifs.numero_compte_fournisseur
+    -- supplier_info_address.supplier_id porte desormais le numero IFS du
+    -- fichier (script 04) : la jointure suit, sinon plus aucune ligne ne
+    -- retrouve sa TVA et vat_no retombe sur 'NO_VAT_...'.
+    LEFT JOIN clean_data.ifs_fournisseurs ifs ON sia.supplier_id = ifs.numero_compte_ifs
     WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
     
     GET DIAGNOSTICS inserted_count = ROW_COUNT;

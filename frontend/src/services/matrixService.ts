@@ -1,6 +1,6 @@
 import api from './api';
 
-// Matrice conditionnelle Site x Famille (migration 052).
+// Matrice conditionnelle Site x Famille (migration 066).
 // contract / part_family a null = joker : la regle s'applique a toutes les
 // valeurs de cet axe. La regle la plus specifique gagne
 // (site + famille > site > famille > joker).

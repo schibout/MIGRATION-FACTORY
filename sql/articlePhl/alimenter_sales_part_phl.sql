@@ -76,7 +76,7 @@ BEGIN
         --   1. matrice site x famille  -> /configuration/matrice-site-famille
         --   2. constante par colonne   -> /configuration/valeurs-defaut
         --   3. NULL si rien n'est parametre
-        -- (public.get_default_value_ctx, migration 052)
+        -- (public.get_default_value_ctx, migration 066)
         public.get_default_value_ctx('clean_data.sales_part', 'catalog_group', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as catalog_group,
         public.get_default_value_ctx('clean_data.sales_part', 'sales_price_group_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as sales_price_group_id,
         -- Article lie (PHL = article en stock)
