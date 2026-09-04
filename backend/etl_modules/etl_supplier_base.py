@@ -362,19 +362,11 @@ class SupplierBaseETL:
                         self._add_log_message(notice_text, "info")
                     conn_psycopg2.notices[:] = []
                     
-                    # 15. DERNIÈRE ÉTAPE: Renuméroter tous les supplier_id (tables clean_data uniquement)
-                    logger.info("Appel de la procédure clean_data.sp_renumber_all_suppliers")
-                    self._add_log_message("Renumérotation des IDs fournisseurs (clean_data uniquement)...", "info")
-                    cursor.execute("CALL clean_data.sp_renumber_all_suppliers()")
-                    logger.info("Procédure sp_renumber_all_suppliers exécutée avec succès")
-                    self._add_log_message("✅ IDs fournisseurs renumérotés avec succès", "success")
-                    
-                    # Capturer les notices
-                    for notice in conn_psycopg2.notices:
-                        notice_text = notice.strip()
-                        logger.info(f"PostgreSQL NOTICE: {notice_text}")
-                        self._add_log_message(notice_text, "info")
-                    conn_psycopg2.notices[:] = []
+                    # Plus de renumérotation : le supplier_id est le numéro IFS arbitré
+                    # par le métier dans le fichier de sélection (clean_data.ifs_fournisseurs
+                    # .numero_compte_ifs), pose dès l'étape 2. L'ancienne procédure
+                    # clean_data.sp_renumber_all_suppliers() réattribuait 600000, 600001...
+                    # dans l'ordre du LIFNR et écrasait donc ces numéros.
             
             conn_psycopg2.close()
             
@@ -531,13 +523,9 @@ class SupplierBaseETL:
                     # Capturer les notices PostgreSQL
                     self._capture_postgres_notices(conn)
                     
-                    # 16. DERNIÈRE ÉTAPE: Renuméroter tous les supplier_id (tables clean_data uniquement)
-                    logger.info("Appel de la procédure clean_data.sp_renumber_all_suppliers")
-                    conn.execute(text("CALL clean_data.sp_renumber_all_suppliers()"))
-                    logger.info("Procédure sp_renumber_all_suppliers exécutée avec succès")
-                    
-                    # Capturer les notices PostgreSQL
-                    self._capture_postgres_notices(conn)
+                    # Plus de renumérotation : voir le commentaire équivalent dans
+                    # run_etl_with_psycopg2_logs(). Le supplier_id vaut le numéro IFS du
+                    # fichier de sélection, il ne doit plus être réattribué en fin de chaîne.
             
             execution_time = time.time() - start_time
             logger.info(f"Processus ETL terminé en {execution_time:.2f} secondes")

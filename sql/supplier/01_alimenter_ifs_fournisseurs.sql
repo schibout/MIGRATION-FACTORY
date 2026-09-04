@@ -147,9 +147,16 @@ CREATE OR REPLACE FUNCTION clean_data.alimenter_ifs_fournisseurs()
  LANGUAGE plpgsql
 AS $function$
 DECLARE
-   -- Date de création SAP à partir de laquelle un fournisseur absent du fichier
-   -- de sélection est quand même repris (le fichier a été arrêté avant).
-   v_date_creation_min CONSTANT DATE := DATE '2025-10-07';
+   -- Date d'arrêté du fichier de sélection : date de création SAP à partir de
+   -- laquelle un fournisseur absent du fichier est quand même repris (le
+   -- fichier a été arrêté avant, tout ce qui a été créé après lui échappe).
+   -- Paramétrable depuis l'écran /configuration/valeurs-defaut
+   -- (clean_data.ifs_fournisseurs / date_arrete, seedée par la migration 065).
+   -- get_default_value renvoie NULL si la ligne est absente ou désactivée :
+   -- le COALESCE conserve alors la valeur historique.
+   v_date_creation_min CONSTANT DATE := COALESCE(
+       NULLIF(TRIM(public.get_default_value('clean_data.ifs_fournisseurs', 'date_arrete')), '')::DATE,
+       DATE '2025-10-07');
    v_nb_fichier INTEGER := 0;
    v_nb_sap INTEGER := 0;
    v_nb_nouveaux_ids INTEGER := 0;

@@ -150,12 +150,34 @@ BEGIN
         -- -> variante STANDARD (valeur theorique 2.7). Les fils (21, 22, 23, RF) n'ont pas
         -- de densite -> variante FIL (fallback NULL). Les deux valeurs sont parametrables
         -- via l'ecran /configuration/valeurs-defaut (public.get_default_value).
-        CASE WHEN NULLIF(TRIM(COALESCE(phl."FAMILLE", '')), '') IN ('19', '20', '24')
-             THEN public.get_default_value('clean_data.inventory_part', 'c_density')::numeric
+        CASE
+             -- Aucune densite pour les articles fils, quels que soient le site et la
+             -- famille : la forme prime sur la famille (un fil classe en famille 19,
+             -- 20 ou 24 ne doit pas recevoir la valeur theorique).
+             WHEN UPPER(COALESCE(phl."FORME", '')) LIKE '%FIL%'
+                  THEN public.get_default_value('clean_data.inventory_part', 'c_density', 'FIL')::numeric
+             WHEN NULLIF(TRIM(COALESCE(phl."FAMILLE", '')), '') IN ('19', '20', '24')
+                  THEN public.get_default_value('clean_data.inventory_part', 'c_density')::numeric
              ELSE public.get_default_value('clean_data.inventory_part', 'c_density', 'FIL')::numeric
         END as c_density,
-        NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
-        phl."SERIE ALL" as c_alloy_serie_code,
+        -- Articles rebut (code article commencant par R, ex. RP-105003) : quand
+        -- l'alliage n'est pas renseigne dans le fichier PHL, il est deduit du code
+        -- article -- partie numerique de tete apres le tiret (RP-105003 -> 105003,
+        -- RF-137050G10 -> 137050) -- et la serie vaut ce premier chiffre suivi de
+        -- 000 (1 -> 1000, 5 -> 5000). Un code sans partie numerique (RP-RP DIVERS)
+        -- laisse les deux colonnes vides.
+        COALESCE(
+            NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), ''),
+            CASE WHEN UPPER(TRIM(phl."N. ARTICLE")) LIKE 'R%'
+                 THEN SUBSTRING(SUBSTRING(TRIM(phl."N. ARTICLE") FROM '^[A-Za-z]+-([0-9]+)'), 1, 12)
+            END
+        ) as c_alloy_code,
+        COALESCE(
+            NULLIF(TRIM(COALESCE(phl."SERIE ALL", '')), ''),
+            CASE WHEN UPPER(TRIM(phl."N. ARTICLE")) LIKE 'R%'
+                 THEN LEFT(SUBSTRING(TRIM(phl."N. ARTICLE") FROM '^[A-Za-z]+-([0-9]+)'), 1) || '000'
+            END
+        ) as c_alloy_serie_code,
         NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
         NULLIF(REPLACE(TRIM(COALESCE(phl."EPAISSEUR", '')), ',', '.'), '')::numeric as c_epaisseur_brut,
         NULLIF(REPLACE(TRIM(COALESCE(phl."LONGUEUR", '')), ',', '.'), '')::numeric as c_longueur_brut,
@@ -247,12 +269,34 @@ BEGIN
             -- -> variante STANDARD (valeur theorique 2.7). Les fils (21, 22, 23, RF) n'ont pas
             -- de densite -> variante FIL (fallback NULL). Les deux valeurs sont parametrables
             -- via l'ecran /configuration/valeurs-defaut (public.get_default_value).
-            CASE WHEN NULLIF(TRIM(COALESCE(phl."FAMILLE", '')), '') IN ('19', '20', '24')
-                 THEN public.get_default_value('clean_data.inventory_part', 'c_density')::numeric
+            CASE
+                 -- Aucune densite pour les articles fils, quels que soient le site et la
+                 -- famille : la forme prime sur la famille (un fil classe en famille 19,
+                 -- 20 ou 24 ne doit pas recevoir la valeur theorique).
+                 WHEN UPPER(COALESCE(phl."FORME", '')) LIKE '%FIL%'
+                      THEN public.get_default_value('clean_data.inventory_part', 'c_density', 'FIL')::numeric
+                 WHEN NULLIF(TRIM(COALESCE(phl."FAMILLE", '')), '') IN ('19', '20', '24')
+                      THEN public.get_default_value('clean_data.inventory_part', 'c_density')::numeric
                  ELSE public.get_default_value('clean_data.inventory_part', 'c_density', 'FIL')::numeric
             END as c_density,
-            NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), '') as c_alloy_code,
-            phl."SERIE ALL" as c_alloy_serie_code,
+            -- Articles rebut (code article commencant par R, ex. RP-105003) : quand
+            -- l'alliage n'est pas renseigne dans le fichier PHL, il est deduit du code
+            -- article -- partie numerique de tete apres le tiret (RP-105003 -> 105003,
+            -- RF-137050G10 -> 137050) -- et la serie vaut ce premier chiffre suivi de
+            -- 000 (1 -> 1000, 5 -> 5000). Un code sans partie numerique (RP-RP DIVERS)
+            -- laisse les deux colonnes vides.
+            COALESCE(
+                NULLIF(SUBSTRING(TRIM(COALESCE(phl."ALLIAGE", '')), 1, 12), ''),
+                CASE WHEN UPPER(TRIM(phl."N. ARTICLE")) LIKE 'R%'
+                     THEN SUBSTRING(SUBSTRING(TRIM(phl."N. ARTICLE") FROM '^[A-Za-z]+-([0-9]+)'), 1, 12)
+                END
+            ) as c_alloy_code,
+            COALESCE(
+                NULLIF(TRIM(COALESCE(phl."SERIE ALL", '')), ''),
+                CASE WHEN UPPER(TRIM(phl."N. ARTICLE")) LIKE 'R%'
+                     THEN LEFT(SUBSTRING(TRIM(phl."N. ARTICLE") FROM '^[A-Za-z]+-([0-9]+)'), 1) || '000'
+                END
+            ) as c_alloy_serie_code,
             NULLIF(SUBSTRING(TRIM(COALESCE(phl."FAMILLE", '')), 1, 5), '') as c_family_code,
             NULLIF(REPLACE(TRIM(COALESCE(phl."EPAISSEUR", '')), ',', '.'), '')::numeric as c_epaisseur_brut,
             NULLIF(REPLACE(TRIM(COALESCE(phl."LONGUEUR", '')), ',', '.'), '')::numeric as c_longueur_brut,

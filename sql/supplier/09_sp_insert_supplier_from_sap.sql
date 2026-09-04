@@ -62,7 +62,8 @@ BEGIN
         is_deleted
     )
     SELECT DISTINCT
-        f.numero_compte_fournisseur as vendor_no,
+        -- VENDOR_NO = numéro IFS du fichier de sélection (voir script 02).
+        f.numero_compte_ifs as vendor_no,
         public.get_default_value('clean_data.supplier', 'buyer_code') as buyer_code,
         -- ifs_fournisseurs.devise_principale a été supprimée (colonne KPI jamais
         -- alimentée : le bloc de calcul est commenté dans le script 01). Le

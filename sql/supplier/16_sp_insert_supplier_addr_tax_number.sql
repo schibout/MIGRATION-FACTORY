@@ -43,7 +43,7 @@ BEGIN
     -- === Numero de TVA intracommunautaire ===================================
     -- IFS refuse un VAT_NO en minuscules au chargement -> UPPER.
     SELECT
-        SUBSTRING(f.numero_compte_fournisseur, 1, 20),
+        SUBSTRING(f.numero_compte_ifs, 1, 20),
         SUBSTRING(f.address_id, 1, 50),
         public.get_default_value('clean_data.supplier_addr_tax_number', 'company'),
         public.get_default_value('clean_data.supplier_addr_tax_number', 'tax_id_type', 'TVA_UE'),
@@ -56,7 +56,7 @@ BEGIN
 
     -- === SIREN ==============================================================
     SELECT
-        SUBSTRING(f.numero_compte_fournisseur, 1, 20),
+        SUBSTRING(f.numero_compte_ifs, 1, 20),
         SUBSTRING(f.address_id, 1, 50),
         public.get_default_value('clean_data.supplier_addr_tax_number', 'company'),
         public.get_default_value('clean_data.supplier_addr_tax_number', 'tax_id_type', 'SIREN'),
@@ -69,7 +69,7 @@ BEGIN
 
     -- === SIRET ==============================================================
     SELECT
-        SUBSTRING(f.numero_compte_fournisseur, 1, 20),
+        SUBSTRING(f.numero_compte_ifs, 1, 20),
         SUBSTRING(f.address_id, 1, 50),
         public.get_default_value('clean_data.supplier_addr_tax_number', 'company'),
         public.get_default_value('clean_data.supplier_addr_tax_number', 'tax_id_type', 'SIRET'),

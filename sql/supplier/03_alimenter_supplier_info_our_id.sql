@@ -27,18 +27,20 @@ BEGIN
         is_deleted
     )
     SELECT 
-        f.numero_compte_fournisseur as supplier_id,
+        -- SUPPLIER_ID / OUR_ID : numéro IFS du fichier de sélection
+        -- (voir le script 02), et non plus le LIFNR SAP renuméroté.
+        f.numero_compte_ifs as supplier_id,
         f.company as company,
         -- Génération d'OUR_ID selon la société
-        public.get_default_value('clean_data.supplier_info_our_id', 'our_id_prefix')||'-'||f.numero_compte_fournisseur as our_id,
+        public.get_default_value('clean_data.supplier_info_our_id', 'our_id_prefix')||'-'||f.numero_compte_ifs as our_id,
         COALESCE(f.date_creation_sap::TIMESTAMP, CURRENT_TIMESTAMP) as created_timestamp,
         CURRENT_TIMESTAMP as updated_timestamp,
         'etl_supplier_base' as created_by,
         'etl_supplier_base' as updated_by,
         FALSE as is_deleted
     FROM clean_data.ifs_fournisseurs f
-    WHERE f.numero_compte_fournisseur IS NOT NULL
-      AND TRIM(f.numero_compte_fournisseur) != '';
+    WHERE f.numero_compte_ifs IS NOT NULL
+      AND TRIM(f.numero_compte_ifs) != '';
     
     GET DIAGNOSTICS v_records_inserted = ROW_COUNT;
     

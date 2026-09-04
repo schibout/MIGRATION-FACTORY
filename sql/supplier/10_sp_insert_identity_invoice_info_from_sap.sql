@@ -22,7 +22,8 @@ BEGIN
     SELECT DISTINCT
         -- Colonnes principales
         COALESCE(f.company, 'TRIMET') as COMPANY,
-        f.numero_compte_fournisseur as IDENTITY,
+        -- IDENTITY = numéro IFS du fichier de sélection (voir script 02).
+        f.numero_compte_ifs as IDENTITY,
         public.get_default_value('clean_data.identity_invoice_info', 'party_type') as PARTY_TYPE,
         public.get_default_value('clean_data.identity_invoice_info', 'party_type_db') as PARTY_TYPE_DB,
         -- Colonnes spécifiées uniquement

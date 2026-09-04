@@ -74,6 +74,10 @@ files=(
     # / CREATE OR REPLACE), ils peuvent donc etre rejoues sans risque.
     "../../migrations/031_create_etl_default_values.sql"
     "../functions/get_default_value.sql"
+    # Date d'arrete du fichier de selection, lue par le script 01 via
+    # get_default_value : seedee ici pour que le parametre existe dans
+    # l'ecran /configuration/valeurs-defaut des le premier chargement.
+    "../../migrations/065_seed_valeur_defaut_date_arrete_fournisseurs.sql"
     "01_alimenter_ifs_fournisseurs.sql"
     "02_alimenter_supplier_info_general.sql"
     "03_alimenter_supplier_info_our_id.sql"
@@ -90,8 +94,8 @@ files=(
     "14_fn_upsert_payment_address.sql"
     "15_fn_upsert_supplier_tax_info.sql"
     "16_sp_insert_supplier_addr_tax_number.sql"
-    "sp_update_supplier_id_cascade.sql"
-    "sp_keep_supplier_sample.sql"
+    "viewsAndTables/sp_update_supplier_id_cascade.sql"
+    "viewsAndTables/sp_keep_supplier_sample.sql"
 )
 
 # Exécution de chaque fichier

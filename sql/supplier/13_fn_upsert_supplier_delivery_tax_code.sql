@@ -28,7 +28,8 @@ BEGIN
         is_deleted
     )
     SELECT DISTINCT
-        f.numero_compte_fournisseur as supplier_id,
+        -- SUPPLIER_ID = numéro IFS du fichier de sélection (voir script 02).
+        f.numero_compte_ifs as supplier_id,
         COALESCE(sia.address_id, 'DEFAULT_ADDR') as address_id,
         COALESCE(f.company, 'TRIMET') as company,
         SUBSTRING(CASE 
@@ -47,9 +48,9 @@ BEGIN
         FALSE as is_deleted
     FROM clean_data.ifs_fournisseurs f
     LEFT JOIN clean_data.supplier_info_address sia 
-        ON f.numero_compte_fournisseur = sia.supplier_id
+        ON f.numero_compte_ifs = sia.supplier_id
         AND sia.is_deleted = FALSE
-    WHERE f.numero_compte_fournisseur IS NOT NULL
+    WHERE f.numero_compte_ifs IS NOT NULL
     AND (
         (f.tva IS NOT NULL AND f.tva != '')
         OR (f.siret IS NOT NULL AND f.siret != '')

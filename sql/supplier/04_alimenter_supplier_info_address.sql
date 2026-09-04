@@ -23,7 +23,9 @@ BEGIN
         updated_timestamp, created_by, updated_by, is_deleted
     )
     SELECT 
-        SUBSTRING(f.numero_compte_fournisseur, 1, 20) as supplier_id,
+        -- SUPPLIER_ID : numéro IFS du fichier de sélection (voir script 02).
+        -- La jointure vers raw_data.lfa1 reste sur le LIFNR SAP.
+        SUBSTRING(f.numero_compte_ifs, 1, 20) as supplier_id,
         -- Numéro d'adresse SAP, résolu une seule fois dans ifs_fournisseurs
         -- (lfa1.adrnr, repli sur la constante paramétrable). Les scripts 05, 07,
         -- 08, 13 et 14 dérivent de cette colonne : la garder alignée sur
