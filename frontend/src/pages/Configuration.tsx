@@ -112,6 +112,12 @@ const Configuration: React.FC = () => {
       path: '/configuration/matrice-site-famille',
       icon: <ValeursDefautIcon sx={{ fontSize: 40, color: '#26a69a' }} />,
       description: 'Valeurs par défaut et tables à créer selon le site et la famille d\'article'
+    },
+    {
+      title: 'Paramètres de la matrice',
+      path: '/configuration/matrice-parametres',
+      icon: <ValeursDefautIcon sx={{ fontSize: 40, color: '#ffa726' }} />,
+      description: 'Familles d\'articles et tables cibles proposées par la matrice'
     }
   ];
 

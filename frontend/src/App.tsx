@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import DataBrowserPage from './pages/DataBrowser';
 import DataLoadingPage from './pages/dataLoading/DataLoadingPage';
 import DefaultValuesManagement from './pages/DefaultValuesManagement';
+import MatriceParametres from './pages/MatriceParametres';
 import MatriceSiteFamille from './pages/MatriceSiteFamille';
 import EquipmentPage from './pages/EquipmentPage';
 import ExportArticles from './pages/ExportArticles.tsx';
@@ -245,6 +246,7 @@ function App() {
           <Route path="configuration/transcodifications" element={<TranscodificationManagement />} />
           <Route path="configuration/valeurs-defaut" element={<DefaultValuesManagement />} />
           <Route path="configuration/matrice-site-famille" element={<MatriceSiteFamille />} />
+          <Route path="configuration/matrice-parametres" element={<MatriceParametres />} />
           <Route path="configuration/security" element={<SecurityPage />} />
           <Route path="configuration/table-structure" element={<TableStructureManagement />} />
           <Route path="configuration/smtp" element={<SmtpConfigPage />} />

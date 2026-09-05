@@ -13,6 +13,7 @@ from .business_rules import business_rules_blueprint
 from .transcodification import transcodification_blueprint
 from .default_values import default_values_blueprint
 from .default_value_matrix import matrix_blueprint
+from .matrix_settings import matrix_settings_blueprint
 from .users import users_blueprint
 from .etl import etl_blueprint
 from .export import export_bp
@@ -61,6 +62,7 @@ def register_blueprints(app):
     app.register_blueprint(default_values_blueprint, url_prefix=f'{API_PREFIX}/config')
     # Matrice conditionnelle Site x Famille (valeurs + routage de creation) - migration 066
     app.register_blueprint(matrix_blueprint, url_prefix=f'{API_PREFIX}/config')
+    app.register_blueprint(matrix_settings_blueprint, url_prefix=f'{API_PREFIX}/config')
     app.register_blueprint(users_blueprint, url_prefix=f'{API_PREFIX}/users')
     app.register_blueprint(etl_blueprint, url_prefix=f'{API_PREFIX}/config/etl')
     app.register_blueprint(export_bp, url_prefix=f'{API_PREFIX}/export')

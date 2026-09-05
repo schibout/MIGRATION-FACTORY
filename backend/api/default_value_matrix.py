@@ -17,7 +17,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import text, cast, or_, Integer
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from models import db, EtlDefaultValue, EtlDefaultValueMatrix, EtlPartTypeMatrix
+from models import (db, EtlDefaultValue, EtlDefaultValueMatrix, EtlPartTypeMatrix,
+                    EtlPartFamily, EtlMatrixTargetTable)
 
 matrix_blueprint = Blueprint('default_value_matrix', __name__)
 
@@ -64,10 +65,13 @@ def _erreur_sql(e, contexte, repli):
 @matrix_blueprint.route('/matrix/meta', methods=['GET'])
 @jwt_required()
 def matrix_meta():
-    """Sites, familles d'articles, tables/colonnes eligibles.
+    """Sites, familles, tables cibles et colonnes eligibles de l'ecran.
 
-    Les sites et les familles sont lus dans les donnees reelles (et non
-    codes en dur) pour que l'ecran suive le fichier PHL charge.
+    Familles et tables cibles viennent des referentiels de la migration 067
+    (Configuration > Parametres de la matrice). Chaque referentiel VIDE fait
+    retomber la reponse sur le comportement d'origine : familles deduites des
+    donnees, toutes les tables de etl_default_values. L'ecran reste donc
+    utilisable si la migration 067 n'a pas ete jouee.
     """
     try:
         try:
@@ -81,41 +85,152 @@ def matrix_meta():
         if not sites:
             sites = SITES_REPLI
 
+        # --- Familles : union du referentiel et des donnees ------------------
+        # Une famille declaree mais pas encore livree doit etre parametrable ;
+        # une famille livree mais non declaree doit rester visible ET signalee,
+        # sinon des articles seraient charges sans que personne ne le voie.
         try:
             # v_phl_article_retenu et non phl_article : la vue applique deja les
             # exclusions du perimetre (famille 19 = lingots, non reprise).
-            familles = [r[0] for r in db.session.execute(text(
+            familles_donnees = [r[0] for r in db.session.execute(text(
                 'SELECT DISTINCT NULLIF(TRIM("FAMILLE"), \'\') AS famille '
                 'FROM raw_data.v_phl_article_retenu '
                 'WHERE NULLIF(TRIM("FAMILLE"), \'\') IS NOT NULL ORDER BY 1'
             ))]
         except SQLAlchemyError:
             db.session.rollback()
-            familles = []
+            familles_donnees = []
+
+        try:
+            declarees = EtlPartFamily.query.filter_by(is_active=True).order_by(
+                EtlPartFamily.ordre, EtlPartFamily.code
+            ).all()
+        except SQLAlchemyError:
+            db.session.rollback()
+            declarees = []
+
+        familles = []
+        codes_declares = set()
+        for f in declarees:
+            codes_declares.add(f.code)
+            familles.append({
+                'code': f.code,
+                'libelle': f.libelle,
+                'description': f.description,
+                'source': 'LES_DEUX' if f.code in familles_donnees else 'REFERENCE',
+            })
+        # Les familles vues dans les donnees et absentes du referentiel ferment
+        # la liste : elles sont marquees DONNEES pour que l'ecran les signale.
+        for code in familles_donnees:
+            if code not in codes_declares:
+                familles.append({
+                    'code': code, 'libelle': None, 'description': None, 'source': 'DONNEES',
+                })
+
+        # --- Tables cibles ---------------------------------------------------
+        try:
+            tables_ref = EtlMatrixTargetTable.query.filter_by(is_active=True).order_by(
+                EtlMatrixTargetTable.ordre, EtlMatrixTargetTable.table_cible
+            ).all()
+        except SQLAlchemyError:
+            db.session.rollback()
+            tables_ref = []
+        tables_cibles = [
+            {'table_cible': t.table_cible, 'libelle': t.libelle, 'description': t.description}
+            for t in tables_ref
+        ]
+        tables_retenues = {t.table_cible for t in tables_ref}
 
         # Colonnes eligibles : celles qui ont deja une constante parametree.
         # La matrice se pose au-dessus d'elles, elle n'introduit pas de
         # nouvelle colonne cible.
+        query = db.session.query(
+            EtlDefaultValue.module, EtlDefaultValue.table_cible,
+            EtlDefaultValue.colonne, EtlDefaultValue.variante
+        ).distinct()
+        if tables_retenues:
+            query = query.filter(EtlDefaultValue.table_cible.in_(tables_retenues))
         cibles = [
             {'module': r[0], 'table_cible': r[1], 'colonne': r[2], 'variante': r[3]}
-            for r in db.session.query(
-                EtlDefaultValue.module, EtlDefaultValue.table_cible,
-                EtlDefaultValue.colonne, EtlDefaultValue.variante
-            ).distinct().order_by(
+            for r in query.order_by(
                 EtlDefaultValue.table_cible, EtlDefaultValue.colonne, EtlDefaultValue.variante
             )
         ]
+        # Referentiel vide : on retombe sur la liste complete des tables.
+        if not tables_cibles:
+            tables_cibles = [
+                {'table_cible': t, 'libelle': None, 'description': None}
+                for t in sorted({c['table_cible'] for c in cibles})
+            ]
 
         return jsonify({
             'sites': sites,
             'familles': familles,
             'cibles': cibles,
+            'tables_cibles': tables_cibles,
             'part_type_tables': PART_TYPE_TABLES,
         }), 200
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(f"Erreur meta matrice: {e}")
         return jsonify({"error": "Erreur lors de la recuperation des metadonnees de la matrice"}), 500
+
+
+@matrix_blueprint.route('/matrix/columns', methods=['GET'])
+@jwt_required()
+def matrix_columns():
+    """Libelle metier des colonnes d'une table cible, lu dans le catalogue IFS.
+
+    public.ifs_field_catalog est la reference fonctionnelle IFS (12 969 champs) :
+    entity = nom de la table sans son schema, field_name = nom de la colonne,
+    tous deux en majuscules. Un champ peut y figurer dans plusieurs lots
+    (LOT02 et LOT03 par exemple) avec le meme libelle, d'ou le DISTINCT ON.
+
+    Le libelle n'est volontairement pas recopie en base : il suivrait alors sa
+    propre vie et divergerait du catalogue au premier rechargement de celui-ci.
+    """
+    table_cible = (request.args.get('table_cible') or '').strip()
+    if not table_cible:
+        return jsonify({"error": "Le parametre table_cible est obligatoire"}), 400
+    try:
+        # Le catalogue vient de classeurs Excel : '#N/A' et 'vide' y sont des
+        # marqueurs de cellule non renseignee, pas du contenu. Les laisser
+        # passer afficherait "#N/A" dans les infobulles de l'ecran.
+        lignes = db.session.execute(text("""
+            WITH catalogue AS (
+                SELECT f.field_name, f.in_scope, f.catalog_id, f.sql_type, f.mandatory,
+                       NULLIF(NULLIF(NULLIF(NULLIF(
+                           btrim(coalesce(f.field_label_fr, '')), ''), '#N/A'), 'N/A'), 'vide') AS libelle,
+                       NULLIF(NULLIF(NULLIF(NULLIF(
+                           btrim(coalesce(f.comments, '')), ''), '#N/A'), 'N/A'), 'vide') AS commentaire
+                FROM public.ifs_field_catalog f
+                WHERE f.entity = upper(split_part(:t, '.', 2))
+            )
+            SELECT DISTINCT ON (upper(e.colonne))
+                   e.colonne, c.libelle, c.sql_type, c.mandatory, c.commentaire
+            FROM (SELECT DISTINCT colonne FROM public.etl_default_values
+                  WHERE table_cible = :t) e
+            LEFT JOIN catalogue c ON c.field_name = upper(e.colonne)
+            -- Un champ peut figurer dans plusieurs lots : on retient d'abord
+            -- celui qui porte reellement un libelle.
+            ORDER BY upper(e.colonne),
+                     (c.libelle IS NOT NULL) DESC,
+                     c.in_scope DESC NULLS LAST,
+                     c.catalog_id
+        """), {'t': table_cible}).mappings().all()
+        return jsonify({'columns': [
+            {
+                'colonne': r['colonne'],
+                'libelle': r['libelle'],
+                'type_ifs': r['sql_type'],
+                'obligatoire': r['mandatory'],
+                'commentaire': r['commentaire'],
+            } for r in lignes
+        ]}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erreur colonnes matrice: {e}")
+        return jsonify({"error": "Erreur lors de la recuperation des libelles de colonnes"}), 500
 
 
 # ===========================================================================

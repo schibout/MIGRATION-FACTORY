@@ -5,6 +5,9 @@
 # IMPORTANT: à lancer APRÈS les procédures SAP du module inventory (qui font le TRUNCATE
 # des tables cibles). Les fonctions PHL insèrent en append.
 
+# Se placer dans le repertoire du script (les chemins des fichiers SQL sont relatifs)
+cd "$(dirname "$0")" || exit 1
+
 # Charger les variables depuis .profile
 if [ -f ~/.profile ]; then
     source ~/.profile
@@ -62,13 +65,13 @@ errors=0
 # puis l'orchestrateur (qui les appelle dans le bon ordre à l'exécution).
 files=(
     "nettoyer_phl_article.sql"
-    "v_phl_article_retenu.sql"
+    "sources/v_phl_article_retenu.sql"
     "alimenter_part_catalog_phl.sql"
     "alimenter_inventory_part_phl.sql"
     "alimenter_sales_part_phl.sql"
     "alimenter_purchase_part_phl.sql"
     "alimenter_manuf_part_attribute_phl.sql"
-    "vider_tables_articles_phl.sql"
+    "sources/vider_tables_articles_phl.sql"
     "alimenter_all_phl.sql"
 )
 

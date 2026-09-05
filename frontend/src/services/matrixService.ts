@@ -42,10 +42,36 @@ export interface MatrixCible {
   variante: string;
 }
 
+// Famille proposee en colonne. `source` dit d'ou elle vient : REFERENCE (declaree
+// mais pas encore livree), DONNEES (livree mais non declaree, donc a documenter),
+// LES_DEUX (le cas nominal).
+export interface MatrixFamille {
+  code: string;
+  libelle: string | null;
+  description: string | null;
+  source: 'REFERENCE' | 'DONNEES' | 'LES_DEUX';
+}
+
+export interface MatrixTableCible {
+  table_cible: string;
+  libelle: string | null;
+  description: string | null;
+}
+
+// Libelle metier d'une colonne, lu dans public.ifs_field_catalog.
+export interface MatrixColumn {
+  colonne: string;
+  libelle: string | null;
+  type_ifs: string | null;
+  obligatoire: boolean | null;
+  commentaire: string | null;
+}
+
 export interface MatrixMeta {
   sites: string[];
-  familles: string[];
+  familles: MatrixFamille[];
   cibles: MatrixCible[];
+  tables_cibles: MatrixTableCible[];
   part_type_tables: { target_table: string; libelle: string }[];
 }
 
@@ -56,10 +82,53 @@ export interface MatrixResolution {
   regle: MatrixValue | null;
 }
 
+// Le backend peut etre plus ancien que le bundle servi (deploiement partiel :
+// frontend rebati, service Flask pas encore redemarre). On normalise donc la
+// reponse au lieu de faire confiance a sa forme : sans cela un champ absent
+// casse l'ecran entier au premier .map().
+const normaliserMeta = (brut: any): MatrixMeta => {
+  const cibles: MatrixCible[] = Array.isArray(brut?.cibles) ? brut.cibles : [];
+
+  // Avant la migration 067 l'API renvoyait les familles en simples chaines.
+  const familles: MatrixFamille[] = (Array.isArray(brut?.familles) ? brut.familles : []).map(
+    (f: any): MatrixFamille =>
+      typeof f === 'string'
+        ? { code: f, libelle: null, description: null, source: 'DONNEES' }
+        : {
+            code: f?.code,
+            libelle: f?.libelle ?? null,
+            description: f?.description ?? null,
+            source: f?.source ?? 'DONNEES',
+          }
+  ).filter((f: MatrixFamille) => !!f.code);
+
+  // Referentiel absent : on retombe sur les tables deduites des colonnes.
+  let tables: MatrixTableCible[] = Array.isArray(brut?.tables_cibles) ? brut.tables_cibles : [];
+  if (tables.length === 0) {
+    tables = Array.from(new Set(cibles.map((c) => c.table_cible)))
+      .sort()
+      .map((t) => ({ table_cible: t, libelle: null, description: null }));
+  }
+
+  return {
+    sites: Array.isArray(brut?.sites) ? brut.sites : [],
+    familles,
+    cibles,
+    tables_cibles: tables,
+    part_type_tables: Array.isArray(brut?.part_type_tables) ? brut.part_type_tables : [],
+  };
+};
+
 const matrixService = {
   meta: async (): Promise<MatrixMeta> => {
     const response = await api.get('/config/matrix/meta');
-    return response.data;
+    return normaliserMeta(response.data);
+  },
+
+  // Libelles IFS des colonnes d'une table cible.
+  columns: async (table_cible: string): Promise<MatrixColumn[]> => {
+    const response = await api.get('/config/matrix/columns', { params: { table_cible } });
+    return response.data.columns;
   },
 
   listValues: async (params: {
