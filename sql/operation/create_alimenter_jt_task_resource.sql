@@ -146,7 +146,13 @@ BEGIN
                     THEN replace(trim(anzma), ',', '.')::numeric
                 ELSE 1::numeric
             END AS planned_quantity,
-            public.get_default_value('clean_data.jt_task_resource', 'offset_value') AS offset_value,
+            -- clean_data.jt_task_resource."offset" est NUMERIC et
+            -- get_default_value() renvoie du TEXT : PostgreSQL n'a aucun cast
+            -- implicite, d'ou l'erreur 42804 sans le ::numeric. Le NULLIF est
+            -- indispensable : une valeur laissee vide dans l'ecran des valeurs
+            -- par defaut ferait echouer ''::numeric (22P02) et casserait tout
+            -- le chargement.
+            NULLIF(public.get_default_value('clean_data.jt_task_resource', 'offset_value'), '')::numeric AS offset_value,
             CASE
                 WHEN upper(coalesce(resource_type_db, '')) = 'EQUIPMENT' THEN 'EQUIPMENT'
                 ELSE 'PERSON'

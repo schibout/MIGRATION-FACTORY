@@ -145,10 +145,44 @@ BEGIN
         type_code, category, work_center, work_center_txt,
         plant, planner_group, attributes
     )
+    -- ------------------------------------------------------------------
+    -- Code affiche du poste technique : strno (etiquette externe SAP), avec
+    -- REPLI sur le tplnr en cas de collision entre freres.
+    -- 25 codes sont portes par plusieurs postes (dont les postes en
+    -- numerotation interne ?01000000000000000xx, qui reprennent le strno d'un
+    -- poste externe). La comparaison est GLOBALE et non entre freres : en
+    -- passe 1 tous les FUNC_LOC sont inseres avec parent_id NULL, et l'index
+    -- uq_mo_code_sibling est NULLS NOT DISTINCT -> a cet instant deux NULL
+    -- sont egaux, donc le code doit etre unique sur toute la table. Un
+    -- partitionnement par tplma ne suffit pas. Trois de ces paires sont des postes
+    -- REELLEMENT distincts (ex. T212-B005 : « EQUIPEMENT COLLECTIF MOYEN
+    -- D'ACCES », porteur de 3 equipements, contre « EVACUATION EAUX
+    -- PLUVIALES ») : dedupliquer en perdrait un. Le poste en numerotation
+    -- externe garde donc le strno, les autres prennent leur tplnr.
+    -- sap_key n'est jamais affecte : les rattachements restent intacts.
+    -- ------------------------------------------------------------------
+    WITH fl_code AS (
+        SELECT x.tplnr, x.mandt,
+               CASE WHEN ROW_NUMBER() OVER (
+                        PARTITION BY x.mandt, x.candidat
+                        ORDER BY (CASE WHEN x.tplnr LIKE '?%' THEN 1 ELSE 0 END), x.tplnr
+                    ) = 1
+                    THEN x.candidat
+                    ELSE x.tplnr
+               END AS code
+        FROM (
+            SELECT DISTINCT ON (i.tplnr, i.mandt)
+                   i.tplnr, i.mandt, i.tplma,
+                   COALESCE(NULLIF(TRIM(s.strno), ''), i.tplnr) AS candidat
+            FROM raw_data.iflot i
+            LEFT JOIN raw_data.iflos s ON s.tplnr = i.tplnr AND s.mandt = i.mandt
+            ORDER BY i.tplnr, i.mandt
+        ) x
+    )
     SELECT
         'FUNC_LOC',
         i.tplnr,
-        COALESCE(NULLIF(TRIM(s.strno), ''), i.tplnr),
+        fc.code,
         CASE
             WHEN xf.pltxt IS NOT NULL AND TRIM(xf.pltxt) <> '' AND LOWER(TRIM(xf.pltxt)) <> 'vide'
                 THEN xf.pltxt
@@ -175,6 +209,7 @@ BEGIN
         ))
     FROM raw_data.iflot i
     JOIN fl_scope sc ON sc.tplnr = i.tplnr          -- perimetre : racine + descendants
+    JOIN fl_code  fc ON fc.tplnr = i.tplnr AND fc.mandt = i.mandt
     LEFT JOIN raw_data.iflos  s  ON s.tplnr  = i.tplnr AND s.mandt = i.mandt
     LEFT JOIN raw_data.iflotx xf ON xf.tplnr = i.tplnr AND xf.mandt = i.mandt AND xf.spras = 'F'
     LEFT JOIN raw_data.iflotx xe ON xe.tplnr = i.tplnr AND xe.mandt = i.mandt AND xe.spras = 'E'
@@ -184,8 +219,14 @@ BEGIN
           AND pltxt IS NOT NULL AND TRIM(pltxt) <> '' AND LOWER(TRIM(pltxt)) <> 'vide'
         LIMIT 1
     ) xa ON TRUE
-    LEFT JOIN raw_data.iflo fl
-        ON fl.tplnr = i.tplnr AND fl.mandt = i.mandt AND fl.spras = 'F'
+    -- Poste de charge (ppsid) : lu dans ILOA, une vraie table, via iflot.iloan.
+    -- raw_data.iflo est une VUE SAP, comme itob : non extractible de facon
+    -- fiable, elle finirait vide ou perimee et ferait disparaitre le poste de
+    -- charge des postes techniques. Chemin verifie strictement equivalent :
+    -- 0 ecart de ppsid sur les 23 356 postes, 10 985 renseignes de part et
+    -- d'autre. L'alias reste `fl` : les usages en aval ne changent pas.
+    LEFT JOIN raw_data.iloa fl
+        ON fl.iloan = i.iloan AND fl.mandt = i.mandt
     LEFT JOIN raw_data.crhd cr  ON cr.objid = fl.ppsid AND fl.ppsid <> '00000000'
     LEFT JOIN raw_data.crtx ctx ON ctx.objid = cr.objid AND ctx.spras = 'F'
     ON CONFLICT (object_type, sap_key) DO NOTHING;
@@ -235,7 +276,45 @@ BEGIN
             'swerk', t.swerk, 'stort', t.stort, 'beber', t.beber,
             'warpl', t.warpl, 'gewrk', ez.gewrk, 'mandt', t.mandt
         ))
-    FROM raw_data.itob t
+    FROM (
+        -- ------------------------------------------------------------------
+        -- Equipements reconstitues DIRECTEMENT depuis les tables SAP extraites.
+        -- raw_data.itob est une vue d'agregation SAP, donc non extractible :
+        -- l'extraction avait laisse en place une table vide du meme nom, cette
+        -- passe n'inserait plus rien et, faute de tplnr_sap, la passe 3b
+        -- laissait 7 653 equipements sur 7 654 detaches de l'arbre IH02.
+        --   equi = master equipement
+        --   eqkt = designation (FR prioritaire, sinon premiere langue trouvee)
+        --   equz = enregistrement courant (datbi = '99991231') -> iwerk/ingrp/iloan
+        --   iloa = localisation via equz.iloan -> tplnr (le rattachement !)
+        -- hequi (equipement superieur) n'existe dans AUCUNE table extraite :
+        -- la hierarchie equipement -> equipement n'est pas reconstituable, seul
+        -- le rattachement au poste technique l'est.
+        -- ------------------------------------------------------------------
+        SELECT
+            e.mandt, e.equnr,
+            COALESCE(kt_fr.eqktx, kt_any.eqktx) AS eqktx,
+            e.eqart, e.eqtyp, e.herst, e.herld, e.typbz, e.sernr, e.invnr,
+            e.groes, e.brgew, e.gewei, e.ansdt, e.answt, e.waers, e.elief,
+            e.matnr, e.baujj, e.baumm, e.gwlen, e.gwldt, e.inbdt, e.erdat,
+            e.ernam, e.aedat, e.aenam, e.lvorm, e.begru, e.warpl,
+            ez2.iwerk, ez2.ingrp,
+            il.tplnr, il.kostl, il.swerk, il.stort, il.beber, il.bukrs, il.gsber,
+            NULL::varchar AS hequi
+        FROM raw_data.equi e
+        LEFT JOIN raw_data.eqkt kt_fr
+               ON kt_fr.mandt = e.mandt AND kt_fr.equnr = e.equnr AND kt_fr.spras = 'F'
+        LEFT JOIN LATERAL (
+            SELECT eqktx FROM raw_data.eqkt
+            WHERE mandt = e.mandt AND equnr = e.equnr
+            ORDER BY (CASE WHEN spras = 'F' THEN 0 WHEN spras = 'E' THEN 1 ELSE 2 END)
+            LIMIT 1
+        ) kt_any ON TRUE
+        LEFT JOIN raw_data.equz ez2
+               ON ez2.mandt = e.mandt AND ez2.equnr = e.equnr AND ez2.datbi = '99991231'
+        LEFT JOIN raw_data.iloa il
+               ON il.mandt = ez2.mandt AND il.iloan = ez2.iloan
+    ) t
     LEFT JOIN raw_data.equz ez  ON ez.equnr = t.equnr AND ez.datbi = '99991231'
     LEFT JOIN raw_data.crhd cr  ON cr.objid = ez.gewrk
     LEFT JOIN raw_data.crtx ctx ON ctx.objid = cr.objid AND ctx.spras = 'F'

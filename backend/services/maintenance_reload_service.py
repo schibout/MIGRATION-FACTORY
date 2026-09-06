@@ -48,8 +48,18 @@ _ORPHAN_GRACE = '2 minutes'
 
 # Tables SAP a re-extraire pour reconstruire l'ecran IH02
 # (cf. sources de clean_data.load_maintenance_object).
+#
+# Cette liste ne contient QUE des tables transparentes SAP : les vues ne sont
+# pas extractibles de facon fiable (le connecteur en ramene une table vide, qui
+# masque ensuite la vraie source). Deux vues en ont ete retirees :
+#   - ITOB  : son extraction vide a stoppe la passe EQUIPMENT du chargeur et
+#             laisse 7 653 equipements sur 7 654 detaches de l'arbre IH02 ;
+#   - IFLO  : meme nature, elle n'apportait que ppsid (poste de charge).
+# clean_data.load_maintenance_object[_merge] lit desormais uniquement des
+# tables : les equipements viennent de EQUI + EQKT + EQUZ + ILOA, et ppsid de
+# ILOA via iflot.iloan. Ne rajouter ici aucune vue SAP.
 MAINTENANCE_SAP_TABLES = [
-    'IFLOT', 'IFLOS', 'IFLOTX', 'IFLO', 'ILOA', 'ITOB',
+    'IFLOT', 'IFLOS', 'IFLOTX', 'ILOA',
     'EQUI', 'EQKT', 'EQUZ', 'CRHD', 'CRTX',
     'MARA', 'MAKT', 'MAST', 'TPST', 'STKO', 'STPO',
 ]

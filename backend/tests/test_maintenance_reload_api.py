@@ -233,8 +233,17 @@ def test_restore_sans_snapshot_leve_une_erreur():
 
 
 def test_le_perimetre_d_extraction_couvre_les_sources_de_l_ecran_ih02():
-    for table in ('IFLOT', 'IFLOTX', 'ITOB', 'EQUZ', 'MARA', 'MAKT', 'STPO', 'TPST'):
+    for table in ('IFLOT', 'IFLOTX', 'ILOA', 'EQUI', 'EQKT', 'EQUZ',
+                  'MARA', 'MAKT', 'STPO', 'TPST'):
         assert table in jobs.MAINTENANCE_SAP_TABLES
+
+
+def test_aucune_vue_sap_n_est_extraite():
+    """ITOB et IFLO sont des vues SAP : les extraire cree une table vide qui
+    masque les vraies sources (ITOB avait detache 7 653 equipements de l'arbre
+    IH02). Le chargeur ne lit plus que des tables."""
+    for vue in ('ITOB', 'IFLO'):
+        assert vue not in jobs.MAINTENANCE_SAP_TABLES
 
 
 def test_rechargement_sauvegarde_avant_de_reconstruire():
