@@ -12,6 +12,12 @@
 --   2. Suppression des articles plaques qui ne sont pas migres, identifies par
 --      leur code (liste explicite ci-dessous).
 --
+-- 2026-09-05 : depuis la separation des sources par site, il y a DEUX tables de
+-- staging (raw_data.phl_article pour Saint-Jean, raw_data.phl_article_cs pour
+-- Castel). Les deux subissent le meme nettoyage. Les colonnes a vider ne sont
+-- declarees qu'UNE fois (c_colonnes_a_vider) et l'instruction est construite par
+-- format() pour chaque table : impossible que les deux sites divergent.
+--
 -- ATTENTION : cette procedure ECRIT dans raw_data, contrairement a la convention
 -- du projet (raw_data en lecture seule). C'est un choix explicite : les valeurs
 -- effacees et les lignes supprimees ne sont recuperables que par un reimport du
@@ -39,87 +45,78 @@ CREATE OR REPLACE PROCEDURE clean_data.nettoyer_phl_article()
 LANGUAGE plpgsql
 AS $procedure$
 DECLARE
+    -- Tables de staging PHL, une par site (cf. sources/v_phl_article_retenu.sql)
+    c_tables CONSTANT text[] := ARRAY['phl_article', 'phl_article_cs'];
+
     -- Articles plaques a ne pas migrer
     c_articles_exclus CONSTANT text[] := ARRAY[
         'FP-120004-S-1320-375-3670',
         'IP-120004-S-1320-375-3670'
     ];
-    v_lignes INTEGER := 0;
+
+    -- Les 31 colonnes non reprises dans IFS
+    c_colonnes_a_vider CONSTANT text[] := ARRAY[
+        'TRACABILITE LOTS',
+        'TRACABILITE LOTS_2',
+        'REGLE DE SERIE',
+        'REGLE DE SERIE_2',
+        'SUIVI DES SERIES',
+        'SUIVI DES SERIES_2',
+        'SUIVI SERIES APRES',
+        'SUIVI SERIES APRES_2',
+        'CONFIGURABLE',
+        'CONFIGURABLE_2',
+        'AUTORISE CD COND',
+        'AUTORISE CD COND_2',
+        'REGLE SOUS-LOT',
+        'REGLE SOUS-LOT_2',
+        'REGLE DU LOT',
+        'REGLE DU LOT_2',
+        'ARTICLE POSITION',
+        'ARTICLE POSITION_2',
+        'TRACAB. MULT NIV.',
+        'TRACAB. MULT NIV._2',
+        'REGLE LOT COMPOS.',
+        'REGLE LOT COMPOS._2',
+        'ARR.BC NUM SORTIS',
+        'ARR.BC NUM SORTIS_2',
+        'AUTOR. NON CONSOM.',
+        'AUTOR. NON CONSOM._2',
+        'RECEPT./SORTIE',
+        'RECEPT./SORTIE_2',
+        'AR.CREA.SERIE RMA',
+        'AR.CREA.SERIE RMA_2',
+        'GP PRINCP ARTICLE'
+    ];
+
+    v_table      text;
+    v_set        text;
+    v_where      text;
+    v_lignes     INTEGER := 0;
     v_supprimees INTEGER := 0;
 BEGIN
-    -- 1. Colonnes non reprises
-    UPDATE raw_data.phl_article
-    SET "TRACABILITE LOTS"    = NULL,
-        "TRACABILITE LOTS_2"  = NULL,
-        "REGLE DE SERIE"      = NULL,
-        "REGLE DE SERIE_2"    = NULL,
-        "SUIVI DES SERIES"    = NULL,
-        "SUIVI DES SERIES_2"  = NULL,
-        "SUIVI SERIES APRES"  = NULL,
-        "SUIVI SERIES APRES_2"= NULL,
-        "CONFIGURABLE"        = NULL,
-        "CONFIGURABLE_2"      = NULL,
-        "AUTORISE CD COND"    = NULL,
-        "AUTORISE CD COND_2"  = NULL,
-        "REGLE SOUS-LOT"      = NULL,
-        "REGLE SOUS-LOT_2"    = NULL,
-        "REGLE DU LOT"        = NULL,
-        "REGLE DU LOT_2"      = NULL,
-        "ARTICLE POSITION"    = NULL,
-        "ARTICLE POSITION_2"  = NULL,
-        "TRACAB. MULT NIV."   = NULL,
-        "TRACAB. MULT NIV._2" = NULL,
-        "REGLE LOT COMPOS."   = NULL,
-        "REGLE LOT COMPOS._2" = NULL,
-        "ARR.BC NUM SORTIS"   = NULL,
-        "ARR.BC NUM SORTIS_2" = NULL,
-        "AUTOR. NON CONSOM."  = NULL,
-        "AUTOR. NON CONSOM._2"= NULL,
-        "RECEPT./SORTIE"      = NULL,
-        "RECEPT./SORTIE_2"    = NULL,
-        "AR.CREA.SERIE RMA"   = NULL,
-        "AR.CREA.SERIE RMA_2" = NULL,
-        "GP PRINCP ARTICLE"   = NULL
-    WHERE "TRACABILITE LOTS"    IS NOT NULL
-       OR "TRACABILITE LOTS_2"  IS NOT NULL
-       OR "REGLE DE SERIE"      IS NOT NULL
-       OR "REGLE DE SERIE_2"    IS NOT NULL
-       OR "SUIVI DES SERIES"    IS NOT NULL
-       OR "SUIVI DES SERIES_2"  IS NOT NULL
-       OR "SUIVI SERIES APRES"  IS NOT NULL
-       OR "SUIVI SERIES APRES_2"IS NOT NULL
-       OR "CONFIGURABLE"        IS NOT NULL
-       OR "CONFIGURABLE_2"      IS NOT NULL
-       OR "AUTORISE CD COND"    IS NOT NULL
-       OR "AUTORISE CD COND_2"  IS NOT NULL
-       OR "REGLE SOUS-LOT"      IS NOT NULL
-       OR "REGLE SOUS-LOT_2"    IS NOT NULL
-       OR "REGLE DU LOT"        IS NOT NULL
-       OR "REGLE DU LOT_2"      IS NOT NULL
-       OR "ARTICLE POSITION"    IS NOT NULL
-       OR "ARTICLE POSITION_2"  IS NOT NULL
-       OR "TRACAB. MULT NIV."   IS NOT NULL
-       OR "TRACAB. MULT NIV._2" IS NOT NULL
-       OR "REGLE LOT COMPOS."   IS NOT NULL
-       OR "REGLE LOT COMPOS._2" IS NOT NULL
-       OR "ARR.BC NUM SORTIS"   IS NOT NULL
-       OR "ARR.BC NUM SORTIS_2" IS NOT NULL
-       OR "AUTOR. NON CONSOM."  IS NOT NULL
-       OR "AUTOR. NON CONSOM._2"IS NOT NULL
-       OR "RECEPT./SORTIE"      IS NOT NULL
-       OR "RECEPT./SORTIE_2"    IS NOT NULL
-       OR "AR.CREA.SERIE RMA"   IS NOT NULL
-       OR "AR.CREA.SERIE RMA_2" IS NOT NULL
-       OR "GP PRINCP ARTICLE"   IS NOT NULL;
-    GET DIAGNOSTICS v_lignes = ROW_COUNT;
+    -- Construction des listes SET / WHERE a partir de la seule liste de colonnes.
+    -- format('%I') gere les intitules a espaces et a points ("TRACAB. MULT NIV.").
+    SELECT string_agg(format('%I = NULL', c), ', '),
+           string_agg(format('%I IS NOT NULL', c), ' OR ')
+      INTO v_set, v_where
+      FROM unnest(c_colonnes_a_vider) AS c;
 
-    -- 2. Articles plaques non migres
-    DELETE FROM raw_data.phl_article
-    WHERE TRIM("N. ARTICLE") = ANY (c_articles_exclus);
-    GET DIAGNOSTICS v_supprimees = ROW_COUNT;
+    FOREACH v_table IN ARRAY c_tables LOOP
+        -- 1. Colonnes non reprises
+        EXECUTE format('UPDATE raw_data.%I SET %s WHERE %s', v_table, v_set, v_where);
+        GET DIAGNOSTICS v_lignes = ROW_COUNT;
 
-    RAISE NOTICE 'Nettoyage raw_data.phl_article : % ligne(s) videe(s) sur les 31 colonnes non reprises', v_lignes;
-    RAISE NOTICE 'Nettoyage raw_data.phl_article : % ligne(s) supprimee(s) pour les articles plaques %', v_supprimees, c_articles_exclus;
+        -- 2. Articles plaques non migres
+        EXECUTE format('DELETE FROM raw_data.%I WHERE TRIM("N. ARTICLE") = ANY ($1)', v_table)
+        USING c_articles_exclus;
+        GET DIAGNOSTICS v_supprimees = ROW_COUNT;
+
+        RAISE NOTICE 'Nettoyage raw_data.% : % ligne(s) videe(s) sur les 31 colonnes non reprises',
+            v_table, v_lignes;
+        RAISE NOTICE 'Nettoyage raw_data.% : % ligne(s) supprimee(s) pour les articles plaques %',
+            v_table, v_supprimees, c_articles_exclus;
+    END LOOP;
 END;
 $procedure$;
 

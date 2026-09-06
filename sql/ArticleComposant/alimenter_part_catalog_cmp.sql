@@ -14,9 +14,11 @@ AS $function$
 -- un article suivi par lot sur un site ne pouvant pas etre declare non suivi dans IFS.
 -- Le site de la ligne retenue pilote aussi le multilevel tracking (SJ = Tracking Off,
 -- CS = Tracking On), seule autre valeur du gabarit a diverger entre les deux sites.
--- Valeurs par defaut : gabarits metier ComposantSaintJean.csv / ComposantCastel.csv,
--- seedees en variantes COMPOSANT, COMPOSANT_SJ et COMPOSANT_CS (migrations 055 a 057)
--- et ajustables via /configuration/valeurs-defaut.
+-- Valeurs par defaut : matrice site x famille SEULE (public.get_matrix_value,
+-- migration 072), reglable dans /configuration/matrice-site-famille. Les gabarits
+-- metier ComposantSaintJean.csv / ComposantCastel.csv y ont ete repris : les
+-- ex-variantes COMPOSANT / COMPOSANT_SJ / COMPOSANT_CS (migrations 055 a 057) sont
+-- devenues des regles par famille et par (site, famille). Aucune regle -> NULL.
 DECLARE
     v_count_inserted INTEGER := 0;
     v_count_realigned INTEGER := 0;
@@ -75,7 +77,7 @@ BEGIN
         SUBSTRING(TRIM(COALESCE(NULLIF(TRIM(cmp.libelle_produit), ''), cmp.code_produit)), 1, 200) as description,
         -- language_description : meme libelle que description (gabarit metier)
         SUBSTRING(TRIM(COALESCE(NULLIF(TRIM(cmp.libelle_produit), ''), cmp.code_produit)), 1, 4000) as language_description,
-        public.get_default_value('clean_data.part_catalog', 'std_name_id', 'COMPOSANT')::numeric as std_name_id,
+        public.get_matrix_value('clean_data.part_catalog', 'std_name_id', p_contract, NULLIF(TRIM(cmp.famille), ''))::numeric as std_name_id,
         -- unit_code: unite via transcodification UOM (KG -> kg), sinon unite d'entree
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(TRIM(cmp.unite), '')),
@@ -83,7 +85,7 @@ BEGIN
             NULLIF(TRIM(cmp.unite), ''),
             'PCE'
         ), 1, 30) as unit_code,
-        public.get_default_value('clean_data.part_catalog', 'freight_factor', 'COMPOSANT')::numeric as freight_factor,
+        public.get_matrix_value('clean_data.part_catalog', 'freight_factor', p_contract, NULLIF(TRIM(cmp.famille), ''))::numeric as freight_factor,
         -- tracabilite_lot OUI/NON pilote le suivi par lot IFS (libelle + valeur _db)
         CASE WHEN UPPER(TRIM(COALESCE(cmp.tracabilite_lot, ''))) IN ('OUI', 'O', 'Y', 'YES', 'TRUE')
              THEN 'Lot Tracking'
@@ -93,46 +95,42 @@ BEGIN
              THEN 'LOT TRACKING'
              ELSE 'NOT LOT TRACKING'
         END as lot_tracking_code_db,
-        -- Valeurs par defaut parametrables via l'ecran /configuration/valeurs-defaut
-        -- (public.get_default_value)
-        public.get_default_value('clean_data.part_catalog', 'serial_rule', 'COMPOSANT') as serial_rule,
-        public.get_default_value('clean_data.part_catalog', 'serial_rule_db') as serial_rule_db,
-        public.get_default_value('clean_data.part_catalog', 'serial_tracking_code', 'COMPOSANT') as serial_tracking_code,
-        public.get_default_value('clean_data.part_catalog', 'serial_tracking_code_db') as serial_tracking_code_db,
-        public.get_default_value('clean_data.part_catalog', 'eng_serial_tracking_code', 'COMPOSANT') as eng_serial_tracking_code,
-        public.get_default_value('clean_data.part_catalog', 'eng_serial_tracking_code_db') as eng_serial_tracking_code_db,
-        public.get_default_value('clean_data.part_catalog', 'configurable', 'COMPOSANT') as configurable,
-        public.get_default_value('clean_data.part_catalog', 'configurable_db') as configurable_db,
+        -- Valeurs par defaut : matrice site x famille SEULE
+        -- (/configuration/matrice-site-famille, public.get_matrix_value)
+        public.get_matrix_value('clean_data.part_catalog', 'serial_rule', p_contract, NULLIF(TRIM(cmp.famille), '')) as serial_rule,
+        public.get_matrix_value('clean_data.part_catalog', 'serial_rule_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as serial_rule_db,
+        public.get_matrix_value('clean_data.part_catalog', 'serial_tracking_code', p_contract, NULLIF(TRIM(cmp.famille), '')) as serial_tracking_code,
+        public.get_matrix_value('clean_data.part_catalog', 'serial_tracking_code_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as serial_tracking_code_db,
+        public.get_matrix_value('clean_data.part_catalog', 'eng_serial_tracking_code', p_contract, NULLIF(TRIM(cmp.famille), '')) as eng_serial_tracking_code,
+        public.get_matrix_value('clean_data.part_catalog', 'eng_serial_tracking_code_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as eng_serial_tracking_code_db,
+        public.get_matrix_value('clean_data.part_catalog', 'configurable', p_contract, NULLIF(TRIM(cmp.famille), '')) as configurable,
+        public.get_matrix_value('clean_data.part_catalog', 'configurable_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as configurable_db,
         -- condition code usage : ALLOW sur Castel (regle metier), NOT_ALLOW sur
-        -- Saint-Jean (gabarit) -> variante par site, comme le multilevel tracking
-        public.get_default_value('clean_data.part_catalog', 'condition_code_usage',
-            'COMPOSANT_' || UPPER(TRIM(COALESCE(cmp.site, 'SJ')))) as condition_code_usage,
-        public.get_default_value('clean_data.part_catalog', 'condition_code_usage_db',
-            'COMPOSANT_' || UPPER(TRIM(COALESCE(cmp.site, 'SJ')))) as condition_code_usage_db,
-        public.get_default_value('clean_data.part_catalog', 'sub_lot_rule', 'COMPOSANT') as sub_lot_rule,
-        public.get_default_value('clean_data.part_catalog', 'sub_lot_rule_db') as sub_lot_rule_db,
-        public.get_default_value('clean_data.part_catalog', 'lot_quantity_rule', 'COMPOSANT') as lot_quantity_rule,
-        public.get_default_value('clean_data.part_catalog', 'lot_quantity_rule_db', 'COMPOSANT') as lot_quantity_rule_db,
-        public.get_default_value('clean_data.part_catalog', 'position_part', 'COMPOSANT') as position_part,
-        public.get_default_value('clean_data.part_catalog', 'position_part_db') as position_part_db,
-        public.get_default_value('clean_data.part_catalog', 'catch_unit_enabled', 'COMPOSANT') as catch_unit_enabled,
-        public.get_default_value('clean_data.part_catalog', 'catch_unit_enabled_db') as catch_unit_enabled_db,
+        -- Saint-Jean (gabarit) -> regles matrice par (site, famille), migration 072
+        public.get_matrix_value('clean_data.part_catalog', 'condition_code_usage', p_contract, NULLIF(TRIM(cmp.famille), '')) as condition_code_usage,
+        public.get_matrix_value('clean_data.part_catalog', 'condition_code_usage_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as condition_code_usage_db,
+        public.get_matrix_value('clean_data.part_catalog', 'sub_lot_rule', p_contract, NULLIF(TRIM(cmp.famille), '')) as sub_lot_rule,
+        public.get_matrix_value('clean_data.part_catalog', 'sub_lot_rule_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as sub_lot_rule_db,
+        public.get_matrix_value('clean_data.part_catalog', 'lot_quantity_rule', p_contract, NULLIF(TRIM(cmp.famille), '')) as lot_quantity_rule,
+        public.get_matrix_value('clean_data.part_catalog', 'lot_quantity_rule_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as lot_quantity_rule_db,
+        public.get_matrix_value('clean_data.part_catalog', 'position_part', p_contract, NULLIF(TRIM(cmp.famille), '')) as position_part,
+        public.get_matrix_value('clean_data.part_catalog', 'position_part_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as position_part_db,
+        public.get_matrix_value('clean_data.part_catalog', 'catch_unit_enabled', p_contract, NULLIF(TRIM(cmp.famille), '')) as catch_unit_enabled,
+        public.get_matrix_value('clean_data.part_catalog', 'catch_unit_enabled_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as catch_unit_enabled_db,
         -- multilevel tracking : seule valeur du gabarit qui diverge entre les deux
-        -- sites (SJ = Tracking Off, CS = Tracking On) -> variante par site
-        public.get_default_value('clean_data.part_catalog', 'multilevel_tracking',
-            'COMPOSANT_' || UPPER(TRIM(COALESCE(cmp.site, 'SJ')))) as multilevel_tracking,
-        public.get_default_value('clean_data.part_catalog', 'multilevel_tracking_db',
-            'COMPOSANT_' || UPPER(TRIM(COALESCE(cmp.site, 'SJ')))) as multilevel_tracking_db,
-        public.get_default_value('clean_data.part_catalog', 'component_lot_rule', 'COMPOSANT') as component_lot_rule,
-        public.get_default_value('clean_data.part_catalog', 'component_lot_rule_db', 'COMPOSANT') as component_lot_rule_db,
-        public.get_default_value('clean_data.part_catalog', 'stop_arrival_issued_serial', 'COMPOSANT') as stop_arrival_issued_serial,
-        public.get_default_value('clean_data.part_catalog', 'stop_arrival_issued_serial_db') as stop_arrival_issued_serial_db,
-        public.get_default_value('clean_data.part_catalog', 'allow_as_not_consumed', 'COMPOSANT') as allow_as_not_consumed,
-        public.get_default_value('clean_data.part_catalog', 'allow_as_not_consumed_db') as allow_as_not_consumed_db,
-        public.get_default_value('clean_data.part_catalog', 'receipt_issue_serial_track', 'COMPOSANT') as receipt_issue_serial_track,
-        public.get_default_value('clean_data.part_catalog', 'receipt_issue_serial_track_db') as receipt_issue_serial_track_db,
-        public.get_default_value('clean_data.part_catalog', 'stop_new_serial_in_rma', 'COMPOSANT') as stop_new_serial_in_rma,
-        public.get_default_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db') as stop_new_serial_in_rma_db
+        -- sites (SJ = Tracking Off, CS = Tracking On) -> regles matrice par (site, famille)
+        public.get_matrix_value('clean_data.part_catalog', 'multilevel_tracking', p_contract, NULLIF(TRIM(cmp.famille), '')) as multilevel_tracking,
+        public.get_matrix_value('clean_data.part_catalog', 'multilevel_tracking_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as multilevel_tracking_db,
+        public.get_matrix_value('clean_data.part_catalog', 'component_lot_rule', p_contract, NULLIF(TRIM(cmp.famille), '')) as component_lot_rule,
+        public.get_matrix_value('clean_data.part_catalog', 'component_lot_rule_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as component_lot_rule_db,
+        public.get_matrix_value('clean_data.part_catalog', 'stop_arrival_issued_serial', p_contract, NULLIF(TRIM(cmp.famille), '')) as stop_arrival_issued_serial,
+        public.get_matrix_value('clean_data.part_catalog', 'stop_arrival_issued_serial_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as stop_arrival_issued_serial_db,
+        public.get_matrix_value('clean_data.part_catalog', 'allow_as_not_consumed', p_contract, NULLIF(TRIM(cmp.famille), '')) as allow_as_not_consumed,
+        public.get_matrix_value('clean_data.part_catalog', 'allow_as_not_consumed_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as allow_as_not_consumed_db,
+        public.get_matrix_value('clean_data.part_catalog', 'receipt_issue_serial_track', p_contract, NULLIF(TRIM(cmp.famille), '')) as receipt_issue_serial_track,
+        public.get_matrix_value('clean_data.part_catalog', 'receipt_issue_serial_track_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as receipt_issue_serial_track_db,
+        public.get_matrix_value('clean_data.part_catalog', 'stop_new_serial_in_rma', p_contract, NULLIF(TRIM(cmp.famille), '')) as stop_new_serial_in_rma,
+        public.get_matrix_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as stop_new_serial_in_rma_db
     FROM raw_data.composant_sj_cs cmp
     WHERE cmp.code_produit IS NOT NULL
       AND TRIM(cmp.code_produit) != ''
@@ -161,89 +159,87 @@ BEGIN
                    NULLIF(TRIM(cmp.unite), ''),
                    'PCE'
                ), 1, 30) as unit_code,
-               public.get_default_value('clean_data.part_catalog', 'multilevel_tracking',
-                   'COMPOSANT_' || UPPER(TRIM(COALESCE(cmp.site, 'SJ')))) as multilevel_tracking,
-               public.get_default_value('clean_data.part_catalog', 'multilevel_tracking_db',
-                   'COMPOSANT_' || UPPER(TRIM(COALESCE(cmp.site, 'SJ')))) as multilevel_tracking_db,
-               public.get_default_value('clean_data.part_catalog', 'condition_code_usage',
-                   'COMPOSANT_' || UPPER(TRIM(COALESCE(cmp.site, 'SJ')))) as condition_code_usage,
-               public.get_default_value('clean_data.part_catalog', 'condition_code_usage_db',
-                   'COMPOSANT_' || UPPER(TRIM(COALESCE(cmp.site, 'SJ')))) as condition_code_usage_db
+               public.get_matrix_value('clean_data.part_catalog', 'multilevel_tracking', p_contract, NULLIF(TRIM(cmp.famille), '')) as multilevel_tracking,
+               public.get_matrix_value('clean_data.part_catalog', 'multilevel_tracking_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as multilevel_tracking_db,
+               public.get_matrix_value('clean_data.part_catalog', 'condition_code_usage', p_contract, NULLIF(TRIM(cmp.famille), '')) as condition_code_usage,
+               public.get_matrix_value('clean_data.part_catalog', 'condition_code_usage_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as condition_code_usage_db,
+               -- Valeurs de la matrice : elles dependent de la famille de la ligne
+               -- source, elles doivent donc etre calculees ICI, ou l'alias cmp
+               -- existe. Elles vivaient dans une CTE `def` SANS FROM, ce qui n'etait
+               -- valable que tant qu'il s'agissait de constantes (migration 072).
+               public.get_matrix_value('clean_data.part_catalog', 'std_name_id', p_contract, NULLIF(TRIM(cmp.famille), ''))::numeric as std_name_id,
+               public.get_matrix_value('clean_data.part_catalog', 'freight_factor', p_contract, NULLIF(TRIM(cmp.famille), ''))::numeric as freight_factor,
+               public.get_matrix_value('clean_data.part_catalog', 'serial_rule', p_contract, NULLIF(TRIM(cmp.famille), '')) as serial_rule,
+               public.get_matrix_value('clean_data.part_catalog', 'serial_rule_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as serial_rule_db,
+               public.get_matrix_value('clean_data.part_catalog', 'serial_tracking_code', p_contract, NULLIF(TRIM(cmp.famille), '')) as serial_tracking_code,
+               public.get_matrix_value('clean_data.part_catalog', 'serial_tracking_code_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as serial_tracking_code_db,
+               public.get_matrix_value('clean_data.part_catalog', 'eng_serial_tracking_code', p_contract, NULLIF(TRIM(cmp.famille), '')) as eng_serial_tracking_code,
+               public.get_matrix_value('clean_data.part_catalog', 'eng_serial_tracking_code_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as eng_serial_tracking_code_db,
+               public.get_matrix_value('clean_data.part_catalog', 'configurable', p_contract, NULLIF(TRIM(cmp.famille), '')) as configurable,
+               public.get_matrix_value('clean_data.part_catalog', 'configurable_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as configurable_db,
+               public.get_matrix_value('clean_data.part_catalog', 'sub_lot_rule', p_contract, NULLIF(TRIM(cmp.famille), '')) as sub_lot_rule,
+               public.get_matrix_value('clean_data.part_catalog', 'sub_lot_rule_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as sub_lot_rule_db,
+               public.get_matrix_value('clean_data.part_catalog', 'lot_quantity_rule', p_contract, NULLIF(TRIM(cmp.famille), '')) as lot_quantity_rule,
+               public.get_matrix_value('clean_data.part_catalog', 'lot_quantity_rule_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as lot_quantity_rule_db,
+               public.get_matrix_value('clean_data.part_catalog', 'position_part', p_contract, NULLIF(TRIM(cmp.famille), '')) as position_part,
+               public.get_matrix_value('clean_data.part_catalog', 'position_part_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as position_part_db,
+               public.get_matrix_value('clean_data.part_catalog', 'catch_unit_enabled', p_contract, NULLIF(TRIM(cmp.famille), '')) as catch_unit_enabled,
+               public.get_matrix_value('clean_data.part_catalog', 'catch_unit_enabled_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as catch_unit_enabled_db,
+               public.get_matrix_value('clean_data.part_catalog', 'component_lot_rule', p_contract, NULLIF(TRIM(cmp.famille), '')) as component_lot_rule,
+               public.get_matrix_value('clean_data.part_catalog', 'component_lot_rule_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as component_lot_rule_db,
+               public.get_matrix_value('clean_data.part_catalog', 'stop_arrival_issued_serial', p_contract, NULLIF(TRIM(cmp.famille), '')) as stop_arrival_issued_serial,
+               public.get_matrix_value('clean_data.part_catalog', 'stop_arrival_issued_serial_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as stop_arrival_issued_serial_db,
+               public.get_matrix_value('clean_data.part_catalog', 'allow_as_not_consumed', p_contract, NULLIF(TRIM(cmp.famille), '')) as allow_as_not_consumed,
+               public.get_matrix_value('clean_data.part_catalog', 'allow_as_not_consumed_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as allow_as_not_consumed_db,
+               public.get_matrix_value('clean_data.part_catalog', 'receipt_issue_serial_track', p_contract, NULLIF(TRIM(cmp.famille), '')) as receipt_issue_serial_track,
+               public.get_matrix_value('clean_data.part_catalog', 'receipt_issue_serial_track_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as receipt_issue_serial_track_db,
+               public.get_matrix_value('clean_data.part_catalog', 'stop_new_serial_in_rma', p_contract, NULLIF(TRIM(cmp.famille), '')) as stop_new_serial_in_rma,
+               public.get_matrix_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db', p_contract, NULLIF(TRIM(cmp.famille), '')) as stop_new_serial_in_rma_db
         FROM raw_data.composant_sj_cs cmp
         WHERE cmp.code_produit IS NOT NULL
           AND TRIM(cmp.code_produit) != ''
         ORDER BY TRIM(cmp.code_produit),
                  (UPPER(TRIM(COALESCE(cmp.tracabilite_lot, ''))) IN ('OUI', 'O', 'Y', 'YES', 'TRUE')) DESC,
                  cmp.site
-    ), def AS (
-        SELECT
-            public.get_default_value('clean_data.part_catalog', 'std_name_id', 'COMPOSANT')::numeric as std_name_id,
-            public.get_default_value('clean_data.part_catalog', 'freight_factor', 'COMPOSANT')::numeric as freight_factor,
-            public.get_default_value('clean_data.part_catalog', 'serial_rule', 'COMPOSANT') as serial_rule,
-            public.get_default_value('clean_data.part_catalog', 'serial_rule_db') as serial_rule_db,
-            public.get_default_value('clean_data.part_catalog', 'serial_tracking_code', 'COMPOSANT') as serial_tracking_code,
-            public.get_default_value('clean_data.part_catalog', 'serial_tracking_code_db') as serial_tracking_code_db,
-            public.get_default_value('clean_data.part_catalog', 'eng_serial_tracking_code', 'COMPOSANT') as eng_serial_tracking_code,
-            public.get_default_value('clean_data.part_catalog', 'eng_serial_tracking_code_db') as eng_serial_tracking_code_db,
-            public.get_default_value('clean_data.part_catalog', 'configurable', 'COMPOSANT') as configurable,
-            public.get_default_value('clean_data.part_catalog', 'configurable_db') as configurable_db,
-            public.get_default_value('clean_data.part_catalog', 'sub_lot_rule', 'COMPOSANT') as sub_lot_rule,
-            public.get_default_value('clean_data.part_catalog', 'sub_lot_rule_db') as sub_lot_rule_db,
-            public.get_default_value('clean_data.part_catalog', 'lot_quantity_rule', 'COMPOSANT') as lot_quantity_rule,
-            public.get_default_value('clean_data.part_catalog', 'lot_quantity_rule_db', 'COMPOSANT') as lot_quantity_rule_db,
-            public.get_default_value('clean_data.part_catalog', 'position_part', 'COMPOSANT') as position_part,
-            public.get_default_value('clean_data.part_catalog', 'position_part_db') as position_part_db,
-            public.get_default_value('clean_data.part_catalog', 'catch_unit_enabled', 'COMPOSANT') as catch_unit_enabled,
-            public.get_default_value('clean_data.part_catalog', 'catch_unit_enabled_db') as catch_unit_enabled_db,
-            public.get_default_value('clean_data.part_catalog', 'component_lot_rule', 'COMPOSANT') as component_lot_rule,
-            public.get_default_value('clean_data.part_catalog', 'component_lot_rule_db', 'COMPOSANT') as component_lot_rule_db,
-            public.get_default_value('clean_data.part_catalog', 'stop_arrival_issued_serial', 'COMPOSANT') as stop_arrival_issued_serial,
-            public.get_default_value('clean_data.part_catalog', 'stop_arrival_issued_serial_db') as stop_arrival_issued_serial_db,
-            public.get_default_value('clean_data.part_catalog', 'allow_as_not_consumed', 'COMPOSANT') as allow_as_not_consumed,
-            public.get_default_value('clean_data.part_catalog', 'allow_as_not_consumed_db') as allow_as_not_consumed_db,
-            public.get_default_value('clean_data.part_catalog', 'receipt_issue_serial_track', 'COMPOSANT') as receipt_issue_serial_track,
-            public.get_default_value('clean_data.part_catalog', 'receipt_issue_serial_track_db') as receipt_issue_serial_track_db,
-            public.get_default_value('clean_data.part_catalog', 'stop_new_serial_in_rma', 'COMPOSANT') as stop_new_serial_in_rma,
-            public.get_default_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db') as stop_new_serial_in_rma_db
     )
     UPDATE clean_data.part_catalog pc
     SET unit_code = src.unit_code,
         lot_tracking_code = CASE WHEN src.suivi_lot THEN 'Lot Tracking' ELSE 'Not Lot Tracking' END,
         lot_tracking_code_db = CASE WHEN src.suivi_lot THEN 'LOT TRACKING' ELSE 'NOT LOT TRACKING' END,
         language_description = SUBSTRING(pc.description, 1, 4000),
-        std_name_id = def.std_name_id,
-        freight_factor = def.freight_factor,
-        serial_rule = def.serial_rule,
-        serial_rule_db = def.serial_rule_db,
-        serial_tracking_code = def.serial_tracking_code,
-        serial_tracking_code_db = def.serial_tracking_code_db,
-        eng_serial_tracking_code = def.eng_serial_tracking_code,
-        eng_serial_tracking_code_db = def.eng_serial_tracking_code_db,
-        configurable = def.configurable,
-        configurable_db = def.configurable_db,
+        std_name_id = src.std_name_id,
+        freight_factor = src.freight_factor,
+        serial_rule = src.serial_rule,
+        serial_rule_db = src.serial_rule_db,
+        serial_tracking_code = src.serial_tracking_code,
+        serial_tracking_code_db = src.serial_tracking_code_db,
+        eng_serial_tracking_code = src.eng_serial_tracking_code,
+        eng_serial_tracking_code_db = src.eng_serial_tracking_code_db,
+        configurable = src.configurable,
+        configurable_db = src.configurable_db,
         condition_code_usage = src.condition_code_usage,
         condition_code_usage_db = src.condition_code_usage_db,
-        sub_lot_rule = def.sub_lot_rule,
-        sub_lot_rule_db = def.sub_lot_rule_db,
-        lot_quantity_rule = def.lot_quantity_rule,
-        lot_quantity_rule_db = def.lot_quantity_rule_db,
-        position_part = def.position_part,
-        position_part_db = def.position_part_db,
-        catch_unit_enabled = def.catch_unit_enabled,
-        catch_unit_enabled_db = def.catch_unit_enabled_db,
+        sub_lot_rule = src.sub_lot_rule,
+        sub_lot_rule_db = src.sub_lot_rule_db,
+        lot_quantity_rule = src.lot_quantity_rule,
+        lot_quantity_rule_db = src.lot_quantity_rule_db,
+        position_part = src.position_part,
+        position_part_db = src.position_part_db,
+        catch_unit_enabled = src.catch_unit_enabled,
+        catch_unit_enabled_db = src.catch_unit_enabled_db,
         multilevel_tracking = src.multilevel_tracking,
         multilevel_tracking_db = src.multilevel_tracking_db,
-        component_lot_rule = def.component_lot_rule,
-        component_lot_rule_db = def.component_lot_rule_db,
-        stop_arrival_issued_serial = def.stop_arrival_issued_serial,
-        stop_arrival_issued_serial_db = def.stop_arrival_issued_serial_db,
-        allow_as_not_consumed = def.allow_as_not_consumed,
-        allow_as_not_consumed_db = def.allow_as_not_consumed_db,
-        receipt_issue_serial_track = def.receipt_issue_serial_track,
-        receipt_issue_serial_track_db = def.receipt_issue_serial_track_db,
-        stop_new_serial_in_rma = def.stop_new_serial_in_rma,
-        stop_new_serial_in_rma_db = def.stop_new_serial_in_rma_db
-    FROM src, def
+        component_lot_rule = src.component_lot_rule,
+        component_lot_rule_db = src.component_lot_rule_db,
+        stop_arrival_issued_serial = src.stop_arrival_issued_serial,
+        stop_arrival_issued_serial_db = src.stop_arrival_issued_serial_db,
+        allow_as_not_consumed = src.allow_as_not_consumed,
+        allow_as_not_consumed_db = src.allow_as_not_consumed_db,
+        receipt_issue_serial_track = src.receipt_issue_serial_track,
+        receipt_issue_serial_track_db = src.receipt_issue_serial_track_db,
+        stop_new_serial_in_rma = src.stop_new_serial_in_rma,
+        stop_new_serial_in_rma_db = src.stop_new_serial_in_rma_db
+    FROM src
     WHERE pc.part_no = src.part_no
       AND (pc.unit_code,
            pc.lot_tracking_code,
@@ -270,22 +266,22 @@ BEGIN
            CASE WHEN src.suivi_lot THEN 'Lot Tracking' ELSE 'Not Lot Tracking' END,
            CASE WHEN src.suivi_lot THEN 'LOT TRACKING' ELSE 'NOT LOT TRACKING' END,
            SUBSTRING(pc.description, 1, 4000),
-           def.std_name_id, def.freight_factor,
-           def.serial_rule, def.serial_rule_db,
-           def.serial_tracking_code, def.serial_tracking_code_db,
-           def.eng_serial_tracking_code, def.eng_serial_tracking_code_db,
-           def.configurable, def.configurable_db,
+           src.std_name_id, src.freight_factor,
+           src.serial_rule, src.serial_rule_db,
+           src.serial_tracking_code, src.serial_tracking_code_db,
+           src.eng_serial_tracking_code, src.eng_serial_tracking_code_db,
+           src.configurable, src.configurable_db,
            src.condition_code_usage, src.condition_code_usage_db,
-           def.sub_lot_rule, def.sub_lot_rule_db,
-           def.lot_quantity_rule, def.lot_quantity_rule_db,
-           def.position_part, def.position_part_db,
-           def.catch_unit_enabled, def.catch_unit_enabled_db,
+           src.sub_lot_rule, src.sub_lot_rule_db,
+           src.lot_quantity_rule, src.lot_quantity_rule_db,
+           src.position_part, src.position_part_db,
+           src.catch_unit_enabled, src.catch_unit_enabled_db,
            src.multilevel_tracking, src.multilevel_tracking_db,
-           def.component_lot_rule, def.component_lot_rule_db,
-           def.stop_arrival_issued_serial, def.stop_arrival_issued_serial_db,
-           def.allow_as_not_consumed, def.allow_as_not_consumed_db,
-           def.receipt_issue_serial_track, def.receipt_issue_serial_track_db,
-           def.stop_new_serial_in_rma, def.stop_new_serial_in_rma_db);
+           src.component_lot_rule, src.component_lot_rule_db,
+           src.stop_arrival_issued_serial, src.stop_arrival_issued_serial_db,
+           src.allow_as_not_consumed, src.allow_as_not_consumed_db,
+           src.receipt_issue_serial_track, src.receipt_issue_serial_track_db,
+           src.stop_new_serial_in_rma, src.stop_new_serial_in_rma_db);
     GET DIAGNOSTICS v_count_realigned = ROW_COUNT;
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;

@@ -231,6 +231,10 @@ BEGIN
         marc.werks IN ('9200', '9000')
         AND mara.lvorm IS NULL
         AND TRIM(mara.matnr) != ''
+        -- Types de service exclus de l'article d'inventaire : DIEN (prestation de
+        -- service) et NLAG (article non stocke). Meme filtre dans
+        -- alimenter_inventory_part_planning().
+        AND mara.mtart NOT IN ('DIEN', 'NLAG')
         -- Garantir que l'article existe dans part_catalog (table de base) avant insertion
         AND EXISTS (
             SELECT 1 FROM clean_data.part_catalog pc

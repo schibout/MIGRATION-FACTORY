@@ -1,6 +1,7 @@
-"""Paramétrage de l'écran Matrice Site × Famille (migration 067).
+"""Paramétrage de l'écran Matrice Site × Famille (migrations 067, 070).
 
-Deux référentiels édités depuis Configuration > Paramètres de la matrice :
+Trois référentiels édités depuis Configuration > Paramètres de la matrice :
+  * les sites (contracts) proposés en groupes de colonnes ;
   * les familles d'articles proposées en colonnes (code, libellé, description) ;
   * les tables cibles proposées dans le sélecteur.
 
@@ -11,7 +12,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from models import db, EtlPartFamily, EtlMatrixTargetTable, EtlDefaultValueMatrix
+from models import (db, EtlPartFamily, EtlMatrixTargetTable, EtlDefaultValueMatrix,
+                    EtlPartTypeMatrix, EtlSite)
 
 matrix_settings_blueprint = Blueprint('matrix_settings', __name__)
 
@@ -39,6 +41,153 @@ def _familles_dans_les_donnees():
     except SQLAlchemyError:
         db.session.rollback()
         return []
+
+
+def _sites_dans_les_donnees():
+    """Sites reellement presents, toutes origines confondues.
+
+    Sert a signaler un site utilise mais non declare. Trois origines : deja
+    charge dans clean_data, livre dans le fichier PHL, ou deja porteur d'une
+    regle de la matrice. Chaque requete est isolee : une table absente ne doit
+    pas vider la liste entiere.
+    """
+    codes = []
+    for sql in (
+        "SELECT DISTINCT contract FROM clean_data.inventory_part "
+        "WHERE contract IS NOT NULL ORDER BY 1",
+        "SELECT DISTINCT site FROM raw_data.v_phl_article_retenu "
+        "WHERE site IS NOT NULL ORDER BY 1",
+        "SELECT DISTINCT contract FROM public.etl_default_value_matrix "
+        "WHERE contract IS NOT NULL "
+        "UNION SELECT DISTINCT contract FROM public.etl_part_type_matrix "
+        "WHERE contract IS NOT NULL ORDER BY 1",
+    ):
+        try:
+            codes.extend(r[0] for r in db.session.execute(text(sql)))
+        except SQLAlchemyError:
+            db.session.rollback()
+    return sorted({c.strip() for c in codes if c and c.strip()})
+
+
+def _regles_du_site(code):
+    """Nombre de regles de la matrice portant sur ce site (deux volets)."""
+    return (EtlDefaultValueMatrix.query.filter_by(contract=code).count()
+            + EtlPartTypeMatrix.query.filter_by(contract=code).count())
+
+
+# ===========================================================================
+# Sites (contracts)
+# ===========================================================================
+@matrix_settings_blueprint.route('/matrix/sites', methods=['GET'])
+@jwt_required()
+def list_sites():
+    """Sites declares + codes vus ailleurs (pour les signaler)."""
+    try:
+        rows = EtlSite.query.order_by(EtlSite.ordre, EtlSite.code).all()
+        return jsonify({
+            'sites': [r.to_dict() for r in rows],
+            'total': len(rows),
+            'detectes': _sites_dans_les_donnees(),
+        }), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erreur liste sites: {e}")
+        return jsonify({"error": "Erreur lors de la récupération des sites"}), 500
+
+
+@matrix_settings_blueprint.route('/matrix/sites', methods=['POST'])
+@jwt_required()
+def create_site():
+    data = request.get_json() or {}
+    code = _texte(data.get('code'))
+    if not code:
+        return jsonify({"error": "Le code du site est obligatoire"}), 400
+    try:
+        site = EtlSite(
+            code=code,
+            libelle=_texte(data.get('libelle')),
+            description=_texte(data.get('description')),
+            ordre=int(data.get('ordre') or 100),
+            is_active=bool(data.get('is_active', True)),
+            created_by=get_jwt_identity(),
+            updated_by=get_jwt_identity(),
+        )
+        db.session.add(site)
+        db.session.commit()
+        return jsonify(site.to_dict()), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": f"Le site {code} est déjà déclaré"}), 409
+    except (SQLAlchemyError, ValueError) as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erreur création site: {e}")
+        return jsonify({"error": "Erreur lors de la création du site"}), 500
+
+
+@matrix_settings_blueprint.route('/matrix/sites/<int:site_id>', methods=['PUT'])
+@jwt_required()
+def update_site(site_id):
+    """Le code n'est modifiable que tant qu'aucune règle ne l'utilise.
+
+    etl_default_value_matrix.contract stocke le code en clair, sans clé
+    étrangère : renommer ici laisserait les règles pointer sur un site disparu.
+    """
+    site = EtlSite.query.get(site_id)
+    if site is None:
+        return jsonify({"error": "Site introuvable"}), 404
+    data = request.get_json() or {}
+    try:
+        nouveau_code = _texte(data.get('code'))
+        if nouveau_code and nouveau_code != site.code:
+            utilise = _regles_du_site(site.code)
+            if utilise:
+                return jsonify({"error":
+                    f"Impossible de renommer {site.code} : {utilise} règle(s) de la matrice "
+                    f"l'utilisent. Supprimez-les d'abord, ou créez un nouveau site."
+                }), 409
+            site.code = nouveau_code
+        if 'libelle' in data:
+            site.libelle = _texte(data.get('libelle'))
+        if 'description' in data:
+            site.description = _texte(data.get('description'))
+        if 'ordre' in data:
+            site.ordre = int(data['ordre'] or 100)
+        if 'is_active' in data:
+            site.is_active = bool(data['is_active'])
+        site.updated_by = get_jwt_identity()
+        db.session.commit()
+        return jsonify(site.to_dict()), 200
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Ce code de site est déjà utilisé"}), 409
+    except (SQLAlchemyError, ValueError) as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erreur update site {site_id}: {e}")
+        return jsonify({"error": "Erreur lors de la mise à jour du site"}), 500
+
+
+@matrix_settings_blueprint.route('/matrix/sites/<int:site_id>', methods=['DELETE'])
+@jwt_required()
+def delete_site(site_id):
+    """Refus si des règles portent sur ce site : elles deviendraient
+    invisibles dans la grille tout en restant appliquées par l'ETL."""
+    site = EtlSite.query.get(site_id)
+    if site is None:
+        return jsonify({"error": "Site introuvable"}), 404
+    try:
+        utilise = _regles_du_site(site.code)
+        if utilise:
+            return jsonify({"error":
+                f"Impossible de supprimer {site.code} : {utilise} règle(s) de la matrice "
+                f"l'utilisent. Désactivez le site pour le retirer de la grille sans perdre les règles."
+            }), 409
+        db.session.delete(site)
+        db.session.commit()
+        return jsonify({"message": "Site supprimé"}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erreur suppression site {site_id}: {e}")
+        return jsonify({"error": "Erreur lors de la suppression du site"}), 500
 
 
 # ===========================================================================

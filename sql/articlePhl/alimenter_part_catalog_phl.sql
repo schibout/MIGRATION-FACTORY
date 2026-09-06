@@ -40,7 +40,39 @@ BEGIN
         stop_arrival_issued_serial_db,
         allow_as_not_consumed_db,
         receipt_issue_serial_track_db,
-        stop_new_serial_in_rma_db
+        stop_new_serial_in_rma_db,
+        std_name_id,
+        language_description,
+        info_text,
+        lot_tracking_code,
+        serial_rule,
+        serial_tracking_code,
+        eng_serial_tracking_code,
+        configurable,
+        condition_code_usage,
+        sub_lot_rule,
+        position_part,
+        catch_unit_enabled,
+        multilevel_tracking,
+        component_lot_rule,
+        stop_arrival_issued_serial,
+        allow_as_not_consumed,
+        receipt_issue_serial_track,
+        stop_new_serial_in_rma,
+        product_type_classif,
+        part_main_group,
+        cust_warranty_id,
+        sup_warranty_id,
+        input_unit_meas_group_id,
+        weight_net,
+        uom_for_weight_net,
+        volume_net,
+        uom_for_volume_net,
+        freight_factor,
+        technical_drawing_no,
+        product_type_classif_db,
+        cest_code,
+        fci_code
     )
     SELECT DISTINCT ON (TRIM(phl."N. ARTICLE"))
         -- part_no: N. ARTICLE = cle des articles PHL
@@ -63,32 +95,67 @@ BEGIN
         -- Suivi par lot : sur le site Castel TOUS les articles sont suivis par lot
         -- (regle metier), y compris les rebuts. Sur Saint-Jean, les articles de type
         -- rebut (FORME contient REBUT) ne le sont pas.
-        -- Valeurs par defaut parametrables via l'ecran /configuration/valeurs-defaut
-        -- (public.get_default_value)
+        -- Valeurs par defaut : matrice site x famille SEULE
+        -- (/configuration/matrice-site-famille, public.get_matrix_value)
         CASE
             WHEN p_contract = 'CS'
-                THEN public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+                THEN public.get_matrix_value('clean_data.part_catalog', 'lot_tracking_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))
             WHEN UPPER(COALESCE(phl."FORME", '')) LIKE '%REBUT%' THEN 'NOT LOT TRACKING'
-            ELSE public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+            ELSE public.get_matrix_value('clean_data.part_catalog', 'lot_tracking_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))
         END as lot_tracking_code_db,
-        public.get_default_value('clean_data.part_catalog', 'serial_rule_db') as serial_rule_db,
-        public.get_default_value('clean_data.part_catalog', 'serial_tracking_code_db') as serial_tracking_code_db,
-        public.get_default_value('clean_data.part_catalog', 'eng_serial_tracking_code_db') as eng_serial_tracking_code_db,
-        public.get_default_value('clean_data.part_catalog', 'configurable_db') as configurable_db,
-        public.get_default_value('clean_data.part_catalog', 'condition_code_usage_db') as condition_code_usage_db,
-        public.get_default_value('clean_data.part_catalog', 'sub_lot_rule_db') as sub_lot_rule_db,
-        public.get_default_value('clean_data.part_catalog', 'lot_quantity_rule_db') as lot_quantity_rule_db,
-        public.get_default_value('clean_data.part_catalog', 'position_part_db') as position_part_db,
-        public.get_default_value('clean_data.part_catalog', 'catch_unit_enabled_db') as catch_unit_enabled_db,
-        public.get_default_value('clean_data.part_catalog', 'multilevel_tracking_db') as multilevel_tracking_db,
-        public.get_default_value('clean_data.part_catalog', 'component_lot_rule_db', 'ARTICLEPHL') as component_lot_rule_db,
-        public.get_default_value('clean_data.part_catalog', 'stop_arrival_issued_serial_db') as stop_arrival_issued_serial_db,
-        public.get_default_value('clean_data.part_catalog', 'allow_as_not_consumed_db') as allow_as_not_consumed_db,
-        public.get_default_value('clean_data.part_catalog', 'receipt_issue_serial_track_db') as receipt_issue_serial_track_db,
-        public.get_default_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db') as stop_new_serial_in_rma_db
+        public.get_matrix_value('clean_data.part_catalog', 'serial_rule_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as serial_rule_db,
+        public.get_matrix_value('clean_data.part_catalog', 'serial_tracking_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as serial_tracking_code_db,
+        public.get_matrix_value('clean_data.part_catalog', 'eng_serial_tracking_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as eng_serial_tracking_code_db,
+        public.get_matrix_value('clean_data.part_catalog', 'configurable_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as configurable_db,
+        public.get_matrix_value('clean_data.part_catalog', 'condition_code_usage_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as condition_code_usage_db,
+        public.get_matrix_value('clean_data.part_catalog', 'sub_lot_rule_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as sub_lot_rule_db,
+        public.get_matrix_value('clean_data.part_catalog', 'lot_quantity_rule_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as lot_quantity_rule_db,
+        public.get_matrix_value('clean_data.part_catalog', 'position_part_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as position_part_db,
+        public.get_matrix_value('clean_data.part_catalog', 'catch_unit_enabled_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as catch_unit_enabled_db,
+        public.get_matrix_value('clean_data.part_catalog', 'multilevel_tracking_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as multilevel_tracking_db,
+        public.get_matrix_value('clean_data.part_catalog', 'component_lot_rule_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as component_lot_rule_db,
+        public.get_matrix_value('clean_data.part_catalog', 'stop_arrival_issued_serial_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as stop_arrival_issued_serial_db,
+        public.get_matrix_value('clean_data.part_catalog', 'allow_as_not_consumed_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as allow_as_not_consumed_db,
+        public.get_matrix_value('clean_data.part_catalog', 'receipt_issue_serial_track_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as receipt_issue_serial_track_db,
+        public.get_matrix_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as stop_new_serial_in_rma_db,
     -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
+        -- Colonnes non alimentees par le fichier PHL : valeur pilotee par
+        -- l'ecran /configuration/valeurs-defaut (variante ARTICLEPHL).
+        NULLIF(public.get_matrix_value('clean_data.part_catalog', 'std_name_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')), '')::numeric as std_name_id,
+        public.get_matrix_value('clean_data.part_catalog', 'language_description', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as language_description,
+        public.get_matrix_value('clean_data.part_catalog', 'info_text', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as info_text,
+        public.get_matrix_value('clean_data.part_catalog', 'lot_tracking_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as lot_tracking_code,
+        public.get_matrix_value('clean_data.part_catalog', 'serial_rule', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as serial_rule,
+        public.get_matrix_value('clean_data.part_catalog', 'serial_tracking_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as serial_tracking_code,
+        public.get_matrix_value('clean_data.part_catalog', 'eng_serial_tracking_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as eng_serial_tracking_code,
+        public.get_matrix_value('clean_data.part_catalog', 'configurable', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as configurable,
+        public.get_matrix_value('clean_data.part_catalog', 'condition_code_usage', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as condition_code_usage,
+        public.get_matrix_value('clean_data.part_catalog', 'sub_lot_rule', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as sub_lot_rule,
+        public.get_matrix_value('clean_data.part_catalog', 'position_part', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as position_part,
+        public.get_matrix_value('clean_data.part_catalog', 'catch_unit_enabled', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as catch_unit_enabled,
+        public.get_matrix_value('clean_data.part_catalog', 'multilevel_tracking', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as multilevel_tracking,
+        public.get_matrix_value('clean_data.part_catalog', 'component_lot_rule', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as component_lot_rule,
+        public.get_matrix_value('clean_data.part_catalog', 'stop_arrival_issued_serial', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as stop_arrival_issued_serial,
+        public.get_matrix_value('clean_data.part_catalog', 'allow_as_not_consumed', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as allow_as_not_consumed,
+        public.get_matrix_value('clean_data.part_catalog', 'receipt_issue_serial_track', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as receipt_issue_serial_track,
+        public.get_matrix_value('clean_data.part_catalog', 'stop_new_serial_in_rma', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as stop_new_serial_in_rma,
+        public.get_matrix_value('clean_data.part_catalog', 'product_type_classif', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as product_type_classif,
+        public.get_matrix_value('clean_data.part_catalog', 'part_main_group', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as part_main_group,
+        NULLIF(public.get_matrix_value('clean_data.part_catalog', 'cust_warranty_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')), '')::numeric as cust_warranty_id,
+        NULLIF(public.get_matrix_value('clean_data.part_catalog', 'sup_warranty_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')), '')::numeric as sup_warranty_id,
+        public.get_matrix_value('clean_data.part_catalog', 'input_unit_meas_group_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as input_unit_meas_group_id,
+        NULLIF(public.get_matrix_value('clean_data.part_catalog', 'weight_net', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')), '')::numeric as weight_net,
+        public.get_matrix_value('clean_data.part_catalog', 'uom_for_weight_net', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as uom_for_weight_net,
+        NULLIF(public.get_matrix_value('clean_data.part_catalog', 'volume_net', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')), '')::numeric as volume_net,
+        public.get_matrix_value('clean_data.part_catalog', 'uom_for_volume_net', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as uom_for_volume_net,
+        NULLIF(public.get_matrix_value('clean_data.part_catalog', 'freight_factor', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')), '')::numeric as freight_factor,
+        public.get_matrix_value('clean_data.part_catalog', 'technical_drawing_no', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as technical_drawing_no,
+        public.get_matrix_value('clean_data.part_catalog', 'product_type_classif_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as product_type_classif_db,
+        public.get_matrix_value('clean_data.part_catalog', 'cest_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as cest_code,
+        public.get_matrix_value('clean_data.part_catalog', 'fci_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as fci_code
     FROM raw_data.v_phl_article_retenu phl
     WHERE phl."N. ARTICLE" IS NOT NULL
+      AND phl.site = p_contract   -- cloisonnement par site (cf. v_phl_article_retenu)
       AND TRIM(phl."N. ARTICLE") != ''
       -- Ne garder que les produits finis (STATUT=F) et intermediaires (STATUT=I)
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
@@ -106,20 +173,21 @@ BEGIN
     UPDATE clean_data.part_catalog pc
     SET lot_tracking_code_db = CASE
             WHEN p_contract = 'CS'
-                THEN public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+                THEN public.get_matrix_value('clean_data.part_catalog', 'lot_tracking_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))
             WHEN UPPER(COALESCE(phl."FORME", '')) LIKE '%REBUT%' THEN 'NOT LOT TRACKING'
-            ELSE public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+            ELSE public.get_matrix_value('clean_data.part_catalog', 'lot_tracking_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))
         END
     FROM raw_data.v_phl_article_retenu phl
     WHERE pc.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
+      AND phl.site = p_contract   -- cloisonnement par site (cf. v_phl_article_retenu)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
       AND pc.lot_tracking_code_db IS DISTINCT FROM CASE
             WHEN p_contract = 'CS'
-                THEN public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+                THEN public.get_matrix_value('clean_data.part_catalog', 'lot_tracking_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))
             WHEN UPPER(COALESCE(phl."FORME", '')) LIKE '%REBUT%' THEN 'NOT LOT TRACKING'
-            ELSE public.get_default_value('clean_data.part_catalog', 'lot_tracking_code_db')
+            ELSE public.get_matrix_value('clean_data.part_catalog', 'lot_tracking_code_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))
         END;
     GET DIAGNOSTICS v_count_rebut_updated = ROW_COUNT;
     -- Corriger aussi l'unite PHL deja presente : U/M = t doit devenir kg dans IFS.
@@ -137,6 +205,7 @@ BEGIN
         END
     FROM raw_data.v_phl_article_retenu phl
     WHERE pc.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
+      AND phl.site = p_contract   -- cloisonnement par site (cf. v_phl_article_retenu)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')

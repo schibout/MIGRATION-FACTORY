@@ -1,6 +1,6 @@
-"""Tables de référence de l'écran Matrice Site × Famille (migration 067).
+"""Tables de référence de l'écran Matrice Site × Famille (migrations 067, 070).
 
-Ces deux tables ne sont lues par AUCUNE procédure ETL : elles ne pilotent que
+Ces trois tables ne sont lues par AUCUNE procédure ETL : elles ne pilotent que
 ce que l'écran propose. Une table vide fait retomber l'API sur son
 comportement d'origine (familles déduites des données, toutes les tables
 cibles), pour que l'écran reste utilisable si la migration n'est pas jouée.
@@ -71,6 +71,44 @@ class EtlMatrixTargetTable(db.Model):
         return {
             'id': self.id,
             'table_cible': self.table_cible,
+            'libelle': self.libelle,
+            'description': self.description,
+            'ordre': self.ordre,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_by': self.created_by,
+            'updated_by': self.updated_by,
+        }
+
+
+class EtlSite(db.Model):
+    """Site (contract) proposé en groupe de colonnes de la matrice.
+
+    `code` est la valeur stockée dans etl_default_value_matrix.contract et
+    etl_part_type_matrix.contract. Comme pour les familles, il n'y a
+    volontairement pas de clé étrangère : une règle peut porter sur un site non
+    déclaré. Corollaire : renommer un code ne se propage pas aux règles, l'API
+    refuse donc de le modifier tant que des règles l'utilisent.
+    """
+    __tablename__ = 'etl_site'
+    __table_args__ = {'schema': 'public'}
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    code = db.Column(db.String(50), nullable=False)
+    libelle = db.Column(db.String(120))
+    description = db.Column(db.Text)
+    ordre = db.Column(db.Integer, nullable=False, default=100)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(50))
+    updated_by = db.Column(db.String(50))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'code': self.code,
             'libelle': self.libelle,
             'description': self.description,
             'ordre': self.ordre,

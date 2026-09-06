@@ -71,6 +71,10 @@ FICHIERS_SEED = [
     # colonne visible dans l'ecran Matrice Site x Famille et referme le controle
     # de verifier_valeurs_defaut.py sur les appels get_default_value_ctx().
     RACINE / 'migrations' / '066_matrice_valeurs_defaut_site_famille.sql',
+    # 069 : les 169 colonnes articlePhl qui n'etaient alimentees par aucun INSERT
+    # passent par get_default_value(..., 'ARTICLEPHL'). Sans cette entree,
+    # verifier_valeurs_defaut.py les signale toutes comme appels orphelins.
+    RACINE / 'migrations' / '069_valeurs_defaut_colonnes_non_mappees_articlephl.sql',
 ]
 
 

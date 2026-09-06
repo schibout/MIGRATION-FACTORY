@@ -70,21 +70,17 @@ BEGIN
         langue
     )
     -- =====================================================================
-    -- PERIMETRE : seuls les articles presents dans raw_data.export_article_qlikview
-    -- sont retenus (la table pilote la liste des articles a migrer).
-    -- raw_data.article_definitif n'est plus utilisee du tout.
+    -- PERIMETRE : TOUS les articles SAP de raw_data.mara (mandt 700) non
+    -- marques pour suppression (lvorm vide).
+    -- L'ancienne table pilote raw_data.export_article_qlikview n'est plus
+    -- utilisee : elle restreignait le chargement a ~18 700 articles sur les
+    -- ~85 200 actifs de mara. raw_data.article_definitif ne l'est pas non plus.
     -- =====================================================================
-    WITH article_perimetre AS (
-         SELECT LPAD(TRIM(qv.article), 18, '0') AS matnr,
-            max(qv.designation_article) AS designation_article
-           FROM raw_data.export_article_qlikview qv
-          WHERE qv.article IS NOT NULL AND TRIM(qv.article) <> ''::text
-          GROUP BY LPAD(TRIM(qv.article), 18, '0')
-        ), article_base AS (
-         SELECT DISTINCT ON (qp.matnr)
-            qp.matnr,
+    WITH article_base AS (
+         SELECT DISTINCT ON (m_1.matnr)
+            m_1.matnr::text AS matnr,
             m_1.mandt,
-            COALESCE(mk.maktx, qp.designation_article, qp.matnr) AS maktx,
+            COALESCE(mk.maktx, m_1.matnr::text) AS maktx,
             mk.maktg,
             m_1.bismt,
             m_1.mtart,
@@ -97,10 +93,10 @@ BEGIN
             m_1.laeda,
             m_1.aenam,
             mk.spras
-           FROM article_perimetre qp
-             INNER JOIN raw_data.mara m_1 ON qp.matnr = m_1.matnr::text AND m_1.mandt::text = '700'::text AND (m_1.lvorm IS NULL OR m_1.lvorm::text = ''::text)
-             LEFT JOIN raw_data.makt mk ON qp.matnr = mk.matnr::text AND mk.mandt::text = '700'::text AND (mk.spras::text = ANY (ARRAY['F'::character varying, 'E'::character varying, 'D'::character varying]::text[]))
-          ORDER BY qp.matnr, (
+           FROM raw_data.mara m_1
+             LEFT JOIN raw_data.makt mk ON m_1.matnr::text = mk.matnr::text AND mk.mandt::text = '700'::text AND (mk.spras::text = ANY (ARRAY['F'::character varying, 'E'::character varying, 'D'::character varying]::text[]))
+          WHERE m_1.mandt::text = '700'::text AND (m_1.lvorm IS NULL OR m_1.lvorm::text = ''::text)
+          ORDER BY m_1.matnr, (
                 CASE mk.spras
                     WHEN 'F'::text THEN 1
                     WHEN 'E'::text THEN 2

@@ -44,16 +44,19 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # ---------------------------------------------------------------------------
 ETAPES = [
     ('01_IFS_ARTICLE_MAITRE', 'alimenter_ifs_article.sql', 'clean_data.ifs_article_maitre',
-     "TABLE PILOTE. Perimetre = raw_data.export_article_qlikview (liste des articles a migrer), "
-     "restreint aux articles ayant une fiche MARA active (mandt 700, non marques a supprimer). "
+     "TABLE PILOTE. Perimetre = TOUS les articles SAP de raw_data.mara "
+     "(mandt 700, non marques a supprimer). "
      "Agrege les donnees SAP par article : centres (MARC), commercial (MVKE), evaluation (MBEW), "
      "stocks (MARD), fournisseur principal (EINA/LFA1)."),
     ('02_PART_CATALOG', 'alimenter_part_catalog.sql', 'clean_data.part_catalog',
-     "Catalogue des pieces IFS : table de BASE du module. Reprise 1:1 de ifs_article_maitre. "
+     "Catalogue des pieces IFS : table de BASE du module. Reprise de ifs_article_maitre "
+     "RESTREINTE au perimetre societe STJN : seuls les articles rattaches a une division "
+     "9200 (SJ) ou 9000 (CS) entrent au catalogue. "
      "Toutes les tables suivantes filtrent leur contenu sur la presence de l'article ici."),
     ('03_INVENTORY_PART', 'alimenter_inventory_part.sql', 'clean_data.inventory_part',
      "Article d'inventaire par site (contract). Un enregistrement par couple article x centre "
-     "SAP 9200 (SJ) / 9000 (CS)."),
+     "SAP 9200 (SJ) / 9000 (CS). Les types de service DIEN (prestation) et NLAG (article non "
+     "stocke) en sont EXCLUS."),
     ('04_INVENT_PART_PLAN', 'alimenter_inventory_part_planning.sql', 'clean_data.invent_part_plan',
      "Parametres de planification (lot, stock de securite, point de commande) par article x site. "
      "Filtre sur la presence dans inventory_part."),
@@ -64,7 +67,8 @@ ETAPES = [
     ('06_PURCHASE_PART_SUPPLIER', 'alimenter_purchase_part_supplier.sql',
      'clean_data.purchase_part_supplier',
      "Lien article x fournisseur issu des fiches info-achat SAP (EINA/EINE). Le fournisseur est "
-     "remappe sur son NOUVEAU numero IFS (600xxx) via supplier_info_general.supplier_legacy_sap_id."),
+     "remappe sur son NOUVEAU numero IFS (600xxx) via supplier_info_general.supplier_legacy_sap_id. "
+     "LIST_PRICE est le prix UNITAIRE (EINE.NETPR / EINE.PEINH), PRICE_CONV_FACTOR vaut donc 1."),
     ('07_SALES_PART', 'alimenter_sales_part.sql', 'clean_data.sales_part',
      "Article de vente. Perimetre = raw_data.articles_vente_sap, restreint aux types d'article "
      "FERT / HALB / DIEN / NLAG / HIBE / ERSA presents dans part_catalog."),
@@ -313,10 +317,7 @@ def champs_source(expr, alias, ctes):
 
 def systeme_source(expr, refs):
     sys_ = []
-    if any(r.startswith('raw_data.export_article_qlikview') for r in refs):
-        sys_.append('QlikView')
-    if any(r.startswith('raw_data.') and not r.startswith('raw_data.export_article_qlikview')
-           for r in refs):
+    if any(r.startswith('raw_data.') for r in refs):
         sys_.append('SAP')
     if any(r.startswith('clean_data.') for r in refs):
         sys_.append('IFS')
@@ -499,8 +500,8 @@ LEGENDE = [
     (None, None, None),
     ('• Champ / Table source : Table(s)/champ(s) source(s) (raw_data SAP, clean_data amont, ou constante).', 10, False),
     (None, None, None),
-    ("• Systeme source : SAP, QlikView (fichier de perimetre des articles), IFS (table clean_data "
-     "amont), Config (etl_default_values / TranscodificationTable), ou Technique.", 10, False),
+    ("• Systeme source : SAP, IFS (table clean_data amont), "
+     "Config (etl_default_values / TranscodificationTable), ou Technique.", 10, False),
     (None, None, None),
     ("• Regle de transformation / Condition : COALESCE, CASE, concatenation, valeur par defaut... "
      "Colonne cle a relire cote metier.", 10, False),
@@ -517,15 +518,15 @@ LEGENDE = [
 ATTENTION = [
     ("Points d'attention transverses reperes (a faire trancher par le metier)", 12, True),
     (None, None, None),
-    ("⚠ Perimetre — La liste des articles a migrer est pilotee par raw_data.export_article_qlikview "
-     "(18 652 articles). Cette table n'est alimentee par AUCUN import applicatif : elle est chargee "
-     "a la main. Si elle est vide au moment d'un chargement, les 7 tables du module se vident en "
-     "cascade sans erreur.", 10, False),
+    ("⚠ Perimetre — Le module reprend TOUS les articles de raw_data.mara (mandt 700) non marques "
+     "pour suppression, soit environ 85 200 articles. L'ancienne restriction a la liste QlikView "
+     "(raw_data.export_article_qlikview, 18 652 articles) a ete retiree sur demande metier : plus "
+     "aucun article SAP actif n'est ecarte en amont du module.", 10, False),
     ("⚠ 01 — codification_id et new_transco ne sont plus alimentees : la table "
      "clean_data.mapping_codification_articles a ete retiree du mapping sur demande metier, et "
      "aucune source de remplacement n'est branchee. Les deux colonnes sortent a NULL.", 10, False),
-    ("⚠ 01 — 89 articles du perimetre n'ont pas de libelle SAP (MAKT) en F/E/D : leur designation "
-     "provient de export_article_qlikview. Les tables 03 et 05 exigeant MAKT en francais, ces "
+    ("⚠ 01 — 753 articles du perimetre n'ont pas de libelle SAP (MAKT) en F/E/D : leur designation "
+     "reprend le numero d'article a defaut. Les tables 03 et 05 exigeant MAKT en francais, ces "
      "articles n'apparaitront pas en article d'inventaire ni en article d'achat.", 10, False),
     ("⚠ 05 — Les articles de vente (raw_data.articles_vente_sap) sont exclus de PURCHASE_PART "
      "(264 articles) : achat et vente sont disjoints. A confirmer si certains articles doivent etre "

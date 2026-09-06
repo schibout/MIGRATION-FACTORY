@@ -2,7 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-Module ETL pour le chargement des ARTICLES PHL (source: raw_data.phl_article).
+Module ETL pour le chargement des ARTICLES PHL.
+
+Source par site : raw_data.phl_article (SJ = Saint-Jean) et
+raw_data.phl_article_cs (CS = Castel), exposees par la vue
+raw_data.v_phl_article_retenu dont la colonne "site" est filtree sur le
+contract passe aux fonctions : une passe ne charge que les articles de son
+propre fichier.
 Utilise les fonctions stockees clean_data.alimenter_*_phl().
 
 IMPORTANT : ce module insere en APPEND dans les memes tables clean_data que le module

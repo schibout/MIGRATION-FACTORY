@@ -37,6 +37,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import defaultValueService from '../services/defaultValueService';
 import matrixSettingsService, {
+  MatrixSite,
   MatrixTargetTable,
   PartFamily,
 } from '../services/matrixSettingsService';
@@ -46,8 +47,10 @@ const messageErreur = (e: unknown, repli: string): string => {
   return detail || repli;
 };
 
-// Formulaire commun aux deux référentiels : seule la clé change (code d'une
-// famille / nom de la table cible), le reste est identique.
+// Formulaire commun aux trois référentiels : seule la clé change (code du
+// site ou de la famille / nom de la table cible), le reste est identique.
+type TypeEdition = 'SITE' | 'FAMILLE' | 'TABLE';
+
 type Brouillon = {
   id: number | null;
   cle: string;
@@ -70,20 +73,25 @@ const MatriceParametres: React.FC = () => {
   const [onglet, setOnglet] = useState(0);
   const [message, setMessage] = useState<{ texte: string; type: 'success' | 'error' } | null>(null);
 
+  const [sites, setSites] = useState<MatrixSite[]>([]);
+  const [detectes, setDetectes] = useState<string[]>([]);
   const [familles, setFamilles] = useState<PartFamily[]>([]);
   const [detectees, setDetectees] = useState<string[]>([]);
   const [tables, setTables] = useState<MatrixTargetTable[]>([]);
   const [tablesDisponibles, setTablesDisponibles] = useState<string[]>([]);
 
   const [brouillon, setBrouillon] = useState<Brouillon | null>(null);
-  const [typeEdition, setTypeEdition] = useState<'FAMILLE' | 'TABLE'>('FAMILLE');
+  const [typeEdition, setTypeEdition] = useState<TypeEdition>('SITE');
 
   const charger = useCallback(async () => {
     try {
-      const [f, t] = await Promise.all([
+      const [s, f, t] = await Promise.all([
+        matrixSettingsService.listSites(),
         matrixSettingsService.listFamilies(),
         matrixSettingsService.listTargetTables(),
       ]);
+      setSites(s.sites);
+      setDetectes(s.detectes);
       setFamilles(f.part_families);
       setDetectees(f.detectees);
       setTables(t);
@@ -112,7 +120,15 @@ const MatriceParametres: React.FC = () => {
     [detectees, familles]
   );
 
-  const ouvrir = (type: 'FAMILLE' | 'TABLE', ligne?: PartFamily | MatrixTargetTable) => {
+  // Sites utilisés quelque part (données chargées, fichier PHL, ou règle déjà
+  // saisie) mais absents du référentiel : leurs règles s'appliquent sans que
+  // personne ne les ait documentés.
+  const sitesNonDeclares = useMemo(
+    () => detectes.filter((code) => !sites.some((s) => s.code === code)),
+    [detectes, sites]
+  );
+
+  const ouvrir = (type: TypeEdition, ligne?: MatrixSite | PartFamily | MatrixTargetTable) => {
     setTypeEdition(type);
     if (!ligne) {
       setBrouillon({ ...BROUILLON_VIDE });
@@ -137,7 +153,15 @@ const MatriceParametres: React.FC = () => {
       is_active: brouillon.is_active,
     };
     try {
-      if (typeEdition === 'FAMILLE') {
+      if (typeEdition === 'SITE') {
+        const payload = { ...commun, code: brouillon.cle.trim() };
+        if (!payload.code) {
+          setMessage({ texte: 'Le code du site est obligatoire', type: 'error' });
+          return;
+        }
+        if (brouillon.id === null) await matrixSettingsService.createSite(payload);
+        else await matrixSettingsService.updateSite(brouillon.id, payload);
+      } else if (typeEdition === 'FAMILLE') {
         const payload = { ...commun, code: brouillon.cle.trim() };
         if (!payload.code) {
           setMessage({ texte: 'Le code de la famille est obligatoire', type: 'error' });
@@ -162,9 +186,10 @@ const MatriceParametres: React.FC = () => {
     }
   };
 
-  const supprimer = async (type: 'FAMILLE' | 'TABLE', id: number) => {
+  const supprimer = async (type: TypeEdition, id: number) => {
     try {
-      if (type === 'FAMILLE') await matrixSettingsService.deleteFamily(id);
+      if (type === 'SITE') await matrixSettingsService.deleteSite(id);
+      else if (type === 'FAMILLE') await matrixSettingsService.deleteFamily(id);
       else await matrixSettingsService.deleteTargetTable(id);
       setMessage({ texte: 'Supprimé', type: 'success' });
       charger();
@@ -175,9 +200,10 @@ const MatriceParametres: React.FC = () => {
     }
   };
 
-  const basculerActif = async (type: 'FAMILLE' | 'TABLE', id: number, actif: boolean) => {
+  const basculerActif = async (type: TypeEdition, id: number, actif: boolean) => {
     try {
-      if (type === 'FAMILLE') await matrixSettingsService.updateFamily(id, { is_active: actif });
+      if (type === 'SITE') await matrixSettingsService.updateSite(id, { is_active: actif });
+      else if (type === 'FAMILLE') await matrixSettingsService.updateFamily(id, { is_active: actif });
       else await matrixSettingsService.updateTargetTable(id, { is_active: actif });
       charger();
     } catch (e) {
@@ -191,17 +217,99 @@ const MatriceParametres: React.FC = () => {
         Paramètres de la matrice
       </Typography>
       <Alert severity="info" sx={{ mb: 2 }}>
-        Ces deux listes déterminent ce que propose l'écran <strong>Matrice Site × Famille</strong> :
-        les familles affichées en colonnes et les tables ouvertes au paramétrage. Elles ne sont lues
-        par aucun chargement ETL — les modifier ne change aucune donnée déjà chargée.
+        Ces trois listes déterminent ce que propose l'écran <strong>Matrice Site × Famille</strong> :
+        les sites affichés en groupes de colonnes, les familles affichées en colonnes et les tables
+        ouvertes au paramétrage. Elles ne sont lues par aucun chargement ETL — les modifier ne change
+        aucune donnée déjà chargée.
       </Alert>
 
       <Tabs value={onglet} onChange={(_, v) => setOnglet(v)} sx={{ mb: 2 }}>
+        <Tab label={`Sites (${sites.length})`} />
         <Tab label={`Familles d'articles (${familles.length})`} />
         <Tab label={`Tables cibles (${tables.length})`} />
       </Tabs>
 
       {onglet === 0 && (
+        <>
+          {sitesNonDeclares.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {sitesNonDeclares.length === 1 ? 'Site utilisé' : 'Sites utilisés'} mais non déclaré
+              {sitesNonDeclares.length > 1 ? 's' : ''} : <strong>{sitesNonDeclares.join(', ')}</strong>.
+              Ce site apparaît dans les données ou porte déjà des règles de la matrice : déclarez-le
+              pour lui donner un libellé et fixer sa place dans la grille.
+            </Alert>
+          )}
+          <Box sx={{ mb: 1.5 }}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => ouvrir('SITE')}>
+              Ajouter un site
+            </Button>
+          </Box>
+          <TableContainer component={Paper}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Code</TableCell>
+                  <TableCell>Libellé</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell align="center">Ordre</TableCell>
+                  <TableCell align="center">Utilisé</TableCell>
+                  <TableCell align="center">Actif</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sites.map((s) => (
+                  <TableRow key={s.id} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{s.code}</TableCell>
+                    <TableCell sx={{ color: s.libelle ? 'text.primary' : 'text.disabled' }}>
+                      {s.libelle || 'à documenter'}
+                    </TableCell>
+                    <TableCell sx={{ color: 'text.secondary', maxWidth: 420 }}>
+                      {s.description || '—'}
+                    </TableCell>
+                    <TableCell align="center">{s.ordre}</TableCell>
+                    <TableCell align="center">
+                      {detectes.includes(s.code) ? (
+                        <Tooltip title="Site présent dans les données chargées, dans le fichier PHL, ou porteur d'au moins une règle de la matrice">
+                          <Chip size="small" color="success" label="oui" sx={{ height: 20 }} />
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="Déclaré, mais aucune donnée ni règle ne le mentionne encore. Sa colonne reste proposée dans la matrice.">
+                          <Chip size="small" variant="outlined" label="non" sx={{ height: 20 }} />
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Switch
+                        size="small"
+                        checked={s.is_active}
+                        onChange={(e) => basculerActif('SITE', s.id, e.target.checked)}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <IconButton size="small" onClick={() => ouvrir('SITE', s)}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={() => supprimer('SITE', s.id)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {sites.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                      Aucun site déclaré. La matrice affiche alors les sites trouvés dans les données.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+
+      {onglet === 1 && (
         <>
           {nonDeclarees.length > 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
@@ -279,7 +387,7 @@ const MatriceParametres: React.FC = () => {
         </>
       )}
 
-      {onglet === 1 && (
+      {onglet === 2 && (
         <>
           <Box sx={{ mb: 1.5 }}>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => ouvrir('TABLE')}>
@@ -342,17 +450,21 @@ const MatriceParametres: React.FC = () => {
       <Dialog open={brouillon !== null} onClose={() => setBrouillon(null)} maxWidth="sm" fullWidth>
         <DialogTitle>
           {brouillon?.id === null ? 'Ajouter' : 'Modifier'}{' '}
-          {typeEdition === 'FAMILLE' ? 'une famille' : 'une table cible'}
+          {typeEdition === 'SITE' ? 'un site' : typeEdition === 'FAMILLE' ? 'une famille' : 'une table cible'}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {typeEdition === 'FAMILLE' ? (
+          {typeEdition !== 'TABLE' ? (
             <TextField
               label="Code"
               size="small"
               autoFocus
               value={brouillon?.cle ?? ''}
               onChange={(e) => setBrouillon((b) => (b ? { ...b, cle: e.target.value } : b))}
-              helperText="Valeur brute de la colonne FAMILLE du fichier PHL (21, RF...). Non modifiable si des règles l'utilisent."
+              helperText={
+                typeEdition === 'SITE'
+                  ? "Code du site (contract) tel qu'il est stocké dans les règles : SJ, CS... Non modifiable si des règles l'utilisent."
+                  : "Valeur brute de la colonne FAMILLE du fichier PHL (21, RF...). Non modifiable si des règles l'utilisent."
+              }
             />
           ) : (
             <FormControl size="small">
@@ -375,7 +487,11 @@ const MatriceParametres: React.FC = () => {
             size="small"
             value={brouillon?.libelle ?? ''}
             onChange={(e) => setBrouillon((b) => (b ? { ...b, libelle: e.target.value } : b))}
-            helperText="Nom court affiché dans la matrice, sous le code."
+            helperText={
+              typeEdition === 'SITE'
+                ? "Nom du site affiché dans l'en-tête de la matrice, sous le code (Saint-Jean, Castel...)."
+                : 'Nom court affiché dans la matrice, sous le code.'
+            }
           />
           <TextField
             label="Description"

@@ -18,7 +18,7 @@ from sqlalchemy import text, cast, or_, Integer
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from models import (db, EtlDefaultValue, EtlDefaultValueMatrix, EtlPartTypeMatrix,
-                    EtlPartFamily, EtlMatrixTargetTable)
+                    EtlPartFamily, EtlMatrixTargetTable, EtlSite)
 
 matrix_blueprint = Blueprint('default_value_matrix', __name__)
 
@@ -41,6 +41,73 @@ def _nettoyer(valeur):
         return None
     valeur = str(valeur).strip()
     return valeur or None
+
+
+def _valeurs_distinctes(sql):
+    """Premiere colonne d'une requete, [] si la table/vue n'existe pas encore."""
+    try:
+        return [r[0] for r in db.session.execute(text(sql))]
+    except SQLAlchemyError:
+        db.session.rollback()
+        return []
+
+
+def _fusionner_sites(*sources):
+    """Union ordonnee des sites, sans doublon ni valeur vide.
+
+    SITES_REPLI vient en tete pour garder l'ordre metier ; les sites decouverts
+    ailleurs ferment la liste.
+    """
+    axe = []
+    for source in sources:
+        for valeur in source or ():
+            valeur = (valeur or '').strip()
+            if valeur and valeur not in axe:
+                axe.append(valeur)
+    return axe
+
+
+def _sites_declares():
+    """Sites actifs du referentiel (migration 070), dans l'ordre saisi."""
+    try:
+        return [s.code for s in EtlSite.query.filter_by(is_active=True).order_by(
+            EtlSite.ordre, EtlSite.code
+        ).all()]
+    except SQLAlchemyError:
+        db.session.rollback()
+        return []
+
+
+def _sites_de_l_ecran():
+    """Axe des sites : tout ce qui est connu, pas seulement ce qui est charge.
+
+    L'axe etait deduit du seul `clean_data.inventory_part`, c'est-a-dire du
+    RESULTAT de l'ETL : tant qu'une passe n'avait pas tourne, son site
+    disparaissait de l'ecran avec les regles deja saisies pour lui, qui
+    restaient pourtant appliquees par public.get_default_value_ctx(). Or la
+    matrice se parametre AVANT le chargement. On reunit donc les quatre
+    origines possibles d'un site, chacune tolerante a l'absence de sa table.
+
+    Le referentiel vient en tete : c'est lui qui fixe l'ordre des colonnes.
+    Les sites presents mais non declares ferment la liste (l'ecran les signale,
+    cf. /config/matrix/sites), et SITES_REPLI reste le dernier filet si ni le
+    referentiel ni la base ne disent rien.
+    """
+    return _fusionner_sites(
+        _sites_declares(),                              # referentiel (migration 070)
+        _valeurs_distinctes(                            # deja charge
+            "SELECT DISTINCT contract FROM clean_data.inventory_part "
+            "WHERE contract IS NOT NULL ORDER BY 1"),
+        _valeurs_distinctes(                            # livre dans le fichier PHL
+            "SELECT DISTINCT site FROM raw_data.v_phl_article_retenu "
+            "WHERE site IS NOT NULL ORDER BY 1"),
+        _valeurs_distinctes(                            # deja parametre
+            "SELECT DISTINCT contract FROM public.etl_default_value_matrix "
+            "WHERE contract IS NOT NULL "
+            "UNION SELECT DISTINCT contract FROM public.etl_part_type_matrix "
+            "WHERE contract IS NOT NULL ORDER BY 1"),
+        SITES_REPLI,                                    # migration 070 pas jouee
+    )
 
 
 def _erreur_sql(e, contexte, repli):
@@ -67,6 +134,11 @@ def _erreur_sql(e, contexte, repli):
 def matrix_meta():
     """Sites, familles, tables cibles et colonnes eligibles de l'ecran.
 
+    Les sites viennent de _sites_de_l_ecran() : union des sites du projet, des
+    sites charges, des sites livres dans le fichier PHL et des sites deja
+    parametres. Un axe deduit du seul contenu de clean_data.inventory_part
+    ferait disparaitre les regles d'un site pas encore charge.
+
     Familles et tables cibles viennent des referentiels de la migration 067
     (Configuration > Parametres de la matrice). Chaque referentiel VIDE fait
     retomber la reponse sur le comportement d'origine : familles deduites des
@@ -74,16 +146,7 @@ def matrix_meta():
     utilisable si la migration 067 n'a pas ete jouee.
     """
     try:
-        try:
-            sites = [r[0] for r in db.session.execute(text(
-                "SELECT DISTINCT contract FROM clean_data.inventory_part "
-                "WHERE contract IS NOT NULL ORDER BY 1"
-            ))]
-        except SQLAlchemyError:
-            db.session.rollback()
-            sites = []
-        if not sites:
-            sites = SITES_REPLI
+        sites = _sites_de_l_ecran()
 
         # --- Familles : union du referentiel et des donnees ------------------
         # Une famille declaree mais pas encore livree doit etre parametrable ;

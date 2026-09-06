@@ -32,6 +32,12 @@ BEGIN
         buy_unit_meas,
         currency_code,
         status_code,
+
+        -- Prix d'achat (EINE)
+        list_price,
+        price_unit_meas,
+        price_conv_factor,
+        conv_factor,
         
         -- Flags et paramètres par défaut
         primary_vendor_db,
@@ -77,6 +83,32 @@ BEGIN
         
         -- STATUS_CODE: 2
         public.get_default_value('clean_data.purchase_part_supplier', 'status_code') as status_code,
+
+        -- LIST_PRICE: prix UNITAIRE = EINE.NETPR / EINE.PEINH.
+        -- SAP exprime NETPR pour PEINH unites (PEINH vaut 100, 10 ou 1000 sur
+        -- ~1 400 fiches info-achat) : reprendre NETPR brut donnerait un prix
+        -- jusqu'a 1000x trop eleve. NULLIF au denominateur = pas de division
+        -- par zero, la ligne sort a NULL plutot qu'en erreur.
+        (NULLIF(TRIM(eine.netpr), '')::numeric
+         / NULLIF(NULLIF(TRIM(eine.peinh), '')::numeric, 0)) as list_price,
+
+        -- PRICE_UNIT_MEAS: EINE.BPRME via transcodification UOM (SAP->IFS),
+        -- meme repli que BUY_UNIT_MEAS sur l'unite d'entree.
+        SUBSTRING(COALESCE(
+            public.get_transcodification('UOM', NULLIF(UPPER(TRIM(eine.bprme)), '')),
+            UPPER(TRIM(eine.bprme))
+        ), 1, 10) as price_unit_meas,
+
+        -- PRICE_CONV_FACTOR: 1, le prix ayant deja ete ramene a l'unite
+        -- ci-dessus. Litteral volontaire (et non get_default_value) : cette
+        -- valeur est liee au calcul de LIST_PRICE, la rendre parametrable
+        -- permettrait d'appliquer le facteur deux fois.
+        1 as price_conv_factor,
+
+        -- CONV_FACTOR: EINE.BPUMZ / EINE.BPUMN, facteur unite de commande ->
+        -- unite de base (different de 1 sur 46 lignes seulement).
+        (NULLIF(TRIM(eine.bpumz), '')::numeric
+         / NULLIF(NULLIF(TRIM(eine.bpumn), '')::numeric, 0)) as conv_factor,
         
         -- PRIMARY_VENDOR_DB: Y par défaut (fournisseur principal)
         public.get_default_value('clean_data.purchase_part_supplier', 'primary_vendor_db') as primary_vendor_db,

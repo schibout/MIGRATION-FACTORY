@@ -82,6 +82,19 @@ BEGIN
     FROM clean_data.ifs_article_maitre va
     WHERE va.numero_article IS NOT NULL
     AND TRIM(COALESCE(va.numero_article, '')) != ''
+    -- Perimetre societe STJN : seuls les articles rattaches a une division
+    -- Trimet 9200 (SJ) ou 9000 (CS) entrent au catalogue. Sans ce filtre, la
+    -- table pilote (= tout raw_data.mara) faisait entrer ~85 200 articles, dont
+    -- les 42 848 postes techniques IBAU qui n'ont aucune ligne MARC.
+    -- Le drapeau de suppression au niveau division (marc.lvorm) n'est
+    -- volontairement PAS teste : le module ne retient que mara.lvorm, et le
+    -- tester ici retirerait 4 016 articles a inventory_part par ricochet.
+    AND EXISTS (
+        SELECT 1 FROM raw_data.marc marc
+        WHERE marc.matnr::text = va.numero_article
+          AND marc.mandt::text = '700'
+          AND marc.werks::text IN ('9200', '9000')
+    )
     ORDER BY COALESCE(va.numero_article, '');
 
     -- Compter les enregistrements insérés

@@ -1,6 +1,14 @@
 #!/bin/bash
 
-# Script de compilation des procédures stockées ARTICLES PHL (source: raw_data.phl_article)
+# Script de compilation des procédures et fonctions stockées ARTICLES PHL.
+# Il ne compile QUE du code (PROCEDURE / FUNCTION) : aucun objet de structure.
+# Les tables et la vue se jouent à part, une seule fois, par leur migration :
+#   raw_data.phl_article (site SJ) et raw_data.phl_article_cs (site CS), ainsi
+#   que la vue raw_data.v_phl_article_retenu qui les expose en UNION ALL avec
+#   une colonne "site" -> migrations/068_phl_article_par_site.sql, puis
+#   sql/articlePhl/sources/v_phl_article_retenu.sql à rejouer manuellement si la
+#   vue change (elle commence par un DROP VIEW : hors de portée d'un compile
+#   routinier).
 # Ce script exécute toutes les procédures dans l'ordre requis.
 # IMPORTANT: à lancer APRÈS les procédures SAP du module inventory (qui font le TRUNCATE
 # des tables cibles). Les fonctions PHL insèrent en append.
@@ -60,12 +68,10 @@ echo ""
 errors=0
 
 # Liste des fichiers dans l'ordre d'exécution.
-# La vue de dédoublonnage en premier (toutes les fonctions lisent dessus),
-# puis part_catalog (table de base référencée par EXISTS), puis les tables filles,
-# puis l'orchestrateur (qui les appelle dans le bon ordre à l'exécution).
+# part_catalog en premier (table de base référencée par EXISTS), puis les tables
+# filles, puis l'orchestrateur (qui les appelle dans le bon ordre à l'exécution).
 files=(
     "nettoyer_phl_article.sql"
-    "sources/v_phl_article_retenu.sql"
     "alimenter_part_catalog_phl.sql"
     "alimenter_inventory_part_phl.sql"
     "alimenter_sales_part_phl.sql"

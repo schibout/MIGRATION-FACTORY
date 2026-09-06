@@ -3,8 +3,9 @@
 # Script de compilation des fonctions stockées du module ARTICLES (inventory)
 # SAP vers IFS. Ce script compile toutes les fonctions dans l'ordre de dépendance.
 #
-# Périmètre des articles : raw_data.export_article_qlikview (pilote la liste des
-# articles à migrer, cf. clean_data.alimenter_ifs_article).
+# Périmètre des articles : TOUS les articles SAP de raw_data.mara (mandt 700,
+# non marqués pour suppression), cf. clean_data.alimenter_ifs_article.
+# L'ancienne table pilote raw_data.export_article_qlikview n'est plus utilisée.
 #
 # Les fonctions du module PHL (alimenter_*_phl) sont dans sql/articlePhl/.
 
@@ -72,8 +73,9 @@ errors=0
 
 # Liste des fichiers dans l'ordre d'exécution (= ordre de dépendance du module)
 #   1. clean_data.alimenter_ifs_article()            -> clean_data.ifs_article_maitre
-#      (périmètre = raw_data.export_article_qlikview)
+#      (périmètre = raw_data.mara, mandt 700, lvorm vide)
 #   2. clean_data.alimenter_part_catalog()           -> clean_data.part_catalog (table de base)
+#      (perimetre societe STJN : EXISTS marc sur werks 9200 / 9000)
 #   3. clean_data.alimenter_inventory_part()         -> clean_data.inventory_part      (EXISTS part_catalog)
 #   4. clean_data.alimenter_inventory_part_planning()-> clean_data.invent_part_plan    (EXISTS inventory_part)
 #   5. clean_data.alimenter_purchase_part()          -> clean_data.purchase_part       (EXISTS part_catalog,

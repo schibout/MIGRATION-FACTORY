@@ -1,9 +1,20 @@
 import api from './api';
 
-// Referentiels de l'ecran Matrice Site x Famille (migration 067).
-// Ces deux listes ne pilotent QUE ce que l'ecran propose : aucune procedure
-// ETL ne les lit. Un referentiel vide fait retomber la matrice sur son
-// comportement d'origine.
+// Referentiels de l'ecran Matrice Site x Famille (migrations 067 et 070).
+// Ces trois listes ne pilotent QUE ce que l'ecran propose : aucune procedure
+// ETL ne les lit (le site de chargement vient de etl_target_tables.module_params).
+// Un referentiel vide fait retomber la matrice sur son comportement d'origine.
+
+export interface MatrixSite {
+  id: number;
+  code: string;
+  libelle: string | null;
+  description: string | null;
+  ordre: number;
+  is_active: boolean;
+  updated_at?: string;
+  updated_by?: string;
+}
 
 export interface PartFamily {
   id: number;
@@ -27,10 +38,33 @@ export interface MatrixTargetTable {
   updated_by?: string;
 }
 
+export type MatrixSitePayload = Partial<Omit<MatrixSite, 'id'>>;
 export type PartFamilyPayload = Partial<Omit<PartFamily, 'id'>>;
 export type TargetTablePayload = Partial<Omit<MatrixTargetTable, 'id'>>;
 
 const matrixSettingsService = {
+  // `detectes` = sites reellement presents (charges dans clean_data, livres dans
+  // le fichier PHL, ou deja porteurs d'une regle), pour signaler ceux qui ne
+  // sont pas declares : une regle invisible resterait appliquee par l'ETL.
+  listSites: async (): Promise<{ sites: MatrixSite[]; detectes: string[] }> => {
+    const response = await api.get('/config/matrix/sites');
+    return response.data;
+  },
+
+  createSite: async (payload: MatrixSitePayload): Promise<MatrixSite> => {
+    const response = await api.post('/config/matrix/sites', payload);
+    return response.data;
+  },
+
+  updateSite: async (id: number, payload: MatrixSitePayload): Promise<MatrixSite> => {
+    const response = await api.put(`/config/matrix/sites/${id}`, payload);
+    return response.data;
+  },
+
+  deleteSite: async (id: number): Promise<void> => {
+    await api.delete(`/config/matrix/sites/${id}`);
+  },
+
   // `detectees` = codes famille presents dans le fichier PHL charge, pour
   // signaler ceux qui ne sont pas encore declares.
   listFamilies: async (): Promise<{ part_families: PartFamily[]; detectees: string[] }> => {

@@ -179,8 +179,11 @@ BEGIN
         -- article present dans plusieurs mandants produisait plusieurs lignes
         -- pour la meme cle (contract, part_no).
         mara.mandt = '700'
-        -- Filtrer uniquement les articles stockables
-        AND mara.mtart IN ('ERSA', 'HIBE', 'ROH', 'HALB', 'FERT')
+        -- Types de service exclus : DIEN (prestation de service) et NLAG
+        -- (article non stocke). Meme filtre que alimenter_inventory_part() ;
+        -- l'ancienne liste blanche des types stockables ('ERSA', 'HIBE', 'ROH',
+        -- 'HALB', 'FERT') ecartait tous les autres types SAP.
+        AND mara.mtart NOT IN ('DIEN', 'NLAG')
         -- Sites Trimet : meme perimetre que alimenter_inventory_part().
         -- 9100 retire : il retombait sur le contract 'SJ' par defaut et
         -- fabriquait des cles (SJ, part_no) en doublon de celles du site 9200.

@@ -63,70 +63,130 @@ BEGIN
         variable_leadtime_hour,
         variable_leadtime_day,
         fixed_leadtime_hour,
-        overhaul_scrap_rule
+        overhaul_scrap_rule,
+        backflush_part,
+        engineering_info,
+        structure_effectivity,
+        routing_effectivity,
+        promise_planned,
+        process_type,
+        configuration_usage,
+        manuf_engineer,
+        leadtime_source,
+        leadtime_source_db,
+        lot_batch_string,
+        overhaul_scrap_rule_db,
+        dop_pegged_so_update_flag,
+        mrp_control_flag,
+        prod_part_as_supply_in_mrp,
+        close_tolerance,
+        use_theoritical_density,
+        issue_type,
+        issue_type_db,
+        over_reporting,
+        over_report_tolerance,
+        issue_planned_scrap,
+        adjust_on_op_qty_deviation,
+        issue_overreported_qty,
+        created_from_contract,
+        created_from_part_no,
+        created_from_config_id,
+        ship_dirty_repair_code,
+        auto_replace_alt_comp,
+        consider_lead_time
     )
     SELECT DISTINCT ON (TRIM(phl."N. ARTICLE"))
         -- CONTRACT: site passe en parametre (SJ = Saint-Jean, CS = Castel)
         p_contract as contract,
         -- PART_NO: N. ARTICLE = cle des articles PHL
         SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25) as part_no,
-        -- Valeurs par defaut parametrables :
-        --   1. matrice site x famille  -> /configuration/matrice-site-famille
-        --   2. constante par colonne   -> /configuration/valeurs-defaut
-        --   3. NULL si rien n'est parametre
-        -- (public.get_default_value_ctx, migration 066)
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'backflush_part_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as backflush_part_db,              -- All Locations
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'engineering_info_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as engineering_info_db,          -- Not Mandatory
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'structure_effectivity_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as structure_effectivity_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'routing_effectivity_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as routing_effectivity_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'promise_planned_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as promise_planned_db,
+        -- Valeurs par defaut : matrice site x famille SEULE
+        -- (/configuration/matrice-site-famille). Aucune regle -> NULL, il n'y a
+        -- plus de repli sur la constante (public.get_matrix_value, migration 071).
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'backflush_part_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as backflush_part_db,              -- All Locations
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'engineering_info_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as engineering_info_db,          -- Not Mandatory
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'structure_effectivity_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as structure_effectivity_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'routing_effectivity_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as routing_effectivity_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'promise_planned_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as promise_planned_db,
         SUBSTRING(pc.unit_code, 1, 10) as default_print_unit, -- Default Print Unit depuis PART_CATALOG.UNIT_CODE
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'configuration_usage_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as configuration_usage_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'dop_pegged_so_update_flag_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as dop_pegged_so_update_flag_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'mrp_control_flag_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as mrp_control_flag_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'prod_part_as_supply_in_mrp_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as prod_part_as_supply_in_mrp_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'use_theoritical_density_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as use_theoritical_density_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'configuration_usage_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as configuration_usage_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'dop_pegged_so_update_flag_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as dop_pegged_so_update_flag_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'mrp_control_flag_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as mrp_control_flag_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'prod_part_as_supply_in_mrp_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as prod_part_as_supply_in_mrp_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'use_theoritical_density_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as use_theoritical_density_db,
         -- DENSITY : la densite mesuree de l'article prime toujours ; a defaut,
         -- la densite theorique du couple (site, famille) via la matrice.
         COALESCE(
             NULLIF(REPLACE(TRIM(COALESCE(dens.densite, '')), ',', '.'), '')::numeric,
-            public.get_default_value_ctx('clean_data.manuf_part_attribute', 'density',
-                                         p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric
+            public.get_matrix_value('clean_data.manuf_part_attribute', 'density', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric
         ) as density,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'over_reporting_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as over_reporting_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'issue_planned_scrap_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as issue_planned_scrap_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'adjust_on_op_qty_deviation_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as adjust_on_op_qty_deviation_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'issue_overreported_qty_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as issue_overreported_qty_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as plan_manuf_sup_on_due_date_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as plan_manuf_sup_on_due_date,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'ship_dirty_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as ship_dirty_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'ship_dirty', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as ship_dirty,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'auto_replace_alt_comp_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as auto_replace_alt_comp_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'consider_lead_time_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as consider_lead_time_db,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'unprotected_lead_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as unprotected_lead_time,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'run_mrp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_mrp,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'run_crp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_crp,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'include_firm_demands', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as include_firm_demands,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'include_firm_supplies', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as include_firm_supplies,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'optimize_new_delivery_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as optimize_new_delivery_date,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'run_in_background', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_in_background,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'component_scrap', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as component_scrap,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'shrinkage_factor', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as shrinkage_factor,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'cum_leadtime', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as cum_leadtime,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'order_gap_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as order_gap_time,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'low_level', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as low_level,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'fixed_leadtime_day', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as fixed_leadtime_day,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'variable_leadtime_hour', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as variable_leadtime_hour,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'variable_leadtime_day', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as variable_leadtime_day,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'fixed_leadtime_hour', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as fixed_leadtime_hour,
-        public.get_default_value_ctx('clean_data.manuf_part_attribute', 'overhaul_scrap_rule', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as overhaul_scrap_rule
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'over_reporting_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as over_reporting_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'issue_planned_scrap_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as issue_planned_scrap_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'adjust_on_op_qty_deviation_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as adjust_on_op_qty_deviation_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'issue_overreported_qty_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as issue_overreported_qty_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as plan_manuf_sup_on_due_date_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as plan_manuf_sup_on_due_date,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'ship_dirty_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as ship_dirty_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'ship_dirty', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as ship_dirty,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'auto_replace_alt_comp_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as auto_replace_alt_comp_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'consider_lead_time_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as consider_lead_time_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'unprotected_lead_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as unprotected_lead_time,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'run_mrp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_mrp,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'run_crp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_crp,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'include_firm_demands', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as include_firm_demands,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'include_firm_supplies', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as include_firm_supplies,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'optimize_new_delivery_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as optimize_new_delivery_date,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'run_in_background', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_in_background,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'component_scrap', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as component_scrap,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'shrinkage_factor', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as shrinkage_factor,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'cum_leadtime', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as cum_leadtime,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'order_gap_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as order_gap_time,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'low_level', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as low_level,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'fixed_leadtime_day', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as fixed_leadtime_day,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'variable_leadtime_hour', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as variable_leadtime_hour,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'variable_leadtime_day', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as variable_leadtime_day,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'fixed_leadtime_hour', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as fixed_leadtime_hour,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'overhaul_scrap_rule', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as overhaul_scrap_rule,
     -- Source dedoublonnee (cf. v_phl_article_retenu.sql)
+        -- Colonnes non alimentees par le fichier PHL : valeur pilotee par
+        -- l'ecran /configuration/valeurs-defaut (variante ARTICLEPHL).
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'backflush_part', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as backflush_part,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'engineering_info', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as engineering_info,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'structure_effectivity', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as structure_effectivity,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'routing_effectivity', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as routing_effectivity,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'promise_planned', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as promise_planned,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'process_type', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as process_type,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'configuration_usage', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as configuration_usage,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'manuf_engineer', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as manuf_engineer,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'leadtime_source', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as leadtime_source,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'leadtime_source_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as leadtime_source_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'lot_batch_string', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as lot_batch_string,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'overhaul_scrap_rule_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as overhaul_scrap_rule_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'dop_pegged_so_update_flag', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as dop_pegged_so_update_flag,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'mrp_control_flag', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as mrp_control_flag,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'prod_part_as_supply_in_mrp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as prod_part_as_supply_in_mrp,
+        NULLIF(public.get_matrix_value('clean_data.manuf_part_attribute', 'close_tolerance', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')), '')::numeric as close_tolerance,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'use_theoritical_density', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as use_theoritical_density,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'issue_type', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as issue_type,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'issue_type_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as issue_type_db,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'over_reporting', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as over_reporting,
+        NULLIF(public.get_matrix_value('clean_data.manuf_part_attribute', 'over_report_tolerance', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')), '')::numeric as over_report_tolerance,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'issue_planned_scrap', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as issue_planned_scrap,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'adjust_on_op_qty_deviation', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as adjust_on_op_qty_deviation,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'issue_overreported_qty', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as issue_overreported_qty,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'created_from_contract', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as created_from_contract,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'created_from_part_no', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as created_from_part_no,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'created_from_config_id', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as created_from_config_id,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'ship_dirty_repair_code', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as ship_dirty_repair_code,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'auto_replace_alt_comp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as auto_replace_alt_comp,
+        public.get_matrix_value('clean_data.manuf_part_attribute', 'consider_lead_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as consider_lead_time
     FROM raw_data.v_phl_article_retenu phl
     LEFT JOIN raw_data.phl_article_densite dens
       ON TRIM(dens.identifiant) = TRIM(phl."N. ARTICLE")
     LEFT JOIN clean_data.part_catalog pc
       ON pc.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
     WHERE phl."N. ARTICLE" IS NOT NULL
+      AND phl.site = p_contract   -- cloisonnement par site (cf. v_phl_article_retenu)
       AND TRIM(phl."N. ARTICLE") != ''
       -- Articles fabriques uniquement : produits finis (F) et intermediaires (I)
       AND UPPER(LEFT(TRIM(phl."STATUT"), 1)) IN ('F', 'I')
@@ -156,6 +216,7 @@ BEGIN
     DELETE FROM clean_data.manuf_part_attribute m
     USING raw_data.v_phl_article_retenu phl
     WHERE m.contract = p_contract
+      AND phl.site = p_contract   -- cloisonnement par site (cf. v_phl_article_retenu)
       AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND public.get_part_type_matrix('clean_data.manuf_part_attribute', p_contract,
                                       NULLIF(TRIM(phl."FAMILLE"), '')) IS FALSE;
@@ -176,10 +237,10 @@ BEGIN
     UPDATE clean_data.manuf_part_attribute m
     SET density = def.density
     FROM raw_data.v_phl_article_retenu phl,
-         LATERAL (SELECT public.get_default_value_ctx('clean_data.manuf_part_attribute', 'density',
-                                                      p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric AS density
+         LATERAL (SELECT public.get_matrix_value('clean_data.manuf_part_attribute', 'density', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric AS density
                  ) def
     WHERE m.contract = p_contract
+      AND phl.site = p_contract   -- cloisonnement par site (cf. v_phl_article_retenu)
       AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND m.density IS NULL
       AND def.density IS NOT NULL;
@@ -214,10 +275,11 @@ BEGIN
         plan_manuf_sup_on_due_date = def.plan_lbl
     FROM raw_data.v_phl_article_retenu phl,
          LATERAL (SELECT
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as plan_db,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as plan_lbl
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date_db', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as plan_db,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'plan_manuf_sup_on_due_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as plan_lbl
          ) def
     WHERE m.contract = p_contract
+      AND phl.site = p_contract   -- cloisonnement par site (cf. v_phl_article_retenu)
       AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
@@ -245,24 +307,25 @@ BEGIN
         ship_dirty = def.ship_dirty
     FROM raw_data.v_phl_article_retenu phl,
          LATERAL (SELECT
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'cum_leadtime', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as cum_leadtime,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'order_gap_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as order_gap_time,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'low_level', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as low_level,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'fixed_leadtime_day', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as fixed_leadtime_day,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'variable_leadtime_hour', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as variable_leadtime_hour,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'variable_leadtime_day', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as variable_leadtime_day,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'fixed_leadtime_hour', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as fixed_leadtime_hour,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'overhaul_scrap_rule', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as overhaul_scrap_rule,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'unprotected_lead_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as unprotected_lead_time,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'run_mrp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_mrp,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'run_crp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_crp,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'include_firm_demands', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as include_firm_demands,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'include_firm_supplies', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as include_firm_supplies,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'optimize_new_delivery_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as optimize_new_delivery_date,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'run_in_background', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_in_background,
-              public.get_default_value_ctx('clean_data.manuf_part_attribute', 'ship_dirty', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as ship_dirty
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'cum_leadtime', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as cum_leadtime,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'order_gap_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as order_gap_time,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'low_level', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as low_level,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'fixed_leadtime_day', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as fixed_leadtime_day,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'variable_leadtime_hour', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as variable_leadtime_hour,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'variable_leadtime_day', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as variable_leadtime_day,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'fixed_leadtime_hour', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as fixed_leadtime_hour,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'overhaul_scrap_rule', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as overhaul_scrap_rule,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'unprotected_lead_time', p_contract, NULLIF(TRIM(phl."FAMILLE"), ''))::numeric as unprotected_lead_time,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'run_mrp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_mrp,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'run_crp', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_crp,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'include_firm_demands', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as include_firm_demands,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'include_firm_supplies', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as include_firm_supplies,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'optimize_new_delivery_date', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as optimize_new_delivery_date,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'run_in_background', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as run_in_background,
+              public.get_matrix_value('clean_data.manuf_part_attribute', 'ship_dirty', p_contract, NULLIF(TRIM(phl."FAMILLE"), '')) as ship_dirty
          ) def
     WHERE m.contract = p_contract
+      AND phl.site = p_contract   -- cloisonnement par site (cf. v_phl_article_retenu)
       AND m.part_no = SUBSTRING(TRIM(phl."N. ARTICLE"), 1, 25)
       AND phl."N. ARTICLE" IS NOT NULL
       AND TRIM(phl."N. ARTICLE") != ''
