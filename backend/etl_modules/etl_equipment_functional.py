@@ -3,10 +3,16 @@
 
 """
 Module ETL pour le chargement des postes techniques et équipements (EQUIPMENT_FUNCTIONAL).
-Appelle la fonction clean_data.alimenter_equipment_functional() qui alimente la table
-clean_data.equipment_functional depuis les tables SAP standard
-(raw_data.iflot / iflotx / iflos / iloa pour les postes techniques, raw_data.itob
-pour les équipements). La table raw_data.ih02_capgemini n'est PAS utilisée.
+
+Enchaîne trois traitements, dans cet ordre imposé :
+  1. clean_data.alimenter_equipment_functional() : alimente clean_data.equipment_functional
+     depuis les tables SAP standard (raw_data.iflot / iflotx / iflos / iloa pour les postes
+     techniques, raw_data.itob pour les équipements). La table raw_data.ih02_capgemini
+     n'est PAS utilisée.
+  2. clean_data.load_equipment_object_spare('FULL') : alimente clean_data.equipment_object_spare
+     (nomenclature des postes techniques), qui lit equipment_functional.
+  3. clean_data.load_equipment_spare_structure('FULL') : alimente
+     clean_data.equipment_spare_structure, qui lit equipment_object_spare.
 """
 
 import os
@@ -67,6 +73,17 @@ class EquipmentFunctionalETL:
         self._add_log(f"Démarrage ETL Equipment Functional - {start_dt}", "info")
         self._add_log("Traitement des postes techniques et équipements (iflot/iflotx/iflos/iloa + itob)", "info")
 
+        # Ordre contraint : load_equipment_object_spare lit equipment_functional,
+        # load_equipment_spare_structure lit equipment_object_spare.
+        etapes = [
+            ("SELECT clean_data.alimenter_equipment_functional()",
+             "clean_data.alimenter_equipment_functional()"),
+            ("CALL clean_data.load_equipment_object_spare('FULL')",
+             "clean_data.load_equipment_object_spare('FULL')"),
+            ("CALL clean_data.load_equipment_spare_structure('FULL')",
+             "clean_data.load_equipment_spare_structure('FULL')"),
+        ]
+
         try:
             conn = psycopg2.connect(
                 host=self.pg_host,
@@ -78,16 +95,17 @@ class EquipmentFunctionalETL:
 
             with conn:
                 with conn.cursor() as cursor:
-                    self._add_log("Appel de clean_data.alimenter_equipment_functional()...", "info")
-                    logger.info("Appel de clean_data.alimenter_equipment_functional()")
+                    for sql, libelle in etapes:
+                        self._add_log(f"Appel de {libelle}...", "info")
+                        logger.info(f"Appel de {libelle}")
 
-                    cursor.execute("SELECT clean_data.alimenter_equipment_functional()")
+                        cursor.execute(sql)
 
-                    for notice in conn.notices:
-                        notice_text = notice.strip()
-                        logger.info(f"PostgreSQL: {notice_text}")
-                        self._add_log(notice_text, "info")
-                    conn.notices[:] = []
+                        for notice in conn.notices:
+                            notice_text = notice.strip()
+                            logger.info(f"PostgreSQL: {notice_text}")
+                            self._add_log(notice_text, "info")
+                        conn.notices[:] = []
 
             conn.close()
 
