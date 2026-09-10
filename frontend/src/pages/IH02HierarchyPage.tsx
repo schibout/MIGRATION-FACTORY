@@ -65,6 +65,7 @@ import api from '../services/api';
 import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import MaintenanceActions from '../components/maintenance/MaintenanceActions';
 import { MaintenanceJob } from '../services/maintenanceSnapshotService';
+import LovSelect from '../components/maintenance/LovSelect';
 
 interface LocationNode {
   row_id: string;
@@ -80,6 +81,9 @@ interface LocationNode {
   poste_travail: string | null;
   poste_travail_texte: string | null;
   art_type_construction: string | null;
+  // Champs saisis dans l'ecran, sans equivalent SAP (migration 074)
+  facteur_risque?: string | null;
+  zone?: string | null;
   quantite: string | null;
   unite: string | null;
   level: number;
@@ -297,6 +301,14 @@ const OBJECT_LEVEL_LABELS = [
 const objectLevelLabel = (level: number): string =>
   OBJECT_LEVEL_LABELS[Math.min(Math.max(level ?? 0, 0), 7)];
 
+// Site de maintenance servant a filtrer les listes de valeurs (LOV).
+// Le poste technique ne PORTE pas de contract : les 12 617 FUNC_LOC ont tous
+// plant = '9200' (division SAP, pas un site IFS), et public.etl_site ne connait
+// que 'SJ' / 'CS', codes du module articlePhl. Cote maintenance le site est
+// 'SJM' / 'CAST' (cf. sql/operation/*). L'ecran est donc mono-site : cette
+// constante est le point UNIQUE a changer le jour ou Castelsarrasin arrive.
+const IH02_CONTRACT = 'SJM';
+
 const DetailField: React.FC<{
   label: string;
   value: string | number | undefined | null;
@@ -402,7 +414,9 @@ const IH02HierarchyPage: React.FC = () => {
   const [workCenters, setWorkCenters] = useState<WorkCenter[]>([]);
 
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
-  const [bulkEdits, setBulkEdits] = useState<{ field: string; label: string; value: string; mode?: 'replace'; search?: string }[]>([]);
+  const [bulkEdits, setBulkEdits] = useState<{ field: string; label: string; value: string; valueLabel?: string; mode?: 'replace'; search?: string }[]>([]);
+  // Libelle de la valeur LOV en cours de selection, pour le recapitulatif.
+  const [bulkValueLabel, setBulkValueLabel] = useState('');
   const [bulkField, setBulkField] = useState('');
   const [bulkValue, setBulkValue] = useState('');
   const [bulkSearch, setBulkSearch] = useState('');
@@ -438,16 +452,22 @@ const IH02HierarchyPage: React.FC = () => {
   // `replace: true` = remplacement d'une PARTIE de la valeur (chercher/remplacer)
   // au lieu d'une affectation : indispensable pour l'identifiant STRNO, dont la
   // valeur est propre a chaque noeud (unicite entre freres).
-  const BULK_FIELDS: { key: string; label: string; replace?: boolean }[] = [
+  // `lov` = le champ se saisit dans une combobox et non en texte libre : la
+  // valeur ecrite doit rester un CODE de la liste, sinon une modification en
+  // masse reintroduirait du texte libre sur tout un sous-arbre.
+  const BULK_FIELDS: { key: string; label: string; replace?: boolean; lov?: string }[] = [
     { key: 'designation', label: 'Désignation' },
     { key: 'identifiant', label: 'Identifiant structuré (STRNO) — remplacer une partie', replace: true },
     { key: 'centre_couts', label: 'Centre de coûts' },
     { key: 'poste_travail_resp_maintenance', label: 'Poste travail resp. maintenance' },
     { key: 'art_type_construction', label: 'Art / Type construction' },
+    { key: 'facteur_risque', label: 'Facteur de Risque', lov: 'FACTEUR_RISQUE' },
+    { key: 'zone', label: 'Zone', lov: 'ZONE' },
     { key: 'quantite', label: 'Quantité' },
     { key: 'unite', label: 'Unité' },
   ];
   const bulkFieldIsReplace = !!BULK_FIELDS.find((f) => f.key === bulkField)?.replace;
+  const bulkFieldLov = BULK_FIELDS.find((f) => f.key === bulkField)?.lov;
 
   const loadRootNodes = useCallback(async () => {
     try {
@@ -820,6 +840,11 @@ const IH02HierarchyPage: React.FC = () => {
         await loadBom(node.node_id);
       }
       setExpandedBom((prev) => ({ ...prev, [node.node_id]: true }));
+    } else if (isExpanded) {
+      // Le depliage ouvre la nomenclature avec le noeud : le repliage doit la
+      // refermer, sinon les lignes de BOM restaient affichees sous un noeud
+      // marque replie (l'utilisateur voit un noeud qui "ne se replie pas").
+      setExpandedBom((prev) => ({ ...prev, [node.node_id]: false }));
     }
   };
 
@@ -1082,6 +1107,7 @@ const IH02HierarchyPage: React.FC = () => {
     setBulkEdits([]);
     setBulkField('');
     setBulkValue('');
+    setBulkValueLabel('');
     setBulkSearch('');
     setBulkDialogOpen(true);
     try {
@@ -1105,12 +1131,14 @@ const IH02HierarchyPage: React.FC = () => {
       return;
     }
     const label = def?.label || bulkField;
+    const valueLabel = def?.lov ? bulkValueLabel : undefined;
     setBulkEdits((prev) => {
       const filtered = prev.filter((e) => e.field !== bulkField);
-      return [...filtered, { field: bulkField, label, value: bulkValue }];
+      return [...filtered, { field: bulkField, label, value: bulkValue, valueLabel }];
     });
     setBulkField('');
     setBulkValue('');
+    setBulkValueLabel('');
   };
 
   const removeBulkEdit = (field: string) => {
@@ -1359,6 +1387,8 @@ const IH02HierarchyPage: React.FC = () => {
       poste_travail_resp_maintenance: node.poste_travail_resp_maintenance ?? '',
       poste_travail: node.poste_travail ?? '',
       art_type_construction: node.art_type_construction ?? '',
+      facteur_risque: node.facteur_risque ?? '',
+      zone: node.zone ?? '',
       quantite: node.quantite ?? '',
       unite: node.unite ?? '',
     });
@@ -1531,11 +1561,18 @@ const IH02HierarchyPage: React.FC = () => {
     }
   };
 
+  // Une couleur par niveau (index = profondeur, cf. OBJECT_LEVEL_LABELS).
+  // Le fond de l'appli est SOMBRE (#1e2738) : une teinte foncee y est illisible.
+  // Deux niveaux ont ete eclaircis pour cette raison (remontees utilisateurs) :
+  //   5 FR_SECTION       : #8e24aa violet   ~2,0:1  -> #e040fb magenta   ~4,5:1
+  //   6 FR_SOUS-SECTION  : #00897b teal     ~3,5:1  -> #1de9b6 turquoise ~9,5:1
+  // Choisir une teinte CLAIRE ici, pas une teinte saturee : sur fond sombre
+  // c'est la luminosite qui fait la lisibilite, pas la saturation.
   const getLevelColor = (level: number) => {
     const colors = [
       theme.palette.error.main, theme.palette.warning.main,
       theme.palette.info.main, theme.palette.success.main,
-      theme.palette.secondary.main, '#8e24aa', '#00897b', '#6d4c41',
+      theme.palette.secondary.main, '#e040fb', '#1de9b6', '#6d4c41',
     ];
     return colors[level % colors.length];
   };
@@ -1546,7 +1583,10 @@ const IH02HierarchyPage: React.FC = () => {
     const isExpanded = expandedNodes[key];
     const isLoading = loadingNodes[key];
     const eqChildren = loadedEqChildren[key];
-    const hasChildren = eq.children_count > 0 || (eqChildren && eqChildren.length > 0);
+    // isExpanded inclus pour la meme raison que dans renderTreeNode : un
+    // equipement deplie dont la requete ne ramene aucun sous-equipement
+    // perdait son chevron et devenait impossible a replier.
+    const hasChildren = eq.children_count > 0 || (eqChildren && eqChildren.length > 0) || isExpanded;
 
     return (
       <Box key={key}>
@@ -1634,8 +1674,11 @@ const IH02HierarchyPage: React.FC = () => {
     // ajout / suppression, alors que children_count date du chargement de la
     // liste parente (chevron fige sinon).
     const childCount = articleBomCounts[comp.idnrk] ?? comp.children_count ?? 0;
-    const hasChildren = childCount > 0;
     const isExpanded = expandedArticleBom[pathKey];
+    // isExpanded inclus : loadArticleBom recale articleBomCounts sur le nombre
+    // reellement ramene ; s'il tombe a 0 sur un noeud deja deplie, le chevron
+    // etait remplace par un espace vide et la ligne restait ouverte.
+    const hasChildren = childCount > 0 || isExpanded;
     const isLoading = loadingArticleBom[comp.idnrk];
     const children = loadedArticleBom[comp.idnrk];
 
@@ -1775,7 +1818,14 @@ const IH02HierarchyPage: React.FC = () => {
     const children = loadedChildren[key];
     const hasChildren = node.children_count > 0 || (children && (children.locations.length > 0 || children.equipment.length > 0));
     const hasBom = (bomCounts[node.node_id] || 0) > 0;
-    const isExpandable = hasChildren || hasBom;
+    // `isExpanded` fait partie des conditions : un noeud annonce avec des
+    // enfants (children_count) qui n'en ramene aucun retombait a
+    // hasChildren = false ET children defini -> le chevron passait en
+    // visibility:hidden alors que expandedNodes[key] restait a true. Le noeud
+    // affichait un dossier ouvert que plus rien ne permettait de replier
+    // (constate sur les postes de niveau FR_SECTION). Meme effet quand une
+    // nomenclature depliee revient vide et remet bomCounts a 0.
+    const isExpandable = hasChildren || hasBom || isExpanded;
     const isSelected = selectedNode && getNodeKey(selectedNode) === key;
     const levelColor = getLevelColor(node.level);
 
@@ -2066,6 +2116,32 @@ const IH02HierarchyPage: React.FC = () => {
             <Grid item xs={6}><DetailField label="Identifiant structuré (STRNO)" value={e ? v('code') : (node.display_name || node.node_id)} monospace editing={e} fieldKey="code" onFieldChange={onLocationFieldChange} /></Grid>
             <Grid item xs={6}><DetailField label="Parent" value={e ? v('parent_node_id') : (node.display_parent || node.parent_node_id)} monospace editing={e && node.level > 0} fieldKey="parent_node_id" onFieldChange={onLocationFieldChange} /></Grid>
             <Grid item xs={6}><DetailField label="Art / Type construction" value={v('art_type_construction')} editing={e} fieldKey="art_type_construction" onFieldChange={onLocationFieldChange} /></Grid>
+            <Grid item xs={6}>
+              {e ? (
+                <LovSelect
+                  listCode="FACTEUR_RISQUE"
+                  contract={IH02_CONTRACT}
+                  label="Facteur de Risque"
+                  value={d.facteur_risque}
+                  onChange={(code) => onLocationFieldChange('facteur_risque', code)}
+                />
+              ) : (
+                <DetailField label="Facteur de Risque" value={node.facteur_risque} />
+              )}
+            </Grid>
+            <Grid item xs={6}>
+              {e ? (
+                <LovSelect
+                  listCode="ZONE"
+                  contract={IH02_CONTRACT}
+                  label="Zone"
+                  value={d.zone}
+                  onChange={(code) => onLocationFieldChange('zone', code)}
+                />
+              ) : (
+                <DetailField label="Zone" value={node.zone} />
+              )}
+            </Grid>
             {(e || (node.quantite && parseFloat(String(node.quantite)) > 0)) && (
               <>
                 <Grid item xs={6}><DetailField label="Quantité" value={v('quantite')} editing={e} fieldKey="quantite" onFieldChange={onLocationFieldChange} /></Grid>
@@ -2521,7 +2597,13 @@ const IH02HierarchyPage: React.FC = () => {
               <Select
                 value={bulkField}
                 label="Champ"
-                onChange={(e: SelectChangeEvent) => setBulkField(e.target.value)}
+                onChange={(e: SelectChangeEvent) => {
+                  // Changer de champ invalide la valeur deja tapee : un code
+                  // LOV n'a aucun sens pour « Désignation », et inversement.
+                  setBulkField(e.target.value);
+                  setBulkValue('');
+                  setBulkValueLabel('');
+                }}
               >
                 {BULK_FIELDS.filter((f) => !bulkEdits.some((be) => be.field === f.key)).map((f) => (
                   <MenuItem key={f.key} value={f.key}>{f.label}</MenuItem>
@@ -2545,6 +2627,19 @@ const IH02HierarchyPage: React.FC = () => {
                   sx={{ flex: 1, '& input': { fontFamily: 'monospace' } }}
                 />
               </>
+            ) : bulkFieldLov ? (
+              <Box sx={{ flex: 1 }}>
+                <LovSelect
+                  listCode={bulkFieldLov}
+                  contract={IH02_CONTRACT}
+                  label="Nouvelle valeur"
+                  value={bulkValue}
+                  onChange={(code, valeur) => {
+                    setBulkValue(code);
+                    setBulkValueLabel(valeur?.libelle || '');
+                  }}
+                />
+              </Box>
             ) : (
               <TextField
                 size="small"
@@ -2582,7 +2677,9 @@ const IH02HierarchyPage: React.FC = () => {
                     <TableCell sx={{ fontFamily: 'monospace' }}>
                       {edit.mode === 'replace'
                         ? `« ${edit.search} » devient « ${edit.value} »`
-                        : (edit.value || <Typography variant="caption" color="text.secondary">(vider)</Typography>)}
+                        : (edit.value
+                            ? (edit.valueLabel ? `${edit.value} — ${edit.valueLabel}` : edit.value)
+                            : <Typography variant="caption" color="text.secondary">(vider)</Typography>)}
                     </TableCell>
                     <TableCell>
                       <IconButton size="small" color="error" onClick={() => removeBulkEdit(edit.field)}>

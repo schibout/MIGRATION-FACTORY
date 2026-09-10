@@ -49,6 +49,10 @@ CREATE TABLE clean_data.maintenance_object (
     quantity        NUMERIC(15, 3),  -- BOM_ITEM : stpo.menge
     unit            TEXT,            -- BOM_ITEM : stpo.meins
 
+    -- Champs SAISIS dans l'ecran (aucun equivalent SAP) -- migration 074
+    risk_factor     TEXT,            -- "Facteur de Risque" (FUNC_LOC)
+    zone            TEXT,            -- "Zone"              (FUNC_LOC)
+
     -- Tout le reste des champs SAP importants, par type d'objet
     attributes      JSONB NOT NULL DEFAULT '{}'::jsonb,
 

@@ -125,12 +125,11 @@ BEGIN
         -- LEAD_TIME_CODE_DB: P
         public.get_default_value('clean_data.inventory_part', 'lead_time_code_db') as lead_time_code_db,
         
-        -- INVENTORY_VALUATION_METHOD_DB: S => ST, V => AV (selon code prix SAP)
-        CASE 
-            WHEN mbew.vprsv = 'S' THEN 'ST'
-            WHEN mbew.vprsv = 'V' THEN 'AV'
-            ELSE 'ST'
-        END as inventory_valuation_method_db,
+        -- INVENTORY_VALUATION_METHOD_DB: AV (prix moyen pondere) pour TOUS les
+        -- articles. Regle metier : la valorisation IFS est uniforme, on ne reprend
+        -- pas le controle des prix SAP (mbew.vprsv). L'ancien CASE traduisait
+        -- vprsv 'S' -> ST / 'V' -> AV, il est abandonne (demande explicite).
+        'AV' as inventory_valuation_method_db,
         
         -- COUNT_VARIANCE: 0
         public.get_default_value('clean_data.inventory_part', 'count_variance')::numeric as count_variance,
@@ -222,11 +221,9 @@ BEGIN
     INNER JOIN raw_data.marc marc 
         ON mara.matnr = marc.matnr
         AND marc.mandt = '700'
-    LEFT JOIN raw_data.mbew mbew 
-        ON mara.matnr = mbew.matnr 
-        AND marc.werks = mbew.bwkey
-        AND mbew.mandt = '700'
-    
+    -- (plus de jointure raw_data.mbew : le controle des prix SAP n'est plus lu,
+    --  cf. INVENTORY_VALUATION_METHOD_DB ci-dessus)
+
     WHERE
         marc.werks IN ('9200', '9000')
         AND mara.lvorm IS NULL
@@ -279,7 +276,7 @@ COMMENT ON FUNCTION clean_data.alimenter_inventory_part() IS
 Règles de gestion Trimet:
 - CONTRACT: 9200=SJ (Saint Jean), 9000=CS (Castel)
 - PART_NO: numero_article SAP (pas de transcodification, l''article garde son ID)
-- INVENTORY_VALUATION_METHOD_DB: S=>ST, V=>AV (MBEW.VPRSV)
+- INVENTORY_VALUATION_METHOD_DB: AV pour tous les articles (regle metier, MBEW.VPRSV non repris)
 - NEGATIVE_ON_HAND_DB: NEG ONHAND OK pour articles SAP
 - ABC_CLASS: MARC.MAABC
 - HSN_SAC_CODE: MARC.MOWNR

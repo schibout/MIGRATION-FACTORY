@@ -85,8 +85,15 @@ BEGIN
     DROP TABLE IF EXISTS pg_temp.fl_scope;
     CREATE TEMP TABLE fl_scope (tplnr TEXT PRIMARY KEY);
 
+    -- Ancres de la recursion : la racine demandee, PLUS les postes qui portent
+    -- son prefixe mais dont le tplma est vide (T200-X060-60, T300-X050).
+    -- Identique au mode FULL.
     WITH RECURSIVE scope AS (
-        SELECT i.tplnr FROM raw_data.iflot i WHERE i.tplnr = p_root_tplnr
+        SELECT i.tplnr FROM raw_data.iflot i
+        WHERE i.tplnr = p_root_tplnr
+           OR (NULLIF(TRIM(i.tplma), '') IS NULL
+               AND i.tplnr <> p_root_tplnr
+               AND i.tplnr LIKE p_root_tplnr || '%')
         UNION
         SELECT c.tplnr FROM raw_data.iflot c JOIN scope s ON c.tplma = s.tplnr
     )
@@ -193,7 +200,17 @@ BEGIN
             ELSE COALESCE(NULLIF(TRIM(s.strno), ''), i.tplnr)
         END,
         'FUNC_LOC',
-        NULLIF(TRIM(i.tplma), ''),
+        -- Repli pour les postes a tplma vide entres par les ancres du perimetre
+        -- (T200-X060-60 -> T200-X060) : uniquement si ce parent est bien dans
+        -- le perimetre, sinon le poste reste racine. attributes.tplma_sap garde
+        -- la valeur SAP brute (vide) : on ne falsifie pas la donnee source.
+        COALESCE(
+            NULLIF(TRIM(i.tplma), ''),
+            CASE WHEN i.tplnr <> p_root_tplnr AND i.tplnr LIKE '%-%'
+                 THEN (SELECT sc2.tplnr FROM fl_scope sc2
+                       WHERE sc2.tplnr = regexp_replace(i.tplnr, '-[^-]+$', ''))
+            END
+        ),
         i.fltyp,
         s.tplkz,
         cr.arbpl,
@@ -338,10 +355,19 @@ BEGIN
             'mbrsh', m.mbrsh, 'matkl', m.matkl, 'mandt', m.mandt
         ))
     FROM (
+        -- a) composants de nomenclature
         SELECT DISTINCT p.idnrk AS matnr, p.mandt
         FROM raw_data.stpo p
         WHERE p.stlty IN ('T', 'M')
           AND p.idnrk IS NOT NULL AND TRIM(p.idnrk) <> ''
+        UNION
+        -- b) TETE de nomenclature designee comme TYPE DE CONSTRUCTION (IBAU)
+        --    d'un poste technique (cf. mode FULL, passe 4). Volontairement
+        --    limite a submt : ouvrir a toutes les tetes de mast ajouterait
+        --    10 627 articles inatteignables dans l'arbre.
+        SELECT DISTINCT TRIM(f.submt), f.mandt
+        FROM raw_data.iflo f
+        WHERE NULLIF(TRIM(f.submt), '') IS NOT NULL
     ) src
     JOIN raw_data.mara m ON m.matnr = src.matnr AND m.mandt = src.mandt
     LEFT JOIN LATERAL (
@@ -421,6 +447,78 @@ BEGIN
     JOIN raw_data.stpo p ON p.stlnr = bm.stlnr AND p.mandt = bm.mandt AND p.stlty = 'M'
     JOIN mo_stg art ON art.object_type = 'ARTICLE' AND art.sap_key = p.idnrk
     ON CONFLICT (object_type, sap_key) DO NOTHING;
+
+    -- -------------------------------------------------------------
+    -- PASSE 4c : nomenclature d'un poste technique via son TYPE DE
+    --   CONSTRUCTION (IBAU) : iflo.submt -> mara -> mast -> stpo (stlty='M').
+    --   Rattachement A PLAT sous le poste, conforme a l'affichage SAP.
+    --   Voir le commentaire detaille de la passe 5c du mode FULL
+    --   (proc_load_maintenance_object.sql) : source iflo car iflot.submt est
+    --   vide, tpst prime sur submt, prefixe 'S:' obligatoire pour ne pas
+    --   entrer en collision avec les lignes 'M:' de la passe 4b.
+    -- -------------------------------------------------------------
+    SELECT COUNT(*) INTO v_tmp FROM raw_data.iflo;
+
+    IF v_tmp = 0 THEN
+        RAISE WARNING '[%] Passe 4c ignoree : raw_data.iflo est vide, le type de construction (submt) est introuvable -> les postes techniques sans tpst resteront sans nomenclature',
+            TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS');
+    ELSE
+        INSERT INTO mo_stg (
+            object_type, sap_key, parent_type, parent_sap_key, ref_sap_key,
+            sort_order, code, designation, category, quantity, unit, attributes
+        )
+        SELECT
+            'BOM_ITEM',
+            -- Le tplnr fait PARTIE DE LA CLE : un meme IBAU est partage par
+            -- plusieurs postes techniques (cf. mode FULL, passe 5c).
+            'S:' || sm.tplnr || ':' || sm.stlnr || ':'
+                 || COALESCE(NULLIF(TRIM(sm.stlal), ''), '01')
+                 || ':' || p.posnr || ':' || COALESCE(p.stlkn, ''),
+            'FUNC_LOC',
+            sm.tplnr,
+            p.idnrk,
+            NULLIF(regexp_replace(p.posnr, '[^0-9]', '', 'g'), '')::int,
+            LTRIM(p.idnrk, '0'),
+            art.designation,
+            p.postp,
+            NULLIF(regexp_replace(TRIM(p.menge), '[^0-9.]', '', 'g'), '')::numeric,
+            p.meins,
+            jsonb_strip_nulls(jsonb_build_object(
+                'stlty', 'M', 'origin', 'SUBMT', 'submt', sm.submt,
+                'stlnr', sm.stlnr, 'stlal', sm.stlal, 'stlan', sm.stlan,
+                'posnr', p.posnr, 'stlkn', p.stlkn, 'postp', p.postp,
+                'potx1', NULLIF(TRIM(p.potx1), ''), 'potx2', NULLIF(TRIM(p.potx2), ''),
+                'base_quantity', k.bmeng, 'base_unit', k.bmein,
+                'mandt', p.mandt
+            ))
+        FROM (
+            SELECT DISTINCT ON (fs.tplnr)
+                   fs.tplnr, fs.submt, m.stlnr, m.stlal, m.stlan, m.mandt
+            FROM (
+                SELECT DISTINCT ON (f.tplnr)
+                       f.tplnr, f.mandt, NULLIF(TRIM(f.submt), '') AS submt
+                FROM raw_data.iflo f
+                JOIN fl_scope sc ON sc.tplnr = f.tplnr
+                WHERE NULLIF(TRIM(f.submt), '') IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM raw_data.tpst t
+                                  WHERE t.tplnr = f.tplnr AND t.mandt = f.mandt)
+                ORDER BY f.tplnr,
+                         (CASE WHEN f.spras = 'F' THEN 0 WHEN f.spras = 'E' THEN 1 ELSE 2 END)
+            ) fs
+            JOIN raw_data.mast m ON m.matnr = fs.submt AND m.mandt = fs.mandt
+            ORDER BY fs.tplnr,
+                     (CASE WHEN m.werks = '9200' THEN 0 ELSE 1 END), m.stlal, m.stlnr
+        ) sm
+        JOIN raw_data.stpo p ON p.stlnr = sm.stlnr AND p.mandt = sm.mandt AND p.stlty = 'M'
+        -- quantite de base de la nomenclature, comme la passe 4a le fait pour tpst
+        LEFT JOIN raw_data.stko k
+            ON k.stlnr = sm.stlnr AND k.mandt = sm.mandt AND k.stlty = 'M'
+           AND k.stlal = sm.stlal
+        JOIN mo_stg art ON art.object_type = 'ARTICLE' AND art.sap_key = p.idnrk
+        WHERE EXISTS (SELECT 1 FROM mo_stg fl
+                      WHERE fl.object_type = 'FUNC_LOC' AND fl.sap_key = sm.tplnr)
+        ON CONFLICT (object_type, sap_key) DO NOTHING;
+    END IF;
 
     ANALYZE mo_stg;
 

@@ -7,6 +7,8 @@ import {
   Handyman as PeToolsIcon,
   Layers as LayersIcon,
   SettingsBackupRestore as BackupIcon,
+  ListAlt as LovIcon,
+  Psychology as AiIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -59,6 +61,27 @@ const cards = [
     icon: BackupIcon,
     color: 'info' as const,
     tag: 'ÉTATS',
+  },
+  {
+    // Carte creee sur la branche version_trimet (commit 2b02432 « skill
+    // maintenance »), jamais fusionnee dans master : elle y pointait sur
+    // /maintenance/assistant = <HermesChat profile="maintenance" />. Le prop
+    // `profile` n'existe pas sur master, donc on ouvre ici l'agent generique
+    // (/hermes). Porter le profil maintenance = fusionner la branche.
+    title: 'Agent IA Maintenance',
+    description: 'Interroger l\'agent Trimet sur les postes techniques, équipements, articles, stocks et gammes.',
+    path: '/hermes',
+    icon: AiIcon,
+    color: 'info' as const,
+    tag: 'IA',
+  },
+  {
+    title: 'Listes de valeurs',
+    description: 'Gérer les valeurs proposées par les combobox de la fiche d\'un poste technique : facteur de risque, zone.',
+    path: '/maintenance/lov',
+    icon: LovIcon,
+    color: 'primary' as const,
+    tag: 'PARAMÉTRAGE',
   },
 ];
 

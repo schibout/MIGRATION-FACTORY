@@ -30,6 +30,7 @@ import ExtractionHub from './pages/ExtractionHub';
 import MetadataExtraction from './pages/MetadataExtraction';
 import FieldMappingManagement from './pages/FieldMappingManagement';
 import IfsCatalog from './pages/IfsCatalog';
+import IfsTableCatalog from './pages/IfsTableCatalog';
 import IfsData from './pages/IfsData';
 import IfsDataArticles from './pages/IfsDataArticles';
 import IfsDataClients from './pages/IfsDataClients';
@@ -55,6 +56,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceBackupsPage from './pages/MaintenanceBackupsPage';
 import MaintenancePeToolsPage from './pages/MaintenancePeToolsPage';
 import MaintenanceIbauPage from './pages/MaintenanceIbauPage';
+import MaintenanceLovPage from './pages/MaintenanceLovPage';
 import ModeEmploi from './pages/ModeEmploi';
 import Parametres from './pages/Parametres';
 import ProjectDetailPage from './pages/ProjectDetailPage';
@@ -160,6 +162,7 @@ function App() {
           {/* Routes pour les données IFS */}
           <Route path="ifs-data" element={<IfsData />} />
           <Route path="ifs-data/catalog" element={<IfsCatalog />} />
+          <Route path="ifs-data/table-catalog" element={<IfsTableCatalog />} />
           <Route path="ifs-data/clients" element={<IfsDataClients />} />
           <Route path="ifs-data/fournisseurs" element={<IfsDataFournisseurs />} />
           <Route path="ifs-data/articles" element={<IfsDataArticles />} />
@@ -227,6 +230,7 @@ function App() {
           <Route path="maintenance/backups" element={<MaintenanceBackupsPage />} />
           <Route path="maintenance/pe-tools" element={<MaintenancePeToolsPage />} />
           <Route path="maintenance/ibau" element={<MaintenanceIbauPage />} />
+          <Route path="maintenance/lov" element={<MaintenanceLovPage />} />
           <Route path="export/clients" element={<ExportClients />} />
           <Route path="export/projets" element={<ExportProjects />} />
           

@@ -170,6 +170,8 @@ def _loc_select(level_expr):
         o.cost_center AS centre_couts,
         o.work_center AS poste_travail_resp_maintenance,
         o.attributes->>'art_type_construction' AS art_type_construction,
+        o.risk_factor AS facteur_risque,
+        o.zone AS zone,
         o.quantity::text AS quantite,
         o.unit AS unite,
         {level_expr} AS level,
@@ -216,7 +218,17 @@ def get_root_nodes():
                 SELECT {_loc_select('0')}
                 FROM {MO} o
                 WHERE o.object_type = 'FUNC_LOC' AND o.parent_id IS NULL AND o.is_active
-                ORDER BY o.sap_key
+                -- Tri sur le code AFFICHE, pas sur sap_key : 498 postes
+                -- portent un code externe (strno) different de leur tplnr, et
+                -- les postes en numerotation interne SAP ont un sap_key en
+                -- '?01000000000000000xx'. Trier sur sap_key donnait un ordre
+                -- incoherent avec ce que lit l'utilisateur (105 fratries
+                -- concernees : sous T000-V, V050 arrivait apres V900).
+                -- Les EQUIPMENT gardent volontairement ORDER BY sap_key :
+                -- leur code est equnr sans les zeros de tete, donc un tri
+                -- texte du code mettrait 100 avant 99, alors que sap_key est
+                -- complete a 18 zeros et donne le bon ordre numerique.
+                ORDER BY o.code
             """)
             nodes = cursor.fetchall()
             return jsonify({'success': True, 'data': nodes, 'total': len(nodes)}), 200
@@ -244,7 +256,17 @@ def get_children():
                 SELECT {_loc_select('%s')}
                 FROM {MO} o
                 WHERE o.object_type = 'FUNC_LOC' AND o.parent_id = %s AND o.is_active
-                ORDER BY o.sap_key
+                -- Tri sur le code AFFICHE, pas sur sap_key : 498 postes
+                -- portent un code externe (strno) different de leur tplnr, et
+                -- les postes en numerotation interne SAP ont un sap_key en
+                -- '?01000000000000000xx'. Trier sur sap_key donnait un ordre
+                -- incoherent avec ce que lit l'utilisateur (105 fratries
+                -- concernees : sous T000-V, V050 arrivait apres V900).
+                -- Les EQUIPMENT gardent volontairement ORDER BY sap_key :
+                -- leur code est equnr sans les zeros de tete, donc un tri
+                -- texte du code mettrait 100 avant 99, alors que sap_key est
+                -- complete a 18 zeros et donne le bon ordre numerique.
+                ORDER BY o.code
             """, [child_level, pid])
             children = cursor.fetchall()
 
@@ -291,6 +313,8 @@ def get_node_details():
                     o.work_center AS poste_travail_resp_maintenance,
                     o.work_center_txt AS poste_resp_texte,
                     o.attributes->>'art_type_construction' AS art_type_construction,
+                    o.risk_factor AS facteur_risque,
+                    o.zone AS zone,
                     o.quantity::text AS quantite,
                     o.unit AS unite,
                     p.sap_key AS parent_node_id,
@@ -366,6 +390,8 @@ def search_nodes():
                     o.cost_center AS centre_couts,
                     o.work_center AS poste_travail_resp_maintenance,
                     o.attributes->>'art_type_construction' AS art_type_construction,
+                    o.risk_factor AS facteur_risque,
+                    o.zone AS zone,
                     o.quantity::text AS quantite,
                     o.unit AS unite
                 FROM {MO} o
@@ -556,6 +582,12 @@ def update_location():
                 sets.append('unit = %s'); params.append(data['unite'] or None); modified.append('Unité')
             if 'art_type_construction' in data:
                 attr_patch['art_type_construction'] = data['art_type_construction']; modified.append('Art / Type construction')
+            # Champs SAISIS, sans equivalent SAP (migration 074). '' -> NULL pour
+            # que la fiche en lecture masque le champ vide comme les autres.
+            if 'facteur_risque' in data:
+                sets.append('risk_factor = %s'); params.append(data['facteur_risque'] or None); modified.append('Facteur de risque')
+            if 'zone' in data:
+                sets.append('zone = %s'); params.append(data['zone'] or None); modified.append('Zone')
 
             # Poste de travail (valide contre crhd 9200) -> work_center + work_center_txt
             wc = data.get('poste_travail')
@@ -774,6 +806,9 @@ def bulk_update():
         col_map = {
             'designation': 'designation', 'type_poste': 'type_code',
             'centre_couts': 'cost_center', 'quantite': 'quantity', 'unite': 'unit',
+            # Champs LOV (migration 074) : on ecrit le CODE de la valeur, comme
+            # la fiche individuelle. L'ecran n'en propose que des codes valides.
+            'facteur_risque': 'risk_factor', 'zone': 'zone',
         }
         attr_fields = {'art_type_construction', 'poste_travail_resp_maintenance'}
         # Champs acceptant le mode 'replace' (remplacement d'une PARTIE de la
@@ -1188,8 +1223,15 @@ def get_fl_bom(tplnr):
                 FROM {MO} b
                 JOIN {MO} fl ON fl.id = b.parent_id AND fl.object_type = 'FUNC_LOC'
                 JOIN {MO} a  ON a.id  = b.ref_object_id AND a.object_type = 'ARTICLE'
+                -- Pas de filtre sur attributes->>'stlty' : la jointure sur un
+                -- parent FUNC_LOC exprime deja « nomenclature portee par un
+                -- poste technique ». Filtrer stlty='T' masquerait les lignes
+                -- issues du type de construction IBAU (passe 5c, stlty='M' +
+                -- origin='SUBMT'), qui concernent plus de la moitie des postes.
+                -- NB : aucun signe pourcent dans ce SQL, meme en commentaire :
+                -- psycopg2 le prendrait pour un marqueur de parametre et la
+                -- requete echouerait sur « list index out of range ».
                 WHERE b.object_type = 'BOM_ITEM' AND b.is_active
-                  AND b.attributes->>'stlty' = 'T'
                   AND fl.sap_key = %s
                 ORDER BY b.sort_order
             """, [tplnr])
@@ -1215,8 +1257,10 @@ def get_fl_bom_counts():
                 SELECT fl.sap_key AS tplnr, COUNT(*) AS nb
                 FROM {MO} b
                 JOIN {MO} fl ON fl.id = b.parent_id AND fl.object_type = 'FUNC_LOC'
+                -- Meme regle que /bom : pas de filtre stlty, sinon le compteur
+                -- (pastille verte + chevron) ignorerait les nomenclatures
+                -- issues du type de construction IBAU.
                 WHERE b.object_type = 'BOM_ITEM' AND b.is_active
-                  AND b.attributes->>'stlty' = 'T'
                   AND fl.sap_key = ANY(%s)
                 GROUP BY fl.sap_key
             """, [tplnr_list])
@@ -1382,7 +1426,6 @@ def add_bom_component():
             cursor.execute(f"""
                 SELECT 1 FROM {MO}
                 WHERE object_type = 'BOM_ITEM' AND is_active
-                  AND attributes->>'stlty' = 'T'
                   AND parent_id = %s AND ref_object_id = %s
                 LIMIT 1
             """, [fl_id, art_id])
@@ -1395,7 +1438,7 @@ def add_bom_component():
             cursor.execute(f"""
                 SELECT COALESCE(MAX(sort_order), 0) + 10 AS next_pos
                 FROM {MO}
-                WHERE object_type = 'BOM_ITEM' AND parent_id = %s AND attributes->>'stlty' = 'T'
+                WHERE object_type = 'BOM_ITEM' AND parent_id = %s
             """, [fl_id])
             next_pos = cursor.fetchone()['next_pos']
             posnr = str(next_pos).zfill(4)
@@ -1504,7 +1547,6 @@ def update_bom_component():
             cursor.execute(f"""
                 SELECT id FROM {MO}
                 WHERE object_type = 'BOM_ITEM' AND parent_id = %s
-                  AND attributes->>'stlty' = 'T'
                   AND attributes->>'stlnr' = %s
                   {locate_sql}
                 LIMIT 1
@@ -1643,10 +1685,14 @@ def move_bom_item():
                     }), 400
 
             nouveau_stlty = 'T' if parent_type == 'FUNC_LOC' else 'M'
+            # 'origin'/'submt' tracent la provenance « type de construction »
+            # (passe 5c du chargement). Une ligne deplacee a la main n'est plus
+            # celle que le chargement produirait : on retire ces marqueurs
+            # plutot que de laisser un origin='SUBMT' avec un stlty realigne.
             cursor.execute(
                 f"""UPDATE {MO}
                     SET parent_id  = %s,
-                        attributes = attributes || %s::jsonb,
+                        attributes = (attributes - 'origin' - 'submt') || %s::jsonb,
                         updated_by = %s
                     WHERE id = %s""",
                 [cible_id, json.dumps({'stlty': nouveau_stlty}), user, ligne['id']],

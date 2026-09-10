@@ -582,6 +582,131 @@ L'ecran IH02 n'ecrit plus dans `raw_data`, mais les ecrans **Equipements** et
 modifiee depuis l'ecran Articles n'apparait dans IH02 qu'apres un rechargement en
 mode fusion. A traiter dans un second temps.
 
+## 8sexies. Nomenclatures manquantes : le type de construction (IBAU) — 2026-09-08
+
+### Le symptome
+
+Des postes techniques apparaissaient en feuilles dans l'ecran alors que SAP leur
+montre une nomenclature complete. Cas de reference : `T130-K100-50` (PINCE
+MANIPULATEUR, 4 lignes dans SAP) et `T130-K100-60` (ASSERV.HYD.MANIPULATEUR,
+19 lignes), tous deux sans aucun enfant dans IH02.
+
+### La cause
+
+Le chargement ne connaissait qu'un seul chemin vers la nomenclature d'un poste
+technique : `raw_data.tpst -> stko -> stpo (stlty='T')` (passe 5a). Or **12 390
+des 23 356 postes techniques (53 %) n'ont aucune entree dans `tpst`**. Dans SAP,
+leur nomenclature est portee par leur **type de construction** (IBAU) : un
+article dont la nomenclature matiere est explosee sous le poste.
+
+```
+raw_data.iflo.submt -> raw_data.mara (mtart='IBAU') -> raw_data.mast.stlnr -> raw_data.stpo (stlty='M')
+```
+
+| tplnr | submt | mast.stlnr |
+|---|---|---|
+| `T130-K100-50` | 502375 « PINCE MANIPULATEUR » | `00070243` |
+| `T130-K100-60` | 502376 « ASSERV.HYD.MANIPULATEUR » | `00070244` |
+
+Deux verrous se cumulaient :
+
+1. **`raw_data.iflot.submt` est vide sur 100 % des lignes** (defaut d'extraction
+   de IFLOT, comme `ematn`). Seule la vue `raw_data.iflo` porte la valeur :
+   19 965 lignes renseignees, 554 valeurs distinctes, **toutes** resolvables
+   dans `mara`. C'est la seule raison d'utiliser `iflo` ici, alors que la passe 1
+   l'evite deliberement pour le poste de charge (cf. commentaire passe 1).
+2. **La passe ARTICLE ne partait que des composants** (`stpo.idnrk`), jamais des
+   tetes de nomenclature. Un IBAU de haut de structure comme 502375, composant
+   de rien nulle part, n'existait donc pas comme noeud — et la passe 5b, qui
+   exige un noeud ARTICLE existant, ne chargeait jamais sa nomenclature.
+
+### Le correctif
+
+- **Passe 4** : la source des ARTICLE ajoute les `iflo.submt` (+493 articles).
+  Volontairement limitee a `submt` : ouvrir a toutes les tetes de `mast`
+  ajouterait 10 627 articles ni composants ni types de construction, donc
+  inatteignables dans l'arbre, en tirant au passage toutes leurs nomenclatures.
+- **Passe 5c** (`4c` en mode MERGE) : nomenclature du poste technique via
+  `submt`, **a plat** sous le poste — conforme a l'affichage SAP, sans niveau
+  intermediaire. L'IBAU d'origine est trace dans `attributes.submt` avec
+  `attributes.origin = 'SUBMT'`. **1 757 postes du perimetre 'T'** en beneficient.
+- Priorite **`tpst` > `submt`** (`NOT EXISTS` sur `tpst`), comme dans SAP : une
+  nomenclature directe prime sur le type de construction. 695 postes ont les deux.
+- Garde-fou : si `raw_data.iflo` est vide (c'est une VUE SAP, extraction peu
+  sure), la passe emet un `RAISE WARNING` au lieu de produire silencieusement
+  zero ligne.
+
+**Le prefixe `'S:'` de la `sap_key` est obligatoire.** La meme nomenclature
+`(stlnr, posnr, stlkn)` est deja chargee par la passe 5b sous le noeud ARTICLE de
+l'IBAU avec le prefixe `'M:'`. Reutiliser `'M:'` ferait tomber l'une des deux
+lignes dans l'index unique `(object_type, sap_key)`, silencieusement, via le
+`ON CONFLICT DO NOTHING`.
+
+### Perimetre : deux postes recuperes
+
+La recursion de perimetre ne partait que de la racine `'T'`. `raw_data.iflot`
+contient 8 postes a `tplma` vide, dont `T200-X060-60` et `T300-X050`, qui
+appartiennent au perimetre 'T' par leur code mais en etaient exclus avec toute
+leur descendance. Les ancres de la recursion acceptent desormais les postes a
+`tplma` vide portant le prefixe de la racine, et la resolution de parent retombe
+sur le code ampute de son dernier segment `-` (`T200-X060-60` -> `T200-X060`),
+**uniquement si ce parent est dans le perimetre** ; sinon le poste reste racine.
+Perimetre : 12 625 -> 12 627 postes. Les 10 725 postes de la branche `'S'`
+restent volontairement hors perimetre.
+
+### Cote lecture : le filtre `stlty='T'` a saute
+
+`/bom/<tplnr>` et `/bom-counts` filtraient `attributes->>'stlty' = 'T'`, ce qui
+aurait rendu les lignes de la passe 5c invisibles **et** non comptees (ni
+chevron, ni pastille verte). Le filtre est retire : la jointure sur un parent
+`FUNC_LOC` exprime deja exactement « nomenclature portee par un poste technique ».
+Meme retrait dans `POST /bom-component` (controle de doublon et calcul du
+`posnr` suivant) et `PUT /bom-component` (localisation de la ligne a editer),
+sans quoi les lignes issues de `submt` seraient affichees mais non editables.
+`PUT /move-bom-item` retire desormais `origin`/`submt` quand il realigne
+`stlty` : une ligne deplacee a la main n'est plus celle que le chargement
+produirait.
+
+**L'export IFS reprend ces lignes** (demande explicite, 2026-09-08).
+`clean_data.v_fl_nomenclature` filtrait `attributes->>'stlty' = 'T'` et laissait
+donc les 12 117 lignes du type de construction hors de l'export. Le filtre est
+retire : la jointure sur un parent `FUNC_LOC` exprime deja la bonne semantique,
+et les BOM matiere de la passe 5b ne peuvent pas y entrer (leur parent est un
+ARTICLE). Effet mesure :
+
+| | avant | apres |
+|---|---|---|
+| `v_fl_nomenclature` | 26 032 | **38 149** |
+| dont `item_category = 'L'` (seule categorie exportee) | 14 871 | **20 375** |
+| `equipment_object_spare` (apres agregation par poste + article) | 14 731 | **20 221** |
+
+`load_equipment_object_spare` ne lit que `tplnr_display`, `matnr_short`,
+`item_category`, `quantity` et `idnrk` — toutes renseignees sur les lignes
+SUBMT. Les colonnes `stlan` / `base_quantity` / `base_unit`, que seule la voie
+`tpst` alimentait, sont desormais posees aussi par la passe 5c (`mast.stlan` et
+`stko.bmeng`/`bmein` de la nomenclature matiere) : elles ne seront renseignees
+qu'apres le prochain rechargement.
+
+Au passage, `recreate_v_fl_nomenclature.sql` n'etait **rejouable qu'une fois** :
+`DROP MATERIALIZED VIEW IF EXISTS` echoue avec « is not a materialized view »
+des lors que l'objet est deja une vue simple. Le script teste maintenant
+`pg_class.relkind` avant de detruire la matview historique, et utilise
+`CREATE OR REPLACE VIEW` (donc sans `CASCADE`).
+
+### Ce qui reste ouvert
+
+- L'extraction de `IFLOT` devrait recuperer `submt` et `ematn` (vides a 100 %),
+  ce qui permettrait d'abandonner la vue `iflo`.
+- `raw_data.stas` n'existe pas : les alternatives de nomenclature ne sont pas
+  discriminables. La passe 5a joint `stpo` sur `stlnr` seul, sans `stlal` — deux
+  alternatives partageant un `posnr` produisent la meme `sap_key` et l'une est
+  perdue par `ON CONFLICT DO NOTHING`.
+- `raw_data.eqst` (57 lignes) n'est lue nulle part : aucune nomenclature
+  d'equipement n'est chargee.
+- 14 postes techniques ont un `submt` resolvable dans `mast` mais restent sans
+  aucune ligne : leurs composants sont absents de `mara`, et la passe les
+  ecarte via `art.id IS NOT NULL`.
+
 ## 9. Benefices attendus
 
 - `raw_data` strictement lecture seule (conformite convention projet).

@@ -7,6 +7,7 @@ from .data import data_blueprint
 from .sap_views import sap_views_blueprint
 from .ifs_tables import ifs_tables_blueprint
 from .ifs_catalog import ifs_catalog_blueprint
+from .ifs_dictionary import ifs_dictionary_blueprint
 from .ifs_articles import ifs_articles_blueprint
 from .field_mapping import field_mapping_blueprint
 from .business_rules import business_rules_blueprint
@@ -31,6 +32,7 @@ from .maintenance_ibau import maintenance_ibau_blueprint
 from .data_browser import data_browser_blueprint
 from .sap_data_explorer import sap_data_explorer_blueprint
 from .ih02_hierarchy import ih02_hierarchy_blueprint
+from .maintenance_lov import maintenance_lov_blueprint
 from .backup import backup_blueprint
 from .settings import settings_blueprint
 from .ai_assistant import ai_blueprint
@@ -55,6 +57,7 @@ def register_blueprints(app):
     app.register_blueprint(sap_views_blueprint, url_prefix=f'{API_PREFIX}/data')
     app.register_blueprint(ifs_tables_blueprint, url_prefix=f'{API_PREFIX}/data')
     app.register_blueprint(ifs_catalog_blueprint, url_prefix=f'{API_PREFIX}/data')
+    app.register_blueprint(ifs_dictionary_blueprint, url_prefix=f'{API_PREFIX}/data')
     app.register_blueprint(ifs_articles_blueprint, url_prefix=f'{API_PREFIX}/data')
     app.register_blueprint(field_mapping_blueprint, url_prefix=f'{API_PREFIX}/config')
     app.register_blueprint(business_rules_blueprint, url_prefix=f'{API_PREFIX}/config')
@@ -82,6 +85,8 @@ def register_blueprints(app):
     app.register_blueprint(sap_data_explorer_blueprint, url_prefix=f'{API_PREFIX}/sap-data-explorer')
     # Ecran IH02 : table unique clean_data.maintenance_object (raw_data en lecture seule)
     app.register_blueprint(ih02_hierarchy_blueprint, url_prefix=f'{API_PREFIX}/ih02-hierarchy')
+    # Listes de valeurs des combobox de maintenance (Facteur de risque, Zone)
+    app.register_blueprint(maintenance_lov_blueprint, url_prefix=f'{API_PREFIX}/lov')
     app.register_blueprint(backup_blueprint, url_prefix=f'{API_PREFIX}/backup')
     app.register_blueprint(settings_blueprint, url_prefix=f'{API_PREFIX}/settings')
     app.register_blueprint(ai_blueprint, url_prefix=f'{API_PREFIX}/ai')

@@ -22,8 +22,10 @@
 --   1. FUNC_LOC          (postes techniques, sans parent)
 --   2. resolution parent FUNC_LOC (tplma -> id)
 --   3. EQUIPMENT + resolution parent (FL porteur, sinon equipement hequi)
---   4. ARTICLE           (articles references par une BOM T ou M)
---   5. BOM_ITEM          (a: BOM de FL stlty=T ; b: BOM matiere stlty=M)
+--   4. ARTICLE           (composants de BOM T/M + IBAU type de construction)
+--   5. BOM_ITEM          (a: BOM de FL stlty=T ; b: BOM matiere stlty=M ;
+--                         c: BOM du type de construction iflo.submt, a plat
+--                            sous le poste technique quand tpst est absent)
 --
 -- NB parite ecran : on charge TOUS les postes/equipements (l'ecran IH02 ne
 --   filtre pas les objets archives). is_active reste TRUE au chargement ; le
@@ -53,6 +55,8 @@ DECLARE
     v_nb_bom      BIGINT := 0;
     v_fl_orphan   BIGINT := 0;   -- FL dont le parent (tplma) n'a pas ete resolu
     v_bom_orphan  BIGINT := 0;   -- BOM sans article reference resolu (log)
+    v_nb_bom_sub  BIGINT := 0;   -- BOM_ITEM issus du type de construction (passe 5c)
+    v_nb_iflo     BIGINT := 0;   -- lignes de raw_data.iflo (source du submt)
 BEGIN
     INSERT INTO clean_data.etl_log (procedure_name, mode, status)
     VALUES (v_proc, 'FULL', 'RUNNING')
@@ -73,8 +77,16 @@ BEGIN
     DROP TABLE IF EXISTS pg_temp.fl_scope;
     CREATE TEMP TABLE fl_scope (tplnr TEXT PRIMARY KEY);
 
+    -- Ancres de la recursion : la racine demandee, PLUS les postes qui portent
+    -- son prefixe mais dont le tplma est vide. Sans eux, T200-X060-60 et
+    -- T300-X050 (perimetre 'T' par leur code, tplma vide dans SAP) etaient
+    -- exclus de l'ecran avec toute leur descendance.
     WITH RECURSIVE scope AS (
-        SELECT i.tplnr FROM raw_data.iflot i WHERE i.tplnr = p_root_tplnr
+        SELECT i.tplnr FROM raw_data.iflot i
+        WHERE i.tplnr = p_root_tplnr
+           OR (NULLIF(TRIM(i.tplma), '') IS NULL
+               AND i.tplnr <> p_root_tplnr
+               AND i.tplnr LIKE p_root_tplnr || '%')
         UNION
         SELECT c.tplnr FROM raw_data.iflot c JOIN scope s ON c.tplma = s.tplnr
     )
@@ -205,6 +217,22 @@ BEGIN
       AND NULLIF(TRIM(c.attributes->>'tplma_sap'), '') IS NOT NULL
       AND p.object_type = 'FUNC_LOC'
       AND p.sap_key = c.attributes->>'tplma_sap';
+
+    -- Repli pour les postes a tplma vide entres par les ancres du perimetre :
+    -- on rattache au poste dont le tplnr est le prefixe, ampute du dernier
+    -- segment '-' (T200-X060-60 -> T200-X060). Uniquement si ce parent existe
+    -- reellement ; sinon le poste reste racine plutot que d'inventer un lien.
+    UPDATE clean_data.maintenance_object c
+    SET parent_id = p.id
+    FROM clean_data.maintenance_object p
+    WHERE c.object_type = 'FUNC_LOC'
+      AND c.source = 'SAP'
+      AND c.parent_id IS NULL
+      AND c.sap_key <> p_root_tplnr
+      AND NULLIF(TRIM(c.attributes->>'tplma_sap'), '') IS NULL
+      AND c.sap_key LIKE '%-%'
+      AND p.object_type = 'FUNC_LOC'
+      AND p.sap_key = regexp_replace(c.sap_key, '-[^-]+$', '');
 
     SELECT COUNT(*) INTO v_fl_orphan
     FROM clean_data.maintenance_object c
@@ -340,10 +368,23 @@ BEGIN
         )),
         'SAP'
     FROM (
+        -- a) composants de nomenclature
         SELECT DISTINCT p.idnrk AS matnr, p.mandt
         FROM raw_data.stpo p
         WHERE p.stlty IN ('T', 'M')
           AND p.idnrk IS NOT NULL AND TRIM(p.idnrk) <> ''
+        UNION
+        -- b) TETE de nomenclature designee comme TYPE DE CONSTRUCTION (IBAU)
+        --    d'un poste technique. Sans elle, un IBAU qui n'est composant de
+        --    rien nulle part (ex. 502375 PINCE MANIPULATEUR) n'existe pas en
+        --    tant que noeud, donc ni la passe 5b ni la passe 5c ne peuvent
+        --    charger sa nomenclature. Volontairement limite a submt : ouvrir a
+        --    toutes les tetes de mast ajouterait 10 627 articles qui ne sont ni
+        --    composant ni type de construction, donc inatteignables dans
+        --    l'arbre, en tirant au passage toutes leurs nomenclatures.
+        SELECT DISTINCT TRIM(f.submt), f.mandt
+        FROM raw_data.iflo f
+        WHERE NULLIF(TRIM(f.submt), '') IS NOT NULL
     ) src
     JOIN raw_data.mara m ON m.matnr = src.matnr AND m.mandt = src.mandt
     LEFT JOIN LATERAL (
@@ -445,8 +486,107 @@ BEGIN
     GET DIAGNOSTICS v_bom_orphan = ROW_COUNT;  -- reutilise comme compteur passe 5b
     v_nb_bom := v_nb_bom + v_bom_orphan;
 
-    RAISE NOTICE '[%] Passe 5 BOM_ITEM (T+M) : %',
-        TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), v_nb_bom;
+    -- ============================================================
+    -- PASSE 5c : nomenclature d'un poste technique via son TYPE DE
+    --   CONSTRUCTION (IBAU) : iflo.submt -> mara -> mast -> stpo (stlty='M').
+    --
+    --   53 % des postes techniques n'ont AUCUNE entree dans tpst : leur
+    --   nomenclature n'est pas rattachee en direct mais portee par un article
+    --   IBAU (ex. T130-K100-50 -> 502375 -> stlnr 00070243). SAP les affiche
+    --   sous le poste ; la passe 5a seule les laissait sans aucun enfant.
+    --
+    --   Rattachement A PLAT, conforme a l'affichage SAP : les composants de la
+    --   nomenclature de l'IBAU deviennent les lignes du poste technique, sans
+    --   niveau intermediaire. L'IBAU d'origine est trace dans attributes.submt.
+    --
+    --   Source : raw_data.iflo et non iflot, car iflot.submt est vide sur 100 %
+    --   des lignes (defaut d'extraction connu). iflo est une VUE SAP, donc
+    --   potentiellement vide selon l'extraction -> garde-fou par RAISE WARNING
+    --   plus bas plutot qu'un echec silencieux.
+    --
+    --   Prefixe 'S:' de la sap_key OBLIGATOIRE : la meme nomenclature est deja
+    --   chargee en 5b sous le noeud ARTICLE de l'IBAU avec le prefixe 'M:'.
+    --   Reutiliser 'M:' ferait tomber l'une des deux lignes dans l'index unique
+    --   (object_type, sap_key), silencieusement, via ON CONFLICT DO NOTHING.
+    -- ============================================================
+    SELECT COUNT(*) INTO v_nb_iflo FROM raw_data.iflo;
+
+    IF v_nb_iflo = 0 THEN
+        RAISE WARNING '[%] Passe 5c ignoree : raw_data.iflo est vide, le type de construction (submt) est introuvable -> les postes techniques sans tpst resteront sans nomenclature',
+            TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS');
+    ELSE
+        WITH fl_submt AS (
+            -- iflo porte ~4 lignes par poste (une par langue) -> dedoublonner.
+            -- tpst prime sur le type de construction, comme dans SAP.
+            SELECT DISTINCT ON (f.tplnr)
+                   f.tplnr, f.mandt, NULLIF(TRIM(f.submt), '') AS submt
+            FROM raw_data.iflo f
+            JOIN fl_scope sc ON sc.tplnr = f.tplnr
+            WHERE NULLIF(TRIM(f.submt), '') IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM raw_data.tpst t
+                              WHERE t.tplnr = f.tplnr AND t.mandt = f.mandt)
+            ORDER BY f.tplnr,
+                     (CASE WHEN f.spras = 'F' THEN 0 WHEN f.spras = 'E' THEN 1 ELSE 2 END)
+        ),
+        submt_mast AS (
+            -- meme preference de division que la passe 5b (9200 d'abord)
+            SELECT DISTINCT ON (fs.tplnr)
+                   fs.tplnr, fs.submt, m.stlnr, m.stlal, m.stlan, m.mandt
+            FROM fl_submt fs
+            JOIN raw_data.mast m ON m.matnr = fs.submt AND m.mandt = fs.mandt
+            ORDER BY fs.tplnr,
+                     (CASE WHEN m.werks = '9200' THEN 0 ELSE 1 END), m.stlal, m.stlnr
+        )
+        INSERT INTO clean_data.maintenance_object (
+            object_type, sap_key, parent_id, ref_object_id, sort_order,
+            code, designation, category, quantity, unit, attributes, source
+        )
+        SELECT
+            'BOM_ITEM',
+            -- Le tplnr fait PARTIE DE LA CLE : un meme IBAU est partage par
+            -- plusieurs postes techniques (416 IBAU pour 1 991 postes). Sans
+            -- lui, seul le premier poste recevait sa nomenclature, les autres
+            -- etant absorbes en silence par le ON CONFLICT DO NOTHING.
+            'S:' || sm.tplnr || ':' || sm.stlnr || ':'
+                 || COALESCE(NULLIF(TRIM(sm.stlal), ''), '01')
+                 || ':' || p.posnr || ':' || COALESCE(p.stlkn, ''),
+            fl.id,
+            art.id,
+            NULLIF(regexp_replace(p.posnr, '[^0-9]', '', 'g'), '')::int,
+            art.code,
+            art.designation,
+            p.postp,
+            NULLIF(regexp_replace(TRIM(p.menge), '[^0-9.]', '', 'g'), '')::numeric,
+            p.meins,
+            jsonb_strip_nulls(jsonb_build_object(
+                'stlty', 'M', 'origin', 'SUBMT', 'submt', sm.submt,
+                'stlnr', sm.stlnr, 'stlal', sm.stlal, 'stlan', sm.stlan,
+                'posnr', p.posnr, 'stlkn', p.stlkn, 'postp', p.postp,
+                'potx1', NULLIF(TRIM(p.potx1), ''), 'potx2', NULLIF(TRIM(p.potx2), ''),
+                'base_quantity', k.bmeng, 'base_unit', k.bmein,
+                'mandt', p.mandt
+            )),
+            'SAP'
+        FROM submt_mast sm
+        JOIN raw_data.stpo p ON p.stlnr = sm.stlnr AND p.mandt = sm.mandt AND p.stlty = 'M'
+        -- quantite de base de la nomenclature, comme la passe 5a le fait pour tpst
+        LEFT JOIN raw_data.stko k
+            ON k.stlnr = sm.stlnr AND k.mandt = sm.mandt AND k.stlty = 'M'
+           AND k.stlal = sm.stlal
+        JOIN clean_data.maintenance_object fl
+            ON fl.object_type = 'FUNC_LOC' AND fl.sap_key = sm.tplnr
+        LEFT JOIN clean_data.maintenance_object art
+            ON art.object_type = 'ARTICLE' AND art.sap_key = p.idnrk
+        WHERE p.idnrk IS NOT NULL AND TRIM(p.idnrk) <> ''
+          AND art.id IS NOT NULL
+        ON CONFLICT (object_type, sap_key) DO NOTHING;
+
+        GET DIAGNOSTICS v_nb_bom_sub = ROW_COUNT;
+        v_nb_bom := v_nb_bom + v_nb_bom_sub;
+    END IF;
+
+    RAISE NOTICE '[%] Passe 5 BOM_ITEM (T+M+submt) : % (dont % via type de construction)',
+        TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), v_nb_bom, v_nb_bom_sub;
 
     DROP TABLE IF EXISTS pg_temp.fl_scope;
 

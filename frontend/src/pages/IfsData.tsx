@@ -39,6 +39,14 @@ const IfsData = () => {
   // Menu des données IFS avec items organisés en catégories
   const ifsMenuItems: IfsMenuItem[] = [
     {
+      id: 'table-catalog',
+      title: 'Catalogue des tables IFS',
+      description: 'Tables et colonnes Oracle/IFS, import CSV et génération de rapports SQL',
+      path: '/ifs-data/table-catalog',
+      icon: <CatalogIcon sx={{ fontSize: 36 }} />,
+      color: '#00796b'
+    },
+    {
       id: 'catalog',
       title: 'Catalogue IFS',
       description: 'Dictionnaire des specs IFS : lots, entités, champs et règles de gestion',
@@ -178,4 +186,4 @@ const IfsData = () => {
   );
 };
 
-export default IfsData; 
+export default IfsData;

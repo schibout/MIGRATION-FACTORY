@@ -46,7 +46,9 @@ import {
   Typography
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { RootState } from '../store';
 import ifsCatalogService, {
   IfsCatalogEntity,
   IfsCatalogField,
@@ -121,6 +123,7 @@ const computeAggregates = (fields: IfsCatalogField[]) => ({
 
 const IfsCatalog: React.FC = () => {
   const navigate = useNavigate();
+  const user = useSelector((state: RootState) => state.auth.user);
 
   const [lots, setLots] = useState<IfsCatalogLot[]>([]);
   const [selectedLot, setSelectedLot] = useState<string>('');
@@ -409,6 +412,14 @@ const IfsCatalog: React.FC = () => {
         <Typography variant="h4" component="h1" sx={{ flexGrow: 1 }}>
           Catalogue IFS
         </Typography>
+        <Button variant="outlined" onClick={() => navigate('/ifs-data/table-catalog')}>
+          Tables et colonnes Oracle
+        </Button>
+        {user?.role === 'admin' && (
+          <Button variant="contained" onClick={() => navigate('/ifs-data/table-catalog?import=1')}>
+            Importer tables et colonnes
+          </Button>
+        )}
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel id="lot-select-label">Lot</InputLabel>
           <Select
