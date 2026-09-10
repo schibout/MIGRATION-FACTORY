@@ -9,7 +9,8 @@ frontend appelle ce proxy avec son JWT Migration Factory habituel.
 
 Contrat côté frontend :
     POST /api/v1/hermes/chat  (JWT requis)
-    body : {"messages": [{"role","content"}...], "instructions"?: str, "stream"?: bool}
+    body : {"messages": [{"role","content"}...], "instructions"?: str,
+            "profile"?: "maintenance", "stream"?: bool}
     - instructions = consigne persistante, injectée comme message system en tête ;
     - stream=true (défaut) -> réponse text/event-stream relayée telle quelle
       (chunks chat.completion.chunk, events hermes.tool.progress, [DONE]) ;
@@ -40,6 +41,14 @@ _ALLOWED_ROLES = {'user', 'assistant', 'system'}
 
 # Rôles persistables dans l'historique (le system = instructions, stocké à part).
 _HISTORY_ROLES = {'user', 'assistant'}
+
+# Marqueurs stockés dans la colonne historique `instructions`. Cette colonne
+# n'est plus éditée par le frontend et permet d'isoler les conversations sans
+# ajouter une migration à la table existante.
+_CONVERSATION_PROFILE_MARKERS = {
+    'general': '',
+    'maintenance': 'profile:maintenance',
+}
 
 # Création paresseuse du schéma (une fois par process) : l'historique fonctionne
 # même si la migration 022 n'a pas été jouée.
@@ -126,7 +135,7 @@ def _proxy(method: str, url: str, cfg: dict, json_body=None):
     """
     if not cfg['api_key']:
         return jsonify({'success': False,
-                        'error': "Clé API Hermes non configurée (HERMES_API_KEY)."}), 500
+                        'error': "Clé API de l'Agent Trimet non configurée."}), 500
     try:
         r = requests.request(
             method, url,
@@ -135,7 +144,7 @@ def _proxy(method: str, url: str, cfg: dict, json_body=None):
             timeout=(10, cfg['read_timeout']),
         )
     except requests.exceptions.Timeout:
-        return jsonify({'success': False, 'error': "Hermes n'a pas répondu à temps."}), 504
+        return jsonify({'success': False, 'error': "L'Agent Trimet n'a pas répondu à temps."}), 504
     except requests.exceptions.RequestException as e:
         logger.warning("Hermes injoignable (%s %s) : %s", method, url, e)
         return jsonify({'success': False, 'error': f'Agent injoignable : {e}'}), 502
@@ -149,13 +158,55 @@ def _proxy(method: str, url: str, cfg: dict, json_body=None):
 _JOB_ACTIONS = {'pause', 'resume', 'run'}
 
 
-def _build_messages(raw_messages: list, instructions: str) -> list:
+# Profils applicatifs de confiance. Le navigateur transmet uniquement leur nom :
+# le contenu est défini côté backend et ajouté après les instructions libres afin
+# qu'une consigne utilisateur ne puisse pas désactiver les garde-fous du profil.
+_PROFILE_INSTRUCTIONS = {
+    'maintenance': (
+        "Tu es l'Agent IA Maintenance de migration-Factory. Réponds en français et "
+        "reste dans le domaine des postes techniques, équipements, articles ERSA/IBAU/NLAG, "
+        "stocks, gammes préventives et mappings Maintenance SAP vers IFS. MODE RAPIDE : une "
+        "question de définition ou d'explication se traite sans outil. Pour une recherche "
+        "courante, ne charge aucun skill et n'introspecte pas le schéma : utilise directement "
+        "une seule requête PostgreSQL SELECT/WITH sur le modèle stable suivant : "
+        "clean_data.maintenance_object(object_type, sap_key, code, designation, parent_id, "
+        "is_active) pour la hiérarchie IH02 ; raw_data.equi/equz/eqkt pour les équipements ; "
+        "raw_data.mara/makt/marc/mard pour les articles et stocks ; clean_data.ibau_article "
+        "pour le référentiel IBAU équipe ; raw_data.pe_tools pour les gammes. Regroupe comptage, "
+        "contrôle et lignes utiles dans cette même requête. Ne fais une introspection suivie "
+        "d'un unique nouvel essai que si cette requête échoue sur le schéma. Charge le skill "
+        "`maintenance-factory` uniquement pour un diagnostic complexe, une règle de migration "
+        "ou un mapping SAP vers IFS. Un code fourni par l'utilisateur est exact par défaut : "
+        "utilise =, jamais ILIKE implicite. S'il n'existe pas, indique-le ; propose dans la même "
+        "requête au plus 10 codes commençant par cette valeur, sans les compter comme résultat "
+        "exact. Pour les équipements rattachés à un poste, pars de la ligne exacte FUNC_LOC dans "
+        "clean_data.maintenance_object et calcule dans un seul WITH RECURSIVE le nombre d'enfants "
+        "EQUIPMENT directs et le nombre d'équipements descendants. Si le mot « rattachés » est "
+        "ambigu, donne les deux. L'existence du poste dépend de la ligne FUNC_LOC, jamais du nombre "
+        "d'enfants : zéro équipement direct ne signifie pas que le poste est absent. Ne donne "
+        "jamais de chiffre qui ne provient pas du résultat SQL courant. Pour les "
+        "données, utilise uniquement des lectures PostgreSQL. N'exécute jamais de DDL, "
+        "INSERT, UPDATE, DELETE, TRUNCATE, CALL ou autre action avec effet de bord. Ne modifie "
+        "jamais raw_data. Si une correction est demandée, explique-la et propose l'API métier "
+        "contrôlée à utiliser, sans effectuer l'écriture depuis le chat. Distingue toujours "
+        "les données SAP raw_data, les données transformées clean_data et les référentiels public."
+    ),
+}
+
+
+def _build_messages(raw_messages: list, instructions: str, profile: str = '') -> list:
     """Tableau messages envoyé à Hermes : les instructions utilisateur deviennent
     LE message system en tête. On retire tout system du tableau reçu (le champ
-    instructions est la seule source de consigne, pas de doublon)."""
+    instructions est la seule source de consigne, pas de doublon).
+
+    Le profil applicatif (facultatif) est concaténé APRÈS les instructions
+    libres : son contenu vient du backend et ne peut donc pas être désactivé
+    par une consigne saisie dans le navigateur."""
     messages = [m for m in raw_messages if m['role'] != 'system']
-    if instructions:
-        messages = [{'role': 'system', 'content': instructions}] + messages
+    profil = _PROFILE_INSTRUCTIONS.get(profile, '')
+    system = '\n\n'.join(part for part in (instructions, profil) if part)
+    if system:
+        messages = [{'role': 'system', 'content': system}] + messages
     return messages
 
 
@@ -165,7 +216,11 @@ def chat():
     data = request.get_json(silent=True) or {}
     raw_messages = data.get('messages')
     instructions = (data.get('instructions') or '').strip()
+    profile = data.get('profile') or ''
     stream = bool(data.get('stream', True))
+
+    if not isinstance(profile, str) or profile not in ('', *_PROFILE_INSTRUCTIONS):
+        return jsonify({'success': False, 'error': 'Profil Agent Trimet inconnu.'}), 400
 
     if (not isinstance(raw_messages, list) or not raw_messages
             or not all(isinstance(m, dict)
@@ -179,13 +234,13 @@ def chat():
     if not cfg['api_key']:
         # 500 explicite : clé absente = erreur de configuration serveur, pas d'appel.
         return jsonify({'success': False,
-                        'error': "Clé API Hermes non configurée. Renseignez HERMES_API_KEY "
+                        'error': "Clé API de l'Agent Trimet non configurée. Renseignez-la "
                                  "dans Paramètres > Assistant IA — Modèle (ou en variable "
                                  "d'environnement)."}), 500
 
     payload = {
         'model': 'hermes-agent',   # champ cosmétique côté Hermes (cf. hermes.md)
-        'messages': _build_messages(raw_messages, instructions),
+        'messages': _build_messages(raw_messages, instructions, profile),
         'stream': stream,
     }
     headers = {
@@ -202,21 +257,21 @@ def chat():
         )
     except requests.exceptions.Timeout:
         return jsonify({'success': False,
-                        'error': f"Hermes n'a pas répondu dans le délai imparti "
+                        'error': f"L'Agent Trimet n'a pas répondu dans le délai imparti "
                                  f"({cfg['read_timeout']}s)."}), 504
     except requests.exceptions.RequestException as e:
         logger.warning("Hermes injoignable : %s", e)
-        return jsonify({'success': False, 'error': f'Agent Hermes injoignable : {e}'}), 502
+        return jsonify({'success': False, 'error': f'Agent Trimet injoignable : {e}'}), 502
 
     if upstream.status_code in (401, 403):
         upstream.close()
         return jsonify({'success': False,
-                        'error': 'Authentification refusée par Hermes — vérifiez HERMES_API_KEY.'}), 502
+                        'error': "Authentification refusée par l'Agent Trimet — vérifiez sa clé API."}), 502
     if upstream.status_code != 200:
         extrait = upstream.text[:300]
         upstream.close()
         return jsonify({'success': False,
-                        'error': f'Hermes a répondu HTTP {upstream.status_code} : {extrait}'}), 502
+                        'error': f'L\'Agent Trimet a répondu HTTP {upstream.status_code} : {extrait}'}), 502
 
     if not stream:
         try:
@@ -235,7 +290,7 @@ def chat():
             # Coupure EN COURS de stream : le 200 est déjà parti, on ne peut plus
             # changer le statut -> on émet un event d'erreur que le front sait lire.
             logger.warning("Flux Hermes interrompu : %s", e)
-            err = json.dumps({'error': f'Flux Hermes interrompu : {e}'}, ensure_ascii=False)
+            err = json.dumps({'error': f'Flux Agent Trimet interrompu : {e}'}, ensure_ascii=False)
             yield f'data: {err}\n\n'.encode('utf-8')
         finally:
             # Couvre aussi GeneratorExit (onglet fermé) : libère la connexion Hermes.
@@ -259,20 +314,26 @@ def chat():
 def list_conversations():
     """Conversations de l'utilisateur, plus récentes d'abord."""
     user = str(get_jwt_identity())
+    profile = (request.args.get('profile') or 'general').strip().lower()
+    if profile not in _CONVERSATION_PROFILE_MARKERS:
+        return jsonify({'success': False, 'error': 'Profil de conversation inconnu.'}), 400
+    maintenance_marker = _CONVERSATION_PROFILE_MARKERS['maintenance']
+    profile_operator = '=' if profile == 'maintenance' else '<>'
     try:
         _ensure_schema()
         with get_db_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    """SELECT c.id, c.titre, c.date_maj,
+                    f"""SELECT c.id, c.titre, c.date_maj,
                               COUNT(m.id) AS nb_messages
                        FROM public.hermes_conversations c
                        LEFT JOIN public.hermes_messages m ON m.conversation_id = c.id
                        WHERE c.utilisateur = %s
+                         AND COALESCE(c.instructions, '') {profile_operator} %s
                        GROUP BY c.id
                        ORDER BY c.date_maj DESC
                        LIMIT 200""",
-                    (user,),
+                    (user, maintenance_marker),
                 )
                 rows = cur.fetchall()
     except Exception as e:
@@ -323,14 +384,20 @@ def get_conversation(conv_id):
 def save_conversation():
     """
     Enregistre (crée ou met à jour) une conversation. Body :
-        {conversation_id?: int, instructions?: str, messages: [{role, content}...]}
+        {conversation_id?: int, profile?: "maintenance", instructions?: str,
+         messages: [{role, content}...]}
     Sémantique de remplacement : les messages existants sont remplacés. Renvoie
     l'id (à conserver côté client pour les sauvegardes suivantes du même fil).
     """
     user = str(get_jwt_identity())
     data = request.get_json(silent=True) or {}
     conv_id = data.get('conversation_id')
-    instructions = (data.get('instructions') or '')
+    raw_profile = data.get('profile')
+    profile = raw_profile or 'general'
+    if not isinstance(profile, str) or profile not in _CONVERSATION_PROFILE_MARKERS:
+        return jsonify({'success': False, 'error': 'Profil de conversation inconnu.'}), 400
+    instructions = ((data.get('instructions') or '') if raw_profile is None
+                    else _CONVERSATION_PROFILE_MARKERS[profile])
     raw_messages = data.get('messages')
 
     if not isinstance(raw_messages, list) or not raw_messages:
@@ -477,7 +544,7 @@ def execute_job(job_id):
     cfg = _hermes_config()
     if not cfg['api_key']:
         return jsonify({'success': False,
-                        'error': "Clé API Hermes non configurée (HERMES_API_KEY)."}), 500
+                        'error': "Clé API de l'Agent Trimet non configurée."}), 500
     origin = _hermes_origin(cfg)
     headers = {'Authorization': f"Bearer {cfg['api_key']}", 'Content-Type': 'application/json'}
 
@@ -594,7 +661,7 @@ def agent_status():
     cfg = _hermes_config()
     if not cfg['api_key']:
         return jsonify({'success': False,
-                        'error': "Clé API Hermes non configurée (HERMES_API_KEY)."}), 500
+                        'error': "Clé API de l'Agent Trimet non configurée."}), 500
     origin = _hermes_origin(cfg)
     headers = {'Authorization': f"Bearer {cfg['api_key']}"}
 

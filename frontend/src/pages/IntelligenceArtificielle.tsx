@@ -51,7 +51,7 @@ const IntelligenceArtificielle: React.FC = () => {
     },
     {
       title: 'Agent Trimet',
-      path: '/hermes',
+      path: '/trimet',
       icon: <HermesIcon sx={{ fontSize: 40, color: '#ce93d8' }} />,
       description: 'Agent IA outillé (terminal, fichiers, web…) : chat en streaming, analyse de fichiers, jobs planifiés.',
     },

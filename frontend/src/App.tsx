@@ -231,6 +231,7 @@ function App() {
           <Route path="maintenance/pe-tools" element={<MaintenancePeToolsPage />} />
           <Route path="maintenance/ibau" element={<MaintenanceIbauPage />} />
           <Route path="maintenance/lov" element={<MaintenanceLovPage />} />
+          <Route path="maintenance/assistant" element={<HermesChat profile="maintenance" />} />
           <Route path="export/clients" element={<ExportClients />} />
           <Route path="export/projets" element={<ExportProjects />} />
           
@@ -239,7 +240,8 @@ function App() {
           <Route path="assistant-ia" element={<AssistantIA />} />
           <Route path="resultats-ia" element={<ResultatsIA />} />
           <Route path="configuration-ia" element={<ConfigurationIA />} />
-          <Route path="hermes" element={<HermesChat />} />
+          <Route path="trimet" element={<HermesChat />} />
+          <Route path="hermes" element={<Navigate to="/trimet" replace />} />
 
           {/* Modes d'emploi (guides HTML servis depuis public/guides/) */}
           <Route path="mode-emploi" element={<ModeEmploi />} />

@@ -16,6 +16,9 @@ export interface HermesApiMessage {
   content: string;
 }
 
+export type HermesProfile = 'maintenance';
+export type HermesConversationProfile = HermesProfile | 'general';
+
 export interface HermesConversationSummary {
   id: number;
   titre: string | null;
@@ -31,8 +34,10 @@ export interface HermesConversationDetail {
 }
 
 // ----- Historique (persistance DB via le backend, axios classique) -----
-export async function listConversations(): Promise<HermesConversationSummary[]> {
-  const res = await api.get('/hermes/conversations');
+export async function listConversations(
+  profile: HermesConversationProfile = 'general',
+): Promise<HermesConversationSummary[]> {
+  const res = await api.get('/hermes/conversations', { params: { profile } });
   return (res.data?.conversations ?? []) as HermesConversationSummary[];
 }
 
@@ -44,6 +49,7 @@ export async function getConversation(id: number): Promise<HermesConversationDet
 export async function saveConversation(payload: {
   conversation_id: number | null;
   instructions: string;
+  profile?: HermesConversationProfile;
   messages: HermesApiMessage[];
 }): Promise<number> {
   const res = await api.post('/hermes/conversations', payload);
@@ -176,6 +182,7 @@ export async function streamChat(
   instructions: string,
   handlers: HermesStreamHandlers,
   signal?: AbortSignal,
+  profile?: HermesProfile,
 ): Promise<void> {
   const doFetch = (): Promise<Response> =>
     fetch(`${API_BASE}/hermes/chat`, {
@@ -188,6 +195,7 @@ export async function streamChat(
         messages,
         instructions: instructions || undefined,
         stream: true,
+        profile,
       }),
       signal,
     });

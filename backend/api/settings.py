@@ -102,10 +102,10 @@ SETTINGS_CATALOG = [
     {'key': 'AI_EXTERNAL_MAX_TOKENS',      'category': 'ai', 'label': 'Max tokens sortie (externe)',         'type': 'number',   'secret': False, 'default': '2048',                        'requires_restart': False},
     {'key': 'AI_RAG_PROFILE',              'category': 'ai', 'label': 'Profil RAG (auto | compact | large)',  'type': 'text',     'secret': False, 'default': 'auto',                        'requires_restart': False},
 
-    # ---------- Assistant Hermes (agent Nous Research, API OpenAI-compatible) ----------
-    {'key': 'HERMES_API_URL',              'category': 'ai', 'label': 'URL API Hermes (OpenAI-compatible)',   'type': 'url',      'secret': False, 'default': 'http://10.190.100.58:8642/v1', 'requires_restart': False},
-    {'key': 'HERMES_API_KEY',              'category': 'ai', 'label': 'Clé API Hermes',                       'type': 'password', 'secret': True,  'default': '',                            'requires_restart': False},
-    {'key': 'HERMES_TIMEOUT_SECONDS',      'category': 'ai', 'label': 'Timeout Hermes (s)',                   'type': 'number',   'secret': False, 'default': '300',                         'requires_restart': False},
+    # ---------- Agent Trimet (moteur agentique, API OpenAI-compatible) ----------
+    {'key': 'HERMES_API_URL',              'category': 'ai', 'label': 'URL API Agent Trimet (OpenAI-compatible)', 'type': 'url',      'secret': False, 'default': 'http://10.190.100.58:8642/v1', 'requires_restart': False},
+    {'key': 'HERMES_API_KEY',              'category': 'ai', 'label': 'Clé API Agent Trimet',                    'type': 'password', 'secret': True,  'default': '',                            'requires_restart': False},
+    {'key': 'HERMES_TIMEOUT_SECONDS',      'category': 'ai', 'label': 'Timeout Agent Trimet (s)',                'type': 'number',   'secret': False, 'default': '300',                         'requires_restart': False},
 ]
 
 

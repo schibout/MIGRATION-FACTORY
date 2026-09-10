@@ -4,6 +4,7 @@ import {
     getConversation,
     HermesApiMessage,
     HermesConversationDetail,
+    HermesProfile,
     saveConversation,
     streamChat,
 } from '../../services/hermesService';
@@ -159,7 +160,12 @@ export const {
  * ⚠️ Ordre important : capturer l'historique APRÈS userMessageAdded mais AVANT
  * streamStarted (sinon la bulle assistant vide partirait dans l'historique).
  */
-export const sendMessage = (content: string, attachment?: ChatAttachment, signal?: AbortSignal) =>
+export const sendMessage = (
+  content: string,
+  attachment?: ChatAttachment,
+  signal?: AbortSignal,
+  profile?: HermesProfile,
+) =>
   async (dispatch: AppDispatch, getState: () => RootState): Promise<void> => {
     dispatch(userMessageAdded({ content, attachment }));
     const { messages, instructions } = getState().hermesChat;
@@ -173,7 +179,7 @@ export const sendMessage = (content: string, attachment?: ChatAttachment, signal
       onToolProgress: (label) => dispatch(toolProgressReceived(label)),
       onDone: () => dispatch(streamFinished()),
       onError: (message) => dispatch(streamFailed(message)),
-    }, signal);
+    }, signal, profile);
 
     // Persistance auto de l'historique après un échange abouti (best-effort :
     // une sauvegarde qui échoue ne doit pas casser le chat).
@@ -184,6 +190,7 @@ export const sendMessage = (content: string, attachment?: ChatAttachment, signal
         const id = await saveConversation({
           conversation_id: after.conversationId,
           instructions: after.instructions,
+          profile: profile ?? 'general',
           messages: after.messages.map((m) => ({ role: m.role, content: toApiContent(m) })),
         });
         dispatch(conversationSaved(id));

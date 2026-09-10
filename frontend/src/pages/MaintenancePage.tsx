@@ -63,14 +63,13 @@ const cards = [
     tag: 'ÉTATS',
   },
   {
-    // Carte creee sur la branche version_trimet (commit 2b02432 « skill
-    // maintenance »), jamais fusionnee dans master : elle y pointait sur
-    // /maintenance/assistant = <HermesChat profile="maintenance" />. Le prop
-    // `profile` n'existe pas sur master, donc on ouvre ici l'agent generique
-    // (/hermes). Porter le profil maintenance = fusionner la branche.
+    // Agent Trimet cadre sur la maintenance : <HermesChat profile="maintenance" />.
+    // Le mecanisme de profil vient du commit 2b02432 de la branche
+    // version_trimet, repris ici seul -- la branche entiere est trop ancienne
+    // pour etre fusionnee (elle supprimerait tout le travail de master).
     title: 'Agent IA Maintenance',
     description: 'Interroger l\'agent Trimet sur les postes techniques, équipements, articles, stocks et gammes.',
-    path: '/hermes',
+    path: '/maintenance/assistant',
     icon: AiIcon,
     color: 'info' as const,
     tag: 'IA',

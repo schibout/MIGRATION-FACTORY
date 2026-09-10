@@ -68,6 +68,7 @@ import {
     HermesConversationSummary,
     HermesJob,
     HermesJobResult,
+    HermesProfile,
     jobAction,
     jobId,
     listConversations,
@@ -160,7 +161,7 @@ const Ligne: React.FC<{ message: ChatBubble; streaming: boolean }> = ({ message,
 };
 
 // ----- Onglet Conversation -----
-const ConversationTab: React.FC = () => {
+const ConversationTab: React.FC<{ profile?: HermesProfile }> = ({ profile }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { messages, instructions, isStreaming, toolActivity, error } = useSelector(
     (s: RootState) => s.hermesChat,
@@ -206,7 +207,7 @@ const ConversationTab: React.FC = () => {
     setAttachment(null);
     const controller = new AbortController();
     abortRef.current = controller;
-    void dispatch(sendMessage(texte, att, controller.signal));
+    void dispatch(sendMessage(texte, att, controller.signal, profile));
   };
 
   const arreter = () => abortRef.current?.abort();
@@ -736,7 +737,7 @@ const ResultatsTab: React.FC = () => {
 };
 
 // ----- Onglet Historique -----
-const HistoriqueTab: React.FC<{ onOuvrir: () => void }> = ({ onOuvrir }) => {
+const HistoriqueTab: React.FC<{ onOuvrir: () => void; profile?: HermesProfile }> = ({ onOuvrir, profile }) => {
   const dispatch = useDispatch<AppDispatch>();
   const conversationId = useSelector((s: RootState) => s.hermesChat.conversationId);
   const [items, setItems] = useState<HermesConversationSummary[]>([]);
@@ -747,13 +748,13 @@ const HistoriqueTab: React.FC<{ onOuvrir: () => void }> = ({ onOuvrir }) => {
     setLoading(true);
     setErreur(null);
     try {
-      setItems(await listConversations());
+      setItems(await listConversations(profile ?? 'general'));
     } catch {
       setErreur('Impossible de charger l’historique.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profile]);
 
   useEffect(() => { void charger(); }, [charger]);
 
@@ -771,6 +772,7 @@ const HistoriqueTab: React.FC<{ onOuvrir: () => void }> = ({ onOuvrir }) => {
     try {
       await deleteConversation(id);
       setItems((prev) => prev.filter((c) => c.id !== id));
+      if (id === conversationId) dispatch(conversationCleared());
     } catch {
       setErreur('Suppression impossible.');
     }
@@ -890,32 +892,79 @@ const StatusTab: React.FC = () => {
   );
 };
 
-const HermesChat: React.FC = () => {
+const HermesChat: React.FC<{ profile?: HermesProfile }> = ({ profile }) => {
   const [tab, setTab] = useState(0);
+  const [restoringConversation, setRestoringConversation] = useState(profile === 'maintenance');
+  const dispatch = useDispatch<AppDispatch>();
+  const maintenanceProfile = profile === 'maintenance';
+
+  useEffect(() => {
+    let cancelled = false;
+    dispatch(conversationCleared());
+    setTab(0);
+
+    if (!maintenanceProfile) {
+      setRestoringConversation(false);
+      return () => { cancelled = true; };
+    }
+
+    setRestoringConversation(true);
+    void listConversations('maintenance')
+      .then(async (conversations) => {
+        if (!cancelled && conversations.length > 0) {
+          await dispatch(loadConversation(conversations[0].id));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setRestoringConversation(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [dispatch, maintenanceProfile]);
 
   return (
     <Box sx={{ p: 3, height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
         <HermesIcon color="primary" />
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>{AGENT}</Typography>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          {maintenanceProfile ? 'Agent IA Maintenance' : AGENT}
+        </Typography>
+        {maintenanceProfile && <Chip size="small" color="info" label="Trimet spécialisé" />}
       </Box>
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Tab icon={<ChatIcon />} iconPosition="start" label="Conversation" />
-        <Tab icon={<JobsIcon />} iconPosition="start" label="Jobs" />
-        <Tab icon={<ResultsIcon />} iconPosition="start" label="Résultats" />
-        <Tab icon={<HistoryIcon />} iconPosition="start" label="Historique" />
-        <Tab icon={<StatusIcon />} iconPosition="start" label="État" />
+        {maintenanceProfile ? (
+          <Tab icon={<HistoryIcon />} iconPosition="start" label="Historique" />
+        ) : [
+          <Tab key="jobs" icon={<JobsIcon />} iconPosition="start" label="Jobs" />,
+          <Tab key="results" icon={<ResultsIcon />} iconPosition="start" label="Résultats" />,
+          <Tab key="history" icon={<HistoryIcon />} iconPosition="start" label="Historique" />,
+          <Tab key="status" icon={<StatusIcon />} iconPosition="start" label="État" />,
+        ]}
       </Tabs>
+
+      {maintenanceProfile && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Spécialisé dans les postes techniques, équipements, articles, stocks et gammes de maintenance.
+        </Typography>
+      )}
 
       {/* Conversation monté en permanence (préserve la saisie / le stream en cours). */}
       <Box sx={{ display: tab === 0 ? 'flex' : 'none', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
-        <ConversationTab />
+        {restoringConversation ? (
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : (
+          <ConversationTab profile={profile} />
+        )}
       </Box>
-      {tab === 1 && <JobsTab />}
-      {tab === 2 && <ResultatsTab />}
-      {tab === 3 && <HistoriqueTab onOuvrir={() => setTab(0)} />}
-      {tab === 4 && <StatusTab />}
+      {maintenanceProfile && tab === 1 && <HistoriqueTab profile="maintenance" onOuvrir={() => setTab(0)} />}
+      {!maintenanceProfile && tab === 1 && <JobsTab />}
+      {!maintenanceProfile && tab === 2 && <ResultatsTab />}
+      {!maintenanceProfile && tab === 3 && <HistoriqueTab onOuvrir={() => setTab(0)} />}
+      {!maintenanceProfile && tab === 4 && <StatusTab />}
     </Box>
   );
 };
