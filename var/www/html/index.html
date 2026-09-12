@@ -211,11 +211,23 @@ body::after {
 .section-label .rule { flex: 1; height: 1px; background: var(--line); }
 
 /* ---- App grid ---- */
+/* 3 colonnes explicites : chaque section tient sur une seule ligne
+   (services d'un cote, environnements IFS de l'autre). L'auto-fill
+   precedent laissait la 3e carte seule sur une 2e ligne. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
+.grid-wide { grid-template-columns: repeat(3, 1fr); }
+.grid-wide .card { min-height: 300px; }
+@media (max-width: 900px) {
+  .grid, .grid-wide { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 620px) {
+  .grid, .grid-wide { grid-template-columns: 1fr; }
+}
+
 .card {
   --accent: var(--amber);
   position: relative;
@@ -288,6 +300,26 @@ body::after {
   color: var(--muted);
   flex: 1;
 }
+.card .specs {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-soft);
+  display: grid;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+.card .specs div { display: flex; gap: 8px; }
+.card .specs .k {
+  color: color-mix(in srgb, var(--accent) 70%, var(--muted));
+  min-width: 52px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.card .specs .v { color: var(--muted); flex: 1; }
+
 .card .foot {
   display: flex;
   align-items: center;
@@ -313,21 +345,6 @@ body::after {
   transition: transform .28s, color .28s;
 }
 .card:hover .arrow { transform: translateX(4px); color: var(--accent); }
-
-/* Featured card spans wide */
-.card.featured { grid-column: 1 / -1; }
-@media (min-width: 720px) {
-  .card.featured {
-    grid-column: span 2;
-    flex-direction: row;
-    align-items: flex-end;
-    min-height: 150px;
-  }
-  .card.featured .body { flex: 1; }
-  .card.featured .icon { font-size: 34px; }
-  .card.featured h3 { font-size: 1.5rem; }
-  .card.featured .foot { flex-direction: column; align-items: flex-end; gap: 12px; border: none; padding: 0; min-width: 140px; }
-}
 
 /* ---- Footer ---- */
 .foot-note {
@@ -386,7 +403,7 @@ body::after {
     </div>
     <div class="tcell">
       <div class="label">Services actifs</div>
-      <div class="value" id="svc-count">4</div>
+      <div class="value" id="svc-count">5</div>
     </div>
     <div class="tcell">
       <div class="label">Session</div>
@@ -401,47 +418,87 @@ body::after {
   <!-- Services -->
   <div class="section-label">
     <span>// Services disponibles</span>
-    <span class="count">[04]</span>
+    <span class="count">[03]</span>
     <span class="rule"></span>
   </div>
 
   <div class="grid">
 
-    <a href="http://10.190.100.58:8081/login" class="card featured" target="_blank" rel="noopener" style="--accent: var(--amber); animation-delay:.02s">
-      <div class="body">
-        <div class="idx">01 · SERVICE PRINCIPAL</div>
-        <div class="icon">🏭</div>
-        <h3>Migration Factory</h3>
-        <p>Migration et transformation de données SAP → IFS. Cœur de la plateforme.</p>
-      </div>
-      <div class="foot">
-        <span class="badge">:8081</span>
-        <span class="arrow">access →</span>
-      </div>
-    </a>
-
-    <a href="http://10.190.100.58:8081/assistant-ia" class="card" target="_blank" rel="noopener" style="--accent: var(--violet); animation-delay:.10s">
-      <div class="idx">02</div>
-      <div class="icon">🤖</div>
-      <h3>Assistant IA</h3>
-      <p>Questions en français → génération et exécution de SQL (SAP → IFS).</p>
-      <div class="foot"><span class="badge">/assistant-ia</span><span class="arrow">→</span></div>
-    </a>
-
-    <a href="http://10.190.100.58:3001" class="card" target="_blank" rel="noopener" style="--accent: var(--teal); animation-delay:.16s">
-      <div class="idx">03</div>
-      <div class="icon">💬</div>
-      <h3>Open WebUI</h3>
-      <p>Interface de chat pour les modèles Ollama (qwen2.5-coder, bge-m3).</p>
-      <div class="foot"><span class="badge">:3001</span><span class="arrow">→</span></div>
+    <a href="http://10.190.100.58:3000/login" class="card" target="_blank" rel="noopener" style="--accent: var(--amber); animation-delay:.02s">
+      <div class="idx">01 · SERVICE PRINCIPAL</div>
+      <div class="icon">🏭</div>
+      <h3>Migration Factory</h3>
+      <p>Migration et transformation de données SAP → IFS. Cœur de la plateforme.</p>
+      <div class="foot"><span class="badge">:3000</span><span class="arrow">access →</span></div>
     </a>
 
     <a href="http://10.190.100.58:9120" class="card" target="_blank" rel="noopener" style="--accent: var(--gold); animation-delay:.22s">
-      <div class="idx">04 · AGENT IA</div>
+      <div class="idx">02 · AGENT IA</div>
       <div class="icon">🪽</div>
       <h3>Hermes Dashboard</h3>
       <p>Agent IA Hermes (Nous Research) — clés API, profils et gateways (Telegram, Discord…).</p>
       <div class="foot"><span class="badge">:9120 🔒 auth</span><span class="arrow">→</span></div>
+    </a>
+
+    <a href="http://10.190.100.58:8125/" class="card" target="_blank" rel="noopener" style="--accent: var(--violet); animation-delay:.26s">
+      <div class="idx">03 · MÉMOIRE AGENT</div>
+      <div class="icon">🧠</div>
+      <h3>Tencent Agent Memory</h3>
+      <p>Memory Hub — mémoire persistante partagée des agents IA : stockage, recherche et réutilisation du contexte d'une session à l'autre.</p>
+      <div class="foot"><span class="badge">:8125</span><span class="arrow">→</span></div>
+    </a>
+
+  </div>
+
+  <!-- Environnements IFS Cloud -->
+  <div class="section-label" style="margin-top:46px">
+    <span>// Environnements IFS Cloud</span>
+    <span class="count">[03]</span>
+    <span class="rule"></span>
+  </div>
+
+  <div class="grid grid-wide">
+
+    <a href="https://trimet-uat.ifs.cloud/landing-page/" class="card" target="_blank" rel="noopener" style="--accent: var(--sky); animation-delay:.06s">
+      <div class="idx">04 · IFS CLOUD</div>
+      <div class="icon">☁️</div>
+      <h3>IFS UAT</h3>
+      <p>Environnement de recette (User Acceptance Testing). C'est ici que les key-users valident les processus métier, rejouent les scénarios de test et signent la conformité fonctionnelle avant tout passage en production. Les données y sont une copie anonymisée de la production, rafraîchie à chaque cycle de test.</p>
+      <div class="specs">
+      <div><span class="k">Usage</span><span class="v">Tests d'acceptation, validation des correctifs et des évolutions</span></div>
+      <div><span class="k">Données</span><span class="v">Copie de production rafraîchie par cycle — ne pas s'y fier comme référence</span></div>
+      <div><span class="k">Accès</span><span class="v">Comptes IFS nominatifs — mêmes identifiants que la production</span></div>
+        <div><span class="k">URL</span><span class="v">trimet-uat.ifs.cloud</span></div>
+      </div>
+      <div class="foot"><span class="badge">trimet-uat</span><span class="arrow">→</span></div>
+    </a>
+
+    <a href="https://trimet-trn.ifs.cloud/landing-page/" class="card" target="_blank" rel="noopener" style="--accent: var(--green); animation-delay:.12s">
+      <div class="idx">05 · IFS CLOUD</div>
+      <div class="icon">🎓</div>
+      <h3>IFS Training</h3>
+      <p>Environnement de formation. Bac à sable destiné à la prise en main de l'outil : exercices guidés, parcours de montée en compétence et démonstrations. Toute manipulation y est sans conséquence — aucune écriture ne remonte vers les environnements de recette ou de production.</p>
+      <div class="specs">
+      <div><span class="k">Usage</span><span class="v">Formation, démonstrations, exercices libres sans risque</span></div>
+      <div><span class="k">Données</span><span class="v">Jeu de données pédagogique figé, réinitialisé après chaque session</span></div>
+      <div><span class="k">Accès</span><span class="v">Comptes de formation fournis par l'équipe projet</span></div>
+        <div><span class="k">URL</span><span class="v">trimet-trn.ifs.cloud</span></div>
+      </div>
+      <div class="foot"><span class="badge">trimet-trn</span><span class="arrow">→</span></div>
+    </a>
+
+    <a href="https://trimet-cfg.ifs.cloud/landing-page/" class="card" target="_blank" rel="noopener" style="--accent: var(--orange); animation-delay:.18s">
+      <div class="idx">06 · IFS CLOUD</div>
+      <div class="icon">⚙️</div>
+      <h3>IFS CFG</h3>
+      <p>Environnement de configuration et de développement. Socle de travail des consultants et de l'équipe IT : paramétrage fonctionnel, personnalisations, développement des extensions et intégrations. C'est le point de départ de la chaîne de livraison CFG → UAT → Production.</p>
+      <div class="specs">
+      <div><span class="k">Usage</span><span class="v">Paramétrage, customisations, extensions et intégrations</span></div>
+      <div><span class="k">Données</span><span class="v">Jeu de données technique — instable par nature, susceptible d'évoluer</span></div>
+      <div><span class="k">Accès</span><span class="v">Réservé à l'équipe IT et aux consultants IFS</span></div>
+        <div><span class="k">URL</span><span class="v">trimet-cfg.ifs.cloud</span></div>
+      </div>
+      <div class="foot"><span class="badge">trimet-cfg</span><span class="arrow">→</span></div>
     </a>
 
   </div>

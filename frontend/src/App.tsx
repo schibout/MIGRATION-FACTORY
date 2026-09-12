@@ -22,6 +22,7 @@ import ExportData from './pages/ExportData';
 import ExportFournisseurs from './pages/ExportFournisseurs';
 import ExportMaintenance from './pages/ExportMaintenance';
 import ExportOperation from './pages/ExportOperation';
+import ExportCommandeAchat from './pages/ExportCommandeAchat';
 import ExportPmAction from './pages/ExportPmAction';
 import ExportProjects from './pages/ExportProjects';
 import ExportStructureMaintenance from './pages/ExportStructureMaintenance';
@@ -218,6 +219,7 @@ function App() {
           <Route path="export/maintenance" element={<ExportMaintenance />} />
           <Route path="export/pm-action" element={<ExportPmAction />} />
           <Route path="export/operations" element={<ExportOperation />} />
+          <Route path="export/commandes-achat" element={<ExportCommandeAchat />} />
           <Route path="export/structure-maintenance" element={<ExportStructureMaintenance />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="maintenance/hierarchy" element={<MaintenanceHierarchyPage />} />

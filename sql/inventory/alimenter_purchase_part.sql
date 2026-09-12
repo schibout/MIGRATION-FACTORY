@@ -129,10 +129,11 @@ BEGIN
         public.get_default_value('clean_data.purchase_part', 'note_text') as note_text,
         -- QC_DATE: vide
         public.get_default_value('clean_data.purchase_part', 'qc_date')::timestamp as qc_date,
-        -- DEFAULT_BUY_UNIT_MEAS: MARA.BSTME sinon MEINS via transcodification UOM (SAP->IFS), sinon unité d'entrée
+        -- DEFAULT_BUY_UNIT_MEAS: MARA.BSTME sinon MEINS via transcodification
+        -- UOM (SAP->IFS), repli sur '*' si l'unité SAP n'est pas transcodée.
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(COALESCE(NULLIF(mara.bstme, ''), mara.meins))), '')),
-            UPPER(TRIM(COALESCE(NULLIF(mara.bstme, ''), mara.meins)))
+            '*'
         ), 1, 10) as default_buy_unit_meas,
         -- OVER_DELIVERY_TOLERANCE: 0
         public.get_default_value('clean_data.purchase_part', 'over_delivery_tolerance')::numeric as over_delivery_tolerance,

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de compilation des procédures stockées fournisseurs SAP vers IFS
+# Script de compilation du module ETL Commandes d'achat (SAP EKKO/EKPO -> clean_data.commande_achat_ifs)
 # Ce script exécute toutes les procédures dans l'ordre requis
 
 # Charger les variables depuis .profile
@@ -9,11 +9,23 @@ if [ -f ~/.profile ]; then
 fi
 
 # Configuration de la connexion PostgreSQL
+
 DB_HOST="10.190.100.58"
 DB_PORT="5432"
 DB_NAME="sap_migration_db"
 DB_USER="postgres"
 DB_PASSWORD="trimet2025"
+# Couleurs pour les messages
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+
+if [ -z "$DB_PASSWORD" ]; then
+    echo "[ERROR] DB_PASSWORD (ou PG_PASSWORD) non defini. Exportez-le ou ajoutez-le dans ~/.profile"
+    exit 1
+fi
 
 # Couleurs pour les messages
 GREEN='\033[0;32m'
@@ -38,12 +50,12 @@ log_warning() {
 execute_sql() {
     local file=$1
     local filename=$(basename "$file")
-    
+
     log_info "Compilation de $filename..."
-    
+
     # Définir le mot de passe pour psql
     export PGPASSWORD="$DB_PASSWORD"
-    
+
     if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$file" > /dev/null 2>&1; then
         log_info "✅ $filename compilé avec succès"
         return 0
@@ -56,7 +68,7 @@ execute_sql() {
 
 # Début du script
 echo "=========================================="
-echo "  Compilation des procédures FOURNISSEUR"
+echo "  Compilation des procédures COMMANDES D'ACHAT"
 echo "=========================================="
 echo ""
 log_info "Connexion: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
@@ -66,40 +78,12 @@ echo ""
 errors=0
 
 # Liste des fichiers dans l'ordre d'exécution
+# get_vendor_no_ifs (LIFNR -> numero de compte IFS du fichier) est appelee par la
+# fonction de chargement ; la table doit exister avant la fonction.
 files=(
-    # Prerequis des valeurs par defaut parametrables : la table et l'accesseur
-    # doivent exister AVANT les fonctions ETL qui les appellent, sinon chaque
-    # chargement echoue sur "function public.get_default_value does not exist".
-    # Les deux fichiers sont idempotents (IF NOT EXISTS / ON CONFLICT DO NOTHING
-    # / CREATE OR REPLACE), ils peuvent donc etre rejoues sans risque.
-    "../../migrations/031_create_etl_default_values.sql"
-    "../functions/get_default_value.sql"
-    # Date d'arrete du fichier de selection, lue par le script 01 via
-    # get_default_value : seedee ici pour que le parametre existe dans
-    # l'ecran /configuration/valeurs-defaut des le premier chargement.
-    "../../migrations/065_seed_valeur_defaut_date_arrete_fournisseurs.sql"
-    "01_alimenter_ifs_fournisseurs.sql"
-    # Mapping LIFNR SAP -> numero de compte IFS, lu par les modules
-    # inventory (purchase_part_supplier) et operation (jt_task,
-    # maint_material_req_line). Depend de clean_data.ifs_fournisseurs.
     "../functions/get_vendor_no_ifs.sql"
-    "02_alimenter_supplier_info_general.sql"
-    "03_alimenter_supplier_info_our_id.sql"
-    "04_alimenter_supplier_info_address.sql"
-    "05_insert_supplier_address_types.sql"
-    "06_alimenter_comm_method.sql"
-    "07_alimenter_supplier_address.sql"
-    "08_insert_supplier_document_tax_info.sql"
-    "09_sp_insert_supplier_from_sap.sql"
-    "10_sp_insert_identity_invoice_info_from_sap.sql"
-    "11_sp_insert_identity_pay_info_from_sap.sql"
-    "12_fn_upsert_payment_way_per_identity.sql"
-    "13_fn_upsert_supplier_delivery_tax_code.sql"
-    "14_fn_upsert_payment_address.sql"
-    "15_fn_upsert_supplier_tax_info.sql"
-    "16_sp_insert_supplier_addr_tax_number.sql"
-    "viewsAndTables/sp_update_supplier_id_cascade.sql"
-    "viewsAndTables/sp_keep_supplier_sample.sql"
+    "01_create_clean_data_commande_achat_ifs.sql"
+    "02_alimenter_commande_achat_ifs.sql"
 )
 
 # Exécution de chaque fichier
@@ -125,4 +109,3 @@ else
     log_error "❌ $errors erreur(s) détectée(s)"
     exit 1
 fi
-

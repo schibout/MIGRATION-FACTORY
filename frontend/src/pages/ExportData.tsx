@@ -20,6 +20,7 @@ import {
     Handyman as MaintenanceIcon,
     Engineering as OperationIcon,
     Build as PmActionIcon,
+    ShoppingCart as CommandeAchatIcon,
     AccountTree as StructureIcon
 } from '@mui/icons-material';
 
@@ -87,6 +88,12 @@ const ExportData: React.FC = () => {
       path: '/export/operations',
       icon: <OperationIcon sx={{ fontSize: 40, color: '#795548' }} />,
       description: 'Exporter les opérations de maintenance (JT Task, ressources, besoins matière) en CSV ou Excel'
+    },
+    {
+      title: 'Export Commandes d\'achat',
+      path: '/export/commandes-achat',
+      icon: <CommandeAchatIcon sx={{ fontSize: 40, color: '#00897b' }} />,
+      description: 'Exporter les commandes d\'achat SAP ouvertes (reliquat à livrer) au format de reprise IFS'
     }
   ];
 

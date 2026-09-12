@@ -67,15 +67,16 @@ BEGIN
         -- PART_NO: numero_article SAP (pas de transcodification, l'article garde son ID)
         SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25) as part_no,
         
-        -- VENDOR_NO: NOUVEAU numéro IFS du fournisseur (renuméroté 600xxx),
-        -- mappé depuis le LIFNR SAP via supplier_info_general.supplier_legacy_sap_id.
+        -- VENDOR_NO: identifiant IFS du fournisseur (600xxx), repris tel quel
+        -- de clean_data.supplier_info_general.supplier_id (demande explicite).
         -- Indispensable : la table supplier est renumérotée, le LIFNR SAP brut ne correspond plus.
         SUBSTRING(sig.supplier_id, 1, 20) as vendor_no,
         
-        -- BUY_UNIT_MEAS: EINA.MEINS via transcodification UOM (SAP->IFS), sinon unité d'entrée
+        -- BUY_UNIT_MEAS: EINA.MEINS via transcodification UOM (SAP->IFS),
+        -- repli sur '*' si l'unité SAP n'est pas transcodée.
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(eina.meins)), '')),
-            UPPER(TRIM(eina.meins))
+            '*'
         ), 1, 10) as buy_unit_meas,
         
         -- CURRENCY_CODE: EINE.WAERS
@@ -93,10 +94,10 @@ BEGIN
          / NULLIF(NULLIF(TRIM(eine.peinh), '')::numeric, 0)) as list_price,
 
         -- PRICE_UNIT_MEAS: EINE.BPRME via transcodification UOM (SAP->IFS),
-        -- meme repli que BUY_UNIT_MEAS sur l'unite d'entree.
+        -- meme repli que BUY_UNIT_MEAS sur '*'.
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(eine.bprme)), '')),
-            UPPER(TRIM(eine.bprme))
+            '*'
         ), 1, 10) as price_unit_meas,
 
         -- PRICE_CONV_FACTOR: 1, le prix ayant deja ete ramene a l'unite
@@ -161,12 +162,19 @@ BEGIN
         AND eine.mandt = '700'
     INNER JOIN clean_data.ifs_article_maitre ifs
         ON eina.matnr::text = ifs.numero_article
-    -- Mapping LIFNR SAP -> nouveau supplier_id IFS (600xxx).
-    -- INNER JOIN volontaire : un lien vers un fournisseur absent des tables IFS
-    -- définitives serait rejeté au chargement, on n'insère donc que les liens valides.
+    -- Mapping LIFNR SAP -> identifiant IFS (600xxx) depuis supplier_info_general
+    -- (demande explicite) et non depuis le fichier de sélection : c'est la table
+    -- fournisseur chargée qui fait foi côté IFS, et elle suit les renumérotations
+    -- appliquées après coup (sp_update_supplier_id_cascade), que le fichier ignore.
+    -- supplier_legacy_sap_id porte le LIFNR SAP d'origine ; les zéros de tête
+    -- diffèrent selon la source ("45036" vs "0000045036"), d'où le LTRIM.
+    -- INNER JOIN volontaire : un lien vers un fournisseur absent de
+    -- supplier_info_general serait rejeté au chargement, on n'insère donc que
+    -- les liens valides. Corollaire : si le module fournisseur n'est pas chargé
+    -- (ou a été amputé par sp_keep_supplier_sample/_top20), les liens
+    -- correspondants ne sortent pas.
     INNER JOIN clean_data.supplier_info_general sig
-        ON LTRIM(sig.supplier_legacy_sap_id, '0') = LTRIM(eina.lifnr, '0')
-        AND sig.is_deleted = FALSE
+        ON LTRIM(TRIM(sig.supplier_legacy_sap_id), '0') = LTRIM(TRIM(eina.lifnr), '0')
     WHERE
         -- Filtrer sur les organisations d'achat Trimet
         eine.ekorg IN ('9200', '9000')

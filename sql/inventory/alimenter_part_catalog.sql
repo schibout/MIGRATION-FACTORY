@@ -48,10 +48,14 @@ BEGIN
         -- part_no: numero_article SAP (pas de transcodification, l'article garde son ID)
         SUBSTRING(TRIM(LTRIM(va.numero_article, '0')), 1, 25) as part_no,
         SUBSTRING(TRIM(COALESCE(va.designation, '')), 1, 200) as description,
-        -- unit_code: unité de base via transcodification UOM (SAP->IFS), sinon unité d'entrée
+        -- unit_code: unité de base via transcodification UOM (SAP->IFS).
+        -- Repli sur '*' (unité générique IFS, cible de UN et PAK dans la table
+        -- de transcodification) et NON sur l'unité SAP d'entrée : un code non
+        -- transcodé (H, TAG, KME, STD...) n'existe pas côté IFS et ferait
+        -- rejeter la ligne au chargement.
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(va.unite_base)), '')),
-            UPPER(TRIM(va.unite_base))
+            '*'
         ), 1, 30) as unit_code,
         
         -- Colonnes obligatoires _db (valeurs courtes selon documentation)

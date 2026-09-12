@@ -83,6 +83,9 @@ errors=0
 #   6. clean_data.alimenter_purchase_part_supplier() -> clean_data.purchase_part_supplier (EXISTS purchase_part)
 #   7. clean_data.alimenter_sales_part()             -> clean_data.sales_part          (EXISTS part_catalog)
 files=(
+    # Mapping LIFNR SAP -> numero de compte IFS du fichier de selection,
+    # appele par les fonctions ci-dessous pour alimenter vendor_no.
+    "../functions/get_vendor_no_ifs.sql"
     "alimenter_ifs_article.sql"
     "alimenter_part_catalog.sql"
     "alimenter_inventory_part.sql"

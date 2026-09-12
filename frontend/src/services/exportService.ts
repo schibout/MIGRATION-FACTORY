@@ -275,6 +275,30 @@ export const exportOperationData = async (config: ExportConfig) => {
   }
 };
 
+// Fonction pour exporter les commandes d'achat SAP ouvertes (categorie "Commande Achat").
+// Endpoint generique : le backend dispatche sur la categorie de la table demandee.
+export const exportCommandeAchatData = async (config: ExportConfig) => {
+  try {
+    console.log('🚀 Démarrage de l\'export Commandes d\'achat via l\'API backend');
+    console.log('📋 Configuration:', config);
+
+    const response = await api.post('/export/maintenance', {
+      selectedTables: config.selectedTables,
+      format: 'zip',
+      includeHeaders: config.includeHeaders,
+      includeInactive: config.includeInactive,
+      csvSeparator: ';'
+    }, {
+      responseType: 'blob'
+    });
+
+    return handleExportResponse(response, 'commande_achat');
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'export Commandes d\'achat:', error);
+    throw error;
+  }
+};
+
 // Fonction pour exporter les données des clients
 export const exportClientsData = async (config: ExportConfig) => {
   try {

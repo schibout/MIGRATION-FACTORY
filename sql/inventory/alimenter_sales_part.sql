@@ -21,7 +21,14 @@ BEGIN
         WHEN undefined_table THEN
             RAISE NOTICE 'Table sales_part n''existe pas encore';
     END;
-    
+
+    -- Statistiques a jour avant la jointure sur inventory_part : cette table est
+    -- rechargee dans la meme transaction (etl_inventory_part appelle
+    -- alimenter_inventory_part() juste avant). Sans ANALYZE, le planificateur la
+    -- croit vide et part en nested loop (meme piege que dans
+    -- alimenter_inventory_part_planning() et alimenter_purchase_part_supplier()).
+    ANALYZE clean_data.inventory_part;
+
     -- Insertion des articles de vente depuis SAP
     INSERT INTO clean_data.sales_part (
         -- Clés primaires
@@ -107,25 +114,34 @@ BEGIN
         -- Données de base
         -- Libelle FR si disponible, sinon le numero SAP
         SUBSTRING(COALESCE(NULLIF(TRIM(makt.maktx), ''), mara.matnr), 1, 200) as catalog_desc,
-        -- SALES_UNIT_MEAS: MVKE.VRKME sinon MARA.MEINS via transcodification UOM (SAP->IFS), sinon unité d'entrée
+        -- SALES_UNIT_MEAS: MVKE.VRKME sinon MARA.MEINS via transcodification
+        -- UOM (SAP->IFS), repli sur '*' si l'unité SAP n'est pas transcodée.
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(COALESCE(NULLIF(mvke.vrkme, ''), mara.meins))), '')),
-            UPPER(TRIM(COALESCE(NULLIF(mvke.vrkme, ''), mara.meins)))
+            '*'
         ), 1, 10) as sales_unit_meas,
         public.get_default_value('clean_data.sales_part', 'catalog_group') as catalog_group,
         public.get_default_value('clean_data.sales_part', 'sales_price_group_id') as sales_price_group_id,
         
-        -- Article lié (pour Inventory part)
-        CASE 
-            WHEN mara.mtart IN ('FERT', 'HALB', 'ROH') 
+        -- Article lie (pour Inventory part) : renseigne uniquement si la fiche
+        -- de stock existe reellement, sinon le lien pointerait dans le vide.
+        CASE
+            WHEN ip.part_no IS NOT NULL
             THEN SUBSTRING(LTRIM(mara.matnr, '0'), 1, 25)
             ELSE NULL
         END as part_no,
         
         -- Flags et statuts (_DB uniquement) : tous les articles actifs
         public.get_default_value('clean_data.sales_part', 'activeind_db') as activeind_db,
-        CASE 
-            WHEN mara.mtart IN ('FERT', 'HALB', 'ROH') THEN 'INV'
+        -- CATALOG_TYPE_DB : 'INV' (valeur par defaut parametrable) pour un article
+        -- reellement en stock, 'NON' (non-inventory sales part) sinon. IFS exige
+        -- une inventory_part pour un catalog_type 'INV', le critere est donc la
+        -- presence dans inventory_part et non le mtart SAP : l'ancien CASE testait
+        -- FERT/HALB/ROH alors que le WHERE ci-dessous exclut ROH (jamais atteint)
+        -- et que alimenter_inventory_part() ecarte deliberement DIEN et NLAG.
+        CASE
+            WHEN ip.part_no IS NOT NULL
+            THEN public.get_default_value('clean_data.sales_part', 'catalog_type_db')
             ELSE 'NON'
         END as catalog_type_db,
         
@@ -133,10 +149,11 @@ BEGIN
         public.get_default_value('clean_data.sales_part', 'conv_factor')::numeric as conv_factor,
         public.get_default_value('clean_data.sales_part', 'inverted_conv_factor')::numeric as inverted_conv_factor,
         public.get_default_value('clean_data.sales_part', 'price_conv_factor')::numeric as price_conv_factor,
-        -- PRICE_UNIT_MEAS: MVKE.VRKME sinon MARA.MEINS via transcodification UOM (SAP->IFS), sinon unité d'entrée
+        -- PRICE_UNIT_MEAS: MVKE.VRKME sinon MARA.MEINS via transcodification
+        -- UOM (SAP->IFS), meme repli sur '*'.
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(COALESCE(NULLIF(mvke.vrkme, ''), mara.meins))), '')),
-            UPPER(TRIM(COALESCE(NULLIF(mvke.vrkme, ''), mara.meins)))
+            '*'
         ), 1, 10) as price_unit_meas,
         
         -- Prix (par défaut à 0)
@@ -209,6 +226,16 @@ BEGIN
     LEFT JOIN raw_data.marc marc
         ON mara.matnr = marc.matnr
         AND marc.werks IN ('9200', '9100')
+    -- Presence reelle en stock : pilote catalog_type_db ('INV' vs 'NON') et part_no.
+    -- (contract, part_no) est unique dans inventory_part, ce LEFT JOIN ne multiplie
+    -- donc pas les lignes. La table est chargee AVANT sales_part par etl_inventory_part.
+    LEFT JOIN clean_data.inventory_part ip
+        ON ip.part_no = SUBSTRING(LTRIM(mara.matnr, '0'), 1, 25)
+        AND ip.contract = CASE
+            WHEN marc.werks = '9200' THEN 'SJ'
+            WHEN marc.werks = '9100' THEN 'CS'
+            ELSE 'SJ'
+        END
 
     WHERE
         mara.lvorm IS NULL

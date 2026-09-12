@@ -248,7 +248,11 @@ BEGIN
             SUBSTRING(NULLIF(TRIM(afru_ltxa1), ''), 1, 2000) AS remark,
             SUBSTRING(NULLIF(TRIM(afru_ltxa1), ''), 1, 4000) AS action_taken,
             SUBSTRING(NULLIF(TRIM(grund), ''), 1, 10) AS cancel_cause,
-            SUBSTRING(NULLIF(TRIM(lifnr), ''), 1, 20) AS vendor_no,
+            -- VENDOR_NO : numero de compte IFS du fournisseur (600xxx) repris du
+            -- fichier de selection, et non le LIFNR SAP brut : la table supplier
+            -- est renumerotee, un LIFNR ne resout plus cote IFS. NULL si le
+            -- fournisseur est inconnu du fichier.
+            public.get_vendor_no_ifs(lifnr) AS vendor_no,
             SUBSTRING(NULLIF(TRIM(waers), ''), 1, 3) AS currency_code,
             SUBSTRING(NULLIF(TRIM(afnam), ''), 1, 20) AS authorize_code,
             SUBSTRING(CONCAT_WS('-', NULLIF(TRIM(aufnr), ''), NULLIF(TRIM(vornr), '')), 1, 25) AS reference_no,

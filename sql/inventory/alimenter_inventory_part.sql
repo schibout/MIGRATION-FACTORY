@@ -90,10 +90,12 @@ BEGIN
         -- DESCRIPTION: depuis SAP
         -- Libelle FR si disponible, sinon designation du referentiel, sinon le numero SAP
         SUBSTRING(COALESCE(NULLIF(TRIM(makt.maktx), ''), NULLIF(TRIM(ifs.designation), ''), mara.matnr), 1, 200) as description,
-          -- UNIT_MEAS: MARA.MEINS via transcodification UOM (SAP->IFS), sinon unité d'entrée
+          -- UNIT_MEAS: MARA.MEINS via transcodification UOM (SAP->IFS),
+        -- repli sur '*' si l'unité SAP n'est pas transcodée (cf. unit_code
+        -- dans alimenter_part_catalog()).
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(mara.meins)), '')),
-            UPPER(TRIM(mara.meins))
+            '*'
         ), 1, 10) as unit_meas,
         -- PART_STATUS: A
         public.get_default_value('clean_data.inventory_part', 'part_status') as part_status,

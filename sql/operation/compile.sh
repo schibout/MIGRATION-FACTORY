@@ -81,6 +81,9 @@ errors=0
 # L'ordre est important: la table jt_task doit exister avant la fonction alimenter_jt_task,
 # et jt_task_resource / maint_material_req_line filtrent via EXISTS sur jt_task
 files=(
+    # Mapping LIFNR SAP -> numero de compte IFS du fichier de selection,
+    # appele par les fonctions ci-dessous pour alimenter vendor_no.
+    "../functions/get_vendor_no_ifs.sql"
     "create_alimenter_jt_task.sql"
     "create_alimenter_jt_task_resource.sql"
     "create_clean_data_maint_material_req_line.sql"

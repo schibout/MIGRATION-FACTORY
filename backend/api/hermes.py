@@ -1,4 +1,4 @@
-doc# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 api/hermes.py — Proxy streaming vers l'agent Hermes (Nous Research).
 

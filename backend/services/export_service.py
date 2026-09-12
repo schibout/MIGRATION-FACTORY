@@ -606,6 +606,69 @@ class ExportService:
             }
         }
 
+    def export_category_data(self, config: Dict[str, Any], category: str, label: str) -> Dict[str, Any]:
+        """
+        Exporte les tables d'une categorie unique de etl_export_queries (requetes
+        dynamiques). Meme contrat de retour que export_projects_data & co, sans
+        dupliquer une methode par categorie : brancher une nouvelle categorie
+        revient a ajouter une ligne dans generate_export_file.
+
+        Args:
+            config   : Configuration de l'export (selectedTables...)
+            category : valeur exacte de etl_export_queries.category
+            label    : libelle pour les logs
+        """
+        selected_tables = config.get('selectedTables', [])
+
+        logger.info(f"🚀 Début de l'export {label} - Tables: {len(selected_tables)}")
+        logger.info(f"📋 Tables demandées: {selected_tables}")
+
+        self.load_queries_from_db(category)
+
+        results = {}
+        errors = {}
+        metadata = {}
+        total_rows = 0
+
+        for table_name in selected_tables:
+            normalized_name = self.normalize_table_name(table_name)
+            if normalized_name not in self.table_categories:
+                error_msg = f"Table {table_name} non configurée pour l'export"
+                errors[table_name] = error_msg
+                logger.warning(f"⚠️ {error_msg}")
+                continue
+
+            if self.table_categories[normalized_name] != category:
+                error_msg = f"Table {table_name} n'appartient pas à la catégorie {category}"
+                errors[table_name] = error_msg
+                logger.warning(f"⚠️ {error_msg}")
+                continue
+
+            table_info = self.get_table_info(table_name)
+            metadata[table_name] = table_info
+
+            data, error = self.execute_query(table_name)
+            if error:
+                errors[table_name] = error
+            else:
+                results[table_name] = data
+                total_rows += len(data)
+                logger.info(f"📊 {table_info['display_name']}: {len(data)} lignes exportées")
+
+        logger.info(f"✅ Export {label} terminé - {len(results)} tables réussies, {len(errors)} échecs, {total_rows} lignes au total")
+
+        return {
+            'results': results,
+            'errors': errors,
+            'metadata': metadata,
+            'summary': {
+                'total_tables': len(selected_tables),
+                'successful_tables': len(results),
+                'failed_tables': len(errors),
+                'total_rows': total_rows
+            }
+        }
+
     def export_clients_data(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Exporte les données des clients depuis PostgreSQL
@@ -827,6 +890,8 @@ class ExportService:
             export_result = self.export_maintenance_data(config)
         elif primary_category == 'project':
             export_result = self.export_projects_data(config)
+        elif primary_category == 'Commande Achat':
+            export_result = self.export_category_data(config, 'Commande Achat', 'commandes d\'achat')
         else:
             # Par défaut, utiliser l'export supplier (pour 'supplier' et autres)
             export_result = self.export_supplier_data(config)

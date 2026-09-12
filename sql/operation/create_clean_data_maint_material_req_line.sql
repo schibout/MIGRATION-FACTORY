@@ -386,7 +386,10 @@ BEGIN
         public.get_default_value('clean_data.maint_material_req_line', 'swap_part_db') AS swap_part_db,
         public.get_default_value('clean_data.maint_material_req_line', 'serial_in') AS serial_in,
         public.get_default_value('clean_data.maint_material_req_line', 'serial_in_contract') AS serial_in_contract,
-        substring(nullif(trim(r.lifnr),''),1,20) AS vendor_no,
+        -- VENDOR_NO : numero de compte IFS du fournisseur (600xxx) repris du
+        -- fichier de selection, et non le LIFNR SAP brut (la table supplier est
+        -- renumerotee). NULL si le fournisseur est inconnu du fichier.
+        public.get_vendor_no_ifs(r.lifnr) AS vendor_no,
         public.get_default_value('clean_data.maint_material_req_line', 'supply_source_ref1') AS supply_source_ref1,
         public.get_default_value('clean_data.maint_material_req_line', 'supply_source_ref2') AS supply_source_ref2,
         public.get_default_value('clean_data.maint_material_req_line', 'supply_source_ref3') AS supply_source_ref3,
