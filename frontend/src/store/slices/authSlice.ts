@@ -119,9 +119,10 @@ export const fetchCurrentUser = createAsyncThunk(
       });
       return response.data;
     } catch (err: any) {
-      return rejectWithValue(
-        err.response?.data?.message || 'Failed to fetch user'
-      );
+      return rejectWithValue({
+        status: err.response?.status ?? null,
+        message: err.response?.data?.message || 'Failed to fetch user',
+      });
     }
   }
 );
@@ -158,7 +159,11 @@ const authSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(fetchCurrentUser.pending, (state) => {
-        state.status = 'loading';
+        // Spinner plein écran uniquement s'il n'y a rien à afficher : avec un utilisateur en
+        // cache, la resynchronisation se fait en arrière-plan sans remonter toutes les pages.
+        if (!state.user) {
+          state.status = 'loading';
+        }
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.status = 'succeeded';
@@ -167,11 +172,22 @@ const authSlice = createSlice({
         saveUserToLocalStorage(action.payload);
       })
       .addCase(fetchCurrentUser.rejected, (state, action) => {
-        state.status = 'failed';
-        state.error = action.payload as string;
-        state.isAuthenticated = false;
-        state.token = null;
-        localStorage.removeItem('token');
+        const payload = action.payload as { status: number | null; message: string } | undefined;
+        state.error = payload?.message ?? 'Failed to fetch user';
+        // Ne déconnecter que si le backend refuse réellement le token (l'intercepteur axios a
+        // déjà tenté /auth/refresh). Une erreur réseau ou 5xx transitoire au démarrage ne doit
+        // pas éjecter un utilisateur dont la session en cache est valide.
+        const authInvalide = payload?.status === 401 || payload?.status === 403 || !state.user;
+        if (authInvalide) {
+          state.status = 'failed';
+          state.isAuthenticated = false;
+          state.token = null;
+          state.user = null;
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        } else {
+          state.status = 'succeeded';
+        }
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;

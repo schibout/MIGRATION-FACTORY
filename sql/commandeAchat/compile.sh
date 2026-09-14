@@ -9,21 +9,25 @@ if [ -f ~/.profile ]; then
 fi
 
 # Configuration de la connexion PostgreSQL
-
-DB_HOST="10.190.100.58"
-DB_PORT="5432"
-DB_NAME="sap_migration_db"
-DB_USER="postgres"
-DB_PASSWORD="trimet2025"
-# Couleurs pour les messages
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
+# Identifiants lus depuis le .env de la racine du depot (non commite, meme
+# source que docker-compose : DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD),
+# ou depuis l'environnement s'ils y sont deja exportes. Aucun mot de passe
+# en dur ici : ce fichier est versionne.
+ENV_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    set +a
+fi
+DB_HOST="${DB_HOST:-10.190.100.58}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-sap_migration_db}"
+DB_USER="${DB_USER:-postgres}"
+DB_PASSWORD="${DB_PASSWORD:-$PG_PASSWORD}"
 
 if [ -z "$DB_PASSWORD" ]; then
-    echo "[ERROR] DB_PASSWORD (ou PG_PASSWORD) non defini. Exportez-le ou ajoutez-le dans ~/.profile"
+    echo "[ERROR] DB_PASSWORD non defini : renseignez-le dans $ENV_FILE ou exportez-le"
     exit 1
 fi
 

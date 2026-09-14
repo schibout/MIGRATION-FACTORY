@@ -117,14 +117,17 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated, user, token } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, token } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    // Récupérer les infos utilisateur seulement si on a un token mais pas d'infos utilisateur
-    if (token && !user && isAuthenticated) {
+    // Resynchroniser l'utilisateur avec le backend dès qu'un token existe, même si un
+    // utilisateur est déjà en cache (localStorage) : sinon un changement de rôle fait par un
+    // admin (operator -> admin) n'est jamais vu tant que l'utilisateur ne se déconnecte pas.
+    // L'utilisateur en cache sert d'affichage immédiat, /auth/me fait foi.
+    if (token && isAuthenticated) {
       dispatch(fetchCurrentUser());
     }
-  }, [dispatch, token, user, isAuthenticated]);
+  }, [dispatch, token, isAuthenticated]);
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>

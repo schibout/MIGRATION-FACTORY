@@ -1,9 +1,9 @@
 # Module ETL Commandes d'achat (SAP -> `clean_data.commande_achat_ifs`)
 
-Charge les commandes d'achat SAP **ouvertes** au format de reprise IFS : une ligne par poste
-`EKPO` non supprime, **non clos** (`ekpo.elikz` vide = pas de « livraison finale ») et avec un
+Charge les commandes d'achat SAP **ouvertes** de la societe **`STJN`** (demande explicite ; `APSJ`,
+arretee en 2014, est exclue) au format de reprise IFS : une ligne par poste `EKPO` non supprime, **non clos** (`ekpo.elikz` vide = pas de « livraison finale ») et avec un
 reliquat a livrer > 0. Les postes anciens que les acheteurs n'ont jamais clos dans SAP sont
-ouverts au sens SAP et ressortent (au 12/09/2026 : 4 868 postes, dont ~3 000 anterieurs a 2024) :
+ouverts au sens SAP et ressortent (au 12/09/2026 : 3 325 postes STJN, 2013-2026) :
 borner par `date_debut` dans `module_params` si le metier ne veut pas les reprendre.
 
 | Element | Emplacement |
@@ -29,6 +29,17 @@ Puis lancer le module depuis l'ecran de chargement des donnees, ou :
 
 ```bash
 docker exec -e PYTHONPATH=/app migration-app-backend python etl_modules/etl_commande_achat.py [date_debut [date_fin]]
+```
+
+## Bornes de date (`module_params`)
+
+Aucun ecran n'expose `module_params` (le `PUT /data/etl_target_tables` ne le met pas a jour) :
+parametrer en base, pris en compte au prochain chargement.
+
+```sql
+UPDATE public.etl_target_tables
+   SET module_params = '{"date_fin": "2026-08-31"}'::jsonb, last_modified = CURRENT_TIMESTAMP
+ WHERE python_module = 'etl_commande_achat.py';   -- {"date_debut": ..., "date_fin": ...} ; NULL = sans borne
 ```
 
 ## Regles de mappage
