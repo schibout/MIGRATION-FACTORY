@@ -72,8 +72,9 @@ def app_context():
 class FakeCursor:
     """Enregistre le SQL execute et rejoue les reponses attendues par la route."""
 
-    def __init__(self, journal, *, org='SJ-MCAR', supprimees=3, max_id=1760, audit=2):
+    def __init__(self, journal, *, code='MCAR', org='SJ-MCAR', supprimees=3, max_id=1760, audit=2):
         self.journal = journal
+        self._code = code
         self._org = org
         self._supprimees = supprimees
         self._max_id = max_id
@@ -83,8 +84,10 @@ class FakeCursor:
 
     def execute(self, sql, params=None):
         self.journal.append((' '.join(sql.split()), params))
-        if 'pe_tools_code_fichier' in sql:
-            self._reponse = {'code': 'MCAR', 'org': self._org}
+        if 'pg_advisory_xact_lock' in sql:
+            self._reponse = None
+        elif sql.lstrip().upper().startswith('SELECT public.pe_tools_code_fichier'.upper()):
+            self._reponse = {'code': self._code, 'org': self._org}
         elif sql.lstrip().upper().startswith('DELETE'):
             self.rowcount = self._supprimees
         elif 'MAX(raw_id)' in sql:
@@ -99,10 +102,11 @@ class FakeCursor:
 
 
 class FakeConnection:
-    def __init__(self, **cursor_kwargs):
+    def __init__(self, rollback_ko=False, **cursor_kwargs):
         self.journal = []
         self.commits = 0
         self.rollbacks = 0
+        self._rollback_ko = rollback_ko
         self._cursor_kwargs = cursor_kwargs
 
     def cursor(self, cursor_factory=None):
@@ -113,6 +117,8 @@ class FakeConnection:
 
     def rollback(self):
         self.rollbacks += 1
+        if self._rollback_ko:
+            raise RuntimeError('connexion perdue')
 
 
 @pytest.fixture
@@ -157,13 +163,16 @@ def test_import_ok_remplace_par_fichier(petools, app_context, capture_execute_va
     assert conn.commits == 1
     assert conn.rollbacks == 0
 
-    # Ordre des requetes : resolution org -> DELETE -> MAX -> detection audit.
+    # Ordre des requetes : verrou -> resolution org -> DELETE -> MAX -> detection audit.
     sqls = [sql for sql, _ in conn.journal]
-    assert 'pe_tools_code_fichier' in sqls[0]
-    assert sqls[1] == 'DELETE FROM raw_data.pe_tools WHERE nom_fichier = %s'
-    assert conn.journal[1][1] == ['PeTool - 7.MCAR.csv']
-    assert 'MAX(raw_id)' in sqls[2]
-    assert 'information_schema.columns' in sqls[3]
+    assert sqls[0] == 'SELECT pg_advisory_xact_lock(778814)'
+    assert sqls[1].startswith('SELECT public.pe_tools_code_fichier')
+    # Remplacement par CODE de fichier : "PeTool - 7.MCAR (1).csv" ou
+    # "petool - 7.mcar.csv" remplacent les lignes de "PeTool - 7.MCAR.csv".
+    assert sqls[2] == 'DELETE FROM raw_data.pe_tools WHERE public.pe_tools_code_fichier(nom_fichier) = %s'
+    assert conn.journal[2][1] == ['MCAR']
+    assert 'MAX(raw_id)' in sqls[3]
+    assert 'information_schema.columns' in sqls[4]
 
     assert len(capture_execute_values) == 1
     capture = capture_execute_values[0]
@@ -243,7 +252,49 @@ def test_import_erreur_sql_rollback(petools, app_context, audit_detecte, contenu
 
     assert resultat['status'] == 'error'
     assert 'duplicate key' in resultat['error']
-    assert resultat['lignes_supprimees'] == 3  # le DELETE a ete tente, puis annule
+    # Le DELETE a ete annule par le rollback : les compteurs repartent a 0.
+    assert resultat['lignes_supprimees'] == 0
     assert resultat['lignes_inserees'] == 0
     assert conn.commits == 0
     assert conn.rollbacks == 1
+
+
+def test_import_fichier_sans_lignes_ne_purge_pas(petools, app_context, capture_execute_values, audit_detecte):
+    entete = ('Localisation / Classement;Gamme en DMS;Poste technique;Niveau SAP;Plan Entretien;'
+              'Poste entretien;Groupe de Gamme;Compteur de Gamme;Frequence;Désignation\n').encode('cp850')
+    conn = FakeConnection()
+    resultat = petools._import_one_file(conn, 'PeTool - 7.MCAR.csv', entete, 'samir')
+
+    assert resultat['status'] == 'error'
+    assert 'Aucune ligne de données' in resultat['error']
+    assert conn.journal == []  # refuse AVANT tout SQL : rien n'est supprime
+    assert conn.commits == 0
+    assert conn.rollbacks == 1
+    assert capture_execute_values == []
+
+
+def test_import_nom_sans_code_remplace_a_l_identique(petools, app_context, capture_execute_values, audit_detecte, contenu_fixture):
+    conn = FakeConnection(code=None, org=None)
+    resultat = petools._import_one_file(conn, 'export_ecran.csv', contenu_fixture, 'samir')
+
+    assert resultat['status'] == 'ok', resultat
+    assert resultat['code_fichier'] is None
+    sqls = [sql for sql, _ in conn.journal]
+    assert sqls[2] == 'DELETE FROM raw_data.pe_tools WHERE nom_fichier = %s'
+    assert conn.journal[2][1] == ['export_ecran.csv']
+    assert any('Code ? absent' in a for a in resultat['avertissements'])
+
+
+def test_import_rollback_impossible_ne_leve_pas(petools, app_context, audit_detecte, contenu_fixture, monkeypatch):
+    def execute_values_ko(*args, **kwargs):
+        raise RuntimeError('insert KO')
+
+    monkeypatch.setattr(psycopg2.extras, 'execute_values', execute_values_ko)
+    conn = FakeConnection(rollback_ko=True)
+    resultat = petools._import_one_file(conn, 'PeTool - 7.MCAR.csv', contenu_fixture, 'samir')
+
+    assert resultat['status'] == 'error'
+    assert resultat['error'] == 'insert KO'
+    assert resultat['lignes_supprimees'] == 0
+    assert conn.rollbacks == 1
+    assert conn.commits == 0

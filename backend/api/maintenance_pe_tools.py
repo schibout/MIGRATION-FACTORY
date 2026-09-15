@@ -14,7 +14,7 @@ import json
 import os
 
 from flask import Blueprint, Response, current_app, jsonify, request
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 import psycopg2.extras
 
 from config.database import get_db_connection
@@ -488,8 +488,16 @@ def delete_pe_tool(raw_id: int):
 
 def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
     """Importe UN fichier PE Tools en mode "remplacer par fichier" : les lignes
-    portant deja ce nom_fichier sont supprimees puis rechargees, les autres
-    (autres fichiers, lignes historiques sans nom_fichier) ne bougent pas.
+    du meme fichier sont supprimees puis rechargees, les autres (autres
+    fichiers, lignes historiques sans nom_fichier) ne bougent pas.
+
+    "Remplacer par fichier" = par CODE de fichier (public.pe_tools_code_fichier) :
+    "PeTool - 7.MCAR (1).csv" ou "petool - 7.mcar.csv" remplacent les lignes
+    chargees sous "PeTool - 7.MCAR.csv". Un nom sans code reconnu est remplace
+    a l'identique (WHERE nom_fichier = nom).
+
+    Un fichier sans ligne de donnees est refuse AVANT tout SQL : il ne purge
+    jamais les lignes existantes.
 
     Une transaction par fichier : commit en fin, rollback sur toute erreur
     (le resultat porte alors status='error'). Ne leve jamais."""
@@ -507,6 +515,8 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
             raise ValueError('Extension attendue : .csv')
 
         parsed = parse_pe_tools_csv(content)
+        if not parsed.rows:
+            raise ValueError('Aucune ligne de données')
         if parsed.missing_columns:
             resultat['avertissements'].append(
                 'Colonne(s) absente(s) du fichier (valeurs NULL) : ' + ', '.join(parsed.missing_columns))
@@ -518,6 +528,11 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
                 f'{parsed.repaired_lines} ligne(s) aux guillemets non fermés réparée(s)')
 
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Verrou consultatif de transaction (libere au commit/rollback) : deux
+        # imports simultanes calculeraient le meme MAX(raw_id) + 1 et
+        # violeraient l'unicite de raw_id. 778812/778813 sont pris par le
+        # module maintenance.
+        cursor.execute("SELECT pg_advisory_xact_lock(778814)")
         cursor.execute(
             "SELECT public.pe_tools_code_fichier(%s) AS code, public.pe_tools_org_code(%s) AS org",
             [nom_fichier, nom_fichier])
@@ -528,7 +543,12 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
             resultat['avertissements'].append(
                 f"Code {r['code'] or '?'} absent de public.pe_tools_organisation : organisation non renseignée")
 
-        cursor.execute("DELETE FROM raw_data.pe_tools WHERE nom_fichier = %s", [nom_fichier])
+        if r['code'] is not None:
+            cursor.execute(
+                "DELETE FROM raw_data.pe_tools WHERE public.pe_tools_code_fichier(nom_fichier) = %s",
+                [r['code']])
+        else:
+            cursor.execute("DELETE FROM raw_data.pe_tools WHERE nom_fichier = %s", [nom_fichier])
         resultat['lignes_supprimees'] = cursor.rowcount
 
         if parsed.rows:
@@ -566,7 +586,13 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
 
         conn.commit()
     except Exception as exc:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception as rb:
+            current_app.logger.error(f"Rollback impossible ({nom_fichier}): {rb}")
+        # La suppression a ete annulee avec la transaction.
+        resultat['lignes_supprimees'] = 0
+        resultat['lignes_inserees'] = 0
         resultat['status'] = 'error'
         resultat['error'] = str(exc)
         current_app.logger.error(f"Import pe_tools {nom_fichier}: {exc}")
@@ -574,6 +600,7 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
 
 
 @maintenance_pe_tools_blueprint.route('/pe-tools/import', methods=['POST'])
+@jwt_required()
 def import_pe_tools():
     """Import multi-fichiers des CSV PE Tools (champ multipart `files`).
 
@@ -600,6 +627,9 @@ def import_pe_tools():
                 if not nom:
                     continue
                 results.append(_import_one_file(conn, nom, f.read(), user))
+
+        if not results:
+            return jsonify({'success': False, 'error': 'Aucun fichier fourni'}), 400
 
         cache_invalidate(CACHE_PREFIX)
         return jsonify({
