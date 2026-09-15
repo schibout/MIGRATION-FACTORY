@@ -184,6 +184,8 @@ interface EquipmentDetails {
   gewrk: string | null;
   arbpl: string | null;
   poste_travail_texte: string | null;
+  poste_resp: string | null;
+  poste_resp_texte: string | null;
   // Tracabilite renvoyee par l'API (non affichee : masquee a la demande)
   source?: string | null;
   updated_by?: string | null;
@@ -2279,7 +2281,7 @@ const IH02HierarchyPage: React.FC = () => {
               <Grid item xs={12} sx={{ mt: 1 }}><Divider /></Grid>
               <Grid item xs={6}><DetailField label="Poste de travail" value={eq.arbpl} monospace /></Grid>
               <Grid item xs={6}><DetailField label="Désignation poste de travail" value={eq.poste_travail_texte} /></Grid>
-              <Grid item xs={6}><DetailField label="Poste responsable" value={eq.arbpl ? `${eq.arbpl} - ${eq.poste_travail_texte || ''}` : undefined} monospace /></Grid>
+              <Grid item xs={6}><DetailField label="Poste responsable" value={eq.poste_resp ? `${eq.poste_resp} - ${eq.poste_resp_texte || ''}` : undefined} monospace /></Grid>
             </Grid>
           )}
 

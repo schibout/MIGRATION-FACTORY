@@ -132,6 +132,8 @@ BEGIN
         category        TEXT,
         work_center     TEXT,
         work_center_txt TEXT,
+        resp_work_center     TEXT,
+        resp_work_center_txt TEXT,
         cost_center     TEXT,
         plant           TEXT,
         planner_group   TEXT,
@@ -150,6 +152,7 @@ BEGIN
     INSERT INTO mo_stg (
         object_type, sap_key, code, designation, parent_type, parent_sap_key,
         type_code, category, work_center, work_center_txt,
+        resp_work_center, resp_work_center_txt,
         plant, planner_group, attributes
     )
     -- ------------------------------------------------------------------
@@ -215,6 +218,8 @@ BEGIN
         s.tplkz,
         cr.arbpl,
         ctx.ktext,
+        crr.arbpl,
+        ctxr.ktext,
         i.iwerk,
         i.ingrp,
         jsonb_strip_nulls(jsonb_build_object(
@@ -222,6 +227,8 @@ BEGIN
             'strno',     NULLIF(TRIM(s.strno), ''),
             'tplkz',     s.tplkz,
             'fltyp',     i.fltyp,
+            'lgwid',     NULLIF(i.lgwid, '00000000'),
+            'lgwidi',    NULLIF(TRIM(i.lgwidi), ''),
             'mandt',     i.mandt
         ))
     FROM raw_data.iflot i
@@ -246,6 +253,10 @@ BEGIN
         ON fl.iloan = i.iloan AND fl.mandt = i.mandt
     LEFT JOIN raw_data.crhd cr  ON cr.objid = fl.ppsid AND fl.ppsid <> '00000000'
     LEFT JOIN raw_data.crtx ctx ON ctx.objid = cr.objid AND ctx.spras = 'F'
+    -- Poste RESPONSABLE (onglet Organisation, ITOBATTR-GEWRK) : iflot.lgwid.
+    -- Champ ajoute a l'extraction IFLOT le 2026-09-15 (absent auparavant).
+    LEFT JOIN raw_data.crhd crr  ON crr.objid = i.lgwid AND i.lgwid <> '00000000'
+    LEFT JOIN raw_data.crtx ctxr ON ctxr.objid = crr.objid AND ctxr.spras = 'F'
     ON CONFLICT (object_type, sap_key) DO NOTHING;
 
     -- -------------------------------------------------------------
@@ -254,6 +265,7 @@ BEGIN
     INSERT INTO mo_stg (
         object_type, sap_key, code, designation, parent_type, parent_sap_key,
         type_code, category, work_center, work_center_txt,
+        resp_work_center, resp_work_center_txt,
         cost_center, plant, planner_group, attributes
     )
     SELECT
@@ -274,6 +286,8 @@ BEGIN
         t.eqtyp,
         cr.arbpl,
         ctx.ktext,
+        crr.arbpl,
+        ctxr.ktext,
         t.kostl,
         t.iwerk,
         t.ingrp,
@@ -317,6 +331,7 @@ BEGIN
             e.ernam, e.aedat, e.aenam, e.lvorm, e.begru, e.warpl,
             ez2.iwerk, ez2.ingrp,
             il.tplnr, il.kostl, il.swerk, il.stort, il.beber, il.bukrs, il.gsber,
+            il.ppsid,
             NULL::varchar AS hequi
         FROM raw_data.equi e
         LEFT JOIN raw_data.eqkt kt_fr
@@ -333,8 +348,12 @@ BEGIN
                ON il.mandt = ez2.mandt AND il.iloan = ez2.iloan
     ) t
     LEFT JOIN raw_data.equz ez  ON ez.equnr = t.equnr AND ez.datbi = '99991231'
-    LEFT JOIN raw_data.crhd cr  ON cr.objid = ez.gewrk
+    -- work_center = poste de travail (Localisation, iloa.ppsid) ;
+    -- resp_work_center = poste responsable (Organisation, equz.gewrk)
+    LEFT JOIN raw_data.crhd cr  ON cr.objid = t.ppsid AND t.ppsid <> '00000000'
     LEFT JOIN raw_data.crtx ctx ON ctx.objid = cr.objid AND ctx.spras = 'F'
+    LEFT JOIN raw_data.crhd crr  ON crr.objid = ez.gewrk AND ez.gewrk <> '00000000'
+    LEFT JOIN raw_data.crtx ctxr ON ctxr.objid = crr.objid AND ctxr.spras = 'F'
     ON CONFLICT (object_type, sap_key) DO NOTHING;
 
     -- -------------------------------------------------------------
@@ -537,10 +556,12 @@ BEGIN
     -- -------------------------------------------------------------
     INSERT INTO clean_data.maintenance_object (
         object_type, sap_key, code, designation, type_code, category,
-        work_center, work_center_txt, plant, planner_group, attributes, source
+        work_center, work_center_txt, resp_work_center, resp_work_center_txt,
+        plant, planner_group, attributes, source
     )
     SELECT s.object_type, s.sap_key, s.code, s.designation, s.type_code, s.category,
-           s.work_center, s.work_center_txt, s.plant, s.planner_group, s.attributes, 'SAP'
+           s.work_center, s.work_center_txt, s.resp_work_center, s.resp_work_center_txt,
+           s.plant, s.planner_group, s.attributes, 'SAP'
     FROM mo_stg s
     WHERE s.object_type = 'FUNC_LOC'
     ON CONFLICT (object_type, sap_key) DO NOTHING;
@@ -554,6 +575,8 @@ BEGIN
         category        = s.category,
         work_center     = s.work_center,
         work_center_txt = s.work_center_txt,
+        resp_work_center     = s.resp_work_center,
+        resp_work_center_txt = s.resp_work_center_txt,
         plant           = s.plant,
         planner_group   = s.planner_group,
         -- on conserve les cles techniques ajoutees par l'app (ex. sap_missing)
@@ -586,12 +609,12 @@ BEGIN
     -- -------------------------------------------------------------
     INSERT INTO clean_data.maintenance_object (
         object_type, sap_key, code, designation, type_code, category,
-        work_center, work_center_txt, cost_center, plant, planner_group,
-        attributes, source
+        work_center, work_center_txt, resp_work_center, resp_work_center_txt,
+        cost_center, plant, planner_group, attributes, source
     )
     SELECT s.object_type, s.sap_key, s.code, s.designation, s.type_code, s.category,
-           s.work_center, s.work_center_txt, s.cost_center, s.plant, s.planner_group,
-           s.attributes, 'SAP'
+           s.work_center, s.work_center_txt, s.resp_work_center, s.resp_work_center_txt,
+           s.cost_center, s.plant, s.planner_group, s.attributes, 'SAP'
     FROM mo_stg s
     WHERE s.object_type = 'EQUIPMENT'
     ON CONFLICT (object_type, sap_key) DO NOTHING;
@@ -605,6 +628,8 @@ BEGIN
         category        = s.category,
         work_center     = s.work_center,
         work_center_txt = s.work_center_txt,
+        resp_work_center     = s.resp_work_center,
+        resp_work_center_txt = s.resp_work_center_txt,
         cost_center     = s.cost_center,
         plant           = s.plant,
         planner_group   = s.planner_group,

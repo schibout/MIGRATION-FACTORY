@@ -41,8 +41,10 @@ CREATE TABLE clean_data.maintenance_object (
     -- Attributs communs (colonnes car filtres / affiches dans l'arbre)
     type_code       TEXT,            -- fltyp | eqart | mtart
     category        TEXT,            -- tplkz | eqtyp | postp (item_category)
-    work_center     TEXT,            -- arbpl resolu (iflo.ppsid->crhd | equz.gewrk->crhd)
+    work_center     TEXT,            -- poste de travail (Localisation) : iflo.ppsid | iloa.ppsid -> crhd.arbpl
     work_center_txt TEXT,            -- crtx.ktext
+    resp_work_center     TEXT,       -- poste responsable (Organisation, ITOBATTR-GEWRK) : iflot.lgwid | equz.gewrk -> crhd.arbpl
+    resp_work_center_txt TEXT,       -- crtx.ktext
     cost_center     TEXT,            -- kostl
     plant           TEXT,            -- iwerk
     planner_group   TEXT,            -- ingrp

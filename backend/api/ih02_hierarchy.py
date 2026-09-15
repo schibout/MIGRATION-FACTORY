@@ -168,7 +168,8 @@ def _loc_select(level_expr):
         o.type_code AS type_poste,
         o.category  AS structure_indicator,
         o.cost_center AS centre_couts,
-        o.work_center AS poste_travail_resp_maintenance,
+        o.resp_work_center AS poste_travail_resp_maintenance,
+        o.resp_work_center_txt AS poste_resp_texte,
         o.attributes->>'art_type_construction' AS art_type_construction,
         o.risk_factor AS facteur_risque,
         o.zone AS zone,
@@ -200,6 +201,8 @@ def _equipment_select():
         o.attributes->>'gewrk' AS gewrk,
         o.work_center AS arbpl,
         o.work_center_txt AS poste_travail_texte,
+        o.resp_work_center AS poste_resp,
+        o.resp_work_center_txt AS poste_resp_texte,
         (SELECT COUNT(*) FROM {MO} c
           WHERE c.parent_id = o.id AND c.object_type = 'EQUIPMENT' AND c.is_active) AS children_count
     """
@@ -310,8 +313,8 @@ def get_node_details():
                     o.type_code AS type_poste,
                     o.category  AS structure_indicator,
                     o.cost_center AS centre_couts,
-                    o.work_center AS poste_travail_resp_maintenance,
-                    o.work_center_txt AS poste_resp_texte,
+                    o.resp_work_center AS poste_travail_resp_maintenance,
+                    o.resp_work_center_txt AS poste_resp_texte,
                     o.attributes->>'art_type_construction' AS art_type_construction,
                     o.risk_factor AS facteur_risque,
                     o.zone AS zone,
@@ -336,22 +339,26 @@ def get_node_details():
 
             node['level'] = _node_level(cursor, node['id'])
 
-            # Poste de travail herite : remonter la hierarchie parent_id
-            cursor.execute(f"""
-                WITH RECURSIVE up AS (
-                    SELECT id, parent_id, work_center, work_center_txt, 0 AS lvl
-                    FROM {MO} WHERE id = %s
-                    UNION ALL
-                    SELECT m.id, m.parent_id, m.work_center, m.work_center_txt, up.lvl + 1
-                    FROM {MO} m JOIN up ON m.id = up.parent_id
-                )
-                SELECT work_center, work_center_txt FROM up
-                WHERE work_center IS NOT NULL AND TRIM(work_center) <> ''
-                ORDER BY lvl LIMIT 1
-            """, [node['id']])
-            pt = cursor.fetchone()
-            node['poste_travail'] = pt['work_center'] if pt else None
-            node['poste_travail_texte'] = pt['work_center_txt'] if pt else None
+            # Poste de travail / poste responsable herites : remonter la
+            # hierarchie parent_id (comme SAP, lgwidi = 'H' herite du parent)
+            for col, key, key_txt in (
+                    ('work_center', 'poste_travail', 'poste_travail_texte'),
+                    ('resp_work_center', 'poste_travail_resp_maintenance', 'poste_resp_texte')):
+                cursor.execute(f"""
+                    WITH RECURSIVE up AS (
+                        SELECT id, parent_id, {col} AS wc, {col}_txt AS wc_txt, 0 AS lvl
+                        FROM {MO} WHERE id = %s
+                        UNION ALL
+                        SELECT m.id, m.parent_id, m.{col}, m.{col}_txt, up.lvl + 1
+                        FROM {MO} m JOIN up ON m.id = up.parent_id
+                    )
+                    SELECT wc, wc_txt FROM up
+                    WHERE wc IS NOT NULL AND TRIM(wc) <> ''
+                    ORDER BY lvl LIMIT 1
+                """, [node['id']])
+                pt = cursor.fetchone()
+                node[key] = pt['wc'] if pt else None
+                node[key_txt] = pt['wc_txt'] if pt else None
 
             node.pop('id', None)
             return jsonify({'success': True, 'data': node}), 200
@@ -388,7 +395,8 @@ def search_nodes():
                     o.type_code AS type_poste,
                     o.category  AS structure_indicator,
                     o.cost_center AS centre_couts,
-                    o.work_center AS poste_travail_resp_maintenance,
+                    o.resp_work_center AS poste_travail_resp_maintenance,
+                    o.resp_work_center_txt AS poste_resp_texte,
                     o.attributes->>'art_type_construction' AS art_type_construction,
                     o.risk_factor AS facteur_risque,
                     o.zone AS zone,
@@ -589,21 +597,23 @@ def update_location():
             if 'zone' in data:
                 sets.append('zone = %s'); params.append(data['zone'] or None); modified.append('Zone')
 
-            # Poste de travail (valide contre crhd 9200) -> work_center + work_center_txt
-            wc = data.get('poste_travail')
-            if wc is None:
-                wc = data.get('poste_travail_resp_maintenance')
-            if wc is not None:
+            # Poste de travail (work_center) et poste responsable (resp_work_center),
+            # tous deux valides contre crhd 9200
+            for key, col, label in (('poste_travail', 'work_center', 'Poste de travail'),
+                                    ('poste_travail_resp_maintenance', 'resp_work_center', 'Poste responsable')):
+                wc = data.get(key)
+                if wc is None:
+                    continue
                 if wc == '':
-                    sets.append('work_center = NULL'); sets.append('work_center_txt = NULL')
-                    modified.append('Poste de travail (vidé)')
+                    sets.append(f'{col} = NULL'); sets.append(f'{col}_txt = NULL')
+                    modified.append(f'{label} (vidé)')
                 else:
                     cr = _resolve_work_center(cursor, wc)
                     if not cr:
-                        return jsonify({'success': False, 'error': f'Poste de travail "{wc}" invalide'}), 400
-                    sets.append('work_center = %s'); params.append(wc)
-                    sets.append('work_center_txt = %s'); params.append(cr['ktext'])
-                    modified.append(f'Poste de travail → {wc}')
+                        return jsonify({'success': False, 'error': f'{label} "{wc}" invalide'}), 400
+                    sets.append(f'{col} = %s'); params.append(wc)
+                    sets.append(f'{col}_txt = %s'); params.append(cr['ktext'])
+                    modified.append(f'{label} → {wc}')
 
             # Changement de parent (deja resolu plus haut en target_pid)
             if 'parent_node_id' in data:
@@ -691,7 +701,8 @@ def export_structures():
                     COALESCE(o.category, '') AS structure_indicator,
                     COALESCE(o.plant, '') AS division_maintenance,
                     COALESCE(o.planner_group, '') AS groupe_planification,
-                    COALESCE(o.work_center, '') AS poste_travail
+                    COALESCE(o.work_center, '') AS poste_travail,
+                    COALESCE(o.resp_work_center, '') AS poste_responsable
                 FROM {MO} o
                 LEFT JOIN tree t ON t.id = o.id
                 LEFT JOIN {MO} p ON p.id = o.parent_id
@@ -835,7 +846,10 @@ def bulk_update():
                 elif f in col_map:
                     sets.append(f'{col_map[f]} = %s'); params.append(v if v != '' else None)
                 elif f == 'poste_travail_resp_maintenance':
-                    sets.append('work_center = %s'); params.append(v if v != '' else None)
+                    sets.append('resp_work_center = %s'); params.append(v if v != '' else None)
+                    sets.append('resp_work_center_txt = %s')
+                    cr = _resolve_work_center(cursor, v) if v else None
+                    params.append(cr['ktext'] if cr else None)
                 elif f in attr_fields:
                     sets.append('attributes = attributes || %s::jsonb'); params.append(json.dumps({f: v}))
 
@@ -1006,6 +1020,8 @@ def get_equipment_details():
                     o.attributes->>'gewrk' AS gewrk,
                     o.work_center AS arbpl,
                     o.work_center_txt AS poste_travail_texte,
+                    o.resp_work_center AS poste_resp,
+                    o.resp_work_center_txt AS poste_resp_texte,
                     (SELECT COUNT(*) FROM {MO} c
                        WHERE c.parent_id = o.id AND c.object_type = 'EQUIPMENT' AND c.is_active) AS children_count,
                     o.source AS source,
