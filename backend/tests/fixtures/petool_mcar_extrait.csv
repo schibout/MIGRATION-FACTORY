@@ -1,0 +1,3 @@
+Localisation / Classement;Gamme en DMS;Poste technique;Niveau SAP;Plan Entretien;Poste entretien;Groupe de Gamme;Compteur de Gamme;Frequence;D‚signation;Type;Criticit‚;Parit‚ semaine;Jour;D‚cal.;Date de validation;Lien Fichier de gamme Source;Lien Fichier DMS SAP en PDF;DMS_SAP;Charge;Nombre intervenants;Date r‚v.;Nb jours depuis la derniŠre r‚v.
+MSA2;OUI;T120-L020;MSA2 FAC   EL28;34125;68845;522754;2;12S;PREV 12S 2MEx4 ON CT CAPTEURS MSA2;CTRL ELEC;;;;N;44484;X;X;T120-L020_34125;4;2;45538;663
+MSA2;OUI;T120-L020;MSA2 FAC   EL28;34126;68846;522754;3;16S;PREV 16S 2MEx4 ON CT RELAIS MSA2;CTRL ELEC;;;;N;44484;X;X;T120-L020_34126;4;2;44820;1370

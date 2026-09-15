@@ -2,3 +2,5 @@
 # Un .sh en CRLF casse au lancement (\r parasite dans le shebang / les commandes).
 *.sh   text eol=lf
 *.bash text eol=lf
+
+backend/tests/fixtures/*.csv -text
