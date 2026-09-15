@@ -11,6 +11,7 @@ conversion de type n'est faite ici, on stocke ce que l'utilisateur saisit.
 import csv
 import io
 import json
+import os
 
 from flask import Blueprint, Response, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity
@@ -19,6 +20,7 @@ import psycopg2.extras
 from config.database import get_db_connection
 from config.settings import Config
 from services.cache_service import cache_get, cache_set, cache_invalidate
+from services.pe_tools_import_service import PE_TOOLS_COLUMNS, parse_pe_tools_csv
 
 maintenance_pe_tools_blueprint = Blueprint('maintenance_pe_tools', __name__)
 
@@ -54,7 +56,7 @@ COLUMNS = [
 
 # Colonnes renseignees par l'import de fichiers (migration 075). Jamais
 # editables : PUT/POST les ignorent, seul l'import de fichiers
-# (POST /pe-tools/import, a venir) les ecrit.
+# (POST /pe-tools/import) les ecrit.
 COMPUTED_COLUMNS = [
     'nom_fichier',
     'organisation_maintenance',
@@ -481,4 +483,130 @@ def delete_pe_tool(raw_id: int):
 
     except Exception as e:
         current_app.logger.error(f"Erreur suppression pe_tools {raw_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
+    """Importe UN fichier PE Tools en mode "remplacer par fichier" : les lignes
+    portant deja ce nom_fichier sont supprimees puis rechargees, les autres
+    (autres fichiers, lignes historiques sans nom_fichier) ne bougent pas.
+
+    Une transaction par fichier : commit en fin, rollback sur toute erreur
+    (le resultat porte alors status='error'). Ne leve jamais."""
+    resultat = {
+        'fichier': nom_fichier,
+        'status': 'ok',
+        'code_fichier': None,
+        'organisation_maintenance': None,
+        'lignes_supprimees': 0,
+        'lignes_inserees': 0,
+        'avertissements': [],
+    }
+    try:
+        if not nom_fichier.lower().endswith('.csv'):
+            raise ValueError('Extension attendue : .csv')
+
+        parsed = parse_pe_tools_csv(content)
+        if parsed.missing_columns:
+            resultat['avertissements'].append(
+                'Colonne(s) absente(s) du fichier (valeurs NULL) : ' + ', '.join(parsed.missing_columns))
+        if parsed.unknown_columns:
+            resultat['avertissements'].append(
+                'Colonne(s) ignorée(s), sans équivalent dans pe_tools : ' + ', '.join(parsed.unknown_columns))
+        if parsed.repaired_lines:
+            resultat['avertissements'].append(
+                f'{parsed.repaired_lines} ligne(s) aux guillemets non fermés réparée(s)')
+
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(
+            "SELECT public.pe_tools_code_fichier(%s) AS code, public.pe_tools_org_code(%s) AS org",
+            [nom_fichier, nom_fichier])
+        r = cursor.fetchone()
+        resultat['code_fichier'] = r['code']
+        resultat['organisation_maintenance'] = r['org']
+        if r['org'] is None:
+            resultat['avertissements'].append(
+                f"Code {r['code'] or '?'} absent de public.pe_tools_organisation : organisation non renseignée")
+
+        cursor.execute("DELETE FROM raw_data.pe_tools WHERE nom_fichier = %s", [nom_fichier])
+        resultat['lignes_supprimees'] = cursor.rowcount
+
+        if parsed.rows:
+            cursor.execute("SELECT COALESCE(MAX(raw_id), 0) AS max_id FROM raw_data.pe_tools")
+            next_id = cursor.fetchone()['max_id'] + 1
+
+            col_sql = [c for c, _ in PE_TOOLS_COLUMNS]
+            cols = ['raw_id'] + col_sql + ['nom_fichier', 'organisation_maintenance', 'imported_at']
+            audit = _has_audit_columns(cursor)
+            if audit:
+                cols += ['updated_at', 'updated_by']
+
+            # imported_at / updated_at sont des NOW() litteraux dans le template
+            # (pas des parametres) : le tuple ne porte que les valeurs.
+            template = '(' + ', '.join(['%s'] * (1 + len(col_sql) + 2)) + ', NOW()'
+            if audit:
+                template += ', NOW(), %s'
+            template += ')'
+
+            rows_sql = []
+            for i, row in enumerate(parsed.rows):
+                t = [next_id + i] + [row[c] for c in col_sql] + [nom_fichier, r['org']]
+                if audit:
+                    t.append(user)
+                rows_sql.append(tuple(t))
+
+            psycopg2.extras.execute_values(
+                cursor,
+                f"INSERT INTO raw_data.pe_tools ({', '.join(cols)}) VALUES %s",
+                rows_sql,
+                template=template,
+                page_size=500,
+            )
+            resultat['lignes_inserees'] = len(rows_sql)
+
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        resultat['status'] = 'error'
+        resultat['error'] = str(exc)
+        current_app.logger.error(f"Import pe_tools {nom_fichier}: {exc}")
+    return resultat
+
+
+@maintenance_pe_tools_blueprint.route('/pe-tools/import', methods=['POST'])
+def import_pe_tools():
+    """Import multi-fichiers des CSV PE Tools (champ multipart `files`).
+
+    Mode "remplacer par fichier" : voir _import_one_file. Un fichier en erreur
+    n'annule pas les autres ; la reponse detaille chaque fichier."""
+    try:
+        fichiers = request.files.getlist('files')
+        if not fichiers:
+            return jsonify({'success': False, 'error': 'Aucun fichier fourni (champ multipart « files »)'}), 400
+
+        user = _user()
+        results = []
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            if not _has_import_columns(cursor):
+                return jsonify({
+                    'success': False,
+                    'error': 'Migration 075 non jouée : colonnes nom_fichier / organisation_maintenance absentes',
+                }), 503
+            for f in fichiers:
+                # Certains navigateurs envoient un chemin (C:\fakepath\x.csv) :
+                # seul le nom de base sert de cle nom_fichier.
+                nom = os.path.basename((f.filename or '').replace('\\', '/')).strip()
+                if not nom:
+                    continue
+                results.append(_import_one_file(conn, nom, f.read(), user))
+
+        cache_invalidate(CACHE_PREFIX)
+        return jsonify({
+            'success': any(r['status'] == 'ok' for r in results),
+            'results': results,
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Erreur import pe_tools: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
