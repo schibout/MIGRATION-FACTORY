@@ -302,7 +302,7 @@ def test_colonne_manquante_et_colonne_inconnue_sont_signalees():
 def test_guillemet_non_ferme_est_repare_et_ligne_trop_large_tronquee():
     contenu = _cp850(
         ENTETE + '\r\n'
-        + 'A;OUI;T1;"Niveau 12" pouces;1;2;3;1;4S;D;T;;;;N;;;;1;1;;;\r\n'
+        + 'A;OUI;T1;Niveau 12" pouces;1;2;3;1;4S;D;T;;;;N;;;;1;1;;;\r\n'   # 1 seul guillemet -> repare
         + 'B;OUI;T2;N;1;2;3;1;4S;D;T;;;;N;;;;1;1;;;;surplus1;surplus2\r\n'
     )
     parsed = parse_pe_tools_csv(contenu)
