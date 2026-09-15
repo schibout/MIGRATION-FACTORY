@@ -54,7 +54,7 @@ COLUMNS = [
     'nb_jours_depuis_derniere_rev',
 ]
 
-# Colonnes renseignees par l'import de fichiers (migration 075). Jamais
+# Colonnes renseignees par l'import de fichiers (migration 077). Jamais
 # editables : PUT/POST les ignorent, seul l'import de fichiers
 # (POST /pe-tools/import) les ecrit.
 COMPUTED_COLUMNS = [
@@ -94,9 +94,9 @@ ORDERABLE = set(COLUMNS) | set(COMPUTED_COLUMNS) | {'raw_id'}
 # fichier source -> presence detectee une fois puis memorisee.
 _audit_available = None
 
-# Colonnes de la migration 075 (import par fichier). Meme logique de detection
+# Colonnes de la migration 077 (import par fichier). Meme logique de detection
 # que pour l'audit : sans la migration, l'ecran fonctionne comme avant.
-# Detection memorisee par worker : apres avoir joue la migration 075,
+# Detection memorisee par worker : apres avoir joue la migration 077,
 # redemarrer le backend (./deploybackend.sh).
 _import_columns_available = None
 
@@ -137,14 +137,14 @@ def _has_import_columns(cursor) -> bool:
 
 def _selected_columns(cursor):
     """Colonnes lues par la liste, le detail et l'export : les colonnes
-    calculees en tete (si la migration 075 est jouee) puis les colonnes metier."""
+    calculees en tete (si la migration 077 est jouee) puis les colonnes metier."""
     if _has_import_columns(cursor):
         return COMPUTED_COLUMNS + COLUMNS
     return list(COLUMNS)
 
 
 def _filter_columns(cursor):
-    """Colonnes filtrables reellement presentes (les colonnes 075 ne le sont
+    """Colonnes filtrables reellement presentes (les colonnes 077 ne le sont
     qu'apres la migration)."""
     if _has_import_columns(cursor):
         return FILTER_COLUMNS
@@ -618,7 +618,7 @@ def import_pe_tools():
             if not _has_import_columns(cursor):
                 return jsonify({
                     'success': False,
-                    'error': 'Migration 075 non jouée : colonnes nom_fichier / organisation_maintenance absentes',
+                    'error': 'Migration 077 non jouée : colonnes nom_fichier / organisation_maintenance absentes',
                 }), 503
             for f in fichiers:
                 # Certains navigateurs envoient un chemin (C:\fakepath\x.csv) :

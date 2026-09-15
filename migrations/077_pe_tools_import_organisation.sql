@@ -1,5 +1,5 @@
 -- ============================================================================
--- 075 : Import PE Tools par fichier + organisation de maintenance
+-- 077 : Import PE Tools par fichier + organisation de maintenance
 --
 -- raw_data.pe_tools a ete chargee une fois, hors application, par fusion des
 -- CSV "PeTool - 7.<CODE>.csv" : rien ne trace le fichier d'origine, et
@@ -134,7 +134,7 @@ BEGIN
     IF public.pe_tools_org_code('PeTool - 7.MENG.csv') IS NOT NULL THEN
         RAISE EXCEPTION 'pe_tools_org_code : code inconnu doit donner NULL';
     END IF;
-    RAISE NOTICE '075 : assertions OK';
+    RAISE NOTICE '077 : assertions OK';
 END $$;
 
 COMMIT;

@@ -105,7 +105,7 @@ BEGIN
             s.pm_no,
             NULLIF(btrim(min(s.poste_technique)), '') AS mch_code,
             min(s.freq_norm)       AS freq_norm,
-            -- Organisation IFS du fichier importe (migration 075) ; une pm_no
+            -- Organisation IFS du fichier importe (migration 077) ; une pm_no
             -- ne vient que d'un seul fichier, min() est une simple garde.
             min(s.organisation_maintenance)           AS org_code_fichier
         FROM src s

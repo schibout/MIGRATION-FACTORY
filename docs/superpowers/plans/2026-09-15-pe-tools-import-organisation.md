@@ -23,7 +23,7 @@ Spec : `docs/superpowers/specs/2026-09-15-pe-tools-import-organisation-design.md
 
 | Action | Fichier | Responsabilité |
 |---|---|---|
-| Créer | `migrations/075_pe_tools_import_organisation.sql` | Colonnes, table de paramétrage, fonctions, seed, assertions |
+| Créer | `migrations/077_pe_tools_import_organisation.sql` | Colonnes, table de paramétrage, fonctions, seed, assertions |
 | Créer | `backend/services/pe_tools_import_service.py` | Parsing CSV pur (sans Flask ni base) |
 | Créer | `backend/tests/test_pe_tools_import_service.py` | Tests du parsing |
 | Créer | `backend/tests/fixtures/petool_mcar_extrait.csv` | 3 lignes réelles en cp850 |
@@ -36,16 +36,16 @@ Spec : `docs/superpowers/specs/2026-09-15-pe-tools-import-organisation-design.md
 
 ---
 
-### Task 1 : Migration 075 (colonnes, table de paramétrage, fonctions)
+### Task 1 : Migration 077 (colonnes, table de paramétrage, fonctions)
 
 **Files:**
-- Create: `migrations/075_pe_tools_import_organisation.sql`
+- Create: `migrations/077_pe_tools_import_organisation.sql`
 
 - [ ] **Step 1 : Écrire la migration**
 
 ```sql
 -- ============================================================================
--- 075 : Import PE Tools par fichier + organisation de maintenance
+-- 077 : Import PE Tools par fichier + organisation de maintenance
 --
 -- raw_data.pe_tools a ete chargee une fois, hors application, par fusion des
 -- CSV "PeTool - 7.<CODE>.csv" : rien ne trace le fichier d'origine, et
@@ -171,7 +171,7 @@ BEGIN
     IF public.pe_tools_org_code('PeTool - 7.MENG.csv') IS NOT NULL THEN
         RAISE EXCEPTION 'pe_tools_org_code : code inconnu doit donner NULL';
     END IF;
-    RAISE NOTICE '075 : assertions OK';
+    RAISE NOTICE '077 : assertions OK';
 END $$;
 
 COMMIT;
@@ -191,8 +191,8 @@ Attendu : `MCAR`, `MSGX`, `MSJ`, `NULL`, `NULL`.
 - [ ] **Step 3 : Commit**
 
 ```bash
-git add migrations/075_pe_tools_import_organisation.sql
-git commit -m "Migration 075 : tracabilite fichier + organisation de maintenance sur pe_tools
+git add migrations/077_pe_tools_import_organisation.sql
+git commit -m "Migration 077 : tracabilite fichier + organisation de maintenance sur pe_tools
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ```
@@ -513,7 +513,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 Dans `backend/api/maintenance_pe_tools.py`, après le bloc `COLUMNS = [...]` (ligne ~52) et avant `FILTER_COLUMNS`, ajouter :
 
 ```python
-# Colonnes renseignees par l'import de fichiers (migration 075). Jamais
+# Colonnes renseignees par l'import de fichiers (migration 077). Jamais
 # editables : PUT/POST les ignorent, seul POST /pe-tools/import les ecrit.
 COMPUTED_COLUMNS = [
     'nom_fichier',
@@ -546,7 +546,7 @@ ORDERABLE = set(COLUMNS) | set(COMPUTED_COLUMNS) | {'raw_id'}
 Après `_audit_available = None`, ajouter :
 
 ```python
-# Colonnes de la migration 075 (import par fichier). Meme logique de detection
+# Colonnes de la migration 077 (import par fichier). Meme logique de detection
 # que pour l'audit : sans la migration, l'ecran fonctionne comme avant.
 _import_columns_available = None
 ```
@@ -569,7 +569,7 @@ def _has_import_columns(cursor) -> bool:
 
 def _selected_columns(cursor):
     """Colonnes lues par la liste, le detail et l'export : les colonnes
-    calculees en tete (si la migration 075 est jouee) puis les colonnes metier."""
+    calculees en tete (si la migration 077 est jouee) puis les colonnes metier."""
     if _has_import_columns(cursor):
         return COMPUTED_COLUMNS + COLUMNS
     return list(COLUMNS)
@@ -960,7 +960,7 @@ def import_pe_tools():
             if not _has_import_columns(cursor):
                 return jsonify({
                     'success': False,
-                    'error': 'Migration 075 non jouée : colonnes nom_fichier / organisation_maintenance absentes',
+                    'error': 'Migration 077 non jouée : colonnes nom_fichier / organisation_maintenance absentes',
                 }), 503
             for f in fichiers:
                 nom = (f.filename or '').strip()
@@ -1275,7 +1275,7 @@ La vue n'existait qu'en base (créée hors dépôt) ; on la versionne ici, à l'
 -- Vue source des procedures pm_action* : 1 ligne = 1 operation de pe_tools,
 -- avec le pm_no calcule (plan d'entretien, suffixe si plusieurs combinaisons
 -- poste/frequence pour un meme plan, repli 900000+raw_id sans plan).
--- organisation_maintenance (migration 075) : organisation IFS deduite du
+-- organisation_maintenance (migration 077) : organisation IFS deduite du
 -- fichier importe, NULL pour les lignes historiques.
 CREATE OR REPLACE VIEW clean_data.v_pm_source AS
 WITH base AS (
@@ -1324,7 +1324,7 @@ Dans le **second** CTE `agg` (celui de l'`INSERT INTO clean_data.pm_action`), aj
             s.pm_no,
             NULLIF(btrim(min(s.poste_technique)), '') AS mch_code,
             min(s.freq_norm)                          AS freq_norm,
-            -- Organisation IFS du fichier importe (migration 075) ; une pm_no
+            -- Organisation IFS du fichier importe (migration 077) ; une pm_no
             -- ne vient que d'un seul fichier, min() est une simple garde.
             min(s.organisation_maintenance)           AS org_code_fichier
         FROM src s
@@ -1393,13 +1393,13 @@ ssh migration "cd /root/migration-Factory && git fetch -q && git status -sb | he
 
 Attendu : la dernière ligne (commits serveur non poussés) est vide. Sinon **s'arrêter** et remonter à l'utilisateur.
 
-- [ ] **Step 2 : Jouer la migration 075 et compiler PM Actions**
+- [ ] **Step 2 : Jouer la migration 077 et compiler PM Actions**
 
 ```bash
-ssh migration "cd /root/migration-Factory && git pull -q && PGPASSWORD=trimet2025 psql -h 10.190.100.58 -U postgres -d sap_migration_db -v ON_ERROR_STOP=1 -f migrations/075_pe_tools_import_organisation.sql 2>&1 | tail -3 && cd sql/pm_actions && ./compile.sh 2>&1 | tail -4"
+ssh migration "cd /root/migration-Factory && git pull -q && PGPASSWORD=trimet2025 psql -h 10.190.100.58 -U postgres -d sap_migration_db -v ON_ERROR_STOP=1 -f migrations/077_pe_tools_import_organisation.sql 2>&1 | tail -3 && cd sql/pm_actions && ./compile.sh 2>&1 | tail -4"
 ```
 
-Attendu : `NOTICE: 075 : assertions OK`, `COMMIT`, puis `✅ Toutes les procédures ont été compilées avec succès!`.
+Attendu : `NOTICE: 077 : assertions OK`, `COMMIT`, puis `✅ Toutes les procédures ont été compilées avec succès!`.
 
 - [ ] **Step 3 : Déployer backend et frontend**
 
@@ -1456,10 +1456,10 @@ Attendu : plus de `FR_MAINT` (sauf lignes sans organisation résolue), une ligne
 - [ ] **Step 1 : Ajouter une puce dans « Points d'attention »** (après la puce Module Maintenance) :
 
 ```markdown
-- **Import PE Tools par fichier (migration 075, `POST /api/v1/maintenance/pe-tools/import`, 2026-09-15)** : les CSV `PeTool - 7.<CODE>.csv` (cp850, `;`, en-têtes métier mappées par `services/pe_tools_import_service.py`) se déposent depuis l'écran `/maintenance/pe-tools`, en mode **remplacer par fichier** (`DELETE WHERE nom_fichier = ...` puis INSERT, une transaction par fichier). Chaque ligne porte `nom_fichier` et `organisation_maintenance` = `public.pe_tools_org_code(nom_fichier)`, qui lit la table de paramétrage `public.pe_tools_organisation` (code = segment `7.<CODE>.csv` ; `MSJ -> FR-MSJ`, `MNRJ -> SJ-MSST`, sinon `SJ-<CODE>` seedés ; code inconnu -> NULL + avertissement, pas de repli générique). L'ETL PM Actions prend `pm_action.org_code = COALESCE(org du fichier, get_default_value)` et `pm_action_role.org_code = pm_action.org_code`. Les 1 760 lignes historiques (sans `nom_fichier`) ne sont jamais touchées par l'import : les supprimer manuellement une fois les 9 fichiers réimportés, sinon `pm_no` en double. `clean_data.v_pm_source` est désormais versionnée dans `sql/pm_actions/00_pm_helpers.sql` (colonne `organisation_maintenance` en dernière position : `CREATE OR REPLACE VIEW` interdit d'insérer une colonne au milieu).
+- **Import PE Tools par fichier (migration 077, `POST /api/v1/maintenance/pe-tools/import`, 2026-09-15)** : les CSV `PeTool - 7.<CODE>.csv` (cp850, `;`, en-têtes métier mappées par `services/pe_tools_import_service.py`) se déposent depuis l'écran `/maintenance/pe-tools`, en mode **remplacer par fichier** (`DELETE WHERE nom_fichier = ...` puis INSERT, une transaction par fichier). Chaque ligne porte `nom_fichier` et `organisation_maintenance` = `public.pe_tools_org_code(nom_fichier)`, qui lit la table de paramétrage `public.pe_tools_organisation` (code = segment `7.<CODE>.csv` ; `MSJ -> FR-MSJ`, `MNRJ -> SJ-MSST`, sinon `SJ-<CODE>` seedés ; code inconnu -> NULL + avertissement, pas de repli générique). L'ETL PM Actions prend `pm_action.org_code = COALESCE(org du fichier, get_default_value)` et `pm_action_role.org_code = pm_action.org_code`. Les 1 760 lignes historiques (sans `nom_fichier`) ne sont jamais touchées par l'import : les supprimer manuellement une fois les 9 fichiers réimportés, sinon `pm_no` en double. `clean_data.v_pm_source` est désormais versionnée dans `sql/pm_actions/00_pm_helpers.sql` (colonne `organisation_maintenance` en dernière position : `CREATE OR REPLACE VIEW` interdit d'insérer une colonne au milieu).
 ```
 
-- [ ] **Step 2 : Mettre à jour le numéro de dernière migration** dans la section « Base de données » : `dernier numero utilise : 075`.
+- [ ] **Step 2 : Mettre à jour le numéro de dernière migration** dans la section « Base de données » : `dernier numero utilise : 077`.
 
 - [ ] **Step 3 : Commit**
 

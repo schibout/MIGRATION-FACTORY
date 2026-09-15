@@ -57,7 +57,7 @@ Rapprochement en-tête → colonne par **clé normalisée** : NFKD sans accents,
 minuscules, espaces réduits, suffixe ` .:` retiré (`Date rév.` ≡ `date rev`).
 Le mapping des 23 colonnes est celui de `TABLE_PE_TOOLS` dans `fusion_csv.py`.
 
-## 3. Données — migration `migrations/075_pe_tools_import_organisation.sql`
+## 3. Données — migration `migrations/077_pe_tools_import_organisation.sql`
 
 Idempotente, rejouable.
 
@@ -159,8 +159,8 @@ Module sans dépendance Flask, testable seul.
 - `ORDERABLE` : + ces 2 colonnes.
 - Réponse de la liste : `columns` inclut désormais `COMPUTED_COLUMNS + COLUMNS`.
 - Comme pour les colonnes d'audit (migration 029), leur présence est détectée
-  une fois (`information_schema`) : sans la migration 075, l'écran fonctionne
-  comme avant et l'import renvoie `503` « migration 075 non jouée ».
+  une fois (`information_schema`) : sans la migration 077, l'écran fonctionne
+  comme avant et l'import renvoie `503` « migration 077 non jouée ».
 
 ## 5. Frontend — `frontend/src/pages/MaintenancePeToolsPage.tsx`
 
@@ -209,7 +209,7 @@ Module sans dépendance Flask, testable seul.
 - Vérification SQL de `pe_tools_code_fichier` sur les 9 noms + casse +
   `.xlsm` + nom sans point (bloc `DO` d'assertions en fin de migration).
 - Sur le serveur (tests exécutés à distance, cf. workflow) :
-  1. jouer la migration 075, `cd sql/pm_actions && ./compile.sh` ;
+  1. jouer la migration 077, `cd sql/pm_actions && ./compile.sh` ;
   2. importer les 8 CSV de `C:\document\Export\PETools` depuis l'écran ;
      comparer `lignes_inserees` à `wc -l` − 1 (MCAR : 109, MATC : 120,
      MELY : 440, MFIE : 596, MNRJ : 179, MSCT : 168, MSGX : 20) ;
@@ -227,3 +227,30 @@ Module sans dépendance Flask, testable seul.
   (`DELETE FROM raw_data.pe_tools WHERE nom_fichier IS NULL`) pour éviter les
   doublons de `pm_no` entre l'historique et l'import.
 - Changement de `org_contract` par organisation.
+
+## 9. Ajustements décidés pendant l'implémentation (revues de code)
+
+- **Numéro de migration : 077** (075 et 076 ont été pris par le chantier LOV IH02
+  pendant l'implémentation).
+- `pe_tools_code_fichier` tolère le suffixe ` (n)` des doublons de
+  téléchargement (`PeTool - 7.MCAR (1).csv` → `MCAR`) ; la recherche dans
+  `pe_tools_organisation` est insensible à la casse.
+- **Remplacement par CODE de fichier, pas par nom** : `DELETE ... WHERE
+  public.pe_tools_code_fichier(nom_fichier) = <code>` ; un nom sans code
+  reconnu est remplacé à l'identique (`WHERE nom_fichier = <nom>`).
+- Un fichier sans ligne de données est **refusé** (`Aucune ligne de données`)
+  avant tout SQL : il ne purge jamais les lignes précédentes.
+- Verrou consultatif transactionnel `pg_advisory_xact_lock(778814)` par fichier
+  (sérialise le `MAX(raw_id)+1`).
+- Décodage : `utf-8-sig` strict, sinon **cp850 ou cp1252** choisi sur l'en-tête
+  (présence de `Désignation`) ; l'export CSV de l'écran (noms SQL en en-tête)
+  est réimportable.
+- Guillemet isolé : la ligne est lue en `QUOTE_NONE` (aucune colonne perdue).
+- Aucun JWT global n'existe dans `app.py` : la route d'import porte
+  `@jwt_required()` explicitement (les autres routes du fichier restent en
+  l'état).
+- Écran : les colonnes Fichier / Organisation sont placées après `Type` ;
+  fermer le dialog après un import désélectionne la ligne ouverte (les
+  `raw_id` changent).
+- Redémarrer le backend après la migration 077 (détection des colonnes
+  mémorisée par worker).

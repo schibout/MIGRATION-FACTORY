@@ -13,7 +13,7 @@ $function$
 -- Vue source des procedures pm_action* : 1 ligne = 1 operation de pe_tools,
 -- avec le pm_no calcule (plan d'entretien, suffixe si plusieurs combinaisons
 -- poste/frequence pour un meme plan, repli 900000+raw_id sans plan).
--- organisation_maintenance (migration 075) : organisation IFS deduite du
+-- organisation_maintenance (migration 077) : organisation IFS deduite du
 -- fichier importe, NULL pour les lignes historiques.
 -- La vue n'existait qu'en base ; versionnee ici depuis le 2026-09-15.
 CREATE OR REPLACE VIEW clean_data.v_pm_source AS
