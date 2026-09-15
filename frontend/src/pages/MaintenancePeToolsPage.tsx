@@ -94,14 +94,14 @@ interface ImportResult {
 // `inTable` = affichee dans la liste principale, `readOnly` = colonne calculee
 // cote API (non saisissable).
 const FIELDS: { key: string; label: string; inTable?: boolean; monospace?: boolean; readOnly?: boolean }[] = [
-  { key: 'nom_fichier', label: 'Fichier', inTable: true, monospace: true, readOnly: true },
-  { key: 'organisation_maintenance', label: 'Organisation', inTable: true, monospace: true, readOnly: true },
   { key: 'poste_technique', label: 'Poste technique', inTable: true, monospace: true },
   { key: 'niveau_sap', label: 'Niveau SAP' },
   { key: 'localisation_classement', label: 'Localisation / classement', inTable: true },
   { key: 'designation', label: 'Désignation', inTable: true },
   { key: 'frequence', label: 'Fréquence', inTable: true },
   { key: 'type', label: 'Type', inTable: true },
+  { key: 'nom_fichier', label: 'Fichier', inTable: true, monospace: true, readOnly: true },
+  { key: 'organisation_maintenance', label: 'Organisation', inTable: true, monospace: true, readOnly: true },
   { key: 'criticite', label: 'Criticité' },
   { key: 'plan_entretien', label: 'Plan d\'entretien', monospace: true },
   { key: 'poste_entretien', label: 'Poste d\'entretien', monospace: true },
@@ -367,6 +367,10 @@ const MaintenancePeToolsPage: React.FC = () => {
   const closeImport = async () => {
     setImportOpen(false);
     if (importResults) {
+      // Les lignes importees ont de nouveaux raw_id : la selection courante
+      // peut pointer sur une ligne supprimee.
+      cancelEditing();
+      setSelected(null);
       await loadRows();
       await loadStats();
     }
@@ -749,6 +753,7 @@ const MaintenancePeToolsPage: React.FC = () => {
                 type="file"
                 multiple
                 accept=".csv"
+                aria-label="Fichiers CSV PE Tools"
                 disabled={importing}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setImportFiles(Array.from(e.target.files || []))
@@ -761,14 +766,13 @@ const MaintenancePeToolsPage: React.FC = () => {
                     <ListItem key={f.name}>
                       <ListItemText
                         primary={f.name}
-                        secondary={`${Math.round(f.size / 1024)} Ko`}
+                        secondary={`${Math.max(1, Math.round(f.size / 1024))} Ko`}
                         primaryTypographyProps={{ fontFamily: 'monospace' }}
                       />
                     </ListItem>
                   ))}
                 </List>
               )}
-              {importing && <LinearProgress sx={{ mt: 1 }} />}
             </>
           ) : (
             <TableContainer>
