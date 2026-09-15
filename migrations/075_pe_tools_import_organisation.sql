@@ -5,7 +5,9 @@
 -- CSV "PeTool - 7.<CODE>.csv" : rien ne trace le fichier d'origine, et
 -- pm_action.org_code est une constante (FR_MAINT). Le metier veut que
 -- l'organisation IFS soit deduite du fichier :
---   MSJ -> FR-MSJ, MNRJ -> SJ-MSST, et SJ-<CODE> pour les autres.
+--   MSJ -> FR-MSJ, MNRJ -> SJ-MSST, et SJ-<CODE> pour les 7 autres codes connus
+--   (MCAR, MATC, MELY, MFIE, MSGX, MSCT, MTRO) -- seedes explicitement, aucun
+--   repli generique.
 --
 -- Cette migration :
 --   1. ajoute nom_fichier / organisation_maintenance / imported_at a pe_tools
@@ -67,13 +69,17 @@ INSERT INTO public.pe_tools_organisation (code_fichier, org_code, description) V
 -- 3. Fonctions de resolution --------------------------------------------------
 -- Code = segment entre le dernier '.' precedant l'extension et l'extension,
 -- en majuscules : 'PeTool - 7.MCAR.csv' -> 'MCAR', 'petool - 7.msgx.CSV' -> 'MSGX'.
+-- Tolere un suffixe " (n)" ajoute par le navigateur sur un telechargement
+-- en double : 'PeTool - 7.MCAR (1).csv' -> 'MCAR'. Le code lui-meme est
+-- capture strictement en [A-Za-z0-9_-]+ (s'arrete au premier espace/parenthese) :
+-- un suffixe libre comme " - Copie" n'est pas reconnu et donne NULL.
 -- Sans extension ou sans point intermediaire -> NULL.
 CREATE OR REPLACE FUNCTION public.pe_tools_code_fichier(p_nom_fichier TEXT)
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
 AS $$
-    SELECT upper(NULLIF(btrim((regexp_match(COALESCE(p_nom_fichier, ''), '\.([^.\\/]+)\.[^.\\/]+$'))[1]), ''));
+    SELECT upper(NULLIF(btrim((regexp_match(COALESCE(p_nom_fichier, ''), '\.\s*([A-Za-z0-9_-]+)\s*(?:\(\d+\))?\s*\.[^.\\/]+$'))[1]), ''));
 $$;
 
 CREATE OR REPLACE FUNCTION public.pe_tools_org_code(p_nom_fichier TEXT)
@@ -83,7 +89,7 @@ STABLE
 AS $$
     SELECT o.org_code
     FROM public.pe_tools_organisation o
-    WHERE o.code_fichier = public.pe_tools_code_fichier(p_nom_fichier)
+    WHERE upper(btrim(o.code_fichier)) = public.pe_tools_code_fichier(p_nom_fichier)
       AND o.is_active;
 $$;
 
@@ -112,6 +118,9 @@ BEGIN
     END IF;
     IF public.pe_tools_code_fichier(NULL) IS NOT NULL THEN
         RAISE EXCEPTION 'pe_tools_code_fichier : NULL doit donner NULL';
+    END IF;
+    IF public.pe_tools_code_fichier('PeTool - 7.MCAR (1).csv') IS DISTINCT FROM 'MCAR' THEN
+        RAISE EXCEPTION 'pe_tools_code_fichier : suffixe (n) de doublon telecharge KO';
     END IF;
     IF public.pe_tools_org_code('PeTool - 7.MSJ.csv') IS DISTINCT FROM 'FR-MSJ' THEN
         RAISE EXCEPTION 'pe_tools_org_code : exception MSJ KO';
