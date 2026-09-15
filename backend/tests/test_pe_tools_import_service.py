@@ -75,6 +75,15 @@ def test_utf8_sans_bom_est_accepte():
     assert parsed.rows[0]['designation'] == 'P/4S CONTRÔLE RAILS'
 
 
+def test_cp1252_excel_windows_est_accepte():
+    contenu = (ENTETE + '\r\n' + 'Voie ferrée;OUI;T410-C;RESEAU;35553;70453;523240;1;4S;'
+               'P/4S CONTRÔLE RAILS;CTRL MEC;;;;O;44952;;;;2;2;;\r\n').encode('cp1252')
+    parsed = parse_pe_tools_csv(contenu)
+    assert parsed.missing_columns == []
+    assert parsed.rows[0]['localisation_classement'] == 'Voie ferrée'
+    assert parsed.rows[0]['designation'] == 'P/4S CONTRÔLE RAILS'
+
+
 def test_export_de_l_ecran_avec_noms_sql_est_reimportable():
     entete_sql = ';'.join(c for c, _ in PE_TOOLS_COLUMNS)
     contenu = ('﻿' + entete_sql + '\r\n' + 'Voie ferrée;OUI;T410-C;RESEAU;35553;70453;523240;1;4S;'

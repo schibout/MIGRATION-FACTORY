@@ -65,15 +65,34 @@ def cle(nom: str) -> str:
     return nom.lower().rstrip(' .:')
 
 
+def _choisir_encodage_8bits(content: bytes) -> str:
+    """Distingue les deux encodages 8 bits qu'Excel Windows peut produire pour
+    ce fichier : cp850 (« CSV (MS-DOS) ») et cp1252 (« CSV (separateur :
+    point-virgule) »). Les deux decodent sans erreur (256 caracteres
+    couverts), donc on ne peut pas trancher par essai/echec comme pour
+    l'UTF-8 : on decode la premiere ligne (l'en-tete, stable) dans les deux
+    encodages et on retient celui qui fait apparaitre 'Désignation' -- seule
+    colonne dont le code accentue differe entre les deux tables. A defaut de
+    correspondance, cp850 (le format historique) reste le repli."""
+    premiere_ligne = content.split(b'\n', 1)[0]
+    designation = cle('Désignation')
+    for encodage in ('cp850', 'cp1252'):
+        if designation in cle(premiere_ligne.decode(encodage, errors='replace')):
+            return encodage
+    return 'cp850'
+
+
 def _decoder(content: bytes) -> str:
-    # L'export CSV de l'ecran est en UTF-8 (BOM ou non). Un accent cp850
-    # (ex. 'e' = 0x82) ne peut jamais demarrer une sequence UTF-8 valide : le
-    # decodage UTF-8 echoue donc de maniere fiable sur les vrais exports
-    # Excel PE Tools, qui sont en cp850.
+    # L'export CSV de l'ecran est en UTF-8 (BOM ou non). Un accent cp850/
+    # cp1252 ne peut jamais demarrer une sequence UTF-8 valide : le decodage
+    # UTF-8 echoue donc de maniere fiable sur les vrais exports Excel.
+    # Entre cp850 (« CSV (MS-DOS) ») et cp1252 (« CSV (separateur :
+    # point-virgule) »), les deux decodent sans erreur : on choisit via
+    # l'en-tete (cf. _choisir_encodage_8bits).
     try:
-        return content.decode('utf-8-sig')
+        return content.decode('utf-8-sig', errors='strict')
     except UnicodeDecodeError:
-        return content.decode('cp850')
+        return content.decode(_choisir_encodage_8bits(content))
 
 
 def _lire_lignes(texte: str) -> Tuple[List[List[str]], int]:
