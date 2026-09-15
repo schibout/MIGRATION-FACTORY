@@ -57,13 +57,31 @@ def test_fichier_reel_cp850_mappe_les_23_colonnes():
     assert premiere['nb_jours_depuis_derniere_rev'] == '663'
 
 
-def test_utf8_bom_accepte_le_propre_export_de_l_ecran():
+def test_utf8_bom_est_accepte():
     contenu = ('﻿' + ENTETE + '\r\n' + 'Voie ferrée;OUI;T410-C;RESEAU;35553;70453;523240;1;4S;'
                'P/4S CONTRÔLE RAILS;CTRL MEC;;;;O;44952;;;;2;2;;\r\n').encode('utf-8')
     parsed = parse_pe_tools_csv(contenu)
     assert parsed.missing_columns == []
     assert parsed.rows[0]['localisation_classement'] == 'Voie ferrée'
     assert parsed.rows[0]['designation'] == 'P/4S CONTRÔLE RAILS'
+
+
+def test_utf8_sans_bom_est_accepte():
+    contenu = (ENTETE + '\r\n' + 'Voie ferrée;OUI;T410-C;RESEAU;35553;70453;523240;1;4S;'
+               'P/4S CONTRÔLE RAILS;CTRL MEC;;;;O;44952;;;;2;2;;\r\n').encode('utf-8')
+    parsed = parse_pe_tools_csv(contenu)
+    assert parsed.missing_columns == []
+    assert parsed.rows[0]['localisation_classement'] == 'Voie ferrée'
+    assert parsed.rows[0]['designation'] == 'P/4S CONTRÔLE RAILS'
+
+
+def test_export_de_l_ecran_avec_noms_sql_est_reimportable():
+    entete_sql = ';'.join(c for c, _ in PE_TOOLS_COLUMNS)
+    contenu = ('﻿' + entete_sql + '\r\n' + 'Voie ferrée;OUI;T410-C;RESEAU;35553;70453;523240;1;4S;'
+               'P/4S CONTRÔLE RAILS;CTRL MEC;;;;O;44952;;;;2;2;;\r\n').encode('utf-8')
+    parsed = parse_pe_tools_csv(contenu)
+    assert parsed.missing_columns == []
+    assert parsed.rows[0]['poste_technique'] == 'T410-C'
 
 
 def test_colonne_manquante_et_colonne_inconnue_sont_signalees():
@@ -79,12 +97,14 @@ def test_colonne_manquante_et_colonne_inconnue_sont_signalees():
 def test_guillemet_non_ferme_est_repare_et_ligne_trop_large_tronquee():
     contenu = _cp850(
         ENTETE + '\r\n'
-        + 'A;OUI;T1;Niveau 12" pouces;1;2;3;1;4S;D;T;;;;N;;;;1;1;;;\r\n'   # 1 seul guillemet -> repare
+        + 'A;OUI;T1;Niveau 12" pouces;1;2;3;1;4S;D;T;;;;N;;;;1;1;;;663\r\n'   # 1 seul guillemet -> repare
         + 'B;OUI;T2;N;1;2;3;1;4S;D;T;;;;N;;;;1;1;;;;surplus1;surplus2\r\n'
     )
     parsed = parse_pe_tools_csv(contenu)
     assert parsed.repaired_lines == 1
     assert len(parsed.rows) == 2
+    assert parsed.rows[0]['niveau_sap'] == 'Niveau 12" pouces'
+    assert parsed.rows[0]['nb_jours_depuis_derniere_rev'] == '663'
     assert parsed.rows[1]['poste_technique'] == 'T2'
     assert parsed.rows[1]['nb_jours_depuis_derniere_rev'] is None
 
