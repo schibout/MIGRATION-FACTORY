@@ -53,7 +53,8 @@ COLUMNS = [
 ]
 
 # Colonnes renseignees par l'import de fichiers (migration 075). Jamais
-# editables : PUT/POST les ignorent, seul POST /pe-tools/import les ecrit.
+# editables : PUT/POST les ignorent, seul l'import de fichiers
+# (POST /pe-tools/import, a venir) les ecrit.
 COMPUTED_COLUMNS = [
     'nom_fichier',
     'organisation_maintenance',
@@ -93,6 +94,8 @@ _audit_available = None
 
 # Colonnes de la migration 075 (import par fichier). Meme logique de detection
 # que pour l'audit : sans la migration, l'ecran fonctionne comme avant.
+# Detection memorisee par worker : apres avoir joue la migration 075,
+# redemarrer le backend (./deploybackend.sh).
 _import_columns_available = None
 
 
@@ -139,6 +142,8 @@ def _selected_columns(cursor):
 
 
 def _filter_columns(cursor):
+    """Colonnes filtrables reellement presentes (les colonnes 075 ne le sont
+    qu'apres la migration)."""
     if _has_import_columns(cursor):
         return FILTER_COLUMNS
     return [c for c in FILTER_COLUMNS if c not in COMPUTED_COLUMNS]
@@ -167,9 +172,11 @@ def _build_where(args, filter_columns):
     return where_sql, params
 
 
-def _filters_signature(args, filter_columns) -> str:
+def _filters_signature(args) -> str:
+    """Cle de cache : lue AVANT la connexion, donc sur la liste statique
+    FILTER_COLUMNS (un parametre ignore ne cree qu'une entree distincte)."""
     parts = [f"search={(args.get('search') or '').strip()}"]
-    parts += [f"{c}={(args.get(c) or '').strip()}" for c in filter_columns]
+    parts += [f"{c}={(args.get(c) or '').strip()}" for c in FILTER_COLUMNS]
     return '|'.join(parts)
 
 
@@ -186,6 +193,14 @@ def list_pe_tools():
         order_dir = 'DESC' if order.lower() == 'desc' else 'ASC'
         offset = (page - 1) * per_page
 
+        # Cache lu avant d'ouvrir une connexion (pas de pool : chaque
+        # get_db_connection() est un psycopg2.connect).
+        cache_key = (f"{CACHE_PREFIX}list:{page}:{per_page}:{order_by}:{order_dir}:"
+                     f"{_filters_signature(request.args)}")
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return Response(cached, mimetype='application/json')
+
         with get_db_connection() as conn:
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             filter_columns = _filter_columns(cursor)
@@ -194,13 +209,6 @@ def list_pe_tools():
                 order_by = 'poste_technique'
 
             where_sql, params = _build_where(request.args, filter_columns)
-
-            cache_key = (f"{CACHE_PREFIX}list:{page}:{per_page}:{order_by}:{order_dir}:"
-                         f"{_filters_signature(request.args, filter_columns)}")
-            cached = cache_get(cache_key)
-            if cached is not None:
-                return Response(cached, mimetype='application/json')
-
             cols_sql = ', '.join(columns)
 
             cursor.execute(f"SELECT COUNT(*) AS total FROM raw_data.pe_tools {where_sql}", params)
@@ -251,15 +259,14 @@ def list_pe_tools():
 def pe_tools_stats():
     """Compteurs de tete de page, calcules sur le perimetre filtre."""
     try:
+        cache_key = f"{CACHE_PREFIX}stats:{_filters_signature(request.args)}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return Response(cached, mimetype='application/json')
+
         with get_db_connection() as conn:
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            filter_columns = _filter_columns(cursor)
-            where_sql, params = _build_where(request.args, filter_columns)
-
-            cache_key = f"{CACHE_PREFIX}stats:{_filters_signature(request.args, filter_columns)}"
-            cached = cache_get(cache_key)
-            if cached is not None:
-                return Response(cached, mimetype='application/json')
+            where_sql, params = _build_where(request.args, _filter_columns(cursor))
 
             cursor.execute(f"""
                 SELECT
@@ -333,7 +340,7 @@ def export_pe_tools():
             writer.writerow({c: (r.get(c) if r.get(c) is not None else '') for c in columns})
 
         # BOM : sans lui Excel casse les accents des designations.
-        body = '﻿' + output.getvalue()
+        body = '\ufeff' + output.getvalue()
         return Response(
             body,
             mimetype='text/csv',
