@@ -104,7 +104,10 @@ BEGIN
         SELECT
             s.pm_no,
             NULLIF(btrim(min(s.poste_technique)), '') AS mch_code,
-            min(s.freq_norm)       AS freq_norm
+            min(s.freq_norm)       AS freq_norm,
+            -- Organisation IFS du fichier importe (migration 075) ; une pm_no
+            -- ne vient que d'un seul fichier, min() est une simple garde.
+            min(s.organisation_maintenance)           AS org_code_fichier
         FROM src s
         GROUP BY s.pm_no
     ),
@@ -147,7 +150,7 @@ BEGIN
         v_org_contract,
         a.mch_code,
         v_org_contract,
-        v_org_code,
+        COALESCE(a.org_code_fichier, v_org_code),
         v_connection_type,
         v_connection_type_db,
         NULLIF(left(regexp_replace(COALESCE(a.freq_norm, ''), '\D', '', 'g'), 4), '')  AS "interval",

@@ -3,7 +3,6 @@ CREATE OR REPLACE PROCEDURE clean_data.populate_pm_action_role()
 AS $procedure$
 DECLARE
     v_org_contract  VARCHAR := public.get_default_value('clean_data.pm_action_role', 'org_contract');
-    v_org_code      VARCHAR := public.get_default_value('clean_data.pm_action_role', 'org_code');
     v_pm_revision   VARCHAR := public.get_default_value('clean_data.pm_action_role', 'pm_revision');
     v_count INTEGER := 0;
 BEGIN
@@ -24,7 +23,8 @@ BEGIN
         left(s.designation, 200)                        AS description,
         clean_data.pe_num(s.charge)                     AS duration,
         v_org_contract,
-        v_org_code
+        -- org_code = celui de l'action (deduit du fichier PE Tools, repli valeur par defaut)
+        p.org_code
     FROM clean_data.v_pm_source s
     JOIN clean_data.pm_action p
       ON p.pm_no = s.pm_no
