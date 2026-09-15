@@ -26,6 +26,9 @@ import {
   InputAdornment,
   InputLabel,
   LinearProgress,
+  List,
+  ListItem,
+  ListItemText,
   MenuItem,
   Paper,
   Select,
@@ -57,6 +60,7 @@ import {
   Save as SaveIcon,
   Schedule as ScheduleIcon,
   Search as SearchIcon,
+  Upload as UploadIcon,
   AccountTree as PosteIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
@@ -75,9 +79,23 @@ interface Stats {
   by_frequence: { frequence: string; nb: number }[];
 }
 
+interface ImportResult {
+  fichier: string;
+  status: 'ok' | 'error';
+  code_fichier: string | null;
+  organisation_maintenance: string | null;
+  lignes_supprimees: number;
+  lignes_inserees: number;
+  avertissements: string[];
+  error?: string;
+}
+
 // Colonnes de la table, dans l'ordre d'affichage du panneau de detail.
-// `inTable` = affichee dans la liste principale.
-const FIELDS: { key: string; label: string; inTable?: boolean; monospace?: boolean }[] = [
+// `inTable` = affichee dans la liste principale, `readOnly` = colonne calculee
+// cote API (non saisissable).
+const FIELDS: { key: string; label: string; inTable?: boolean; monospace?: boolean; readOnly?: boolean }[] = [
+  { key: 'nom_fichier', label: 'Fichier', inTable: true, monospace: true, readOnly: true },
+  { key: 'organisation_maintenance', label: 'Organisation', inTable: true, monospace: true, readOnly: true },
   { key: 'poste_technique', label: 'Poste technique', inTable: true, monospace: true },
   { key: 'niveau_sap', label: 'Niveau SAP' },
   { key: 'localisation_classement', label: 'Localisation / classement', inTable: true },
@@ -113,6 +131,8 @@ const SELECT_FILTERS: { key: string; label: string }[] = [
   { key: 'frequence', label: 'Fréquence' },
   { key: 'criticite', label: 'Criticité' },
   { key: 'gamme_en_dms', label: 'Gamme en DMS' },
+  { key: 'nom_fichier', label: 'Fichier' },
+  { key: 'organisation_maintenance', label: 'Organisation' },
 ];
 
 const MaintenancePeToolsPage: React.FC = () => {
@@ -141,6 +161,10 @@ const MaintenancePeToolsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<PeTool | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFiles, setImportFiles] = useState<File[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -334,6 +358,42 @@ const MaintenancePeToolsPage: React.FC = () => {
     }
   };
 
+  const openImport = () => {
+    setImportFiles([]);
+    setImportResults(null);
+    setImportOpen(true);
+  };
+
+  const closeImport = async () => {
+    setImportOpen(false);
+    if (importResults) {
+      await loadRows();
+      await loadStats();
+    }
+  };
+
+  /** Import multi-fichiers : chaque fichier remplace les lignes de son code. */
+  const runImport = async () => {
+    if (importFiles.length === 0) return;
+    const form = new FormData();
+    importFiles.forEach((f) => form.append('files', f, f.name));
+    try {
+      setImporting(true);
+      const response = await api.post('/maintenance/pe-tools/import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setImportResults(response.data.results || []);
+    } catch (err: any) {
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.error || 'Erreur lors de l\'import',
+        severity: 'error',
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const statCards = [
     { icon: PeToolsIcon, color: theme.palette.primary.main, value: stats?.total, label: 'Gammes' },
     { icon: PosteIcon, color: theme.palette.warning.main, value: stats?.nb_postes_techniques, label: 'Postes techniques' },
@@ -410,18 +470,19 @@ const MaintenancePeToolsPage: React.FC = () => {
         <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
           <Grid container spacing={2}>
             {FIELDS.map((f, idx) => {
+              if (isCreating && f.readOnly) return null;
               const raw = isCreating ? '' : (selected?.[f.key] ?? '');
               const current = f.key in editedData ? editedData[f.key] : (raw === null ? '' : String(raw));
               const isLink = f.key.startsWith('lien_fichier');
               return (
                 <React.Fragment key={f.key}>
-                  {idx === 7 && <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>}
-                  {idx === 19 && <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>}
+                  {idx === 9 && <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>}
+                  {idx === 21 && <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>}
                   <Grid item xs={12} md={isLink || f.key === 'designation' || f.key === 'niveau_sap' ? 12 : 6}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                       {f.label}
                     </Typography>
-                    {isEditing ? (
+                    {isEditing && !f.readOnly ? (
                       <TextField
                         size="small"
                         fullWidth
@@ -462,6 +523,9 @@ const MaintenancePeToolsPage: React.FC = () => {
         <Box sx={{ flex: 1 }} />
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={startCreating} sx={{ mr: 1 }}>
           Nouvelle gamme
+        </Button>
+        <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={openImport} sx={{ mr: 1 }}>
+          Importer
         </Button>
         <Button
           variant="outlined"
@@ -668,6 +732,113 @@ const MaintenancePeToolsPage: React.FC = () => {
           {renderDetails()}
         </Paper>
       </Box>
+
+      <Dialog open={importOpen} onClose={importing ? undefined : closeImport} maxWidth="md" fullWidth>
+        <DialogTitle>Importer des fichiers PE Tools</DialogTitle>
+        <DialogContent>
+          {!importResults ? (
+            <>
+              <DialogContentText sx={{ mb: 2 }}>
+                Fichiers <code>PeTool - 7.&lt;CODE&gt;.csv</code> (export Excel, séparateur « ; »).
+                Les lignes déjà importées pour le même code de fichier sont remplacées ; les autres
+                fichiers et les lignes historiques ne bougent pas. L'organisation de maintenance est
+                déduite du nom du fichier.
+              </DialogContentText>
+              <Box
+                component="input"
+                type="file"
+                multiple
+                accept=".csv"
+                disabled={importing}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setImportFiles(Array.from(e.target.files || []))
+                }
+                sx={{ display: 'block', mb: 2 }}
+              />
+              {importFiles.length > 0 && (
+                <List dense>
+                  {importFiles.map((f) => (
+                    <ListItem key={f.name}>
+                      <ListItemText
+                        primary={f.name}
+                        secondary={`${Math.round(f.size / 1024)} Ko`}
+                        primaryTypographyProps={{ fontFamily: 'monospace' }}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+              {importing && <LinearProgress sx={{ mt: 1 }} />}
+            </>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Fichier</TableCell>
+                    <TableCell>Organisation</TableCell>
+                    <TableCell align="right">Supprimées</TableCell>
+                    <TableCell align="right">Insérées</TableCell>
+                    <TableCell>Statut</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {importResults.map((r) => (
+                    <React.Fragment key={r.fichier}>
+                      <TableRow>
+                        <TableCell sx={{ fontFamily: 'monospace' }}>{r.fichier}</TableCell>
+                        <TableCell>
+                          {r.organisation_maintenance ? (
+                            <Chip size="small" label={r.organisation_maintenance} sx={{ fontFamily: 'monospace' }} />
+                          ) : (
+                            <Chip size="small" color="warning" label="non résolue" />
+                          )}
+                        </TableCell>
+                        <TableCell align="right">{r.lignes_supprimees}</TableCell>
+                        <TableCell align="right">{r.lignes_inserees}</TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            color={r.status === 'ok' ? 'success' : 'error'}
+                            label={r.status === 'ok' ? 'OK' : 'Erreur'}
+                          />
+                        </TableCell>
+                      </TableRow>
+                      {(r.error || r.avertissements.length > 0) && (
+                        <TableRow>
+                          <TableCell colSpan={5} sx={{ pt: 0 }}>
+                            {r.error && <Alert severity="error" sx={{ mb: 0.5 }}>{r.error}</Alert>}
+                            {r.avertissements.map((a) => (
+                              <Alert key={a} severity="warning" sx={{ mb: 0.5 }}>{a}</Alert>
+                            ))}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {!importResults ? (
+            <>
+              <Button onClick={closeImport} disabled={importing}>Annuler</Button>
+              <Button
+                variant="contained"
+                onClick={runImport}
+                disabled={importing || importFiles.length === 0}
+                startIcon={importing ? <CircularProgress size={16} /> : <UploadIcon />}
+              >
+                Lancer l'import
+              </Button>
+            </>
+          ) : (
+            <Button variant="contained" onClick={closeImport}>Fermer</Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)}>
         <DialogTitle>Supprimer cette gamme ?</DialogTitle>
