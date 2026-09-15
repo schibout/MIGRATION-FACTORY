@@ -56,6 +56,19 @@ CREATE TABLE IF NOT EXISTS public.pe_tools_organisation (
 COMMENT ON TABLE public.pe_tools_organisation IS
     'Regle fichier PE Tools -> organisation de maintenance IFS : le code est le segment "PeTool - 7.<CODE>.csv". Lue par public.pe_tools_org_code().';
 
+-- La cible clean_data.pm_action.org_code (et pm_action_role.org_code) est un
+-- varchar(8) : une organisation plus longue ferait echouer l'ETL PM Actions
+-- (22001) au chargement. On borne donc la source ici, et sans espaces parasites.
+-- Statement separe et idempotent : la table peut preexister sur un rejeu.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_pe_tools_organisation_org_code') THEN
+        ALTER TABLE public.pe_tools_organisation
+            ADD CONSTRAINT ck_pe_tools_organisation_org_code
+            CHECK (org_code = btrim(org_code) AND char_length(org_code) BETWEEN 1 AND 8);
+    END IF;
+END $$;
+
 INSERT INTO public.pe_tools_organisation (code_fichier, org_code, description) VALUES ('MSJ',  'FR-MSJ',  'Maintenance Saint-Jean (organisation France)') ON CONFLICT (code_fichier) DO NOTHING;
 INSERT INTO public.pe_tools_organisation (code_fichier, org_code, description) VALUES ('MCAR', 'SJ-MCAR', NULL) ON CONFLICT (code_fichier) DO NOTHING;
 INSERT INTO public.pe_tools_organisation (code_fichier, org_code, description) VALUES ('MATC', 'SJ-MATC', NULL) ON CONFLICT (code_fichier) DO NOTHING;
@@ -136,5 +149,18 @@ BEGIN
     END IF;
     RAISE NOTICE '077 : assertions OK';
 END $$;
+
+-- 5. Valeur par defaut devenue morte -----------------------------------------
+-- clean_data.populate_pm_action_role() ne lit plus
+-- get_default_value('clean_data.pm_action_role', 'org_code') : org_code est
+-- herite de pm_action (lui-meme deduit du fichier, repli valeur par defaut de
+-- pm_action). On desactive la ligne pour qu'elle ne trompe pas l'ecran
+-- Configuration > Valeurs par defaut. Idempotent (filtre sur is_active).
+UPDATE public.etl_default_values
+   SET is_active   = false,
+       description = COALESCE(description, '') || ' (obsolete depuis 077 : org_code herite de pm_action)'
+ WHERE table_cible = 'clean_data.pm_action_role'
+   AND colonne     = 'org_code'
+   AND is_active;
 
 COMMIT;

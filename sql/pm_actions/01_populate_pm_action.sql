@@ -12,6 +12,7 @@ DECLARE
     v_connection_type_db  VARCHAR := public.get_default_value('clean_data.pm_action', 'connection_type_db');
     v_count INTEGER := 0;
     v_reject_count INTEGER := 0;
+    v_multi_org INTEGER := 0;
 BEGIN
     TRUNCATE TABLE clean_data.pm_action;
     TRUNCATE TABLE clean_data.pm_action_reject;
@@ -105,8 +106,10 @@ BEGIN
             s.pm_no,
             NULLIF(btrim(min(s.poste_technique)), '') AS mch_code,
             min(s.freq_norm)       AS freq_norm,
-            -- Organisation IFS du fichier importe (migration 077) ; une pm_no
-            -- ne vient que d'un seul fichier, min() est une simple garde.
+            -- Organisation IFS du fichier importe (migration 077). min() ignore
+            -- les NULL (lignes historiques) ; si un pm_no venait de plusieurs
+            -- fichiers, la plus petite valeur est retenue et un WARNING est
+            -- emis ci-dessous.
             min(s.organisation_maintenance)           AS org_code_fichier
         FROM src s
         GROUP BY s.pm_no
@@ -176,6 +179,18 @@ BEGIN
     LEFT JOIN rep   r ON r.pm_no = a.pm_no
     LEFT JOIN notes n ON n.pm_no = a.pm_no;
     GET DIAGNOSTICS v_count = ROW_COUNT;
+    -- Garde : un pm_no alimente par plusieurs fichiers PE Tools (donc plusieurs
+    -- organisations) est ambigu ; min() en a retenu une, on le signale.
+    SELECT count(*) INTO v_multi_org
+    FROM (
+        SELECT pm_no
+        FROM clean_data.v_pm_source
+        GROUP BY pm_no
+        HAVING count(DISTINCT organisation_maintenance) > 1
+    ) x;
+    IF v_multi_org > 0 THEN
+        RAISE WARNING 'pm_action: % pm_no avec plusieurs organisations (min() retenue)', v_multi_org;
+    END IF;
     RAISE NOTICE 'pm_action: % lignes insérées, % lignes rejetées', v_count, v_reject_count;
 END;
 $procedure$
