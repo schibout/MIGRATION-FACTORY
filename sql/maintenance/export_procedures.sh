@@ -74,16 +74,15 @@ errors=0
 # (ordre de compile.sh)
 procedures=(
     # --- Table unique ecran IH02 (maintenance_object) ---
-    "clean_data:mo_touch:mo_touch.sql"                                              # trigger updated_at (DDL dans create_maintenance_object.sql)
     "clean_data:load_maintenance_object:proc_load_maintenance_object.sql"           # chargement FULL
     "clean_data:load_maintenance_object_merge:proc_load_maintenance_object_merge.sql" # chargement MERGE (preserve le travail UI)
-    # --- Procedures existantes (dependent de v_fl_nomenclature) ---
+    # --- Export IFS des structures (ordre des dependances) ---
     "clean_data:alimenter_equipment_functional:alimenter_equipment_functional.sql"
-    "clean_data:load_equipment_spare_structure:proc_load_equipment_spare_structure.sql"
     "clean_data:load_equipment_object_spare:proc_load_equipment_object_spare.sql"
-    # --- Obsolete : supprimait dans les tables SAP, conservee pour historique ---
-    "raw_data:sp_keep_only_t_hierarchy:sp_keep_only_T_hierarchy.sql"
+    "clean_data:load_equipment_spare_structure:proc_load_equipment_spare_structure.sql"
 )
+# Non exportes : mo_touch (trigger, DDL dans source/create_maintenance_object.sql)
+# et raw_data.sp_keep_only_t_hierarchy (obsolete, supprimait dans raw_data).
 
 # Fonction pour exporter une procédure/fonction (toutes ses surcharges)
 export_procedure() {

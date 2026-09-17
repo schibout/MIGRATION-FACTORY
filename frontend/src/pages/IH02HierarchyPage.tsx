@@ -67,6 +67,7 @@ import MaintenanceActions from '../components/maintenance/MaintenanceActions';
 import { MaintenanceJob } from '../services/maintenanceSnapshotService';
 import LovSelect from '../components/maintenance/LovSelect';
 import DraggableDialogPaper, { DRAG_HANDLE_ID } from '../components/maintenance/DraggableDialogPaper';
+import { CasIbau, CasIbauChip, ClassifierIbauButton, formatCompteurs } from '../components/maintenance/ibauCas';
 
 interface LocationNode {
   row_id: string;
@@ -234,6 +235,10 @@ interface BomComponent {
   unit: string | null;
   item_category: string | null;
   material_type: string | null;
+  // Cas IBAU de l'article reference (migration 079), NULL hors IBAU
+  cas_ibau?: CasIbau | null;
+  ibau_nb_enfants?: number | null;
+  ibau_nb_occurrences?: number | null;
   stlnr: string;
   stlal: string;
   stlkn?: string;
@@ -1743,6 +1748,9 @@ const IH02HierarchyPage: React.FC = () => {
           <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', minWidth: 40 }}>
             {comp.posnr}
           </Typography>
+          {/* Cas IBAU (jaune / bleu / rouge) : repere ce qu'il faut transformer */}
+          <CasIbauChip variant="dot" cas={comp.cas_ibau} nbEnfants={comp.ibau_nb_enfants}
+            nbOccurrences={comp.ibau_nb_occurrences} sx={{ ml: 1 }} />
           <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: theme.palette.success.dark, ml: 1, minWidth: 110, fontSize: '0.82rem' }}>
             {comp.matnr_short}
           </Typography>
@@ -2470,6 +2478,21 @@ const IH02HierarchyPage: React.FC = () => {
             Postes techniques, équipements et nomenclatures
           </Typography>
         </Box>
+        <ClassifierIbauButton
+          disabled={jobActive}
+          sx={{ mr: 1 }}
+          onDone={(result) => {
+            // Les nomenclatures deja chargees portent l'ancien cas : on les
+            // vide, elles seront relues au prochain depliage.
+            setLoadedBom({});
+            setLoadedArticleBom({});
+            setExpandedBom({});
+            setExpandedArticleBom({});
+            setSnackbar({ open: true, severity: 'success',
+              message: `IBAU classifiés : ${formatCompteurs(result.compteurs)}.` });
+          }}
+          onError={(message) => setSnackbar({ open: true, severity: 'error', message })}
+        />
         <Button
           variant="outlined"
           size="small"

@@ -2,17 +2,19 @@
 # -*- coding: utf-8 -*-
 
 """
-Module ETL pour le chargement des postes techniques et équipements (EQUIPMENT_FUNCTIONAL).
+Module ETL « Structures de maintenance » : export IFS de la structure PRÉPARÉE
+dans l'écran IH02 (clean_data.maintenance_object), jamais de raw_data.
 
-Enchaîne trois traitements, dans cet ordre imposé :
-  1. clean_data.alimenter_equipment_functional() : alimente clean_data.equipment_functional
-     depuis les tables SAP standard (raw_data.iflot / iflotx / iflos / iloa pour les postes
-     techniques, raw_data.itob pour les équipements). La table raw_data.ih02_capgemini
-     n'est PAS utilisée.
-  2. clean_data.load_equipment_object_spare('FULL') : alimente clean_data.equipment_object_spare
-     (nomenclature des postes techniques), qui lit equipment_functional.
-  3. clean_data.load_equipment_spare_structure('FULL') : alimente
-     clean_data.equipment_spare_structure, qui lit equipment_object_spare.
+Enchaîne trois traitements, dans cet ordre imposé (chaque étape lit la précédente) :
+  1. clean_data.alimenter_equipment_functional() : postes techniques (FUNC_LOC actifs,
+     hiérarchie par parent_id, code/désignation de l'écran) -> clean_data.equipment_functional.
+  2. clean_data.load_equipment_object_spare('FULL') : nomenclature des postes techniques
+     (BOM_ITEM sous FUNC_LOC via v_fl_nomenclature, catégorie L) -> clean_data.equipment_object_spare.
+  3. clean_data.load_equipment_spare_structure('FULL') : structure kit -> composants des
+     articles de l'étape 2 (BOM_ITEM sous ARTICLE, récursif) -> clean_data.equipment_spare_structure.
+
+Mode FULL uniquement (TRUNCATE + rechargement) : snapshot de la structure. Les équipements
+(objets série) ne sont pas couverts par ce module.
 """
 
 import os
@@ -20,6 +22,7 @@ import time
 import logging
 import psycopg2
 from dotenv import load_dotenv
+from config.database import get_etl_db_params
 
 def setup_logging():
     log_handlers = [logging.StreamHandler()]
@@ -47,11 +50,14 @@ load_dotenv()
 
 class EquipmentFunctionalETL:
     def __init__(self):
-        self.pg_host = os.environ.get("PG_HOST", os.environ.get("DB_HOST", "10.190.100.58"))
-        self.pg_port = os.environ.get("PG_PORT", os.environ.get("DB_PORT", "5432"))
-        self.pg_database = os.environ.get("PG_DATABASE", os.environ.get("DB_NAME", "sap_migration_db"))
-        self.pg_user = os.environ.get("PG_USER", os.environ.get("DB_USER", "postgres"))
-        self.pg_password = os.environ.get("PG_PASSWORD", os.environ.get("DB_PASSWORD", "trimet2025"))
+        # Identifiants issus de la source UNIQUE (config.database, variables DB_*
+        # du .env), comme les autres modules ETL : aucun repli en dur.
+        _db = get_etl_db_params()
+        self.pg_host = _db['host']
+        self.pg_port = _db['port']
+        self.pg_database = _db['database']
+        self.pg_user = _db['user']
+        self.pg_password = _db['password']
         self.log_messages = []
         logger.info("ETL Equipment Functional initialisé")
         self._add_log("Connexion PostgreSQL initialisée", "info")
@@ -71,7 +77,7 @@ class EquipmentFunctionalETL:
         start_dt = time.strftime('%Y-%m-%d %H:%M:%S')
         logger.info(f"Démarrage ETL Equipment Functional - {start_dt}")
         self._add_log(f"Démarrage ETL Equipment Functional - {start_dt}", "info")
-        self._add_log("Traitement des postes techniques et équipements (iflot/iflotx/iflos/iloa + itob)", "info")
+        self._add_log("Source : structure IH02 (clean_data.maintenance_object)", "info")
 
         # Ordre contraint : load_equipment_object_spare lit equipment_functional,
         # load_equipment_spare_structure lit equipment_object_spare.

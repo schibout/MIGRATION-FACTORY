@@ -1,10 +1,24 @@
 -- =============================================================
 -- Procédure stockée : clean_data.load_equipment_spare_structure
--- Objectif  : Alimenter la structure kit -> composants depuis raw_data
---             (MAST / STKO / STPO, nomenclature matière stlty='M').
+-- Objectif  : Alimenter la structure kit -> composants depuis la
+--             NOMENCLATURE MATIÈRE PRÉPARÉE DANS L'ÉCRAN IH02
+--             (clean_data.maintenance_object : BOM_ITEM actif sous un
+--             ARTICLE, article composant via ref_object_id).
 -- Mode FULL : TRUNCATE + INSERT complet
 -- Mode DELTA: suppression + réinjection d'un sous-arbre (ou tous)
--- Auteur    : généré automatiquement
+--
+-- SOURCE (2026-09-18) : maintenance_object et NON raw_data (mast/stko/stpo).
+--   Jusque-là cette procédure repartait de SAP brut : les ajouts,
+--   suppressions et déplacements faits dans IH02 sur la nomenclature d'un
+--   article (routes /article-bom-component, /move-bom-item) n'atteignaient
+--   jamais l'export IFS, contrairement aux deux autres étapes du module
+--   (equipment_functional, equipment_object_spare) déjà basées sur IH02.
+--   Conséquence assumée : le contrat est hérité de la RACINE
+--   (equipment_object_spare.contract, mono-site 'SJ') sur tout le sous-arbre ;
+--   les lignes 'CS' issues des nomenclatures de la division 2200 (312 lignes
+--   au 18/09, invisibles dans IH02 qui charge une seule nomenclature par
+--   article, division 9200 en priorité) ne sont plus produites.
+--   Un composant DÉSACTIVÉ à l'écran (is_active = false) ne sort plus.
 --
 -- PÉRIMÈTRE (restreint aux postes techniques) :
 --   On n'insère QUE les articles dont le parent est un article lui-même
@@ -16,7 +30,8 @@
 --   (un composant qui est lui-même un kit est éclaté à son tour).
 --
 -- Pas de filtre mtart : tout article ayant une nomenclature matière compte
---   comme kit (ERSA, HIBE, HALB, …).
+--   comme kit (ERSA, HIBE, HALB, …). Filtre category = 'L' (postp SAP :
+--   article stock), comme equipment_object_spare.
 --
 -- Hiérarchie : le spare_seq est ordonné par niveau -> les PARENTS sont
 --   insérés AVANT les composants.
@@ -75,65 +90,58 @@ BEGIN
         TRUNCATE TABLE clean_data.equipment_spare_structure;
 
         -- ── Insertion complète ────────────────────────────────
-        WITH RECURSIVE werks_mapping (sap_werks, ifs_contract) AS (
-            VALUES
-                ('9200', 'SJ'),   -- ⚠️ Adapter selon votre configuration
-                ('2200', 'CS')    -- ⚠️ Adapter selon votre configuration
-        ),
-        -- Racines B : articles rattachés à un poste technique
+        WITH RECURSIVE
+        -- Racines B : articles rattachés à un poste technique, avec leur contrat
         roots AS (
-            SELECT DISTINCT spare_id::text AS matnr
+            SELECT DISTINCT spare_id::text AS matnr, contract
             FROM clean_data.equipment_object_spare
         ),
-        -- Toutes les arêtes de nomenclature matière (kit -> composant), tous mtart
+        -- Arêtes kit -> composant = nomenclature matière de l'écran IH02
+        -- (code = matnr sans zéros de tête, comme spare_id)
         edges AS (
             SELECT
-                TRIM(mst.werks)                                AS werks,
-                TRIM(LEADING '0' FROM TRIM(mst.matnr))::text   AS parent_id,
-                TRIM(LEADING '0' FROM TRIM(spo.idnrk))::text   AS child_id,
-                NULLIF(TRIM(spo.pswrk), '')                    AS child_werks,
-                ROUND(CAST(REGEXP_REPLACE(TRIM(spo.menge), '[^0-9.]', '', 'g') AS NUMERIC), 0) AS qty
-            FROM raw_data.mast mst
-            JOIN raw_data.stko sko ON sko.stlnr = mst.stlnr AND sko.stlty = 'M'
-            JOIN raw_data.stpo spo ON spo.stlnr = sko.stlnr AND spo.stlty = sko.stlty
-            WHERE spo.postp  = 'L'
-              AND TRIM(spo.menge) <> ''
-              AND TRIM(spo.idnrk) <> ''
+                a.code                                         AS parent_id,
+                c.code                                         AS child_id,
+                ROUND(b.quantity, 0)                           AS qty
+            FROM clean_data.maintenance_object b
+            JOIN clean_data.maintenance_object a
+              ON a.id = b.parent_id AND a.object_type = 'ARTICLE' AND a.is_active
+            JOIN clean_data.maintenance_object c
+              ON c.id = b.ref_object_id AND c.object_type = 'ARTICLE'
+            WHERE b.object_type = 'BOM_ITEM'
+              AND b.is_active
+              AND b.category = 'L'
+              AND b.quantity IS NOT NULL
         ),
-        -- Descente récursive depuis les racines B (parents avant composants)
+        -- Descente récursive depuis les racines B (parents avant composants),
+        -- le contrat de la racine suit tout le sous-arbre
         hier AS (
-            SELECT r.matnr AS matnr, 1 AS lvl, ARRAY[r.matnr] AS path
+            SELECT r.matnr AS matnr, r.contract, 1 AS lvl, ARRAY[r.matnr] AS path
             FROM roots r
             UNION ALL
-            SELECT e.child_id, h.lvl + 1, h.path || e.child_id
+            SELECT e.child_id, h.contract, h.lvl + 1, h.path || e.child_id
             FROM hier h
             JOIN edges e ON e.parent_id = h.matnr
             WHERE e.child_id <> ALL (h.path)   -- anti-cycle
               AND h.lvl < 50                    -- garde-fou de profondeur
         ),
         kit_level AS (
-            SELECT matnr, MIN(lvl) AS lvl FROM hier GROUP BY matnr
+            SELECT matnr, contract, MIN(lvl) AS lvl FROM hier GROUP BY matnr, contract
         ),
         source AS (
             SELECT
                 ROW_NUMBER() OVER (
-                    ORDER BY kl.lvl, e.werks, e.parent_id, e.child_id
+                    ORDER BY kl.lvl, kl.contract, e.parent_id, e.child_id
                 )                                                   AS spare_seq,
-                COALESCE(wm.ifs_contract, e.werks)                  AS spare_contract,
+                kl.contract                                         AS spare_contract,
                 e.parent_id                                         AS spare_id,
                 e.child_id                                          AS component_spare_id,
-                COALESCE(
-                    wm2.ifs_contract,
-                    e.child_werks,
-                    COALESCE(wm.ifs_contract, e.werks)
-                )                                                   AS component_spare_contract,
+                kl.contract                                         AS component_spare_contract,
                 e.qty                                               AS qty
             FROM edges e
             -- INNER JOIN : on ne garde que les arêtes dont le PARENT est
             -- atteignable depuis une racine B (rattachée à un poste technique)
             JOIN kit_level     kl  ON  kl.matnr      = e.parent_id
-            LEFT JOIN werks_mapping wm  ON  wm.sap_werks  = e.werks
-            LEFT JOIN werks_mapping wm2 ON  wm2.sap_werks = e.child_werks
         )
         INSERT INTO clean_data.equipment_spare_structure (
             spare_seq,
@@ -177,13 +185,15 @@ BEGIN
             DELETE FROM clean_data.equipment_spare_structure;
         ELSE
             WITH RECURSIVE edges AS (
-                SELECT
-                    TRIM(LEADING '0' FROM TRIM(mst.matnr))::text AS parent_id,
-                    TRIM(LEADING '0' FROM TRIM(spo.idnrk))::text AS child_id
-                FROM raw_data.mast mst
-                JOIN raw_data.stko sko ON sko.stlnr = mst.stlnr AND sko.stlty = 'M'
-                JOIN raw_data.stpo spo ON spo.stlnr = sko.stlnr AND spo.stlty = sko.stlty
-                WHERE spo.postp = 'L' AND TRIM(spo.idnrk) <> ''
+                SELECT a.code AS parent_id, c.code AS child_id
+                FROM clean_data.maintenance_object b
+                JOIN clean_data.maintenance_object a
+                  ON a.id = b.parent_id AND a.object_type = 'ARTICLE'
+                JOIN clean_data.maintenance_object c
+                  ON c.id = b.ref_object_id AND c.object_type = 'ARTICLE'
+                WHERE b.object_type = 'BOM_ITEM' AND b.category = 'L'
+                -- is_active non filtré ici : on supprime aussi ce qui a été
+                -- désactivé à l'écran depuis le dernier chargement
             ),
             subtree AS (
                 SELECT p_spare_id::text AS matnr, ARRAY[p_spare_id::text] AS path
@@ -204,66 +214,57 @@ BEGIN
             TO_CHAR(CLOCK_TIMESTAMP(), 'HH24:MI:SS'), v_nb_deleted;
 
         -- Réinjection (racines filtrées par p_spare_id), seq à partir du MAX
-        WITH RECURSIVE werks_mapping (sap_werks, ifs_contract) AS (
-            VALUES
-                ('9200', 'SJ'),   -- ⚠️ Adapter selon votre configuration
-                ('2200', 'CS')    -- ⚠️ Adapter selon votre configuration
-        ),
+        WITH RECURSIVE
         max_seq AS (
             SELECT COALESCE(MAX(spare_seq), 0) AS last_seq
             FROM clean_data.equipment_spare_structure
         ),
         roots AS (
-            SELECT DISTINCT spare_id::text AS matnr
+            SELECT DISTINCT spare_id::text AS matnr, contract
             FROM clean_data.equipment_object_spare
             WHERE (p_spare_id IS NULL OR spare_id = p_spare_id)
         ),
         edges AS (
             SELECT
-                TRIM(mst.werks)                                AS werks,
-                TRIM(LEADING '0' FROM TRIM(mst.matnr))::text   AS parent_id,
-                TRIM(LEADING '0' FROM TRIM(spo.idnrk))::text   AS child_id,
-                NULLIF(TRIM(spo.pswrk), '')                    AS child_werks,
-                ROUND(CAST(REGEXP_REPLACE(TRIM(spo.menge), '[^0-9.]', '', 'g') AS NUMERIC), 0) AS qty
-            FROM raw_data.mast mst
-            JOIN raw_data.stko sko ON sko.stlnr = mst.stlnr AND sko.stlty = 'M'
-            JOIN raw_data.stpo spo ON spo.stlnr = sko.stlnr AND spo.stlty = sko.stlty
-            WHERE spo.postp  = 'L'
-              AND TRIM(spo.menge) <> ''
-              AND TRIM(spo.idnrk) <> ''
+                a.code                                         AS parent_id,
+                c.code                                         AS child_id,
+                ROUND(b.quantity, 0)                           AS qty
+            FROM clean_data.maintenance_object b
+            JOIN clean_data.maintenance_object a
+              ON a.id = b.parent_id AND a.object_type = 'ARTICLE' AND a.is_active
+            JOIN clean_data.maintenance_object c
+              ON c.id = b.ref_object_id AND c.object_type = 'ARTICLE'
+            WHERE b.object_type = 'BOM_ITEM'
+              AND b.is_active
+              AND b.category = 'L'
+              AND b.quantity IS NOT NULL
         ),
         hier AS (
-            SELECT r.matnr AS matnr, 1 AS lvl, ARRAY[r.matnr] AS path
+            SELECT r.matnr AS matnr, r.contract, 1 AS lvl, ARRAY[r.matnr] AS path
             FROM roots r
             UNION ALL
-            SELECT e.child_id, h.lvl + 1, h.path || e.child_id
+            SELECT e.child_id, h.contract, h.lvl + 1, h.path || e.child_id
             FROM hier h
             JOIN edges e ON e.parent_id = h.matnr
             WHERE e.child_id <> ALL (h.path)
               AND h.lvl < 50
         ),
         kit_level AS (
-            SELECT matnr, MIN(lvl) AS lvl FROM hier GROUP BY matnr
+            SELECT matnr, contract, MIN(lvl) AS lvl FROM hier GROUP BY matnr, contract
         ),
         source AS (
             SELECT
                 (SELECT last_seq FROM max_seq)
                 + ROW_NUMBER() OVER (
-                    ORDER BY kl.lvl, e.werks, e.parent_id, e.child_id
+                    ORDER BY kl.lvl, kl.contract, e.parent_id, e.child_id
                 )                                                   AS spare_seq,
-                COALESCE(wm.ifs_contract, e.werks)                  AS spare_contract,
+                kl.contract                                         AS spare_contract,
                 e.parent_id                                         AS spare_id,
                 e.child_id                                          AS component_spare_id,
-                COALESCE(
-                    wm2.ifs_contract,
-                    e.child_werks,
-                    COALESCE(wm.ifs_contract, e.werks)
-                )                                                   AS component_spare_contract,
+                kl.contract                                         AS component_spare_contract,
                 e.qty                                               AS qty
             FROM edges e
             JOIN kit_level     kl  ON  kl.matnr      = e.parent_id
-            LEFT JOIN werks_mapping wm  ON  wm.sap_werks  = e.werks
-            LEFT JOIN werks_mapping wm2 ON  wm2.sap_werks = e.child_werks
         )
         INSERT INTO clean_data.equipment_spare_structure (
             spare_seq,

@@ -9,10 +9,11 @@
 -- Mode DELTA: suppression + réinjection d'un poste technique précis (ou tous)
 -- Auteur    : généré automatiquement
 --
--- Source : clean_data.v_fl_nomenclature (vue matérialisée)
---            = raw_data.tpst → stko (stlty='T') → stpo (stlty='T')
---          C'est la BOM des postes techniques affichée dans l'écran IH02
---          (route /api/.../ih02/bom/<tplnr>).
+-- Source : clean_data.v_fl_nomenclature (vue simple, source/recreate_v_fl_nomenclature.sql)
+--            = clean_data.maintenance_object : BOM_ITEM actif sous un FUNC_LOC,
+--              article via ref_object_id — la nomenclature PRÉPARÉE dans IH02
+--              (route /api/.../ih02-hierarchy/bom/<tplnr>), modifications
+--              d'écran comprises. Plus aucune lecture de raw_data.
 --
 -- Mapping :
 --   equipment_object_seq  = le CODE du POSTE TECHNIQUE (mch_code = tplnr_display),

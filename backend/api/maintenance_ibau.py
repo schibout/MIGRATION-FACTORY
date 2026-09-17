@@ -8,13 +8,20 @@ structure IH02) puis vit sa propre vie : aucun endpoint ne relit raw_data.
 
 Suppression = soft delete (is_active = FALSE) ; le code redevient disponible.
 Unicite du code parmi les lignes actives (uq_ibau_article_code_active) -> 409.
+
+Classification IBAU (migration 079) : cas_ibau / nb_enfants / nb_occurrences /
+cas_calcule_at sont CALCULES par clean_data.classifier_ibau_article() (bouton
+« Classifier les IBAU », POST /ibau/classify, partage avec l'ecran IH02) et
+jamais saisis : CONSERVER (jaune) / POSTE_TECHNIQUE (bleu) / ARTICLE (rouge),
+NULL = absent de la structure IH02. Les listes du document « Migration des
+donnees » (§3b) = filtre cas_ibau + export.
 """
 import csv
 import io
 import json
 
 from flask import Blueprint, Response, current_app, jsonify, request
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 import psycopg2
 import psycopg2.extras
 
@@ -31,11 +38,17 @@ EDITABLE_COLUMNS = ['code', 'description', 'matkl', 'matkl_label', 'meins', 'bis
 
 # Colonnes renvoyees par la liste / l'export.
 COLUMNS = ['matnr', 'code', 'description', 'matkl', 'matkl_label', 'meins', 'bismt',
-           'commentaire', 'source', 'created_at', 'created_by', 'updated_at', 'updated_by']
+           'commentaire', 'cas_ibau', 'nb_enfants', 'nb_occurrences', 'cas_calcule_at',
+           'source', 'created_at', 'created_by', 'updated_at', 'updated_by']
 
 SEARCH_COLUMNS = ['code', 'description', 'matnr', 'bismt', 'matkl', 'commentaire']
 
-ORDERABLE = {'code', 'description', 'matkl', 'source', 'updated_at', 'created_at', 'id'}
+ORDERABLE = {'code', 'description', 'matkl', 'source', 'updated_at', 'created_at', 'id',
+             'cas_ibau', 'nb_enfants', 'nb_occurrences'}
+
+CAS_IBAU = ('CONSERVER', 'POSTE_TECHNIQUE', 'ARTICLE')
+# Valeur de filtre pour « absent de la structure » (cas_ibau IS NULL).
+CAS_IBAU_AUCUN = 'NONE'
 
 
 def _user() -> str:
@@ -68,13 +81,21 @@ def _build_where(args):
         clauses.append("source = %s")
         params.append(source)
 
+    cas = (args.get('cas_ibau') or '').strip().upper()
+    if cas in CAS_IBAU:
+        clauses.append("cas_ibau = %s")
+        params.append(cas)
+    elif cas == CAS_IBAU_AUCUN:
+        clauses.append("cas_ibau IS NULL")
+
     return "WHERE " + " AND ".join(clauses), params
 
 
 def _filters_signature(args) -> str:
     return (f"search={(args.get('search') or '').strip()}"
             f"|matkl={(args.get('matkl') or '').strip()}"
-            f"|source={(args.get('source') or '').strip()}")
+            f"|source={(args.get('source') or '').strip()}"
+            f"|cas={(args.get('cas_ibau') or '').strip()}")
 
 
 @maintenance_ibau_blueprint.route('/ibau', methods=['GET'])
@@ -163,7 +184,12 @@ def ibau_stats():
                     COUNT(*) FILTER (WHERE source = 'SAP')    AS nb_sap,
                     COUNT(*) FILTER (WHERE source = 'MANUAL') AS nb_manuel,
                     COUNT(*) FILTER (WHERE updated_by IS NOT NULL) AS nb_modifies,
-                    COUNT(DISTINCT NULLIF(TRIM(matkl), '')) AS nb_groupes
+                    COUNT(DISTINCT NULLIF(TRIM(matkl), '')) AS nb_groupes,
+                    COUNT(*) FILTER (WHERE cas_ibau = 'CONSERVER')       AS nb_conserver,
+                    COUNT(*) FILTER (WHERE cas_ibau = 'POSTE_TECHNIQUE') AS nb_poste_technique,
+                    COUNT(*) FILTER (WHERE cas_ibau = 'ARTICLE')         AS nb_article,
+                    COUNT(*) FILTER (WHERE cas_ibau IS NULL)             AS nb_hors_structure,
+                    MAX(cas_calcule_at) AS cas_calcule_at
                 FROM clean_data.ibau_article
                 {where_sql}
             """, params)
@@ -221,6 +247,30 @@ def export_ibau():
 
     except Exception as e:
         current_app.logger.error(f"Erreur export ibau: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@maintenance_ibau_blueprint.route('/ibau/classify', methods=['POST'])
+@jwt_required()
+def classify_ibau():
+    """Recalcule le cas de chaque IBAU (structure + liste fixe) via
+    clean_data.classifier_ibau_article(). Appele par les deux ecrans."""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cursor.execute("SELECT cas, nb FROM clean_data.classifier_ibau_article()")
+            compteurs = {r['cas']: r['nb'] for r in cursor.fetchall()}
+            cursor.execute("SELECT MAX(cas_calcule_at) AS at FROM clean_data.ibau_article WHERE is_active")
+            calcule_at = cursor.fetchone()['at']
+            conn.commit()
+        cache_invalidate(CACHE_PREFIX)
+        current_app.logger.info(f"Classification IBAU par {_user()} : {compteurs}")
+        return jsonify({'success': True, 'data': {
+            'compteurs': {c: int(compteurs.get(c, 0)) for c in CAS_IBAU},
+            'cas_calcule_at': calcule_at.isoformat() if calcule_at else None,
+        }}), 200
+    except Exception as e:
+        current_app.logger.error(f"Erreur classification ibau: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

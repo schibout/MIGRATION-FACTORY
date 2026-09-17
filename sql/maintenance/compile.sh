@@ -65,28 +65,30 @@ echo ""
 # Compteur d'erreurs
 errors=0
 
-# Liste des fichiers dans l'ordre d'exécution
-# ⚠️ ATTENTION : create_maintenance_object.sql fait un DROP TABLE ... CASCADE.
-#   Lancer ce script en entier REINITIALISE la table (toutes les modifications
-#   saisies dans l'UI sont perdues). Sur une base deja en service, compiler
-#   uniquement le fichier voulu, par exemple :
-#     PGPASSWORD=... psql -h ... -f proc_load_maintenance_object_merge.sql
+# Liste des fichiers dans l'ordre d'exécution : UNIQUEMENT des procedures et
+# fonctions (CREATE OR REPLACE), rejouables sans risque sur une base en service.
+#
+# Les DDL et scripts a usage unique sont dans ./source/ et ne sont PAS compiles
+# ici : create_maintenance_object.sql (DROP TABLE ... CASCADE : reinitialise la
+# table IH02 !), recreate_v_fl_nomenclature.sql (vue lue par
+# load_equipment_object_spare), backfill_*, fix_*, insert_etl_* ; a jouer a la
+# main, une fois, en connaissance de cause.
+# sp_keep_only_T_hierarchy.sql (obsolete, supprimait dans raw_data) n'est
+# volontairement pas compile.
 files=(
     # --- Table unique ecran IH02 (maintenance_object) ---
-    "create_maintenance_object.sql"          # DDL de la table unique (DROP + CREATE !)
     "proc_load_maintenance_object.sql"       # chargement FULL (ecrase les lignes SAP)
     "proc_load_maintenance_object_merge.sql" # chargement MERGE (preserve le travail UI)
-    "recreate_v_fl_nomenclature.sql"         # vue compat (sur maintenance_object)
-    # --- Procedures existantes (dependent de v_fl_nomenclature) ---
-    "alimenter_equipment_functional.sql"
-    "proc_load_equipment_spare_structure.sql"
-    "proc_load_equipment_object_spare.sql"
-    "proc_load_equipment_spare_structure.sql"
+    # --- Export IFS des structures (module ETL etl_equipment_functional.py),
+    #     dans l'ordre des dependances : chaque etape lit la precedente ---
+    "alimenter_equipment_functional.sql"       # FUNC_LOC -> equipment_functional
+    "proc_load_equipment_object_spare.sql"     # BOM des postes -> equipment_object_spare
+    "proc_load_equipment_spare_structure.sql"  # BOM des articles -> equipment_spare_structure
 )
 
 # NB : apres compilation, charger la table unique :
 #   psql ... -c "CALL clean_data.load_maintenance_object();"
-#   psql ... -f checks_maintenance_object.sql   # recette de parite
+#   psql ... -f source/checks_maintenance_object.sql   # recette de parite
 
 # Exécution de chaque fichier
 for file in "${files[@]}"; do

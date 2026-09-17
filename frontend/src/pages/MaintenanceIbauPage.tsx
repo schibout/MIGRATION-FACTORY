@@ -58,6 +58,7 @@ import {
   CloudOff as SapIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
+import { CAS_IBAU, CAS_IBAU_ORDRE, CasIbau, CasIbauChip, ClassifierIbauButton, formatCompteurs } from '../components/maintenance/ibauCas';
 import api from '../services/api';
 
 interface IbauRow {
@@ -73,7 +74,16 @@ interface Stats {
   nb_manuel: number;
   nb_modifies: number;
   nb_groupes: number;
+  // Classification IBAU (migration 079), calculee : jamais saisie ici
+  nb_conserver: number;
+  nb_poste_technique: number;
+  nb_article: number;
+  nb_hors_structure: number;
+  cas_calcule_at: string | null;
 }
+
+// Filtre « Cas » : les 3 cas + « hors structure » (cas NULL, valeur API NONE).
+const CAS_FILTRE_AUCUN = 'NONE';
 
 // Champs modifiables (doivent correspondre a EDITABLE_COLUMNS cote API).
 // `inTable` = colonne de la liste principale.
@@ -105,6 +115,7 @@ const MaintenanceIbauPage: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [matklFilter, setMatklFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [casFilter, setCasFilter] = useState('');
   const [matklOptions, setMatklOptions] = useState<{ code: string; label: string }[]>([]);
 
   const [stats, setStats] = useState<Stats | null>(null);
@@ -123,8 +134,8 @@ const MaintenanceIbauPage: React.FC = () => {
   });
 
   const activeFilterCount = useMemo(
-    () => (matklFilter ? 1 : 0) + (sourceFilter ? 1 : 0) + (debouncedSearch ? 1 : 0),
-    [matklFilter, sourceFilter, debouncedSearch]
+    () => (matklFilter ? 1 : 0) + (sourceFilter ? 1 : 0) + (casFilter ? 1 : 0) + (debouncedSearch ? 1 : 0),
+    [matklFilter, sourceFilter, casFilter, debouncedSearch]
   );
 
   /** Paramètres de filtrage communs à la liste, aux stats et à l'export. */
@@ -133,8 +144,9 @@ const MaintenanceIbauPage: React.FC = () => {
     if (debouncedSearch) params.append('search', debouncedSearch);
     if (matklFilter) params.append('matkl', matklFilter);
     if (sourceFilter) params.append('source', sourceFilter);
+    if (casFilter) params.append('cas_ibau', casFilter);
     return params;
-  }, [debouncedSearch, matklFilter, sourceFilter]);
+  }, [debouncedSearch, matklFilter, sourceFilter, casFilter]);
 
   const loadRows = useCallback(async () => {
     try {
@@ -191,6 +203,7 @@ const MaintenanceIbauPage: React.FC = () => {
     setDebouncedSearch('');
     setMatklFilter('');
     setSourceFilter('');
+    setCasFilter('');
     setPage(0);
   };
 
@@ -314,6 +327,12 @@ const MaintenanceIbauPage: React.FC = () => {
     { icon: SapIcon, color: theme.palette.primary.main, value: stats?.nb_sap, label: 'Issus de SAP (figés)' },
     { icon: ManualIcon, color: theme.palette.success.main, value: stats?.nb_manuel, label: 'Ajoutés par l\'équipe' },
     { icon: GroupIcon, color: theme.palette.warning.main, value: stats?.nb_groupes, label: 'Groupes d\'articles' },
+    ...CAS_IBAU_ORDRE.map((cas) => ({
+      icon: IbauIcon,
+      color: CAS_IBAU[cas].color,
+      value: stats ? ({ CONSERVER: stats.nb_conserver, POSTE_TECHNIQUE: stats.nb_poste_technique, ARTICLE: stats.nb_article })[cas] : undefined,
+      label: CAS_IBAU[cas].label,
+    })),
   ];
 
   const renderDetails = () => {
@@ -443,10 +462,25 @@ const MaintenanceIbauPage: React.FC = () => {
         <Tooltip title="Alimentée une fois depuis SAP (structure IH02) puis figée : plus aucune mise à jour SAP, modifiable uniquement ici.">
           <Chip label="Découplée de SAP" size="small" color="info" variant="outlined" sx={{ ml: 2 }} />
         </Tooltip>
+        {stats?.cas_calcule_at && (
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+            Classification IBAU du {new Date(stats.cas_calcule_at).toLocaleString('fr-FR')}
+          </Typography>
+        )}
         <Box sx={{ flex: 1 }} />
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={startCreating} sx={{ mr: 1 }}>
           Nouvel IBAU
         </Button>
+        <ClassifierIbauButton
+          sx={{ mr: 1 }}
+          onDone={(result) => {
+            loadRows();
+            loadStats();
+            setSnackbar({ open: true, severity: 'success',
+              message: `IBAU classifiés : ${formatCompteurs(result.compteurs)}.` });
+          }}
+          onError={(message) => setSnackbar({ open: true, severity: 'error', message })}
+        />
         <Button
           variant="outlined"
           size="small"
@@ -472,7 +506,7 @@ const MaintenanceIbauPage: React.FC = () => {
         {statCards.map((c) => {
           const Icon = c.icon;
           return (
-            <Grid item xs={12} sm={6} md={3} key={c.label}>
+            <Grid item xs={6} sm={4} md key={c.label}>
               <Card sx={{ backgroundColor: alpha(c.color, 0.1) }}>
                 <CardContent sx={{ py: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -505,7 +539,7 @@ const MaintenanceIbauPage: React.FC = () => {
         >
           <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={5}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   size="small"
@@ -519,7 +553,7 @@ const MaintenanceIbauPage: React.FC = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={6} md={3}>
+              <Grid item xs={6} md={2}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Groupe articles</InputLabel>
                   <Select
@@ -547,6 +581,24 @@ const MaintenanceIbauPage: React.FC = () => {
                     <MenuItem value="">Toutes</MenuItem>
                     <MenuItem value="SAP">SAP</MenuItem>
                     <MenuItem value="MANUAL">Équipe</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={6} md={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Cas IBAU</InputLabel>
+                  <Select
+                    value={casFilter}
+                    label="Cas IBAU"
+                    onChange={(e) => { setCasFilter(e.target.value as string); setPage(0); }}
+                  >
+                    <MenuItem value="">Tous</MenuItem>
+                    {CAS_IBAU_ORDRE.map((cas) => (
+                      <MenuItem key={cas} value={cas}>
+                        <CasIbauChip cas={cas} sx={{ mr: 1 }} />{CAS_IBAU[cas].label}
+                      </MenuItem>
+                    ))}
+                    <MenuItem value={CAS_FILTRE_AUCUN}>Hors structure (non classé)</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -581,6 +633,12 @@ const MaintenanceIbauPage: React.FC = () => {
                       </TableSortLabel>
                     </TableCell>
                   ))}
+                  <TableCell>
+                    <TableSortLabel active={orderBy === 'cas_ibau'} direction={orderBy === 'cas_ibau' ? order : 'asc'}
+                      onClick={() => handleSort('cas_ibau')}>
+                      Cas
+                    </TableSortLabel>
+                  </TableCell>
                   <TableCell>Origine</TableCell>
                   <TableCell align="right" />
                 </TableRow>
@@ -609,6 +667,11 @@ const MaintenanceIbauPage: React.FC = () => {
                         {r[f.key] || '—'}
                       </TableCell>
                     ))}
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      {r.cas_ibau
+                        ? <CasIbauChip cas={r.cas_ibau as CasIbau} nbEnfants={r.nb_enfants} nbOccurrences={r.nb_occurrences} />
+                        : <Typography variant="caption" color="text.secondary">—</Typography>}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         size="small"
@@ -632,7 +695,7 @@ const MaintenanceIbauPage: React.FC = () => {
                 ))}
                 {!loading && rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={TABLE_FIELDS.length + 2} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={TABLE_FIELDS.length + 3} align="center" sx={{ py: 4 }}>
                       <Typography color="text.secondary">
                         Aucun IBAU trouvé. Si la liste est entièrement vide, la migration 030
                         n'a probablement pas encore été jouée sur le serveur.

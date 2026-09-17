@@ -1257,6 +1257,10 @@ def get_fl_bom(tplnr):
                     b.quantity::text AS quantity,
                     b.unit,
                     a.type_code AS material_type,
+                    -- Cas IBAU (migration 079) : pastille jaune/bleu/rouge de l'arbre
+                    a.cas_ibau,
+                    (a.attributes->>'ibau_nb_enfants')::int     AS ibau_nb_enfants,
+                    (a.attributes->>'ibau_nb_occurrences')::int AS ibau_nb_occurrences,
                     COALESCE(a.designation, a.code) AS designation
                 FROM {MO} b
                 JOIN {MO} fl ON fl.id = b.parent_id AND fl.object_type = 'FUNC_LOC'
@@ -1336,6 +1340,10 @@ def get_article_bom(matnr):
                     b.quantity::text AS quantity,
                     b.unit,
                     a.type_code AS material_type,
+                    -- Cas IBAU (migration 079) : pastille jaune/bleu/rouge de l'arbre
+                    a.cas_ibau,
+                    (a.attributes->>'ibau_nb_enfants')::int     AS ibau_nb_enfants,
+                    (a.attributes->>'ibau_nb_occurrences')::int AS ibau_nb_occurrences,
                     COALESCE(a.designation, a.code) AS designation,
                     (SELECT COUNT(*) FROM {MO} cb
                        WHERE cb.object_type = 'BOM_ITEM' AND cb.is_active
