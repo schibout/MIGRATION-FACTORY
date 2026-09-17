@@ -66,6 +66,7 @@ import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner
 import MaintenanceActions from '../components/maintenance/MaintenanceActions';
 import { MaintenanceJob } from '../services/maintenanceSnapshotService';
 import LovSelect from '../components/maintenance/LovSelect';
+import DraggableDialogPaper, { DRAG_HANDLE_ID } from '../components/maintenance/DraggableDialogPaper';
 
 interface LocationNode {
   row_id: string;
@@ -1570,11 +1571,14 @@ const IH02HierarchyPage: React.FC = () => {
   //   6 FR_SOUS-SECTION  : #00897b teal     ~3,5:1  -> #1de9b6 turquoise ~9,5:1
   // Choisir une teinte CLAIRE ici, pas une teinte saturee : sur fond sombre
   // c'est la luminosite qui fait la lisibilite, pas la saturation.
+  // Une couleur par niveau (FR_SITE ... FR_EQUIPEMENT). Le niveau 7,
+  // FR_EQUIPEMENT, etait en brun '#6d4c41', trop peu lisible (demande du
+  // 2026-09-17) : bleu vif, sans voisin proche dans la palette.
   const getLevelColor = (level: number) => {
     const colors = [
       theme.palette.error.main, theme.palette.warning.main,
       theme.palette.info.main, theme.palette.success.main,
-      theme.palette.secondary.main, '#e040fb', '#1de9b6', '#6d4c41',
+      theme.palette.secondary.main, '#e040fb', '#1de9b6', '#2962ff',
     ];
     return colors[level % colors.length];
   };
@@ -2713,8 +2717,18 @@ const IH02HierarchyPage: React.FC = () => {
       </Dialog>
 
       {/* Dialog ajout poste technique / équipement */}
-      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      {/* Fenetre d'ajout DEPLACABLE (poignee = titre) et NON MODALE : sans
+          backdrop et sans capture du focus, pour lire et copier un nom dans
+          l'arbre pendant la saisie. pointerEvents 'none' sur le conteneur
+          plein ecran laisse passer les clics vers la page ; le Paper les
+          reprend. Consequence : plus de fermeture par clic exterieur, seuls
+          Echap et Annuler ferment. */}
+      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth
+        PaperComponent={DraggableDialogPaper}
+        hideBackdrop disableEnforceFocus disableScrollLock
+        sx={{ pointerEvents: 'none' }}
+        PaperProps={{ sx: { pointerEvents: 'auto', boxShadow: 12 } }}>
+        <DialogTitle id={DRAG_HANDLE_ID} sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'move', userSelect: 'none' }}>
           {addDialogType === 'location' ? <FolderIcon color="primary" />
             : addDialogType === 'article' ? <BomIcon color="info" />
             : <EquipmentIcon sx={{ color: theme.palette.warning.main }} />}

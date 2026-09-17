@@ -153,7 +153,7 @@ BEGIN
         object_type, sap_key, code, designation, parent_type, parent_sap_key,
         type_code, category, work_center, work_center_txt,
         resp_work_center, resp_work_center_txt,
-        plant, planner_group, attributes
+        cost_center, plant, planner_group, attributes
     )
     -- ------------------------------------------------------------------
     -- Code affiche du poste technique : strno (etiquette externe SAP), avec
@@ -220,6 +220,10 @@ BEGIN
         ctx.ktext,
         crr.arbpl,
         ctxr.ktext,
+        -- Centre de couts : iloa.kostl, comme pour les EQUIPMENT (passe 2).
+        -- Oublie jusqu'au 2026-09-17 : 10 967 postes le portent dans SAP,
+        -- aucun n'arrivait dans l'ecran.
+        NULLIF(TRIM(fl.kostl), ''),
         i.iwerk,
         i.ingrp,
         jsonb_strip_nulls(jsonb_build_object(
@@ -557,11 +561,11 @@ BEGIN
     INSERT INTO clean_data.maintenance_object (
         object_type, sap_key, code, designation, type_code, category,
         work_center, work_center_txt, resp_work_center, resp_work_center_txt,
-        plant, planner_group, attributes, source
+        cost_center, plant, planner_group, attributes, source
     )
     SELECT s.object_type, s.sap_key, s.code, s.designation, s.type_code, s.category,
            s.work_center, s.work_center_txt, s.resp_work_center, s.resp_work_center_txt,
-           s.plant, s.planner_group, s.attributes, 'SAP'
+           s.cost_center, s.plant, s.planner_group, s.attributes, 'SAP'
     FROM mo_stg s
     WHERE s.object_type = 'FUNC_LOC'
     ON CONFLICT (object_type, sap_key) DO NOTHING;
@@ -577,6 +581,7 @@ BEGIN
         work_center_txt = s.work_center_txt,
         resp_work_center     = s.resp_work_center,
         resp_work_center_txt = s.resp_work_center_txt,
+        cost_center     = s.cost_center,
         plant           = s.plant,
         planner_group   = s.planner_group,
         -- on conserve les cles techniques ajoutees par l'app (ex. sap_missing)

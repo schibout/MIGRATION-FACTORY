@@ -112,13 +112,14 @@ BEGIN
     -- PASSE 1 : FUNC_LOC (postes techniques) sans parent
     --   iflot + iflos (strno/tplkz) + iflotx (F>E>any # 'vide')
     --   + iloa/crhd/crtx (poste de travail, ppsid)
+    --   + iloa.kostl (centre de couts, onglet Localisation)
     --   + iflot.lgwid -> crhd/crtx (poste RESPONSABLE, ITOBATTR-GEWRK)
     -- ============================================================
     INSERT INTO clean_data.maintenance_object (
         object_type, sap_key, code, designation,
         type_code, category, work_center, work_center_txt,
         resp_work_center, resp_work_center_txt,
-        plant, planner_group, attributes, source
+        cost_center, plant, planner_group, attributes, source
     )
     -- ------------------------------------------------------------------
     -- Code affiche du poste technique : strno (etiquette externe SAP), avec
@@ -173,6 +174,10 @@ BEGIN
         ctx.ktext,
         crr.arbpl,
         ctxr.ktext,
+        -- Centre de couts : iloa.kostl, comme pour les EQUIPMENT (passe 3).
+        -- Oublie jusqu'au 2026-09-17 : 10 967 postes le portent dans SAP,
+        -- aucun n'arrivait dans l'ecran.
+        NULLIF(TRIM(fl.kostl), ''),
         i.iwerk,
         i.ingrp,
         jsonb_strip_nulls(jsonb_build_object(

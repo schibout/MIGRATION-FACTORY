@@ -904,18 +904,40 @@ def add_node():
             pid = _resolve_id(cursor, 'FUNC_LOC', parent_id)
             if pid is None:
                 return jsonify({'success': False, 'error': f'Parent "{parent_id}" non trouvé'}), 404
-            if _resolve_id(cursor, 'FUNC_LOC', node_id) is not None:
+
+            # La suppression est un soft delete (is_active=false) mais la cle
+            # (object_type, sap_key) reste prise par uq_mo_type_key : un poste
+            # supprime puis recree sous le meme identifiant (cas T630-S) doit
+            # REACTIVER la ligne inactive, pas etre refuse. Le sous-arbre de
+            # l'ancien poste reste supprime.
+            cursor.execute(f"SELECT id, is_active FROM {MO} WHERE object_type = 'FUNC_LOC' AND sap_key = %s",
+                           [node_id])
+            existing = cursor.fetchone()
+            if existing is not None and existing['is_active']:
                 return jsonify({'success': False, 'error': f'L\'identifiant "{node_id}" existe déjà'}), 409
 
             attrs = {'tplma_sap': parent_id}
             try:
-                cursor.execute(f"""
-                    INSERT INTO {MO} (object_type, sap_key, code, designation, type_code,
-                                      cost_center, parent_id, plant, attributes, source, created_by, updated_by)
-                    VALUES ('FUNC_LOC', %s, %s, %s, %s, %s, %s, '9200', %s::jsonb, 'MANUAL', %s, %s)
-                    RETURNING id
-                """, [node_id, node_id, designation, data.get('type_poste') or None,
-                      data.get('centre_couts') or None, pid, json.dumps(attrs), user, user])
+                if existing is None:
+                    cursor.execute(f"""
+                        INSERT INTO {MO} (object_type, sap_key, code, designation, type_code,
+                                          cost_center, parent_id, plant, attributes, source, created_by, updated_by)
+                        VALUES ('FUNC_LOC', %s, %s, %s, %s, %s, %s, '9200', %s::jsonb, 'MANUAL', %s, %s)
+                        RETURNING id
+                    """, [node_id, node_id, designation, data.get('type_poste') or None,
+                          data.get('centre_couts') or None, pid, json.dumps(attrs), user, user])
+                else:
+                    # source='MANUAL' : la ligne redevient une creation utilisateur,
+                    # protegee du rafraichissement et de la purge du mode fusion.
+                    cursor.execute(f"""
+                        UPDATE {MO}
+                           SET is_active = TRUE, code = %s, designation = %s, type_code = %s,
+                               cost_center = %s, parent_id = %s, attributes = attributes || %s::jsonb,
+                               source = 'MANUAL', updated_by = %s
+                         WHERE id = %s
+                        RETURNING id
+                    """, [node_id, designation, data.get('type_poste') or None,
+                          data.get('centre_couts') or None, pid, json.dumps(attrs), user, existing['id']])
             except pg_errors.UniqueViolation:
                 # sap_key est libre (verifie plus haut) mais un frere porte deja ce
                 # CODE — cas possible des qu'un poste a ete renomme (uq_mo_code_sibling).
