@@ -72,13 +72,15 @@ def app_context():
 class FakeCursor:
     """Enregistre le SQL execute et rejoue les reponses attendues par la route."""
 
-    def __init__(self, journal, *, code='MCAR', org='SJ-MCAR', supprimees=3, max_id=1760, audit=2):
+    def __init__(self, journal, *, code='MCAR', org='SJ-MCAR', supprimees=3, max_id=1760, audit=2,
+                 raw_id_auto=True):
         self.journal = journal
         self._code = code
         self._org = org
         self._supprimees = supprimees
         self._max_id = max_id
         self._audit = audit
+        self._raw_id_auto = raw_id_auto
         self._reponse = None
         self.rowcount = -1
 
@@ -92,6 +94,8 @@ class FakeCursor:
             self.rowcount = self._supprimees
         elif 'MAX(raw_id)' in sql:
             self._reponse = {'max_id': self._max_id}
+        elif 'is_identity' in sql:
+            self._reponse = {'auto': self._raw_id_auto}
         elif 'information_schema.columns' in sql:
             self._reponse = {'nb': self._audit}
         else:
@@ -134,11 +138,13 @@ def capture_execute_values(monkeypatch):
 
 @pytest.fixture
 def audit_detecte(petools):
-    """La detection des colonnes d'audit est memorisee au niveau module :
-    on repart de zero pour chaque test."""
+    """Les detections (colonnes d'audit, identite de raw_id) sont memorisees au
+    niveau module : on repart de zero pour chaque test."""
     petools._audit_available = None
+    petools._raw_id_auto = None
     yield
     petools._audit_available = None
+    petools._raw_id_auto = None
 
 
 @pytest.fixture
@@ -163,7 +169,9 @@ def test_import_ok_remplace_par_fichier(petools, app_context, capture_execute_va
     assert conn.commits == 1
     assert conn.rollbacks == 0
 
-    # Ordre des requetes : verrou -> resolution org -> DELETE -> MAX -> detection audit.
+    # Ordre des requetes : verrou -> resolution org -> DELETE -> detection
+    # identite -> detection audit. Aucun MAX(raw_id) : la cle est attribuee par
+    # la base (colonne d'identite GENERATED ALWAYS).
     sqls = [sql for sql, _ in conn.journal]
     assert sqls[0] == 'SELECT pg_advisory_xact_lock(778814)'
     assert sqls[1].startswith('SELECT public.pe_tools_code_fichier')
@@ -171,29 +179,31 @@ def test_import_ok_remplace_par_fichier(petools, app_context, capture_execute_va
     # "petool - 7.mcar.csv" remplacent les lignes de "PeTool - 7.MCAR.csv".
     assert sqls[2] == 'DELETE FROM raw_data.pe_tools WHERE public.pe_tools_code_fichier(nom_fichier) = %s'
     assert conn.journal[2][1] == ['MCAR']
-    assert 'MAX(raw_id)' in sqls[3]
+    assert 'is_identity' in sqls[3]
     assert 'information_schema.columns' in sqls[4]
+    assert not any('MAX(raw_id)' in sql for sql in sqls)
 
     assert len(capture_execute_values) == 1
     capture = capture_execute_values[0]
-    assert capture['sql'].startswith('INSERT INTO raw_data.pe_tools (raw_id, localisation_classement, ')
+    # raw_id absent de l'INSERT : une valeur explicite serait rejetee
+    # (« cannot insert a non-DEFAULT value into column raw_id »).
+    assert capture['sql'].startswith('INSERT INTO raw_data.pe_tools (localisation_classement, ')
+    assert 'raw_id' not in capture['sql']
     assert capture['sql'].endswith('nom_fichier, organisation_maintenance, imported_at, updated_at, updated_by) VALUES %s')
-    assert capture['template'].count('%s') == 27
+    assert capture['template'].count('%s') == 26
     assert capture['template'].endswith(', NOW(), NOW(), %s)')
     assert capture['page_size'] == 500
 
     rows = capture['rows']
     assert len(rows) == 2
-    assert rows[0][0] == 1761
-    assert rows[1][0] == 1762
     assert rows[0][-1] == 'samir'
     assert rows[0][-2] == 'SJ-MCAR'
     assert rows[0][-3] == 'PeTool - 7.MCAR.csv'
-    # 1 raw_id + 23 colonnes metier + nom_fichier + org + updated_by
-    assert len(rows[0]) == 1 + len(petools.PE_TOOLS_COLUMNS) + 3
+    # 23 colonnes metier + nom_fichier + org + updated_by
+    assert len(rows[0]) == len(petools.PE_TOOLS_COLUMNS) + 3
     # Colonnes metier dans l'ordre de PE_TOOLS_COLUMNS
-    assert rows[0][1] == 'MSA2'
-    assert rows[0][3] == 'T120-L020'
+    assert rows[0][0] == 'MSA2'
+    assert rows[0][2] == 'T120-L020'
 
 
 def test_import_sans_audit_ni_organisation(petools, app_context, capture_execute_values, audit_detecte, contenu_fixture):
@@ -208,11 +218,10 @@ def test_import_sans_audit_ni_organisation(petools, app_context, capture_execute
 
     capture = capture_execute_values[0]
     assert 'updated_by' not in capture['sql']
-    assert capture['template'].count('%s') == 26
+    assert capture['template'].count('%s') == 25
     assert capture['template'].endswith(', NOW())')
-    assert capture['rows'][0][0] == 1
     assert capture['rows'][0][-1] is None  # organisation non resolue
-    assert len(capture['rows'][0]) == 1 + len(petools.PE_TOOLS_COLUMNS) + 2
+    assert len(capture['rows'][0]) == len(petools.PE_TOOLS_COLUMNS) + 2
     assert conn.commits == 1
     assert conn.rollbacks == 0
 
@@ -298,3 +307,21 @@ def test_import_rollback_impossible_ne_leve_pas(petools, app_context, audit_dete
     assert resultat['lignes_supprimees'] == 0
     assert conn.rollbacks == 1
     assert conn.commits == 0
+
+
+def test_import_table_sans_identite_reprend_max_id(
+        petools, app_context, capture_execute_values, audit_detecte, contenu_fixture):
+    """Repli : si raw_data.pe_tools est rechargee hors application sans identite
+    ni valeur par defaut sur raw_id, la cle reste calculee (MAX + 1)."""
+    conn = FakeConnection(raw_id_auto=False)
+    resultat = petools._import_one_file(conn, 'PeTool - 7.MCAR.csv', contenu_fixture, 'samir')
+
+    assert resultat['status'] == 'ok', resultat
+    assert any('MAX(raw_id)' in sql for sql, _ in conn.journal)
+
+    capture = capture_execute_values[0]
+    assert capture['sql'].startswith('INSERT INTO raw_data.pe_tools (raw_id, localisation_classement, ')
+    assert capture['template'].count('%s') == 27
+    assert capture['rows'][0][0] == 1761
+    assert capture['rows'][1][0] == 1762
+    assert len(capture['rows'][0]) == 1 + len(petools.PE_TOOLS_COLUMNS) + 3

@@ -100,6 +100,10 @@ _audit_available = None
 # redemarrer le backend (./deploybackend.sh).
 _import_columns_available = None
 
+# raw_id est-il attribue par la base (identite / valeur par defaut) ? Detecte
+# une fois puis memorise, comme les colonnes ci-dessus.
+_raw_id_auto = None
+
 
 def _user() -> str:
     """Identite JWT pour la tracabilite (updated_by)."""
@@ -120,6 +124,27 @@ def _has_audit_columns(cursor) -> bool:
         """)
         _audit_available = cursor.fetchone()['nb'] == 2
     return _audit_available
+
+
+def _raw_id_is_auto(cursor) -> bool:
+    """raw_id est une colonne d'identite GENERATED ALWAYS dans la base : lui
+    passer une valeur explicite fait echouer l'INSERT (« cannot insert a
+    non-DEFAULT value into column raw_id »), c'est donc a PostgreSQL de
+    l'attribuer. La table est chargee hors application et peut etre recreee
+    sans identite ni valeur par defaut -> detection une fois puis memorisee
+    (apres un rechargement changeant la definition, redemarrer le backend).
+    """
+    global _raw_id_auto
+    if _raw_id_auto is None:
+        cursor.execute("""
+            SELECT (is_identity = 'YES' OR column_default IS NOT NULL) AS auto
+            FROM information_schema.columns
+            WHERE table_schema = 'raw_data' AND table_name = 'pe_tools'
+              AND column_name = 'raw_id'
+        """)
+        row = cursor.fetchone()
+        _raw_id_auto = bool(row and row['auto'])
+    return _raw_id_auto
 
 
 def _has_import_columns(cursor) -> bool:
@@ -428,7 +453,8 @@ def update_pe_tool(raw_id: int):
 
 @maintenance_pe_tools_blueprint.route('/pe-tools', methods=['POST'])
 def create_pe_tool():
-    """Creation d'une ligne (raw_id attribue = max + 1)."""
+    """Creation d'une ligne (raw_id attribue par la base, ou max + 1 si la
+    colonne n'a ni identite ni valeur par defaut)."""
     try:
         data = request.get_json() or {}
         cols = [k for k in data.keys() if k in COLUMNS]
@@ -446,9 +472,13 @@ def create_pe_tool():
                 audit_vals = ['NOW()', '%s']
                 values.append(_user())
 
-            all_cols = ['raw_id'] + cols + audit_cols
-            placeholders = ['(SELECT COALESCE(MAX(raw_id), 0) + 1 FROM raw_data.pe_tools)'] \
-                + ['%s'] * len(cols) + audit_vals
+            if _raw_id_is_auto(cursor):
+                all_cols = cols + audit_cols
+                placeholders = ['%s'] * len(cols) + audit_vals
+            else:
+                all_cols = ['raw_id'] + cols + audit_cols
+                placeholders = ['(SELECT COALESCE(MAX(raw_id), 0) + 1 FROM raw_data.pe_tools)'] \
+                    + ['%s'] * len(cols) + audit_vals
 
             cursor.execute(
                 f"INSERT INTO raw_data.pe_tools ({', '.join(all_cols)}) "
@@ -528,10 +558,10 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
                 f'{parsed.repaired_lines} ligne(s) aux guillemets non fermés réparée(s)')
 
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        # Verrou consultatif de transaction (libere au commit/rollback) : deux
-        # imports simultanes calculeraient le meme MAX(raw_id) + 1 et
-        # violeraient l'unicite de raw_id. 778812/778813 sont pris par le
-        # module maintenance.
+        # Verrou consultatif de transaction (libere au commit/rollback) :
+        # serialise les imports, dont le DELETE + INSERT d'un meme code de
+        # fichier, et le calcul MAX(raw_id) + 1 du repli sans identite.
+        # 778812/778813 sont pris par le module maintenance.
         cursor.execute("SELECT pg_advisory_xact_lock(778814)")
         cursor.execute(
             "SELECT public.pe_tools_code_fichier(%s) AS code, public.pe_tools_org_code(%s) AS org",
@@ -552,25 +582,34 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
         resultat['lignes_supprimees'] = cursor.rowcount
 
         if parsed.rows:
-            cursor.execute("SELECT COALESCE(MAX(raw_id), 0) AS max_id FROM raw_data.pe_tools")
-            next_id = cursor.fetchone()['max_id'] + 1
+            # raw_id est une identite GENERATED ALWAYS : la base l'attribue et
+            # refuse toute valeur explicite. Le calcul MAX + 1 n'est conserve
+            # que pour une table rechargee hors application sans identite.
+            raw_id_auto = _raw_id_is_auto(cursor)
+            next_id = None
+            if not raw_id_auto:
+                cursor.execute("SELECT COALESCE(MAX(raw_id), 0) AS max_id FROM raw_data.pe_tools")
+                next_id = cursor.fetchone()['max_id'] + 1
 
             col_sql = [c for c, _ in PE_TOOLS_COLUMNS]
-            cols = ['raw_id'] + col_sql + ['nom_fichier', 'organisation_maintenance', 'imported_at']
+            cols = ([] if raw_id_auto else ['raw_id']) + col_sql \
+                + ['nom_fichier', 'organisation_maintenance', 'imported_at']
             audit = _has_audit_columns(cursor)
             if audit:
                 cols += ['updated_at', 'updated_by']
 
             # imported_at / updated_at sont des NOW() litteraux dans le template
             # (pas des parametres) : le tuple ne porte que les valeurs.
-            template = '(' + ', '.join(['%s'] * (1 + len(col_sql) + 2)) + ', NOW()'
+            nb_params = len(col_sql) + 2 + (0 if raw_id_auto else 1)
+            template = '(' + ', '.join(['%s'] * nb_params) + ', NOW()'
             if audit:
                 template += ', NOW(), %s'
             template += ')'
 
             rows_sql = []
             for i, row in enumerate(parsed.rows):
-                t = [next_id + i] + [row[c] for c in col_sql] + [nom_fichier, r['org']]
+                t = ([] if raw_id_auto else [next_id + i]) \
+                    + [row[c] for c in col_sql] + [nom_fichier, r['org']]
                 if audit:
                     t.append(user)
                 rows_sql.append(tuple(t))

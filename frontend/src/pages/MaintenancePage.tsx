@@ -8,6 +8,7 @@ import {
   Layers as LayersIcon,
   SettingsBackupRestore as BackupIcon,
   ListAlt as LovIcon,
+  AccountTree as OrganisationIcon,
   Psychology as AiIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -80,6 +81,14 @@ const cards = [
     path: '/maintenance/lov',
     icon: LovIcon,
     color: 'primary' as const,
+    tag: 'PARAMÉTRAGE',
+  },
+  {
+    title: 'Organisations PE Tools',
+    description: 'Associer chaque fichier PE Tools (« 7.CODE.csv ») à son organisation de maintenance IFS, reprise par l\'ETL PM Actions.',
+    path: '/maintenance/pe-tools-organisations',
+    icon: OrganisationIcon,
+    color: 'success' as const,
     tag: 'PARAMÉTRAGE',
   },
 ];

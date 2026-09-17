@@ -56,6 +56,7 @@ import MaintenanceHierarchyPage from './pages/MaintenanceHierarchyPage';
 import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceBackupsPage from './pages/MaintenanceBackupsPage';
 import MaintenancePeToolsPage from './pages/MaintenancePeToolsPage';
+import MaintenancePeToolsOrganisationsPage from './pages/MaintenancePeToolsOrganisationsPage';
 import MaintenanceIbauPage from './pages/MaintenanceIbauPage';
 import MaintenanceLovPage from './pages/MaintenanceLovPage';
 import ModeEmploi from './pages/ModeEmploi';
@@ -234,6 +235,7 @@ function App() {
           <Route path="maintenance/ih02" element={<IH02HierarchyPage />} />
           <Route path="maintenance/backups" element={<MaintenanceBackupsPage />} />
           <Route path="maintenance/pe-tools" element={<MaintenancePeToolsPage />} />
+          <Route path="maintenance/pe-tools-organisations" element={<MaintenancePeToolsOrganisationsPage />} />
           <Route path="maintenance/ibau" element={<MaintenanceIbauPage />} />
           <Route path="maintenance/lov" element={<MaintenanceLovPage />} />
           <Route path="maintenance/assistant" element={<HermesChat profile="maintenance" />} />

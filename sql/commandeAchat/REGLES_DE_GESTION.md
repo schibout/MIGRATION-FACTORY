@@ -116,3 +116,29 @@ Pour livrer l'extraction demandée (commandes bornées au 31/08, « À transfér
 2. **Les réponses sur les champs structurants IFS** du modèle (`Lot11_AchatAppro_CommandeAchat_V3.0`), dont les colonnes de mappage SAP sont vides : code acheteur IFS par groupe d'acheteurs SAP, transcodification des conditions de paiement (`PAY_TERM_ID`), identifiants d'adresse (`ADDR_NO`, `DELIVERY_ADDRESS`), mode d'expédition (`SHIP_VIA_CODE`), type de demande (`DEMAND_CODE`), pré-imputation (`PRE_ACCOUNTING_ID`).
 3. **Le format de livraison** : le modèle IFS attend trois objets (en-tête `PURCHASE_ORDER`, lignes `PURCHASE_ORDER_LINE_PART` et `PURCHASE_ORDER_LINE_NOPART`) ; la table actuelle est un intermédiaire à plat, à décliner en trois vues une fois les points 1 et 2 arbitrés.
 4. Confirmer l'exclusion des commandes dont la stratégie de libération SAP n'est pas aboutie (3 commandes au 12/09/2026), conformément à la note du modèle « commandes déjà autorisées sur SAP ».
+## ###########################
+## 16. Synthèse du chargement du 16/09/2026 et actions à mener
+
+**Résultat** : 3 325 postes ouverts sur 1 204 commandes d'achat STJN (2 961 postes SJ, 364 postes CS ; 1 521 lignes article PART, 1 804 lignes hors catalogue NOPART). Devises : 1 184 commandes en EUR, 18 en USD, 1 en CHF, 1 en GBP. Reste à livrer : environ 153 M€ en EUR, dont 59 M€ portés par des commandes antérieures à 2024 (fluorure d'aluminium, alumine, transport ferroviaire au forfait : contrats-cadres à gros volumes).
+
+**Ce qui est complet** : 100 % des postes ont un article reconnu au catalogue IFS (PART), une désignation, un prix net, une date de livraison planifiée, une adresse de livraison et, pour les NOPART, une imputation comptable (2 068 centres de coût, 709 ordres, 198 projets).
+
+**Actions à mener avant chargement dans IFS, par ordre d'importance :**
+
+1. **178 commandes (332 postes, 91 fournisseurs SAP) sans numéro de fournisseur IFS** : ces fournisseurs sont absents du fichier de sélection des fournisseurs. Sans numéro IFS la commande ne peut pas être créée. → Le métier doit soit ajouter ces 91 fournisseurs au fichier de sélection (puis relancer le module fournisseurs et le module commandes), soit confirmer que ces commandes ne sont pas à reprendre. Même sujet pour 79 fournisseurs de facturation (291 postes).
+
+2. **993 commandes sur 1 204 sans condition de livraison (Incoterm)** : SAP n'en porte que sur 211 commandes, avec des libellés hétérogènes (« DDP Saint Jean de Maurienne », « DDP St Jean de Maurienne », « DDP Frais de port : 36x2350 EUR »…). → Décider d'une règle de reprise : Incoterm par défaut du fournisseur dans IFS quand la commande n'en a pas, et normalisation des 23 libellés existants vers la liste des conditions de livraison IFS (DDP, DAP, CPT, FCA, EXW, CIF, CIP).
+
+3. **Conditions de paiement** : seules 3 commandes en sont dépourvues (elles hériteront de la condition du fournisseur), mais les 18 codes SAP présents (M045 sur 707 commandes, F030 sur 155, C045 sur 138, M100, M110…) doivent être **transcodés vers les conditions de paiement IFS** (`PAY_TERM_ID`). → Table de correspondance à fournir par le métier ; à défaut, la condition du fournisseur IFS sera appliquée.
+
+4. **22 groupes d'acheteurs SAP non transcodés** (92E sur 241 commandes, 92R sur 170, 92T sur 147, MX1 sur 120…) : IFS exige un code acheteur (`BUYER_CODE`). → Table de correspondance groupe d'acheteurs SAP → acheteur IFS à fournir par le métier.
+
+5. **2 115 postes avec l'unité générique « * »** : 1 970 sont volontaires (unité SAP `UN` transcodée en « * » par choix projet) ; **145 postes portent une unité SAP sans correspondance IFS** (TRI = 52, PRT = 42, TAG = 26, H = 12, TH = 4, ML = 3, FLL = 2, J = 2, STD, LE). → Compléter la table de transcodification des unités pour ces 10 codes, ou valider « * ».
+
+6. **1 167 postes PART dont l'article n'est pas déclaré en stock sur le site de la commande** (article au catalogue IFS mais absent de la fiche article du site SJ ou CS). → Vérifier avec le métier articles : soit l'article doit être ouvert sur le site, soit la ligne doit être reprise en NOPART.
+
+7. **557 commandes créées avant 2024 (46 %)**, toujours ouvertes dans SAP faute de clôture par les acheteurs : 2 653 postes ont une date de livraison planifiée déjà dépassée. → Revue par les acheteurs : clôturer dans SAP ce qui est soldé (ou fournir la liste « À transférer »), sinon borner le chargement sur la date de création (§ 14).
+
+8. **3 commandes dont la stratégie de libération SAP n'est pas aboutie** : à exclure si l'on s'en tient aux « commandes déjà autorisées » (§ 15).
+
+9. Points de vigilance sans action immédiate : 1 760 postes partiellement reçus (le reliquat est repris, pas l'historique des réceptions) ; 745 postes déjà facturés au-delà du reçu (acomptes ou factures anticipées, le restant à facturer est plus faible que le restant à livrer) ; 37 commandes avec un fournisseur de facturation différent du fournisseur ; 20 commandes en devise étrangère avec le taux SAP d'origine.
