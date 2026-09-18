@@ -13,7 +13,7 @@ BEGIN
     -- Vider la table cible avant insertion
     TRUNCATE TABLE clean_data.purchase_part RESTART IDENTITY;
     RAISE NOTICE 'Table purchase_part vidée';
-    -- Insertion des articles achat depuis SAP
+    -- Insertion des articles achat depuis SAP : tout article du catalogue est un article d'achat
     INSERT INTO clean_data.purchase_part (
         -- Clés
         contract,
@@ -215,18 +215,18 @@ BEGIN
         AND marc.mandt = '700'
     WHERE
         marc.werks IN ('9200', '9000', '2200')
-        AND marc.beskz IN ('F', 'X')
+        -- Perimetre = TOUT le catalogue (demande explicite du 2026-09-18) : chaque
+        -- article de part_catalog doit exister en purchase_part sur chacun de ses
+        -- sites. Plus de filtre sur le type d'approvisionnement (marc.beskz F/X
+        -- ecartait ~5 200 articles a beskz vide ou 'E') ni d'exclusion des
+        -- articles de vente (330 articles, qui ont desormais a la fois une
+        -- sales_part et une purchase_part).
         AND mara.lvorm IS NULL
         AND TRIM(mara.matnr) != ''
         -- Garantir que l'article existe dans part_catalog (table de base) avant insertion
         AND EXISTS (
             SELECT 1 FROM clean_data.part_catalog pc
             WHERE pc.part_no = SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25)
-        )
-        -- Exclure les articles de vente : ils relevent de SALES_PART, pas de PURCHASE_PART
-        AND NOT EXISTS (
-            SELECT 1 FROM raw_data.articles_vente_sap avs
-            WHERE LPAD(TRIM(avs.article), 18, '0') = mara.matnr::text
         )
     ORDER BY contract, part_no;
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;

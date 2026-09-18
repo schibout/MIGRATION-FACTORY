@@ -8,8 +8,11 @@ DECLARE
     v_org_contract        VARCHAR := public.get_default_value('clean_data.pm_action', 'org_contract');
     v_org_code            VARCHAR := public.get_default_value('clean_data.pm_action', 'org_code');
     v_pm_revision         VARCHAR := public.get_default_value('clean_data.pm_action', 'pm_revision');
-    v_connection_type     VARCHAR := public.get_default_value('clean_data.pm_action', 'connection_type');
+    -- connection_type_db doit appartenir au domaine IFS (EQUIPMENT, VIM, CATEGORY,
+    -- PLD, CMPUNT, LINAST, TOOLEQ, PRJWORKPACKAGE, MODEL) ; le libelle client en est
+    -- derive et la procedure s'arrete sur une valeur hors domaine (migration 080).
     v_connection_type_db  VARCHAR := public.get_default_value('clean_data.pm_action', 'connection_type_db');
+    v_connection_type     VARCHAR := clean_data.pm_connection_type_client(v_connection_type_db);
     v_count INTEGER := 0;
     v_reject_count INTEGER := 0;
     v_multi_org INTEGER := 0;
@@ -156,21 +159,14 @@ BEGIN
         COALESCE(a.org_code_fichier, v_org_code),
         v_connection_type,
         v_connection_type_db,
-        NULLIF(left(regexp_replace(COALESCE(a.freq_norm, ''), '\D', '', 'g'), 4), '')  AS "interval",
-        CASE right(a.freq_norm, 1)
-            WHEN 'S' THEN 'Semaines'
-            WHEN 'M' THEN 'Mois'
-            WHEN 'A' THEN 'Années'
-            WHEN 'H' THEN 'Heures'
-            ELSE NULL
-        END,
-        CASE right(a.freq_norm, 1)
-            WHEN 'S' THEN 'WEEKS'
-            WHEN 'M' THEN 'MONTHS'
-            WHEN 'A' THEN 'YEARS'
-            WHEN 'H' THEN 'HOURS'
-            ELSE NULL
-        END,
+        -- INTERVAL est obligatoire cote IFS : '0' quand la frequence est vide
+        COALESCE(NULLIF(left(regexp_replace(COALESCE(a.freq_norm, ''), '\D', '', 'g'), 4), ''), '0')  AS "interval",
+        -- PM_INTERVAL_UNIT (libelle) : volontairement vide, seul le code _db est charge
+        NULL::varchar                                                                                   AS pm_interval_unit,
+        -- PM_INTERVAL_UNIT_DB : derniere lettre de la frequence PE Tools (S/M/A/H)
+        -- via la transcodification PM_INTERVAL_UNIT (PETOOLS -> IFS, migration 080),
+        -- sans repli : lettre inconnue ou frequence vide -> NULL
+        public.get_transcodification('PM_INTERVAL_UNIT', right(a.freq_norm, 1), 'PETOOLS', 'IFS')     AS pm_interval_unit_db,
         left(r.designation, 2000),
         n.note,
         CURRENT_TIMESTAMP,

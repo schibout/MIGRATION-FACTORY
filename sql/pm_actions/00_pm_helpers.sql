@@ -11,6 +11,44 @@ AS $function$
 $function$
 ;
 
+-- Type de connexion IFS (pm_action.connection_type / pm_action_work_step.connection_type).
+-- Domaine IFS ferme (DB-value <==> client-value) :
+--   EQUIPMENT <==> EQUIPMENT, VIM <==> VIM, CATEGORY <==> CATEGORY,
+--   PLD <==> DESIGN OBJECT, CMPUNT <==> COMPATIBLE UNIT, LINAST <==> LINEAR ASSET,
+--   TOOLEQ <==> TOOL/EQUIPMENT, PRJWORKPACKAGE <==> WORK PACKAGE, MODEL <==> MODEL.
+-- Rend le libelle client a partir de la valeur DB parametree (ecran Valeurs par
+-- defaut, colonne connection_type_db) et REFUSE toute valeur hors domaine : mieux
+-- vaut un chargement en erreur qu'un fichier rejete par IFS. La colonne
+-- connection_type n'est donc plus parametree separement (migration 080).
+CREATE OR REPLACE FUNCTION clean_data.pm_connection_type_client(p_db text)
+ RETURNS text
+ LANGUAGE plpgsql
+ IMMUTABLE
+AS $function$
+DECLARE
+    v_client text;
+BEGIN
+    v_client := CASE upper(btrim(p_db))
+        WHEN 'EQUIPMENT'      THEN 'EQUIPMENT'
+        WHEN 'VIM'            THEN 'VIM'
+        WHEN 'CATEGORY'       THEN 'CATEGORY'
+        WHEN 'PLD'            THEN 'DESIGN OBJECT'
+        WHEN 'CMPUNT'         THEN 'COMPATIBLE UNIT'
+        WHEN 'LINAST'         THEN 'LINEAR ASSET'
+        WHEN 'TOOLEQ'         THEN 'TOOL/EQUIPMENT'
+        WHEN 'PRJWORKPACKAGE' THEN 'WORK PACKAGE'
+        WHEN 'MODEL'          THEN 'MODEL'
+        ELSE NULL
+    END;
+    IF v_client IS NULL THEN
+        RAISE EXCEPTION 'connection_type_db = % : hors domaine IFS (EQUIPMENT, VIM, CATEGORY, PLD, CMPUNT, LINAST, TOOLEQ, PRJWORKPACKAGE, MODEL). Corriger dans Configuration > Valeurs par defaut.', COALESCE(p_db, 'NULL')
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN v_client;
+END;
+$function$
+;
+
 -- Vue source des procedures pm_action* : 1 ligne = 1 operation de pe_tools,
 -- avec le pm_no calcule (plan d'entretien, suffixe si plusieurs combinaisons
 -- poste/frequence pour un meme plan, repli 900000+raw_id sans plan).

@@ -4,8 +4,9 @@ AS $procedure$
 DECLARE
     v_org_contract        VARCHAR := public.get_default_value('clean_data.pm_action_work_step', 'mch_code_contract');
     v_pm_revision         VARCHAR := public.get_default_value('clean_data.pm_action_work_step', 'pm_revision');
-    v_connection_type     VARCHAR := public.get_default_value('clean_data.pm_action_work_step', 'connection_type');
+    -- connection_type_db : domaine IFS impose, libelle client derive (cf. 00_pm_helpers, migration 080)
     v_connection_type_db  VARCHAR := public.get_default_value('clean_data.pm_action_work_step', 'connection_type_db');
+    v_connection_type     VARCHAR := clean_data.pm_connection_type_client(v_connection_type_db);
     v_count INTEGER := 0;
 BEGIN
     TRUNCATE TABLE clean_data.pm_action_work_step;

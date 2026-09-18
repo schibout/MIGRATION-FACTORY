@@ -4,6 +4,7 @@ CREATE OR REPLACE FUNCTION clean_data.alimenter_purchase_part_supplier()
 AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
+    v_count_primary INTEGER := 0;
     v_start_time TIMESTAMP;
     v_end_time TIMESTAMP;
     v_duration INTERVAL;
@@ -111,8 +112,12 @@ BEGIN
         (NULLIF(TRIM(eine.bpumz), '')::numeric
          / NULLIF(NULLIF(TRIM(eine.bpumn), '')::numeric, 0)) as conv_factor,
         
-        -- PRIMARY_VENDOR_DB: Y par défaut (fournisseur principal)
-        public.get_default_value('clean_data.purchase_part_supplier', 'primary_vendor_db') as primary_vendor_db,
+        -- PRIMARY_VENDOR_DB: valeur CALCULEE, pas une constante (demande explicite du
+        -- 2026-09-18) : un article a plusieurs fournisseurs mais UN SEUL fournisseur
+        -- principal par (site, article). Tout le monde est insere a 'N', puis l'UPDATE
+        -- qui suit l'INSERT elit le principal ('Y'). La ligne primary_vendor_db de
+        -- l'ecran Valeurs par defaut n'est donc plus lue (desactivee par la migration 080).
+        'N' as primary_vendor_db,
         
         -- LEADTIME_AUTO_DB: N (délai manuel)
         public.get_default_value('clean_data.purchase_part_supplier', 'leadtime_auto_db') as leadtime_auto_db,
@@ -200,6 +205,75 @@ BEGIN
     ORDER BY contract, part_no, vendor_no;
     
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
+
+    -- ------------------------------------------------------------------
+    -- Election du fournisseur principal : exactement une ligne 'Y' par
+    -- (contract, part_no), toutes les autres restent a 'N'. Ordre de priorite :
+    --   1. fournisseur fixe de la liste de sources SAP (raw_data.eord, flifn='X',
+    --      valide a la date du jour) sur la division du site (9200 -> SJ, 9000 -> CS) ;
+    --   2. a defaut, fournisseur fixe sur l'ancienne division (2200 -> SJ, 2000 -> CS) ;
+    --   3. a defaut, derniere date de commande la plus recente (eine.datlb) ;
+    --   4. puis fiche-info creee le plus recemment (eina.erdat) ;
+    --   5. puis le plus petit vendor_no (departage stable et reproductible).
+    -- Les cles sont normalisees une fois dans des CTE (LTRIM des zeros de tete,
+    -- LIFNR -> supplier_id) pour joindre en hash et non en boucle par ligne.
+    -- Mesure au 2026-09-18 : 7 580 articles multi-fournisseurs, dont 92 % ont un
+    -- fournisseur fixe EORD parmi leurs liens.
+    -- ------------------------------------------------------------------
+    WITH fixes AS (
+        SELECT
+            LTRIM(TRIM(e.matnr), '0')                                       AS part_no,
+            CASE WHEN e.werks IN ('9200', '2200') THEN 'SJ' ELSE 'CS' END     AS contract,
+            sig.supplier_id                                                 AS vendor_no,
+            MIN(CASE WHEN e.werks IN ('9200', '9000') THEN 1 ELSE 2 END)     AS rang_fixe
+        FROM raw_data.eord e
+        INNER JOIN clean_data.supplier_info_general sig
+            ON LTRIM(TRIM(sig.supplier_legacy_sap_id), '0') = LTRIM(TRIM(e.lifnr), '0')
+        WHERE e.mandt = '700'
+          AND e.flifn = 'X'
+          AND e.werks IN ('9200', '9000', '2200', '2000')
+          AND COALESCE(NULLIF(e.vdatu, ''), '00000000') <= TO_CHAR(CURRENT_DATE, 'YYYYMMDD')
+          AND COALESCE(NULLIF(e.bdatu, ''), '99991231') >= TO_CHAR(CURRENT_DATE, 'YYYYMMDD')
+        GROUP BY 1, 2, 3
+    ),
+    commandes AS (
+        SELECT
+            LTRIM(TRIM(eina.matnr), '0')                                    AS part_no,
+            CASE WHEN eine.ekorg = '9000' THEN 'CS' ELSE 'SJ' END            AS contract,
+            sig.supplier_id                                                 AS vendor_no,
+            MAX(NULLIF(NULLIF(TRIM(eine.datlb), ''), '00000000'))           AS derniere_commande,
+            MAX(NULLIF(NULLIF(TRIM(eina.erdat), ''), '00000000'))           AS fiche_info
+        FROM raw_data.eina eina
+        INNER JOIN raw_data.eine eine
+            ON eine.infnr = eina.infnr AND eine.mandt = '700'
+        INNER JOIN clean_data.supplier_info_general sig
+            ON LTRIM(TRIM(sig.supplier_legacy_sap_id), '0') = LTRIM(TRIM(eina.lifnr), '0')
+        WHERE eine.ekorg IN ('9200', '9000')
+        GROUP BY 1, 2, 3
+    ),
+    classement AS (
+        SELECT
+            pps.ctid AS rid,
+            ROW_NUMBER() OVER (
+                PARTITION BY pps.contract, pps.part_no
+                ORDER BY fx.rang_fixe ASC NULLS LAST,
+                         cmd.derniere_commande DESC NULLS LAST,
+                         cmd.fiche_info DESC NULLS LAST,
+                         pps.vendor_no ASC
+            ) AS rn
+        FROM clean_data.purchase_part_supplier pps
+        LEFT JOIN fixes fx
+            ON fx.contract = pps.contract AND fx.part_no = pps.part_no AND fx.vendor_no = pps.vendor_no
+        LEFT JOIN commandes cmd
+            ON cmd.contract = pps.contract AND cmd.part_no = pps.part_no AND cmd.vendor_no = pps.vendor_no
+    )
+    UPDATE clean_data.purchase_part_supplier pps
+    SET primary_vendor_db = 'Y'
+    FROM classement c
+    WHERE c.rid = pps.ctid
+      AND c.rn = 1;
+
+    GET DIAGNOSTICS v_count_primary = ROW_COUNT;
     
     v_end_time := CURRENT_TIMESTAMP;
     v_duration := v_end_time - v_start_time;
@@ -209,6 +283,7 @@ BEGIN
     RAISE NOTICE 'Alimentation PURCHASE_PART_SUPPLIER terminée';
     RAISE NOTICE '====================================================';
     RAISE NOTICE 'Relations article-fournisseur insérées: %', v_count_inserted;
+    RAISE NOTICE 'Fournisseurs principaux élus (1 par site/article): %', v_count_primary;
     RAISE NOTICE 'Durée d''exécution: %', v_duration;
     RAISE NOTICE '====================================================';
     
