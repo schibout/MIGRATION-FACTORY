@@ -209,7 +209,10 @@ BEGIN
             SUBSTRING(COALESCE(NULLIF(TRIM(werks), ''), 'SJM'), 1, 5) AS site,
             public.get_default_value('clean_data.jt_task', 'company') AS company,
             SUBSTRING(COALESCE(NULLIF(TRIM(werks), ''), 'SJM'), 1, 5) AS organization_site,
-            SUBSTRING(NULLIF(TRIM(arbpl), ''), 1, 8) AS organization_id,
+            -- ORGANIZATION_ID : poste de travail SAP (7.MCAR) transcode en
+            -- organisation IFS (SJ-MCAR) via la categorie 'Organization'.
+            -- Poste non transcode -> NULL (le code SAP brut n'existe pas cote IFS).
+            SUBSTRING(public.get_transcodification('Organization', NULLIF(TRIM(arbpl), '')), 1, 8) AS organization_id,
             SUBSTRING(NULLIF(TRIM(aprio), ''), 1, 10) AS priority_id,
             SUBSTRING(NULLIF(TRIM(steus), ''), 1, 20) AS work_type_id,
             SUBSTRING(COALESCE(NULLIF(TRIM(ltxa1), ''), 'Opération SAP ' || COALESCE(vornr, aplzl)), 1, 200) AS description,
