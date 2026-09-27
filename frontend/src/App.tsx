@@ -83,6 +83,7 @@ import SapDataClients from './pages/SapDataClients';
 import SapDataExplorerPage from './pages/SapDataExplorer';
 import SapDataFournisseurs from './pages/SapDataFournisseurs';
 import SapTableCatalog from './pages/SapTableCatalog';
+import SapViewStructure from './pages/SapViewStructure';
 import SecurityPage from './pages/security/SecurityPage';
 import SharePointProjectsPage from './pages/SharePointProjectsPage';
 import SharePointResourcesPage from './pages/SharePointResourcesPage';
@@ -164,6 +165,7 @@ function App() {
           <Route path="sap-data/articles" element={<SapArticles />} />
           <Route path="sap-data/catalog" element={<SapTableCatalog />} />
           <Route path="sap-data/explorer" element={<SapDataExplorerPage />} />
+          <Route path="sap-data/views" element={<SapViewStructure />} />
           <Route path="sap-raw-data" element={<Navigate to="/sap-data" replace />} />
           
           {/* Routes pour les données IFS */}

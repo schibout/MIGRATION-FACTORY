@@ -4,3 +4,6 @@
 *.bash text eol=lf
 
 backend/tests/fixtures/*.csv -text
+
+# Scripts Windows : CRLF obligatoire pour cmd.exe
+*.bat  text eol=crlf

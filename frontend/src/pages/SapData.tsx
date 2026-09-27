@@ -20,6 +20,7 @@ import {
     Handyman as MaintenanceIcon,
     Search as ExplorerIcon,
     AccountBalance as ComptabiliteIcon,
+    AccountTree as VuesIcon,
 } from '@mui/icons-material';
 
 // Type pour les éléments du menu de données SAP
@@ -85,6 +86,12 @@ const SapData: React.FC = () => {
       path: '/sap-data/explorer',
       icon: <ExplorerIcon sx={{ fontSize: 40, color: '#9c27b0' }} />,
       description: 'Explorez les données des tables SAP avec libellés métier'
+    },
+    {
+      title: 'Vues SAP',
+      path: '/sap-data/views',
+      icon: <VuesIcon sx={{ fontSize: 40, color: '#4db6ac' }} />,
+      description: 'Structure des vues SAP (tables, jointures, conditions, champs) et création dans PostgreSQL'
     }
   ];
 

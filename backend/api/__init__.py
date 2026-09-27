@@ -32,6 +32,7 @@ from .pe_tools_organisation import pe_tools_organisation_blueprint
 from .maintenance_ibau import maintenance_ibau_blueprint
 from .data_browser import data_browser_blueprint
 from .sap_data_explorer import sap_data_explorer_blueprint
+from .sap_view_structure import sap_view_structure_blueprint
 from .ih02_hierarchy import ih02_hierarchy_blueprint
 from .maintenance_lov import maintenance_lov_blueprint
 from .backup import backup_blueprint
@@ -85,6 +86,8 @@ def register_blueprints(app):
     app.register_blueprint(maintenance_ibau_blueprint, url_prefix=f'{API_PREFIX}/maintenance')
     app.register_blueprint(data_browser_blueprint, url_prefix=f'{API_PREFIX}/data-browser')
     app.register_blueprint(sap_data_explorer_blueprint, url_prefix=f'{API_PREFIX}/sap-data-explorer')
+    # Structure des vues SAP (DDIC dd25l/dd26s/dd27s/dd28s) + creation dans le schema sap_view
+    app.register_blueprint(sap_view_structure_blueprint, url_prefix=f'{API_PREFIX}/sap-view-structure')
     # Ecran IH02 : table unique clean_data.maintenance_object (raw_data en lecture seule)
     app.register_blueprint(ih02_hierarchy_blueprint, url_prefix=f'{API_PREFIX}/ih02-hierarchy')
     # Listes de valeurs des combobox de maintenance (Facteur de risque, Zone)
