@@ -1,17 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Autocomplete, Box, Button, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer,
+  Alert, Autocomplete, Box, Button, Checkbox, CircularProgress, Collapse, FormControlLabel, Paper, Table,
+  TableBody, TableCell, TableContainer,
   IconButton, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Tooltip, Typography,
 } from '@mui/material';
-import { Visibility as DetailIcon } from '@mui/icons-material';
+import {
+  ExpandLess as ReplierIcon, ExpandMore as DeplierIcon, PlayArrow as ExecuterIcon, Visibility as DetailIcon,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 import api from '../services/api';
 import SyncSapOperationsButton from '../components/maintenance/SyncSapOperationsButton';
 
-// Operations SAP (AFVC) des ordres non clos -- meme perimetre que l'ETL Operations.
+// Operations SAP (AFVC), selectionnees cote serveur (ecran de selection type IW37N).
 interface Operation {
   ordre: string;
+  statut_ordre: string | null;
   type_ordre: string | null;
   texte_ordre: string | null;
   operation: string;
@@ -37,6 +41,7 @@ const COLONNES: { key: Col; label: string; texte?: (o: Operation) => string }[] 
   { key: 'operation', label: 'Opé.' },
   { key: 'poste_travail', label: 'Pos. trav.' },
   { key: 'texte_operation', label: 'Désignation opération' },
+  { key: 'statut_ordre', label: 'Statut ordre' },
   { key: 'type_ordre', label: 'Type' },
   { key: 'texte_ordre', label: 'Désignation ordre' },
   { key: 'division', label: 'Division' },
@@ -50,6 +55,32 @@ const COLONNES: { key: Col; label: string; texte?: (o: Operation) => string }[] 
 // Valeur telle qu'affichee : c'est elle que filtrent la recherche et les filtres de colonne.
 const affiche = (o: Operation, c: typeof COLONNES[number]) => (c.texte ? c.texte(o) : String(o[c.key] ?? ''));
 
+// Criteres de l'ecran de selection. Par defaut : operations en cours, sans autre borne.
+interface Selection {
+  en_cours: boolean;
+  clotures: boolean;
+  exclure_confirmees: boolean;
+  date_debut: string;
+  date_fin: string;
+  division: string;
+  poste_travail: string;
+  type_ordre: string;
+  ordre: string;
+}
+const SELECTION_DEFAUT: Selection = {
+  en_cours: true, clotures: false, exclure_confirmees: false,
+  date_debut: '', date_fin: '', division: '', poste_travail: '', type_ordre: '', ordre: '',
+};
+// La selection est gardee pour la session : revenir du detail d'un ordre relance la meme.
+const CLE_SELECTION = 'maintenance.operations.selection';
+const lireSelection = (): Selection => {
+  try { return { ...SELECTION_DEFAUT, ...JSON.parse(sessionStorage.getItem(CLE_SELECTION) || '{}') }; } catch { return SELECTION_DEFAUT; }
+};
+// Cases envoyees en '1'/'0' (le serveur considere en_cours absent comme coche).
+const versParams = (s: Selection) => Object.fromEntries(Object.entries(s)
+  .filter(([, v]) => v !== '')
+  .map(([k, v]) => [k, typeof v === 'boolean' ? (v ? '1' : '0') : v.trim()]));
+
 const MaintenanceOperationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Operation[]>([]);
@@ -60,15 +91,36 @@ const MaintenanceOperationsPage: React.FC = () => {
   const [tri, setTri] = useState<{ col: Col; asc: boolean }>({ col: 'ordre', asc: true });
   const [page, setPage] = useState(0);
   const [parPage, setParPage] = useState(50);
+  const [selection, setSelection] = useState<Selection>(lireSelection);
+  const [selectionOuverte, setSelectionOuverte] = useState(true);
+  const [tronque, setTronque] = useState<number | null>(null);
+  const [listes, setListes] = useState<{ divisions: string[]; postes_travail: string[]; types_ordre: string[] }>(
+    { divisions: [], postes_travail: [], types_ordre: [] });
 
-  const charger = () => {
+  const charger = (s: Selection = selection) => {
+    if (!s.en_cours && !s.clotures) {
+      setErreur('Cocher au moins un statut : en cours ou clôturés.');
+      return;
+    }
+    try { sessionStorage.setItem(CLE_SELECTION, JSON.stringify(s)); } catch { /* confort seulement */ }
     setLoading(true);
-    api.get('/maintenance/operations')
-      .then((res) => setRows(res.data?.data || []))
+    setErreur(null);
+    api.get('/maintenance/operations', { params: versParams(s) })
+      .then((res) => {
+        setRows(res.data?.data || []);
+        setTronque(res.data?.tronque ? res.data.max : null);
+        setPage(0);
+      })
       .catch((e) => setErreur(e?.response?.data?.error || 'Chargement des opérations impossible'))
       .finally(() => setLoading(false));
   };
-  useEffect(charger, []);
+  useEffect(() => {
+    charger();
+    api.get('/maintenance/operations/choix').then((res) => res.data?.data && setListes(res.data.data)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const maj = (champ: keyof Selection, valeur: string | boolean) => setSelection((s) => ({ ...s, [champ]: valeur }));
 
   // Valeurs distinctes de chaque colonne, proposees dans la liste du filtre.
   const choix = useMemo(() => Object.fromEntries(COLONNES.map((c) => [c.key,
@@ -94,13 +146,87 @@ const MaintenanceOperationsPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
         <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>Opérations</Typography>
-        <SyncSapOperationsButton onDone={charger} />
+        <SyncSapOperationsButton onDone={() => charger()} />
       </Box>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Opérations SAP des ordres de maintenance non clos (hors TECO, CLSD, DLFL).
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        Opérations SAP des ordres de maintenance. « En cours » = ordre ni clôturé techniquement (TCLO),
+        ni clôturé (CLOT), ni marqué pour suppression (TSUP).
       </Typography>
 
+      <Paper variant="outlined" sx={{ mb: 2 }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1, cursor: 'pointer' }}
+          onClick={() => setSelectionOuverte((o) => !o)}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Sélection</Typography>
+          {selectionOuverte ? <ReplierIcon /> : <DeplierIcon />}
+        </Box>
+        <Collapse in={selectionOuverte}>
+          <Box
+            component="form"
+            onSubmit={(e: React.FormEvent) => { e.preventDefault(); charger(); }}
+            sx={{ px: 2, pb: 2, display: 'flex', flexDirection: 'column', gap: 2 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>Statut de l'ordre :</Typography>
+              <FormControlLabel
+                control={<Checkbox checked={selection.en_cours} onChange={(e) => maj('en_cours', e.target.checked)} />}
+                label="En cours (Ouvert + Lancé)"
+              />
+              <FormControlLabel
+                control={<Checkbox checked={selection.clotures} onChange={(e) => maj('clotures', e.target.checked)} />}
+                label="Clôturés"
+              />
+              <FormControlLabel
+                control={<Checkbox checked={selection.exclure_confirmees} onChange={(e) => maj('exclure_confirmees', e.target.checked)} />}
+                label="Exclure les opérations déjà confirmées"
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <TextField
+                size="small" type="date" label="Début planifié du" InputLabelProps={{ shrink: true }}
+                value={selection.date_debut} onChange={(e) => maj('date_debut', e.target.value)}
+              />
+              <TextField
+                size="small" type="date" label="au" InputLabelProps={{ shrink: true }}
+                value={selection.date_fin} onChange={(e) => maj('date_fin', e.target.value)}
+              />
+              {([
+                ['division', 'Division', listes.divisions],
+                ['poste_travail', 'Pos. trav.', listes.postes_travail],
+                ['type_ordre', "Type d'ordre", listes.types_ordre],
+              ] as [keyof Selection, string, string[]][]).map(([champ, label, options]) => (
+                <Autocomplete
+                  key={champ}
+                  freeSolo
+                  size="small"
+                  options={options}
+                  inputValue={String(selection[champ])}
+                  onInputChange={(_, v) => maj(champ, v)}
+                  sx={{ width: 170 }}
+                  renderInput={(params) => <TextField {...params} label={label} />}
+                />
+              ))}
+              <TextField
+                size="small" label="N° d'ordre" sx={{ width: 150 }}
+                value={selection.ordre} onChange={(e) => maj('ordre', e.target.value)}
+              />
+              <Button type="submit" variant="contained" startIcon={<ExecuterIcon />} disabled={loading}>
+                Exécuter
+              </Button>
+              <Button onClick={() => setSelection(SELECTION_DEFAUT)}>Réinitialiser</Button>
+            </Box>
+          </Box>
+        </Collapse>
+      </Paper>
+
       {erreur && <Alert severity="error" sx={{ mb: 2 }}>{erreur}</Alert>}
+      {tronque && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Plus de {tronque.toLocaleString()} opérations correspondent : seules les {tronque.toLocaleString()} premières
+          (par n° d'ordre) sont affichées. Précisez la sélection (période, division, poste de travail…).
+        </Alert>
+      )}
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         <TextField

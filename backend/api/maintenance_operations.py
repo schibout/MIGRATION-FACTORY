@@ -1,57 +1,144 @@
 """
 Liste des operations SAP -- blueprint /api/v1/maintenance/operations.
 
-Meme perimetre que le module ETL Operations : operations (AFVC) des ordres
-SAP NON clos (anti-jointure sur clean_data.v_sap_ordre_clos), en-tete d'ordre
-AFKO obligatoire. ~6 000 lignes : renvoyees en une fois, filtrage et tri cote
-ecran. Lecture seule sur raw_data.
+Ecran de selection type IW37N : le serveur filtre (statut de l'ordre, periode,
+division, poste de travail, type, numero) puis renvoie au plus MAX_LIGNES
+lignes ; filtres par colonne et tri se font ensuite cote ecran.
+« En cours » = ordre sans statut actif TECO/CLSD/DLFL (clean_data.v_sap_ordre_clos,
+meme perimetre que l'ETL Operations). Lecture seule sur raw_data.
 """
+import re
+
 import psycopg2.extras
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from config.database import get_db_connection
 
 maintenance_operations_blueprint = Blueprint('maintenance_operations', __name__)
 
+MAX_LIGNES = 10000
+
+# Statut principal affiche pour l'ordre : le premier statut actif dans cet ordre.
+_STATUTS_ORDRE = ['I0076', 'I0046', 'I0045', 'I0002', 'I0001']
+
+_LISTE = """
+    SELECT x.*,
+           (SELECT j.stat
+              FROM raw_data.jest j
+             WHERE j.mandt = x.mandt AND j.objnr = x.objnr AND j.stat = ANY(%(statuts)s)
+               AND (j.inact IS NULL OR trim(j.inact) <> 'X')
+             ORDER BY array_position(%(statuts)s::text[], j.stat::text) LIMIT 1) AS statut_ordre
+    FROM (
+        SELECT k.mandt, a.objnr,
+               LTRIM(k.aufnr, '0')         AS ordre,
+               a.auart                     AS type_ordre,
+               a.ktext                     AS texte_ordre,
+               v.vornr                     AS operation,
+               v.ltxa1                     AS texte_operation,
+               v.werks                     AS division,
+               c.arbpl                     AS poste_travail,
+               l.tplnr                     AS poste_technique,
+               LTRIM(h.equnr, '0')         AS equipement,
+               NULLIF(k.gstrp, '00000000') AS debut_planifie,
+               NULLIF(k.gltrp, '00000000') AS fin_planifiee,
+               vv.arbei                    AS travail,
+               vv.arbeh                    AS unite_travail
+        FROM raw_data.afvc v
+        JOIN raw_data.afko k ON k.mandt = v.mandt AND k.aufpl = v.aufpl
+        LEFT JOIN raw_data.aufk a ON a.mandt = k.mandt AND a.aufnr = k.aufnr
+        LEFT JOIN raw_data.afih h ON h.mandt = k.mandt AND h.aufnr = k.aufnr
+        LEFT JOIN raw_data.iloa l ON l.mandt = h.mandt AND l.iloan = h.iloan
+        LEFT JOIN raw_data.crhd c ON c.mandt = v.mandt AND c.objid = v.arbid AND c.objty = 'A'
+        LEFT JOIN raw_data.afvv vv ON vv.mandt = v.mandt AND vv.aufpl = v.aufpl AND vv.aplzl = v.aplzl
+        WHERE {where}
+        ORDER BY k.aufnr, v.vornr
+        LIMIT %(limite)s
+    ) x
+"""
+
+_CLOS = "EXISTS (SELECT 1 FROM clean_data.v_sap_ordre_clos o WHERE o.mandt = k.mandt AND o.aufnr = k.aufnr)"
+
+
+def _date_sap(valeur):
+    """'2026-01-31' (champ date HTML) -> '20260131' ; None si vide ou invalide."""
+    valeur = (valeur or '').strip()
+    return valeur.replace('-', '') if re.fullmatch(r'\d{4}-\d{2}-\d{2}', valeur) else None
+
 
 @maintenance_operations_blueprint.route('/operations', methods=['GET'])
 @jwt_required()
 def list_operations():
+    args = request.args
+    en_cours = args.get('en_cours', '1') == '1'
+    clotures = args.get('clotures') == '1'
+    if not (en_cours or clotures):
+        return jsonify({'success': False, 'error': 'Cocher au moins un statut (en cours ou clôturés).'}), 400
+
+    where, params = ['TRUE'], {'statuts': _STATUTS_ORDRE, 'limite': MAX_LIGNES + 1}
+    if en_cours and not clotures:
+        where.append('NOT ' + _CLOS)
+    elif clotures and not en_cours:
+        where.append(_CLOS)
+    # Dates SAP en texte YYYYMMDD : comparaison texte = comparaison chronologique.
+    if _date_sap(args.get('date_debut')):
+        where.append('k.gstrp >= %(date_debut)s')
+        params['date_debut'] = _date_sap(args.get('date_debut'))
+    if _date_sap(args.get('date_fin')):
+        where.append("k.gstrp <= %(date_fin)s AND k.gstrp <> '00000000'")
+        params['date_fin'] = _date_sap(args.get('date_fin'))
+    for champ, colonne in (('division', 'v.werks'), ('poste_travail', 'c.arbpl'), ('type_ordre', 'a.auart')):
+        if (args.get(champ) or '').strip():
+            where.append(f'{colonne} = %({champ})s')
+            params[champ] = args[champ].strip()
+    ordre = (args.get('ordre') or '').strip()
+    if ordre:
+        where.append('k.aufnr = %(ordre)s')
+        params['ordre'] = ordre.zfill(12) if ordre.isdigit() else ordre
+    if args.get('exclure_confirmees') == '1':
+        # Statut CONF (I0009) actif sur l'operation elle-meme (AFVC.OBJNR).
+        where.append("""NOT EXISTS (SELECT 1 FROM raw_data.jest jc WHERE jc.mandt = v.mandt AND jc.objnr = v.objnr
+                        AND jc.stat = 'I0009' AND (jc.inact IS NULL OR trim(jc.inact) <> 'X'))""")
+
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             # Le JIT coute ~7 s de compilation sur cette requete pour rien.
             cursor.execute("SET LOCAL jit = off")
-            cursor.execute("""
-                SELECT LTRIM(k.aufnr, '0')         AS ordre,
-                       a.auart                     AS type_ordre,
-                       a.ktext                     AS texte_ordre,
-                       v.vornr                     AS operation,
-                       v.ltxa1                     AS texte_operation,
-                       v.werks                     AS division,
-                       c.arbpl                     AS poste_travail,
-                       l.tplnr                     AS poste_technique,
-                       LTRIM(h.equnr, '0')         AS equipement,
-                       NULLIF(k.gstrp, '00000000') AS debut_planifie,
-                       NULLIF(k.gltrp, '00000000') AS fin_planifiee,
-                       vv.arbei                    AS travail,
-                       vv.arbeh                    AS unite_travail
-                FROM raw_data.afvc v
-                JOIN raw_data.afko k ON k.mandt = v.mandt AND k.aufpl = v.aufpl
-                LEFT JOIN raw_data.aufk a ON a.mandt = k.mandt AND a.aufnr = k.aufnr
-                LEFT JOIN raw_data.afih h ON h.mandt = k.mandt AND h.aufnr = k.aufnr
-                LEFT JOIN raw_data.iloa l ON l.mandt = h.mandt AND l.iloan = h.iloan
-                LEFT JOIN raw_data.crhd c ON c.mandt = v.mandt AND c.objid = v.arbid AND c.objty = 'A'
-                LEFT JOIN raw_data.afvv vv ON vv.mandt = v.mandt AND vv.aufpl = v.aufpl AND vv.aplzl = v.aplzl
-                WHERE NOT EXISTS (SELECT 1 FROM clean_data.v_sap_ordre_clos o
-                                   WHERE o.mandt = k.mandt AND o.aufnr = k.aufnr)
-                ORDER BY k.aufnr, v.vornr
-            """)
+            cursor.execute(_LISTE.format(where=' AND '.join(where)), params)
             rows = cursor.fetchall()
-            return jsonify({'success': True, 'data': rows, 'total': len(rows)}), 200
+            # Libelles TJ02T lus une fois (une recherche par ligne coutait ~3 s sur 10 000 lignes).
+            cursor.execute("SELECT istat, txt04 FROM raw_data.tj02t WHERE spras = 'F'")
+            libelles = {r['istat']: r['txt04'] for r in cursor.fetchall()}
+            tronque = len(rows) > MAX_LIGNES
+            rows = rows[:MAX_LIGNES]
+            for r in rows:
+                del r['mandt'], r['objnr']
+                r['statut_ordre'] = libelles.get(r['statut_ordre'], r['statut_ordre'])
+            return jsonify({'success': True, 'data': rows, 'total': len(rows),
+                            'tronque': tronque, 'max': MAX_LIGNES}), 200
     except Exception as e:
         current_app.logger.error(f"Erreur liste des operations: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@maintenance_operations_blueprint.route('/operations/choix', methods=['GET'])
+@jwt_required()
+def operation_choices():
+    """Valeurs proposees par les listes de l'ecran de selection."""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT werks FROM raw_data.t001w WHERE werks <> '' ORDER BY 1")
+            divisions = [r[0] for r in cursor.fetchall()]
+            cursor.execute("SELECT DISTINCT arbpl FROM raw_data.crhd WHERE objty = 'A' AND arbpl <> '' ORDER BY 1")
+            postes = [r[0] for r in cursor.fetchall()]
+            cursor.execute("SELECT DISTINCT auart FROM raw_data.aufk WHERE auart <> '' ORDER BY 1")
+            types = [r[0] for r in cursor.fetchall()]
+            return jsonify({'success': True, 'data': {
+                'divisions': divisions, 'postes_travail': postes, 'types_ordre': types}}), 200
+    except Exception as e:
+        current_app.logger.error(f"Erreur choix operations: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
