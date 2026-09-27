@@ -41,7 +41,9 @@ BEGIN
         stop_arrival_issued_serial_db,
         allow_as_not_consumed_db,
         receipt_issue_serial_track_db,
-        stop_new_serial_in_rma_db
+        stop_new_serial_in_rma_db,
+        -- Texte de commande SAP (STXH/STXL MATERIAL/BEST), cf. jointure txt
+        info_text
     )
     SELECT 
         -- Colonnes obligatoires (NOT NULL)
@@ -81,9 +83,20 @@ BEGIN
         public.get_default_value('clean_data.part_catalog', 'stop_arrival_issued_serial_db') as stop_arrival_issued_serial_db,
         public.get_default_value('clean_data.part_catalog', 'allow_as_not_consumed_db') as allow_as_not_consumed_db,
         public.get_default_value('clean_data.part_catalog', 'receipt_issue_serial_track_db') as receipt_issue_serial_track_db,
-        public.get_default_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db') as stop_new_serial_in_rma_db
-        
+        public.get_default_value('clean_data.part_catalog', 'stop_new_serial_in_rma_db') as stop_new_serial_in_rma_db,
+        txt.info_text
+
     FROM clean_data.ifs_article_maitre va
+    -- info_text : texte de commande SAP (texte long MATERIAL / BEST / F).
+    -- STXL.CLUSTD est un cluster compresse illisible en SQL (et NULL dans
+    -- raw_data.stxl : type LRAW non extrait) : le contenu est lu par
+    -- RFC_READ_TEXT dans raw_data.sap_long_text (scripts/texteSurCommande/)
+    -- et recompose par clean_data.texte_long_sap (sql/functions/) : SAPscript
+    -- -> lignes, btrim, LEFT 2000. tdname et numero_article sont tous deux le
+    -- MATNR sur 18 caracteres. Langue F uniquement (demande du 2026-09-19).
+    LEFT JOIN LATERAL (
+        SELECT clean_data.texte_long_sap('MATERIAL', 'BEST', va.numero_article, ARRAY['F']) AS info_text
+    ) txt ON TRUE
     WHERE va.numero_article IS NOT NULL
     AND TRIM(COALESCE(va.numero_article, '')) != ''
     -- Perimetre societe STJN : seuls les articles rattaches a une division

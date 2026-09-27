@@ -29,6 +29,7 @@ import ExportStructureMaintenance from './pages/ExportStructureMaintenance';
 import Extraction from './pages/Extraction';
 import ExtractionHub from './pages/ExtractionHub';
 import MetadataExtraction from './pages/MetadataExtraction';
+import TextesExtraction from './pages/TextesExtraction';
 import FieldMappingManagement from './pages/FieldMappingManagement';
 import IfsCatalog from './pages/IfsCatalog';
 import IfsTableCatalog from './pages/IfsTableCatalog';
@@ -149,6 +150,7 @@ function App() {
           <Route path="extraction/new" element={<Extraction mode="new" />} />
           <Route path="extraction/history" element={<Extraction mode="history" />} />
           <Route path="extraction/metadata" element={<MetadataExtraction />} />
+          <Route path="extraction/textes" element={<TextesExtraction />} />
           <Route path="extraction/status" element={<Extraction mode="status" />} />
           
           {/* Redirection du menu Données vers la page d'accueil */}

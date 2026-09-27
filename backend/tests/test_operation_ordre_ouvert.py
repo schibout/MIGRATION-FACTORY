@@ -33,22 +33,34 @@ FICHIERS = (
     os.path.join(SQL_DIR, 'create_clean_data_maint_material_req_line.sql'),
 )
 
-# Ordres clos au sens SAP (statut actif sur l'objet de l'ordre)
-ORDRE_CLOS = """
-    EXISTS (
-        SELECT 1
-        FROM raw_data.aufk a
-        JOIN raw_data.jest j ON j.mandt = a.mandt AND j.objnr = a.objnr
-        WHERE a.aufnr = lpad({aufnr}::text, 12, '0')
-          AND (j.inact IS NULL OR trim(j.inact) <> 'X')
-          AND j.stat IN ('I0045', 'I0046', 'I0076')
-    )
+# Referentiels calcules UNE fois dans la transaction (les index SAP commencent
+# par mandt : un EXISTS correle par aufnr seul balaie aufk a chaque ligne).
+REFERENTIELS = """
+    CREATE TEMP TABLE t_ordre_clos AS
+    SELECT DISTINCT a.mandt, trim(a.aufnr) AS aufnr_txt,
+           CASE WHEN trim(a.aufnr) ~ '^[0-9]+$' THEN trim(a.aufnr)::numeric END AS aufnr
+    FROM raw_data.aufk a
+    JOIN raw_data.jest j ON j.mandt = a.mandt AND j.objnr = a.objnr
+    WHERE (j.inact IS NULL OR trim(j.inact) <> 'X')
+      AND j.stat IN ('I0045', 'I0046', 'I0076');
+    CREATE TEMP TABLE t_ordre_annee AS
+    SELECT trim(k.aufnr)::numeric AS aufnr, left(trim(k.gstrp), 4) AS annee
+    FROM raw_data.afko k WHERE trim(k.aufnr) ~ '^[0-9]+$';
+    CREATE INDEX ON t_ordre_clos (aufnr);
+    CREATE INDEX ON t_ordre_clos (aufnr_txt);
+    CREATE INDEX ON t_ordre_annee (aufnr);
+    ANALYZE t_ordre_clos;
+    ANALYZE t_ordre_annee;
 """
 
-ANNEE_GSTRP = """
-    (SELECT left(trim(k.gstrp), 4) FROM raw_data.afko k
-     WHERE k.aufnr = lpad({aufnr}::text, 12, '0') LIMIT 1)
-"""
+ORDRE_CLOS = "EXISTS (SELECT 1 FROM t_ordre_clos oc WHERE oc.aufnr = {aufnr})"
+# Cote source SAP on compare en texte : les AUFNR non numeriques (F22330010501)
+# ont wo_no NULL dans la cible mais doivent quand meme etre exclus s'ils sont clos.
+ORDRE_CLOS_TXT = "EXISTS (SELECT 1 FROM t_ordre_clos oc WHERE oc.aufnr_txt = trim({col}))"
+ANNEE_GSTRP = "(SELECT annee FROM t_ordre_annee oa WHERE oa.aufnr = {aufnr} LIMIT 1)"
+# Certains AUFNR ne sont pas numeriques (ex. F22330010501) : les loaders y
+# mettent wo_no NULL mais gardent l'operation.
+NUM = "(CASE WHEN trim({col}) ~ '^[0-9]+$' THEN trim({col})::numeric END)"
 
 
 def _connect():
@@ -79,11 +91,19 @@ def cur():
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         _preparer(cur)
+        cur.execute(REFERENTIELS)
         cur.execute("SELECT clean_data.alimenter_jt_task()")
         cur.execute("SELECT clean_data.alimenter_jt_task_resource()")
-        # maint_material_req_line est incrementale (NOT EXISTS sur l'existant)
-        cur.execute("TRUNCATE TABLE clean_data.maint_material_req_line")
+        # Rechargement complet attendu (2026-09-19) : la ligne temoin doit
+        # disparaitre et un second appel ne doit rien doubler.
+        cur.execute("""INSERT INTO clean_data.maint_material_req_line
+                       (maint_material_order_no, line_item_no, part_no) VALUES (-1, -1, 'TEMOIN')""")
         cur.execute("SELECT clean_data.alimenter_maint_material_req_line()")
+        cur.execute("SELECT clean_data.alimenter_maint_material_req_line()")
+        # Tables tronquees puis rechargees dans la transaction : sans ANALYZE le
+        # planificateur les croit vides et choisit des boucles imbriquees.
+        cur.execute("ANALYZE clean_data.jt_task; ANALYZE clean_data.jt_task_resource; "
+                    "ANALYZE clean_data.maint_material_req_line")
         yield cur
     finally:
         conn.rollback()
@@ -123,7 +143,7 @@ def test_jt_task_couvre_toutes_les_operations_d_ordres_ouverts(cur):
         JOIN raw_data.afko k ON k.mandt = v.mandt AND k.aufpl = v.aufpl
         WHERE (v.loekz IS NULL OR trim(v.loekz) = '')
           AND trim(v.aufpl) ~ '^[0-9]+$' AND trim(v.aplzl) ~ '^[0-9]+$'
-          AND NOT """ + ORDRE_CLOS.format(aufnr='trim(k.aufnr)::numeric'))
+          AND NOT """ + ORDRE_CLOS_TXT.format(col='k.aufnr'))
     charge = _one(cur, "SELECT count(*) AS n FROM clean_data.jt_task")['n']
     assert charge == r['n'], f"jt_task = {charge}, attendu {r['n']} operations d'ordres ouverts"
 
@@ -150,8 +170,31 @@ def test_maint_material_req_line_aucun_ordre_clos(cur):
         FROM clean_data.maint_material_req_line c
         JOIN raw_data.resb r ON trim(r.rsnum)::numeric = c.maint_material_order_no
                             AND trim(r.rspos)::numeric = c.line_item_no
-        WHERE """ + ORDRE_CLOS.format(aufnr='trim(r.aufnr)::numeric'))
+        WHERE """ + ORDRE_CLOS_TXT.format(col='r.aufnr'))
     assert r['n'] == 0
+
+
+def test_maint_material_req_line_rechargement_complet(cur):
+    """Le module vide la table puis la recharge : pas de ligne d'un chargement
+    precedent (temoin), pas de doublon apres deux appels."""
+    r = _one(cur, "SELECT count(*) AS n FROM clean_data.maint_material_req_line WHERE part_no = 'TEMOIN'")
+    assert r['n'] == 0, "la table n'est pas videe avant rechargement"
+    r = _one(cur, """SELECT count(*) AS n, count(DISTINCT (maint_material_order_no, line_item_no)) AS d
+                     FROM clean_data.maint_material_req_line""")
+    assert r['n'] == r['d'], f"{r['n'] - r['d']} doublons apres deux chargements"
+
+
+def test_maint_material_req_line_exige_un_ordre_afko(cur):
+    """L'ancien filtre de date excluait implicitement les reservations sans
+    en-tete d'ordre (134 lignes RESB, dont 94 sans AUFNR) : elles restent exclues."""
+    r = _one(cur, """
+        SELECT count(*) AS n
+        FROM clean_data.maint_material_req_line c
+        JOIN raw_data.resb r ON trim(r.rsnum)::numeric = c.maint_material_order_no
+                            AND trim(r.rspos)::numeric = c.line_item_no
+        WHERE NOT EXISTS (SELECT 1 FROM raw_data.afko k
+                          WHERE k.mandt = r.mandt AND k.aufnr = r.aufnr)""")
+    assert r['n'] == 0, f"{r['n']} besoins matiere sans en-tete d'ordre AFKO"
 
 
 def test_maint_material_req_line_hors_2026(cur):
@@ -160,5 +203,5 @@ def test_maint_material_req_line_hors_2026(cur):
         FROM clean_data.maint_material_req_line c
         JOIN raw_data.resb r ON trim(r.rsnum)::numeric = c.maint_material_order_no
                             AND trim(r.rspos)::numeric = c.line_item_no
-        WHERE """ + ANNEE_GSTRP.format(aufnr='trim(r.aufnr)::numeric') + " <> '2026'")
+        WHERE """ + ANNEE_GSTRP.format(aufnr=NUM.format(col='r.aufnr')) + " <> '2026'")
     assert r['n'] > 0, "le loader besoins matiere garde un filtre sur l'annee 2026"

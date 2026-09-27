@@ -116,6 +116,39 @@ export interface MetadataJob {
 }
 
 // Service d'extraction
+// ── Textes longs SAP (STXH/STXL -> raw_data.sap_long_text) ─────────────────
+export interface TextesObjet {
+  objet: string;      // STXH.TDOBJECT (MATERIAL, EINA, EINE, ...)
+  tdid: string;       // STXH.TDID (BEST, AT, BT, ...)
+  langue: string;     // langue SAP interne (F, E, D, ...)
+  entetes: number;    // en-tetes STXH = textes a lire
+  charges: number;    // textes deja presents dans raw_data.sap_long_text
+  loadedAt: string | null;
+}
+
+export type TextesJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface TextesJob {
+  id: string;
+  status: TextesJobStatus;
+  progress: number;
+  objet: string;
+  tdids: string[] | null;
+  langues: string[] | null;
+  purge: boolean;
+  clesLues: number;
+  clesTotal: number | null;
+  textesLus: number;
+  absents: number;
+  lignes: number;
+  lignesInserees: number;
+  csv: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  duration: number | null;
+  error: string | null;
+}
+
 const extractionService = {
   getAvailableTables: async (): Promise<{ name: string; description: string; tableClass?: string; clientDependent?: boolean; availableForMapping?: boolean }[]> => {
     try {
@@ -245,6 +278,47 @@ const extractionService = {
       console.error(`Erreur lors de l'annulation du job métadonnées ${jobId}:`, error);
       throw error;
     }
+  },
+
+  // ── Textes longs SAP ──────────────────────────────────────────────────
+  // Inventaire des textes disponibles dans raw_data.stxh (aucun appel SAP)
+  getTextesObjets: async (objet?: string): Promise<TextesObjet[]> => {
+    const response = await api.get('/extraction/textes/objets', { params: objet ? { objet } : {} });
+    return response.data;
+  },
+
+  // Lancer l'extraction des textes longs d'un objet (RFC_READ_TEXT, job de fond)
+  extractTextes: async (
+    objet: string,
+    opts: { tdids?: string[]; langues?: string[]; purge?: boolean } = {},
+  ): Promise<{ textes_job_id: string; status: string; objet: string }> => {
+    const response = await api.post('/extraction/textes/extract', {
+      objet,
+      tdids: opts.tdids?.length ? opts.tdids : null,
+      langues: opts.langues?.length ? opts.langues : null,
+      purge: opts.purge ?? false,
+    });
+    return response.data;
+  },
+
+  getTextesStatus: async (jobId: string): Promise<TextesJob> => {
+    const response = await api.get(`/extraction/textes/status/${jobId}`);
+    return response.data;
+  },
+
+  getTextesJobs: async (limit = 30): Promise<TextesJob[]> => {
+    const response = await api.get('/extraction/textes/jobs', { params: { limit } });
+    return response.data;
+  },
+
+  getTextesLogs: async (jobId: string, limit = 200): Promise<ExtractionLog[]> => {
+    const response = await api.get(`/extraction/textes/jobs/${jobId}/logs`, { params: { limit } });
+    return response.data;
+  },
+
+  cancelTextesJob: async (jobId: string): Promise<{ message?: string }> => {
+    const response = await api.post(`/extraction/textes/jobs/${jobId}/cancel`);
+    return response.data;
   },
 
   // Obtenir la hiérarchie IFLO
