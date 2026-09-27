@@ -60,6 +60,8 @@ export interface AvailableSapTable {
   domaine_applicatif: string;
   modifie_par: string;
   date_modification: string;
+  catalogued?: boolean;   // deja dans public.sap_table_properties
+  in_raw_data?: boolean;  // table physique raw_data.<t> presente
 }
 
 export interface AvailableTablesResult {

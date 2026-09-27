@@ -245,6 +245,8 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
   const [availRowsPerPage, setAvailRowsPerPage] = useState(100);
   const [tablesToCreate, setTablesToCreate] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  // Forcer : remplace l'entree de table_config.py puis recree raw_data.<t> (DROP ... CASCADE)
+  const [forceCreate, setForceCreate] = useState(false);
   const [metadataJob, setMetadataJob] = useState<MetadataJob | null>(null);
   // Job métadonnées en cours de suivi (null = aucun / suivi annulé)
   const metadataPollRef = useRef<string | null>(null);
@@ -286,6 +288,7 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
   const openDiscover = () => {
     setMetadataJob(null);
     setTablesToCreate([]);
+    setForceCreate(false);
     setAvailLoading(true); // évite le flash "Aucune table" pendant le debounce initial
     setDiscoverOpen(true);
     // le chargement initial est déclenché par le useEffect ci-dessus
@@ -340,7 +343,7 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
     setAvailError(null);
     setMetadataJob(null);
     try {
-      const res = await extractionService.extractMetadata(tablesToCreate);
+      const res = await extractionService.extractMetadata(tablesToCreate, { force: forceCreate });
       metadataPollRef.current = res.metadata_job_id;
       pollMetadataJob(res.metadata_job_id);
     } catch (e: any) {
@@ -1063,7 +1066,7 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
                     )}
                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
                       {d.name} — {d.status}
-                      {d.status === 'completed' && d.fields_count ? ` (${d.fields_count} champs${d.added_to_config ? ', table créée' : ''})` : ''}
+                      {d.status === 'completed' && d.fields_count ? ` (${d.fields_count} champs${d.added_to_config ? ', table créée' : ', déjà en configuration : table NON créée (cocher « Forcer »)'})` : ''}
                       {d.error ? ` : ${d.error}` : ''}
                     </Typography>
                   </Box>
@@ -1105,7 +1108,21 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
                           <TableCell padding="checkbox">
                             <Checkbox checked={checked} size="small" />
                           </TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{t.table_sap}</TableCell>
+                          <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                            {t.table_sap}
+                            {t.catalogued && (
+                              <Chip label="cataloguée" size="small" color="info" variant="outlined" sx={{ ml: 1, height: 18, fontSize: '0.65rem' }} />
+                            )}
+                            {t.catalogued && (
+                              <Chip
+                                label={t.in_raw_data ? 'raw_data' : 'absente de raw_data'}
+                                size="small"
+                                color={t.in_raw_data ? 'success' : 'error'}
+                                variant="outlined"
+                                sx={{ ml: 0.5, height: 18, fontSize: '0.65rem' }}
+                              />
+                            )}
+                          </TableCell>
                           <TableCell>{t.description}</TableCell>
                           <TableCell>
                             {t.domaine_applicatif && (
@@ -1132,11 +1149,39 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
                 labelDisplayedRows={({ from, to, count }) => `${from}–${to} sur ${count}`}
               />
             </TableContainer>
+            {(() => {
+              const dejaCataloguees = availResults.filter((t) => t.catalogued && tablesToCreate.includes(t.table_sap));
+              if (forceCreate) {
+                const avecDonnees = dejaCataloguees.filter((t) => t.in_raw_data).map((t) => t.table_sap);
+                return (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    « Forcer » remplace l'entrée de la table dans la configuration d'extraction par TOUS ses champs SAP
+                    (commentaires, date_fields et batch_size personnalisés perdus), puis supprime et recrée la table
+                    raw_data vide (DROP TABLE … CASCADE : les vues qui en dépendent sont supprimées aussi).
+                    {avecDonnees.length > 0 && <><br /><b>Données existantes perdues : {avecDonnees.join(', ')}</b></>}
+                    <br />Ensuite : redémarrer pyrfc_app puis relancer l'extraction des données.
+                  </Alert>
+                );
+              }
+              if (dejaCataloguees.length > 0) {
+                return (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    Déjà cataloguée(s) : {dejaCataloguees.map((t) => t.table_sap).join(', ')}. Sans « Forcer », seules les
+                    métadonnées sont rechargées et aucune table raw_data n'est créée.
+                  </Alert>
+                );
+              }
+              return null;
+            })()}
           </DialogContent>
           <DialogActions>
             <Typography variant="body2" color="text.secondary" sx={{ mr: 'auto', ml: 1 }}>
               {tablesToCreate.length} sélectionnée{tablesToCreate.length > 1 ? 's' : ''}
             </Typography>
+            <FormControlLabel
+              control={<Checkbox checked={forceCreate} onChange={(e) => setForceCreate(e.target.checked)} size="small" color="error" />}
+              label="Forcer (recréer config + table)"
+            />
             <Button onClick={closeDiscover}>Fermer</Button>
             <Button
               variant="contained"

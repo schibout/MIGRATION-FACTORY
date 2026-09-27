@@ -37,10 +37,10 @@ def get_available_tables():
 
 @extraction_blueprint.route('/tables/available', methods=['GET'])
 def available_tables():
-    """Recherche les tables SAP transparentes non encore cataloguées.
+    """Recherche les tables SAP transparentes du dictionnaire, cataloguées ou non.
 
     Query params : search, domaine, limit (défaut 100, max 1000), offset.
-    Proxy vers le service SAP avec recherche/pagination côté serveur.
+    Chaque ligne porte `catalogued` et `in_raw_data` (option « Forcer » de l'écran).
     """
     try:
         search = request.args.get('search', type=str)

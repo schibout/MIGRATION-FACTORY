@@ -136,29 +136,49 @@ class ExtractionService:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
-        """Recherche les tables SAP transparentes non encore cataloguées.
+        """Recherche les tables SAP transparentes du dictionnaire (raw_data.dd02l).
 
-        Proxy vers GET {SAP_API}/tables/available avec recherche serveur,
-        filtre par domaine applicatif et pagination.
+        Lu directement en base (et non plus via GET {SAP_API}/tables/available, qui
+        EXCLUAIT les tables deja cataloguees) : une table deja dans
+        public.sap_table_properties reste proposee, signalee par `catalogued`, pour
+        pouvoir la recreer avec l'option « Forcer » (ex. apres un DROP de raw_data.<t>).
+        `in_raw_data` indique si la table physique existe.
         """
-        params: Dict[str, Any] = {"limit": limit, "offset": offset}
-        if search:
-            params["search"] = search
+        from config.database import get_db_connection
+        import psycopg2.extras
+
+        filters, params = "", {"limit": limit, "offset": offset}
         if domaine:
-            params["domaine"] = domaine
-        try:
-            resp = requests.get(
-                f"{SAP_API_URL}/tables/available",
-                params=params,
-                timeout=max(SAP_API_TIMEOUT, 30),
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except Exception as e:
-            current_app.logger.error(f"SAP API /tables/available echoue: {e}")
-            raise RuntimeError(
-                f"Impossible de contacter le conteneur SAP ({SAP_API_URL}): {e}"
-            ) from e
+            filters += " AND l.applclass = %(domaine)s"
+            params["domaine"] = domaine.strip().upper()
+        if search:
+            filters += " AND (l.tabname ILIKE %(search)s OR t.ddtext ILIKE %(search)s)"
+            params["search"] = f"%{search.strip()}%"
+        base_from = """
+            FROM raw_data.dd02l l
+            LEFT JOIN raw_data.dd02t t
+                   ON t.tabname = l.tabname AND t.as4local = l.as4local AND t.ddlanguage = 'F'
+            WHERE l.as4local = 'A'
+              AND l.tabclass = 'TRANSP'
+              AND l.tabname NOT LIKE '%%/%%'
+        """ + filters
+
+        with get_db_connection() as conn:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute("SELECT count(*) AS n " + base_from, params)
+            total = cur.fetchone()["n"]
+            cur.execute("""
+                SELECT l.tabname                                  AS table_sap,
+                       COALESCE(t.ddtext, '(aucune description)') AS description,
+                       l.applclass                                AS domaine_applicatif,
+                       l.as4user                                  AS modifie_par,
+                       l.as4date                                  AS date_modification,
+                       EXISTS (SELECT 1 FROM public.sap_table_properties p
+                                WHERE p.table_name = l.tabname)   AS catalogued,
+                       to_regclass('raw_data.' || quote_ident(lower(l.tabname))) IS NOT NULL AS in_raw_data
+            """ + base_from + " ORDER BY l.tabname LIMIT %(limit)s OFFSET %(offset)s", params)
+            results = [dict(r) for r in cur.fetchall()]
+        return {"total": total, "limit": limit, "offset": offset, "results": results}
 
     def extract_metadata(
         self,
