@@ -7,6 +7,7 @@ import { Visibility as DetailIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 import api from '../services/api';
+import SyncSapOperationsButton from '../components/maintenance/SyncSapOperationsButton';
 
 // Operations SAP (AFVC) des ordres non clos -- meme perimetre que l'ETL Operations.
 interface Operation {
@@ -60,12 +61,14 @@ const MaintenanceOperationsPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [parPage, setParPage] = useState(50);
 
-  useEffect(() => {
+  const charger = () => {
+    setLoading(true);
     api.get('/maintenance/operations')
       .then((res) => setRows(res.data?.data || []))
       .catch((e) => setErreur(e?.response?.data?.error || 'Chargement des opérations impossible'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(charger, []);
 
   // Valeurs distinctes de chaque colonne, proposees dans la liste du filtre.
   const choix = useMemo(() => Object.fromEntries(COLONNES.map((c) => [c.key,
@@ -89,7 +92,10 @@ const MaintenanceOperationsPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>Opérations</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
+        <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>Opérations</Typography>
+        <SyncSapOperationsButton onDone={charger} />
+      </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Opérations SAP des ordres de maintenance non clos (hors TECO, CLSD, DLFL).
       </Typography>

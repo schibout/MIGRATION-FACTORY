@@ -7,6 +7,7 @@ import { ArrowBack as BackIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import api from '../services/api';
+import SyncSapOperationsButton from '../components/maintenance/SyncSapOperationsButton';
 
 // Detail d'un ordre SAP (ecran type IW33), un onglet par bloc renvoye par
 // GET /maintenance/orders/<ordre>. Lecture seule.
@@ -17,10 +18,16 @@ interface Detail {
   localisation: Ligne | null;
   operations: Ligne[];
   composants: Ligne[];
+  objets: Ligne[];
+  couts: Ligne[];
 }
 
 const fmtDate = (d?: string | null) => (d && d.length === 8 ? `${d.slice(6)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : '');
 const fmtNum = (n?: string | null) => (n == null || n === '' ? '' : String(Number(n)));
+const fmtMontant = (n?: string | number | null) =>
+  Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Domaine SAP AUF_PLKNZ (AFIH-PLKNZ).
+const CODES_PLANIF: Record<string, string> = { '1': 'OT planifié', '2': 'OT immédiat', '3': 'OT non planifié' };
 
 // Ligne « libelle | code | texte » a la maniere des ecrans SAP.
 const Champ: React.FC<{ label: string; code?: any; texte?: any }> = ({ label, code, texte }) => (
@@ -60,7 +67,6 @@ const Liste: React.FC<{ lignes: Ligne[]; colonnes: { label: string; valeur: (l: 
 
 // Onglets de l'ecran SAP ; ceux sans contenu sont affiches desactives en attendant leur ecran.
 const ONGLETS = ['Donn.en-t.', 'Opérations', 'Composants', 'Coûts', 'Objets', 'DonnéesSup', 'Localis.', 'Planific.', 'Pilotage'];
-const A_VENIR = new Set(['Coûts', 'Objets', 'Planific.', 'Pilotage']);
 
 const MaintenanceOrderDetailPage: React.FC = () => {
   const { ordre } = useParams<{ ordre: string }>();
@@ -69,11 +75,12 @@ const MaintenanceOrderDetailPage: React.FC = () => {
   const [erreur, setErreur] = useState<string | null>(null);
   const [onglet, setOnglet] = useState('Donn.en-t.');
 
-  useEffect(() => {
+  const charger = () => {
     api.get(`/maintenance/orders/${encodeURIComponent(ordre || '')}`)
       .then((res) => setDetail(res.data?.data))
       .catch((e) => setErreur(e?.response?.data?.error || 'Chargement de l\'ordre impossible'));
-  }, [ordre]);
+  };
+  useEffect(charger, [ordre]);
 
   const e = detail?.entete;
   const ds = detail?.donnees_sup;
@@ -81,9 +88,12 @@ const MaintenanceOrderDetailPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Button startIcon={<BackIcon />} onClick={() => navigate('/maintenance/operations')} sx={{ mb: 2 }}>
-        Retour aux opérations
-      </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+        <Button startIcon={<BackIcon />} onClick={() => navigate('/maintenance/operations')}>
+          Retour aux opérations
+        </Button>
+        <SyncSapOperationsButton onDone={charger} />
+      </Box>
 
       {erreur && <Alert severity="error">{erreur}</Alert>}
       {!detail && !erreur && <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress /></Box>}
@@ -104,25 +114,27 @@ const MaintenanceOrderDetailPage: React.FC = () => {
           </Paper>
 
           <Tabs value={onglet} onChange={(_, v) => setOnglet(v)} variant="scrollable" sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-            {ONGLETS.map((o) => <Tab key={o} value={o} label={o} disabled={A_VENIR.has(o)} />)}
+            {ONGLETS.map((o) => <Tab key={o} value={o} label={o} />)}
           </Tabs>
 
           {onglet === 'Donn.en-t.' && (
             <>
               <Bloc titre="Responsables">
-                <Champ label="Groupe de planification" code={e.groupe_planif} texte={e.division_planif ? `Division ${e.division_planif}` : ''} />
-                <Champ label="Poste de travail responsable" code={e.poste_responsable} texte={e.poste_responsable_texte} />
-                <Champ label="Type d'activité" code={e.type_activite} />
-                <Champ label="Priorité" code={e.priorite} />
+                <Champ label="GrpeGestio" code={`${e.groupe_planif || ''} / ${e.division_planif || ''}`} />
+                <Champ label="PosteResp." code={`${e.poste_responsable || ''} / ${e.poste_responsable_division || ''}`} texte={e.poste_responsable_texte} />
+                <Champ label="Avis" code={e.avis} />
+                <Champ label="Type trav." code={e.type_activite} texte={e.type_activite_texte} />
               </Bloc>
               <Bloc titre="Dates">
-                <Champ label="Début planifié" code={fmtDate(e.debut_planifie)} />
-                <Champ label="Fin planifiée" code={fmtDate(e.fin_planifiee)} />
-                <Champ label="Créé le / par" code={fmtDate(e.cree_le)} texte={e.cree_par} />
+                <Champ label="Début plnf" code={fmtDate(e.debut_planifie)} />
+                <Champ label="Fin planif" code={fmtDate(e.fin_planifiee)} />
+                <Champ label="Priorité" code={e.priorite} texte={e.priorite_texte} />
+                <Champ label="Révision" code={e.revision} />
               </Bloc>
               <Bloc titre="Objet de référence">
-                <Champ label="Poste technique" code={e.poste_technique} texte={e.poste_technique_texte} />
-                <Champ label="Équipement" code={e.equipement} texte={e.equipement_texte} />
+                <Champ label="Pos.techn." code={e.poste_technique} texte={e.poste_technique_texte} />
+                <Champ label="Equipem." code={e.equipement} texte={e.equipement_texte} />
+                <Champ label="Ss-ensemb." code={e.sous_ensemble} />
               </Bloc>
             </>
           )}
@@ -160,6 +172,70 @@ const MaintenanceOrderDetailPage: React.FC = () => {
                 { label: 'Date besoin', valeur: (l) => fmtDate(l.date_besoin) },
               ]}
             />
+          )}
+
+          {onglet === 'Coûts' && (
+            <Liste
+              lignes={detail!.couts}
+              vide="Aucun coût pour cet ordre (table SAP PMCO)."
+              colonnes={[
+                { label: 'Catégorie valeurs', valeur: (l) => l.categorie },
+                { label: 'Coûts planifiés', valeur: (l) => fmtMontant(l.couts_planifies) },
+                { label: 'Coûts réels', valeur: (l) => fmtMontant(l.couts_reels) },
+                { label: 'Dev.', valeur: (l) => l.devise },
+              ]}
+            />
+          )}
+
+          {onglet === 'Objets' && (
+            <Liste
+              lignes={detail!.objets}
+              vide="Aucun objet : la table SAP OBJK n'est pas encore extraite."
+              colonnes={[
+                { label: 'Tri', valeur: (l) => l.tri },
+                { label: 'Article', valeur: (l) => l.article },
+                { label: 'Désignation article', valeur: (l) => l.designation_article },
+                { label: 'Equipement', valeur: (l) => l.equipement },
+                { label: 'Désignation objet', valeur: (l) => l.designation_equipement },
+                { label: 'Poste technique', valeur: (l) => l.poste_technique },
+                { label: 'Désign. poste technique', valeur: (l) => l.designation_poste_technique },
+                { label: 'N° série', valeur: (l) => l.numero_serie },
+                { label: 'Avis', valeur: (l) => l.avis },
+              ]}
+            />
+          )}
+
+          {onglet === 'Planific.' && (
+            <>
+              <Bloc titre="Plan d'entretien à créer">
+                <Champ label="Plan d'entret." code={e.plan_entretien} />
+                <Champ label="N° appel" code={e.numero_appel ?? '0'} />
+                <Champ label="Poste d'entret." code={e.poste_entretien} />
+                <Champ label="Dernier ordre" code={e.dernier_ordre} />
+              </Bloc>
+              <Bloc titre="Dernière gamme intégrée">
+                <Champ label="Type de gamme" code={e.type_gamme} />
+                <Champ label="Grpe de gammes" code={e.groupe_gammes} />
+                <Champ label="CptrGrpGam." code={e.compteur_groupe_gammes} />
+              </Bloc>
+            </>
+          )}
+
+          {onglet === 'Pilotage' && (
+            <>
+              <Bloc titre="Données de gestion">
+                <Champ label="Saisi par" code={e.cree_par} />
+                <Champ label="Date de saisie" code={fmtDate(e.cree_le)} />
+                <Champ label="Modifié par" code={e.modifie_par} />
+                <Champ label="Date modificat." code={fmtDate(e.modifie_le)} />
+                <Champ label="Code de planification" code={e.code_planification} texte={CODES_PLANIF[e.code_planification]} />
+              </Bloc>
+              <Bloc titre="Paramètre(s)">
+                <Champ label="Schéma calcul" code={e.schema_calcul} />
+                <Champ label="Var.CCR bdg." code={e.variante_calcul_budget} />
+                <Champ label="Var.coûts réels" code={e.variante_couts_reels} />
+              </Bloc>
+            </>
           )}
 
           {onglet === 'DonnéesSup' && (
