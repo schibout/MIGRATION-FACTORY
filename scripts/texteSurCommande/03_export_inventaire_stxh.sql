@@ -40,14 +40,14 @@
 
 -- ============================================================================
 -- Après extraction : le texte de commande complet, reconstitué article par article
--- (à exécuter une fois raw_data.sap_material_text alimentée)
+-- (à exécuter une fois raw_data.sap_long_text alimentée ; en pratique utiliser clean_data.texte_long_sap)
 -- ============================================================================
--- SELECT x.matnr,
+-- SELECT ltrim(x.tdname, '0') AS matnr,
 --        t.maktx AS designation,
 --        x.tdspras AS langue,
 --        string_agg(x.tdline, E'\n' ORDER BY x.line_no::int) AS texte_commande
--- FROM   raw_data.sap_material_text x
+-- FROM   raw_data.sap_long_text x
 -- LEFT   JOIN raw_data.makt t ON t.matnr = x.tdname AND t.spras = x.tdspras
 -- WHERE  x.tdid = 'BEST'
--- GROUP  BY x.matnr, t.maktx, x.tdspras
--- ORDER  BY x.matnr;
+-- GROUP  BY x.tdname, t.maktx, x.tdspras
+-- ORDER  BY x.tdname;

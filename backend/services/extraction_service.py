@@ -262,6 +262,68 @@ class ExtractionService:
                 f"Impossible de contacter le conteneur SAP ({SAP_API_URL}): {e}"
             ) from e
 
+    # ── Textes longs SAP (STXH/STXL -> raw_data.sap_long_text) ───────────
+    # Proxy vers les routes /textes/* de l'API sap-extraction (textes_jobs.py
+    # dans pyrfc_app). Contrairement aux metadonnees, le statut HTTP amont est
+    # conserve : 409 = un job textes est deja en cours, 400 = objet invalide.
+
+    class SapApiError(RuntimeError):
+        """Reponse d'erreur de l'API SAP, avec son statut HTTP et son detail."""
+
+        def __init__(self, status: int, detail: str):
+            super().__init__(detail)
+            self.status = status
+
+    def _textes_call(self, method: str, path: str, **kwargs) -> Any:
+        try:
+            resp = getattr(requests, method)(
+                f"{SAP_API_URL}{path}", timeout=max(SAP_API_TIMEOUT, 30), **kwargs
+            )
+        except Exception as e:
+            current_app.logger.error(f"SAP API {path} injoignable: {e}")
+            raise RuntimeError(
+                f"Impossible de contacter le conteneur SAP ({SAP_API_URL}): {e}"
+            ) from e
+        if resp.status_code >= 400:
+            try:
+                detail = resp.json().get("detail") or resp.json().get("error") or str(resp.json())
+            except Exception:
+                detail = getattr(resp, "text", "") or f"HTTP {resp.status_code}"
+            raise self.SapApiError(resp.status_code, str(detail))
+        return resp.json()
+
+    def textes_objets(self, objet: Optional[str] = None) -> Any:
+        """Inventaire STXH (objet, tdid, langue, en-tetes, deja charges)."""
+        params = {"objet": objet.strip().upper()} if objet else {}
+        return self._textes_call("get", "/textes/objets", params=params)
+
+    def extract_textes(self, objet: str, tdids: Optional[List[str]] = None,
+                       langues: Optional[List[str]] = None, purge: bool = False) -> Dict[str, Any]:
+        """Lance un job d'extraction des textes longs d'un objet SAP."""
+        def _codes(valeurs):
+            return [v.strip().upper() for v in (valeurs or []) if v and v.strip()] or None
+
+        return self._textes_call("post", "/textes/extract", json={
+            "objet": objet.strip().upper(),
+            "tdids": _codes(tdids),
+            "langues": _codes(langues),
+            "purge": bool(purge),
+        })
+
+    def textes_status(self, job_id: str) -> Dict[str, Any]:
+        return self._textes_call("get", f"/textes/status/{job_id}")
+
+    def textes_jobs(self, limit: int = 30) -> Any:
+        return self._textes_call("get", "/textes/jobs", params={"limit": limit})
+
+    def textes_logs(self, job_id: str, limit: int = 200) -> List[Dict[str, str]]:
+        lines = self._textes_call("get", f"/textes/jobs/{job_id}/logs").get("logs", []) or []
+        parsed = [self._parse_log_line(l) for l in lines]
+        return parsed[-limit:] if limit else parsed
+
+    def cancel_textes_job(self, job_id: str) -> Dict[str, Any]:
+        return self._textes_call("post", f"/textes/jobs/{job_id}/cancel")
+
     # ── Lancement de l'extraction ────────────────────────────────────────
 
     def start_extraction(

@@ -86,6 +86,7 @@ files=(
     # Mapping LIFNR SAP -> numero de compte IFS du fichier de selection,
     # appele par les fonctions ci-dessous pour alimenter vendor_no.
     "../functions/get_vendor_no_ifs.sql"
+    "../functions/texte_long_sap.sql"
     "alimenter_ifs_article.sql"
     "alimenter_part_catalog.sql"
     "alimenter_inventory_part.sql"

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   CloudDownload as DataIcon,
   DataObject as MetaIcon,
+  Notes as TextesIcon,
 } from '@mui/icons-material';
 
 interface HubItem {
@@ -29,6 +30,12 @@ const ExtractionHub: React.FC = () => {
       path: '/extraction/metadata',
       icon: <MetaIcon sx={{ fontSize: 44, color: '#ff9800' }} />,
       description: "Extraire la structure des tables SAP (types, clés, relations). À faire avant d'extraire une table jamais vue.",
+    },
+    {
+      title: 'Textes longs SAP',
+      path: '/extraction/textes',
+      icon: <TextesIcon sx={{ fontSize: 44, color: '#4caf50' }} />,
+      description: "Lire le contenu des textes longs (STXH/STXL : texte de commande article, fiche-info d'achat…) via RFC_READ_TEXT, illisibles par l'extraction de tables.",
     },
   ];
 

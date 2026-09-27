@@ -5,6 +5,11 @@ DECLARE
     v_debut timestamp := clock_timestamp();
     v_fin timestamp;
 BEGIN
+    -- Rechargement complet a chaque lancement du module, comme jt_task et
+    -- jt_task_resource (2026-09-19, demande explicite) : la table etait
+    -- incrementale et gardait les lignes des chargements precedents.
+    TRUNCATE TABLE clean_data.maint_material_req_line;
+
     INSERT INTO clean_data.maint_material_req_line (
         maint_material_order_no,
         line_item_no,
@@ -219,18 +224,19 @@ BEGIN
 
     FROM raw_data.resb r
     LEFT JOIN raw_data.aufk a ON a.mandt = r.mandt AND a.aufnr = r.aufnr
-    LEFT JOIN raw_data.afko k ON k.mandt = r.mandt AND trim(k.aufnr) = trim(r.aufnr)
     WHERE nullif(trim(coalesce(r.matnr,'')), '') IS NOT NULL
       AND (r.xloek IS NULL OR trim(r.xloek) = '')
       AND (r.kzear IS NULL OR trim(r.kzear) = '')
-      -- Ne reprendre QUE les donnees de 2026 : ordre dont la date de debut de base
-      -- (AFKO.GSTRP, format SAP texte YYYYMMDD) tombe sur l'annee 2026.
-      AND trim(k.gstrp) ~ '^[0-9]{8}$'
-      AND left(trim(k.gstrp), 4) = '2026'
+      -- Besoins en cours ou futurs uniquement : en-tete d'ordre present
+      -- (134 lignes RESB n'en ont pas, dont 94 sans AUFNR) et ordre non clos
+      -- (cf. clean_data.v_sap_ordre_clos, 00_operation_helpers.sql).
+      AND EXISTS (
+          SELECT 1 FROM raw_data.afko k
+          WHERE k.mandt = r.mandt AND k.aufnr = r.aufnr
+      )
       AND NOT EXISTS (
-          SELECT 1 FROM clean_data.maint_material_req_line c
-          WHERE c.maint_material_order_no = CASE WHEN trim(r.rsnum) ~ '^[0-9]+$' THEN trim(r.rsnum)::numeric END
-            AND c.line_item_no = CASE WHEN trim(r.rspos) ~ '^[0-9]+$' THEN trim(r.rspos)::numeric END
+          SELECT 1 FROM clean_data.v_sap_ordre_clos oc
+          WHERE oc.mandt = r.mandt AND oc.aufnr = r.aufnr
       )
     -- resb n'a pas de colonne updated_at : on departage par extraction_date
     ORDER BY r.mandt, r.rsnum, r.rspos, r.extraction_date DESC NULLS LAST;
@@ -239,7 +245,7 @@ BEGIN
     v_fin := clock_timestamp();
 
     INSERT INTO clean_data.etl_log (procedure_name, mode, start_ts, end_ts, status, nb_inserted, nb_updated, nb_deleted, nb_rejected, message)
-    VALUES ('clean_data.alimenter_maint_material_req_line', 'DELTA', v_debut, v_fin, 'SUCCESS', v_nb, 0, 0, 0,
+    VALUES ('clean_data.alimenter_maint_material_req_line', 'FULL', v_debut, v_fin, 'SUCCESS', v_nb, 0, 0, 0,
             'Alimentation MAINT_MATERIAL_REQ_LINE depuis raw_data.resb (SAP réservations/composants d''ordre)');
 
     RAISE NOTICE '[%] alimenter_maint_material_req_line : % lignes en %', clock_timestamp(), v_nb, v_fin - v_debut;
@@ -247,7 +253,7 @@ EXCEPTION WHEN OTHERS THEN
     v_fin := clock_timestamp();
     BEGIN
         INSERT INTO clean_data.etl_log (procedure_name, mode, start_ts, end_ts, status, nb_inserted, nb_updated, nb_deleted, nb_rejected, message)
-        VALUES ('clean_data.alimenter_maint_material_req_line', 'DELTA', v_debut, v_fin, 'ERROR', v_nb, 0, 0, 0, SQLSTATE || ' - ' || SQLERRM);
+        VALUES ('clean_data.alimenter_maint_material_req_line', 'FULL', v_debut, v_fin, 'ERROR', v_nb, 0, 0, 0, SQLSTATE || ' - ' || SQLERRM);
     EXCEPTION WHEN OTHERS THEN NULL; END;
     RAISE NOTICE 'ERREUR alimenter_maint_material_req_line : % (%)', SQLERRM, SQLSTATE;
     RAISE;

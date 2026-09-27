@@ -55,7 +55,8 @@ BEGIN
         use_price_incl_tax_db,
         qualified_supplier_db,
         ext_svc_primary_vendor_db,
-        issue_packaging_material_db
+        issue_packaging_material_db,
+        note_text
     )
     SELECT DISTINCT
         -- CONTRACT: 9200 = SJ, 9000 = CS
@@ -159,7 +160,21 @@ BEGIN
         public.get_default_value('clean_data.purchase_part_supplier', 'ext_svc_primary_vendor_db') as ext_svc_primary_vendor_db,
         
         -- ISSUE_PACKAGING_MATERIAL_DB: FALSE
-        public.get_default_value('clean_data.purchase_part_supplier', 'issue_packaging_material_db') as issue_packaging_material_db
+        public.get_default_value('clean_data.purchase_part_supplier', 'issue_packaging_material_db') as issue_packaging_material_db,
+
+        -- NOTE_TEXT : textes longs SAP de la fiche-info d'achat (2026-09-20),
+        -- lus par RFC_READ_TEXT dans raw_data.sap_long_text et recomposes par
+        -- clean_data.texte_long_sap (sql/functions/) : texte general de la
+        -- fiche-info (objet EINA, id AT, cle INFNR) puis texte de commande de
+        -- l'organisation d'achat (objet EINE, id BT, cle INFNR||EKORG||ESOKZ||WERKS,
+        -- espaces de fin retires comme dans STXH), separes par un saut de
+        -- ligne, LEFT 2000. Langue F, sinon E, D, N. NULL si aucun texte.
+        NULLIF(LEFT(concat_ws(E'\n',
+            clean_data.texte_long_sap('EINA', 'AT', eina.infnr, ARRAY['F','E','D','N']),
+            clean_data.texte_long_sap('EINE', 'BT',
+                RTRIM(eina.infnr || eine.ekorg || eine.esokz || COALESCE(eine.werks, '')),
+                ARRAY['F','E','D','N'])
+        ), 2000), '') as note_text
         
     FROM raw_data.eina eina
     INNER JOIN raw_data.eine eine 

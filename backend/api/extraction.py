@@ -143,6 +143,90 @@ def metadata_job_cancel(job_id):
         return jsonify({"error": str(e)}), 502
 
 
+# ── Textes longs SAP (STXH/STXL -> raw_data.sap_long_text) ──────────────────
+# Ecran « Extraction > Textes longs SAP ». Relais vers l'API sap-extraction ;
+# le contenu des textes n'est lisible que par RFC_READ_TEXT (cf.
+# scripts/texteSurCommande/README.md), d'ou un job de fond cote pyrfc_app.
+
+def _reponse_erreur_textes(e, contexte):
+    """409/400 amont relayes tels quels, tout le reste en 502 (service SAP)."""
+    status = getattr(e, 'status', None)
+    if status in (400, 404, 409):
+        return jsonify({"error": str(e)}), status
+    current_app.logger.exception(f"Erreur {contexte}")
+    return jsonify({"error": str(e)}), 502
+
+
+@extraction_blueprint.route('/textes/objets', methods=['GET'])
+def textes_objets():
+    """Inventaire des textes longs de raw_data.stxh (objet, type, langue, volumes)."""
+    try:
+        return jsonify(extraction_service.textes_objets(request.args.get('objet'))), 200
+    except Exception as e:
+        return _reponse_erreur_textes(e, "inventaire textes longs")
+
+
+@extraction_blueprint.route('/textes/extract', methods=['POST'])
+@jwt_required(optional=True)
+def extract_textes():
+    """Lance l'extraction des textes longs d'un objet SAP (job de fond).
+
+    Body : { "objet": "EINA", "tdids": ["AT"], "langues": ["F"], "purge": false }
+    tdids / langues vides = tous. Renvoie textes_job_id (202) ; 409 si un job
+    textes est deja en cours.
+    """
+    try:
+        data = request.get_json() or {}
+        objet = (data.get('objet') or '').strip()
+        if not objet:
+            return jsonify({"error": "Objet de texte SAP requis (ex. MATERIAL, EINA, EINE)"}), 400
+        result = extraction_service.extract_textes(
+            objet, tdids=data.get('tdids'), langues=data.get('langues'),
+            purge=bool(data.get('purge', False)),
+        )
+        current_app.logger.info(
+            f"Extraction textes longs demandee : {objet} → job {result.get('textes_job_id')}"
+        )
+        return jsonify(result), 202
+    except Exception as e:
+        return _reponse_erreur_textes(e, "lancement extraction textes longs")
+
+
+@extraction_blueprint.route('/textes/status/<job_id>', methods=['GET'])
+def textes_status(job_id):
+    try:
+        return jsonify(extraction_service.textes_status(job_id)), 200
+    except Exception as e:
+        return _reponse_erreur_textes(e, f"statut textes {job_id}")
+
+
+@extraction_blueprint.route('/textes/jobs', methods=['GET'])
+def textes_jobs():
+    try:
+        limit = request.args.get('limit', default=30, type=int)
+        return jsonify(extraction_service.textes_jobs(limit)), 200
+    except Exception as e:
+        return _reponse_erreur_textes(e, "liste des jobs textes")
+
+
+@extraction_blueprint.route('/textes/jobs/<job_id>/logs', methods=['GET'])
+def textes_job_logs(job_id):
+    try:
+        limit = request.args.get('limit', default=200, type=int)
+        return jsonify(extraction_service.textes_logs(job_id, limit)), 200
+    except Exception as e:
+        return _reponse_erreur_textes(e, f"logs textes {job_id}")
+
+
+@extraction_blueprint.route('/textes/jobs/<job_id>/cancel', methods=['POST'])
+@jwt_required(optional=True)
+def textes_job_cancel(job_id):
+    try:
+        return jsonify(extraction_service.cancel_textes_job(job_id)), 200
+    except Exception as e:
+        return _reponse_erreur_textes(e, f"annulation textes {job_id}")
+
+
 @extraction_blueprint.route('/start', methods=['POST'])
 @jwt_required(optional=True)
 def start_extraction():

@@ -193,10 +193,14 @@ BEGIN
         WHERE v.aufpl IS NOT NULL
           AND v.aplzl IS NOT NULL
           AND (v.loekz IS NULL OR TRIM(v.loekz) = '')
-          -- Ne reprendre QUE les donnees de 2026 : ordres dont la date de debut
-          -- de base (AFKO.GSTRP, format SAP texte YYYYMMDD) tombe sur l'annee 2026.
-          AND TRIM(k.gstrp) ~ '^[0-9]{8}$'
-          AND LEFT(TRIM(k.gstrp), 4) = '2026'
+          -- Operations en cours ou futures uniquement : en-tete d'ordre present
+          -- (une operation sans AFKO n'a pas de bon de travail) et ordre non
+          -- clos (cf. clean_data.v_sap_ordre_clos, 00_operation_helpers.sql).
+          AND k.aufnr IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM clean_data.v_sap_ordre_clos oc
+              WHERE oc.mandt = k.mandt AND oc.aufnr = k.aufnr
+          )
         ORDER BY v.mandt, v.aufpl, v.aplzl, v.vornr
     ), mapped AS (
         SELECT
