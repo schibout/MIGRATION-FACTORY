@@ -9,7 +9,7 @@ import {
   SettingsBackupRestore as BackupIcon,
   ListAlt as LovIcon,
   AccountTree as OrganisationIcon,
-  Psychology as AiIcon,
+  PlaylistAddCheck as OperationIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -64,16 +64,12 @@ const cards = [
     tag: 'ÉTATS',
   },
   {
-    // Agent Trimet cadre sur la maintenance : <HermesChat profile="maintenance" />.
-    // Le mecanisme de profil vient du commit 2b02432 de la branche
-    // version_trimet, repris ici seul -- la branche entiere est trop ancienne
-    // pour etre fusionnee (elle supprimerait tout le travail de master).
-    title: 'Agent IA Maintenance',
-    description: 'Interroger l\'agent Trimet sur les postes techniques, équipements, articles, stocks et gammes.',
-    path: '/maintenance/assistant',
-    icon: AiIcon,
-    color: 'info' as const,
-    tag: 'IA',
+    title: 'Opérations',
+    description: 'Consulter les opérations des ordres de maintenance SAP non clos : poste technique, équipement, dates et charge.',
+    path: '/maintenance/operations',
+    icon: OperationIcon,
+    color: 'secondary' as const,
+    tag: 'AFVC',
   },
   {
     title: 'Listes de valeurs',

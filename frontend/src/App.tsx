@@ -60,6 +60,7 @@ import MaintenancePeToolsPage from './pages/MaintenancePeToolsPage';
 import MaintenancePeToolsOrganisationsPage from './pages/MaintenancePeToolsOrganisationsPage';
 import MaintenanceIbauPage from './pages/MaintenanceIbauPage';
 import MaintenanceLovPage from './pages/MaintenanceLovPage';
+import MaintenanceOperationsPage from './pages/MaintenanceOperationsPage';
 import ModeEmploi from './pages/ModeEmploi';
 import Parametres from './pages/Parametres';
 import ProjectDetailPage from './pages/ProjectDetailPage';
@@ -242,6 +243,7 @@ function App() {
           <Route path="maintenance/pe-tools-organisations" element={<MaintenancePeToolsOrganisationsPage />} />
           <Route path="maintenance/ibau" element={<MaintenanceIbauPage />} />
           <Route path="maintenance/lov" element={<MaintenanceLovPage />} />
+          <Route path="maintenance/operations" element={<MaintenanceOperationsPage />} />
           <Route path="maintenance/assistant" element={<HermesChat profile="maintenance" />} />
           <Route path="export/clients" element={<ExportClients />} />
           <Route path="export/projets" element={<ExportProjects />} />
