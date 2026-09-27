@@ -30,7 +30,7 @@ FICHIERS = (
     os.path.join(SQL_DIR, '00_operation_helpers.sql'),
     os.path.join(SQL_DIR, 'create_alimenter_jt_task.sql'),
     os.path.join(SQL_DIR, 'create_alimenter_jt_task_resource.sql'),
-    os.path.join(SQL_DIR, 'create_clean_data_maint_material_req_line.sql'),
+    os.path.join(SQL_DIR, 'create_alimenter_maint_material_req_line.sql'),
 )
 
 # Ordres clos au sens SAP (statut actif sur l'objet de l'ordre)

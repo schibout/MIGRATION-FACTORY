@@ -78,15 +78,21 @@ echo ""
 errors=0
 
 # Liste des fichiers dans l'ordre d'exécution
-# L'ordre est important: la table jt_task doit exister avant la fonction alimenter_jt_task,
+# L'ordre est important: les tables (CREATE TABLE IF NOT EXISTS, sans effet si
+# elles existent deja) doivent exister avant les fonctions qui les alimentent,
 # et jt_task_resource / maint_material_req_line filtrent via EXISTS sur jt_task
 files=(
+    # Tables cibles
+    "tables/table_jt_task.sql"
+    "tables/table_jt_task_resource.sql"
+    "tables/table_maint_material_req_line.sql"
     # Mapping LIFNR SAP -> numero de compte IFS du fichier de selection,
     # appele par les fonctions ci-dessous pour alimenter vendor_no.
     "../functions/get_vendor_no_ifs.sql"
+    # Procedures
     "create_alimenter_jt_task.sql"
     "create_alimenter_jt_task_resource.sql"
-    "create_clean_data_maint_material_req_line.sql"
+    "create_alimenter_maint_material_req_line.sql"
 )
 
 # Exécution de chaque fichier

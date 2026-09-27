@@ -3,7 +3,7 @@
 # Script d'export des procédures stockées OPERATIONS DE MAINTENANCE depuis la base PostgreSQL
 # Ce script extrait les fonctions du schéma clean_data et les sauvegarde dans des fichiers SQL.
 # NB : les fichiers exportés (NN_alimenter_*.sql) ne contiennent QUE la fonction (pas le CREATE TABLE) ;
-#      les fichiers create_*.sql restent la source de vérité pour le DDL des tables.
+#      les fichiers tables/table_*.sql restent la source de vérité pour le DDL des tables.
 
 # Charger les variables depuis .profile
 if [ -f ~/.profile ]; then
