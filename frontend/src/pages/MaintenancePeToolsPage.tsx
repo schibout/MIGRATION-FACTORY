@@ -3,9 +3,12 @@
  *
  * Une ligne = un poste technique + son plan d'entretien + sa gamme (groupe /
  * compteur), avec frequence et charge. L'ecran permet de filtrer, exporter en
- * CSV le perimetre filtre, et modifier / creer / supprimer une ligne.
+ * CSV le perimetre filtre et ouvrir le detail d'une ligne (lecture seule,
+ * page /maintenance/pe-tools/:rawId). Les gammes ne se modifient pas dans
+ * l'application : on corrige les fichiers PE Tools puis on les reimporte.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -19,7 +22,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Divider,
   FormControl,
   Grid,
   IconButton,
@@ -48,19 +50,15 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Cancel as CancelIcon,
   Clear as ClearIcon,
-  Delete as DeleteIcon,
   Download as DownloadIcon,
-  Edit as EditIcon,
   EventRepeat as FrequencyIcon,
   Handyman as PeToolsIcon,
   Refresh as RefreshIcon,
-  Save as SaveIcon,
   Schedule as ScheduleIcon,
   Search as SearchIcon,
   Upload as UploadIcon,
+  Visibility as DetailIcon,
   AccountTree as PosteIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
@@ -90,18 +88,17 @@ interface ImportResult {
   error?: string;
 }
 
-// Colonnes de la table, dans l'ordre d'affichage du panneau de detail.
-// `inTable` = affichee dans la liste principale, `readOnly` = colonne calculee
-// cote API (non saisissable).
-const FIELDS: { key: string; label: string; inTable?: boolean; monospace?: boolean; readOnly?: boolean }[] = [
+// Colonnes de la table, dans l'ordre d'affichage de la page detail.
+// `inTable` = affichee dans la liste principale.
+export const FIELDS: { key: string; label: string; inTable?: boolean; monospace?: boolean }[] = [
   { key: 'poste_technique', label: 'Poste technique', inTable: true, monospace: true },
   { key: 'niveau_sap', label: 'Niveau SAP' },
   { key: 'localisation_classement', label: 'Localisation / classement', inTable: true },
   { key: 'designation', label: 'Désignation', inTable: true },
   { key: 'frequence', label: 'Fréquence', inTable: true },
   { key: 'type', label: 'Type', inTable: true },
-  { key: 'nom_fichier', label: 'Fichier', inTable: true, monospace: true, readOnly: true },
-  { key: 'organisation_maintenance', label: 'Organisation', inTable: true, monospace: true, readOnly: true },
+  { key: 'nom_fichier', label: 'Fichier', inTable: true, monospace: true },
+  { key: 'organisation_maintenance', label: 'Organisation', inTable: true, monospace: true },
   { key: 'criticite', label: 'Criticité' },
   { key: 'plan_entretien', label: 'Plan d\'entretien', monospace: true },
   { key: 'poste_entretien', label: 'Poste d\'entretien', monospace: true },
@@ -137,6 +134,7 @@ const SELECT_FILTERS: { key: string; label: string }[] = [
 
 const MaintenancePeToolsPage: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
 
   const [rows, setRows] = useState<PeTool[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,13 +152,7 @@ const MaintenancePeToolsPage: React.FC = () => {
 
   const [stats, setStats] = useState<Stats | null>(null);
 
-  const [selected, setSelected] = useState<PeTool | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [editedData, setEditedData] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<PeTool | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   // Meme route d'import : seul le type de fichier propose change.
   const [importExcel, setImportExcel] = useState(false);
@@ -245,98 +237,6 @@ const MaintenancePeToolsPage: React.FC = () => {
     setPage(0);
   };
 
-  const selectRow = (row: PeTool) => {
-    setSelected(row);
-    setIsEditing(false);
-    setIsCreating(false);
-    setEditedData({});
-  };
-
-  const startCreating = () => {
-    setSelected(null);
-    setIsCreating(true);
-    setIsEditing(true);
-    setEditedData({});
-  };
-
-  const cancelEditing = () => {
-    setIsEditing(false);
-    setIsCreating(false);
-    setEditedData({});
-  };
-
-  const handleFieldChange = (field: string, value: string) => {
-    // En creation tout est conserve ; en edition on ne garde que les ecarts
-    // avec la valeur d'origine (PUT partiel).
-    if (isCreating) {
-      setEditedData((prev) => ({ ...prev, [field]: value }));
-      return;
-    }
-    const original = String(selected?.[field] ?? '');
-    setEditedData((prev) => {
-      const next = { ...prev };
-      if (value === original) delete next[field];
-      else next[field] = value;
-      return next;
-    });
-  };
-
-  const saveChanges = async () => {
-    const payload = Object.fromEntries(
-      Object.entries(editedData).filter(([, v]) => v !== undefined)
-    );
-    if (Object.keys(payload).length === 0) return;
-    try {
-      setSaving(true);
-      if (isCreating) {
-        const response = await api.post('/maintenance/pe-tools', payload);
-        if (response.data.success) {
-          setSnackbar({ open: true, message: 'Gamme créée', severity: 'success' });
-          cancelEditing();
-          await loadRows();
-          await loadStats();
-        }
-      } else if (selected) {
-        const response = await api.put(`/maintenance/pe-tools/${selected.raw_id}`, payload);
-        if (response.data.success) {
-          setSnackbar({ open: true, message: 'Modifications enregistrées', severity: 'success' });
-          setIsEditing(false);
-          setEditedData({});
-          setSelected({ ...selected, ...payload });
-          await loadRows();
-          await loadStats();
-        }
-      }
-    } catch (err: any) {
-      setSnackbar({
-        open: true,
-        message: err?.response?.data?.error || 'Erreur lors de la sauvegarde',
-        severity: 'error',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const deleteRow = async () => {
-    if (!confirmDelete) return;
-    try {
-      await api.delete(`/maintenance/pe-tools/${confirmDelete.raw_id}`);
-      setSnackbar({ open: true, message: 'Ligne supprimée', severity: 'success' });
-      if (selected?.raw_id === confirmDelete.raw_id) setSelected(null);
-      setConfirmDelete(null);
-      await loadRows();
-      await loadStats();
-    } catch (err: any) {
-      setConfirmDelete(null);
-      setSnackbar({
-        open: true,
-        message: err?.response?.data?.error || 'Erreur lors de la suppression',
-        severity: 'error',
-      });
-    }
-  };
-
   /** Export CSV du perimetre filtre courant (pas seulement de la page affichee). */
   const exportCsv = async () => {
     try {
@@ -370,10 +270,6 @@ const MaintenancePeToolsPage: React.FC = () => {
   const closeImport = async () => {
     setImportOpen(false);
     if (importResults) {
-      // Les lignes importees ont de nouveaux raw_id : la selection courante
-      // peut pointer sur une ligne supprimee.
-      cancelEditing();
-      setSelected(null);
       await loadRows();
       await loadStats();
     }
@@ -413,112 +309,6 @@ const MaintenancePeToolsPage: React.FC = () => {
     },
   ];
 
-  const renderDetails = () => {
-    if (!selected && !isCreating) {
-      return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
-          <PeToolsIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
-          <Typography variant="body1">Sélectionnez une gamme</Typography>
-          <Typography variant="caption">ou créez-en une nouvelle</Typography>
-        </Box>
-      );
-    }
-
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h6" sx={{ fontFamily: 'monospace' }}>
-                {isCreating ? 'Nouvelle gamme' : (selected?.poste_technique || '—')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {isCreating ? 'Renseignez les champs puis enregistrez' : (selected?.designation || '—')}
-              </Typography>
-            </Box>
-            <Box sx={{ flexShrink: 0, display: 'flex', gap: 1 }}>
-              {isEditing ? (
-                <>
-                  <Button size="small" variant="outlined" startIcon={<CancelIcon />} onClick={cancelEditing}>
-                    Annuler
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-                    onClick={saveChanges}
-                    disabled={saving || Object.keys(editedData).length === 0}
-                  >
-                    Enregistrer
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => setIsEditing(true)}>
-                    Modifier
-                  </Button>
-                  <Tooltip title="Supprimer cette ligne">
-                    <IconButton size="small" color="error" onClick={() => setConfirmDelete(selected)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </>
-              )}
-            </Box>
-          </Box>
-          {!isCreating && selected?.updated_at && (
-            <Typography variant="caption" color="text.secondary">
-              Modifié le {String(selected.updated_at).slice(0, 16).replace('T', ' ')}
-              {selected.updated_by ? ` par ${selected.updated_by}` : ''}
-            </Typography>
-          )}
-        </Box>
-
-        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-          <Grid container spacing={2}>
-            {FIELDS.map((f, idx) => {
-              if (isCreating && f.readOnly) return null;
-              const raw = isCreating ? '' : (selected?.[f.key] ?? '');
-              const current = f.key in editedData ? editedData[f.key] : (raw === null ? '' : String(raw));
-              const isLink = f.key.startsWith('lien_fichier');
-              return (
-                <React.Fragment key={f.key}>
-                  {idx === 9 && <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>}
-                  {idx === 21 && <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>}
-                  <Grid item xs={12} md={isLink || f.key === 'designation' || f.key === 'niveau_sap' ? 12 : 6}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                      {f.label}
-                    </Typography>
-                    {isEditing && !f.readOnly ? (
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={current}
-                        onChange={(e) => handleFieldChange(f.key, e.target.value)}
-                        sx={{ '& input': { fontFamily: f.monospace ? 'monospace' : 'inherit', fontSize: '0.875rem' } }}
-                      />
-                    ) : (
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontFamily: f.monospace ? 'monospace' : 'inherit',
-                          fontWeight: 500,
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {current === '' ? '—' : current}
-                      </Typography>
-                    )}
-                  </Grid>
-                </React.Fragment>
-              );
-            })}
-          </Grid>
-        </Box>
-      </Box>
-    );
-  };
-
   return (
     <Box sx={{ p: 3, height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -528,9 +318,6 @@ const MaintenancePeToolsPage: React.FC = () => {
         </Typography>
         <Chip label="raw_data.pe_tools" size="small" variant="outlined" sx={{ ml: 2, fontFamily: 'monospace' }} />
         <Box sx={{ flex: 1 }} />
-        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={startCreating} sx={{ mr: 1 }}>
-          Nouvelle gamme
-        </Button>
         <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={() => openImport(false)} sx={{ mr: 1 }}>
           Importer
         </Button>
@@ -581,11 +368,11 @@ const MaintenancePeToolsPage: React.FC = () => {
         })}
       </Grid>
 
-      <Box sx={{ display: 'flex', gap: 3, flex: 1, minHeight: 0 }}>
+      <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
         <Paper
           elevation={0}
           sx={{
-            flex: 2,
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
             border: `1px solid ${theme.palette.divider}`,
@@ -649,6 +436,7 @@ const MaintenancePeToolsPage: React.FC = () => {
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell />
                   {TABLE_FIELDS.map((f) => (
                     <TableCell key={f.key}>
                       <TableSortLabel
@@ -660,18 +448,18 @@ const MaintenancePeToolsPage: React.FC = () => {
                       </TableSortLabel>
                     </TableCell>
                   ))}
-                  <TableCell align="right" />
                 </TableRow>
               </TableHead>
               <TableBody>
                 {rows.map((r) => (
-                  <TableRow
-                    key={r.raw_id}
-                    hover
-                    selected={selected?.raw_id === r.raw_id}
-                    onClick={() => selectRow(r)}
-                    sx={{ cursor: 'pointer' }}
-                  >
+                  <TableRow key={r.raw_id} hover>
+                    <TableCell padding="checkbox">
+                      <Tooltip title="Voir détail">
+                        <IconButton size="small" onClick={() => navigate(`/maintenance/pe-tools/${r.raw_id}`)}>
+                          <DetailIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
                     {TABLE_FIELDS.map((f) => (
                       <TableCell
                         key={f.key}
@@ -687,17 +475,6 @@ const MaintenancePeToolsPage: React.FC = () => {
                         {r[f.key] || '—'}
                       </TableCell>
                     ))}
-                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                      <Tooltip title="Supprimer">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDelete(r); }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
                   </TableRow>
                 ))}
                 {!loading && rows.length === 0 && (
@@ -727,20 +504,6 @@ const MaintenancePeToolsPage: React.FC = () => {
           />
         </Paper>
 
-        <Paper
-          elevation={0}
-          sx={{
-            flex: 1,
-            minWidth: 400,
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: 2,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {renderDetails()}
-        </Paper>
       </Box>
 
       <Dialog open={importOpen} onClose={importing ? undefined : closeImport} maxWidth="md" fullWidth>
@@ -852,20 +615,6 @@ const MaintenancePeToolsPage: React.FC = () => {
           ) : (
             <Button variant="contained" onClick={closeImport}>Fermer</Button>
           )}
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)}>
-        <DialogTitle>Supprimer cette gamme ?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            La ligne « {confirmDelete?.designation || confirmDelete?.poste_technique} » sera
-            définitivement supprimée de <code>raw_data.pe_tools</code>. Cette action est irréversible.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDelete(null)}>Annuler</Button>
-          <Button color="error" variant="contained" onClick={deleteRow}>Supprimer</Button>
         </DialogActions>
       </Dialog>
 

@@ -54,9 +54,9 @@ COLUMNS = [
     'nb_jours_depuis_derniere_rev',
 ]
 
-# Colonnes renseignees par l'import de fichiers (migration 077). Jamais
-# editables : PUT/POST les ignorent, seul l'import de fichiers
-# (POST /pe-tools/import) les ecrit.
+# Colonnes renseignees par l'import de fichiers (migration 077). La table
+# n'est ecrite QUE par l'import de fichiers (POST /pe-tools/import) : les
+# gammes ne se modifient pas dans l'application.
 COMPUTED_COLUMNS = [
     'nom_fichier',
     'organisation_maintenance',
@@ -403,116 +403,6 @@ def get_pe_tool(raw_id: int):
 
     except Exception as e:
         current_app.logger.error(f"Erreur detail pe_tools {raw_id}: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@maintenance_pe_tools_blueprint.route('/pe-tools/<int:raw_id>', methods=['PUT'])
-def update_pe_tool(raw_id: int):
-    """Mise a jour d'une ligne (colonnes metier uniquement)."""
-    try:
-        data = request.get_json() or {}
-        updates = []
-        values = []
-        for key, val in data.items():
-            if key not in COLUMNS:
-                continue
-            updates.append(f"{key} = %s")
-            values.append(val if val not in ('', None) else None)
-
-        if not updates:
-            return jsonify({'success': False, 'error': 'Aucun champ a mettre a jour'}), 400
-
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            if _has_audit_columns(cursor):
-                updates.append("updated_at = NOW()")
-                updates.append("updated_by = %s")
-                values.append(_user())
-
-            cursor.execute(
-                f"UPDATE raw_data.pe_tools SET {', '.join(updates)} WHERE raw_id = %s",
-                values + [raw_id]
-            )
-            if cursor.rowcount == 0:
-                conn.rollback()
-                return jsonify({'success': False, 'error': 'Ligne non trouvee'}), 404
-            conn.commit()
-
-        cache_invalidate(CACHE_PREFIX)
-        modified = [k for k in data.keys() if k in COLUMNS]
-        return jsonify({
-            'success': True,
-            'message': f'{len(modified)} champ(s) mis a jour',
-            'modified': modified,
-        }), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Erreur update pe_tools {raw_id}: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@maintenance_pe_tools_blueprint.route('/pe-tools', methods=['POST'])
-def create_pe_tool():
-    """Creation d'une ligne (raw_id attribue par la base, ou max + 1 si la
-    colonne n'a ni identite ni valeur par defaut)."""
-    try:
-        data = request.get_json() or {}
-        cols = [k for k in data.keys() if k in COLUMNS]
-        if not cols:
-            return jsonify({'success': False, 'error': 'Aucun champ fourni'}), 400
-
-        values = [data[c] if data[c] not in ('', None) else None for c in cols]
-
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            audit_cols = []
-            audit_vals = []
-            if _has_audit_columns(cursor):
-                audit_cols = ['updated_at', 'updated_by']
-                audit_vals = ['NOW()', '%s']
-                values.append(_user())
-
-            if _raw_id_is_auto(cursor):
-                all_cols = cols + audit_cols
-                placeholders = ['%s'] * len(cols) + audit_vals
-            else:
-                all_cols = ['raw_id'] + cols + audit_cols
-                placeholders = ['(SELECT COALESCE(MAX(raw_id), 0) + 1 FROM raw_data.pe_tools)'] \
-                    + ['%s'] * len(cols) + audit_vals
-
-            cursor.execute(
-                f"INSERT INTO raw_data.pe_tools ({', '.join(all_cols)}) "
-                f"VALUES ({', '.join(placeholders)}) RETURNING raw_id",
-                values
-            )
-            new_id = cursor.fetchone()['raw_id']
-            conn.commit()
-
-        cache_invalidate(CACHE_PREFIX)
-        return jsonify({'success': True, 'data': {'raw_id': new_id}}), 201
-
-    except Exception as e:
-        current_app.logger.error(f"Erreur creation pe_tools: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@maintenance_pe_tools_blueprint.route('/pe-tools/<int:raw_id>', methods=['DELETE'])
-def delete_pe_tool(raw_id: int):
-    """Suppression definitive d'une ligne (la table n'a pas d'indicateur d'etat)."""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM raw_data.pe_tools WHERE raw_id = %s", [raw_id])
-            if cursor.rowcount == 0:
-                conn.rollback()
-                return jsonify({'success': False, 'error': 'Ligne non trouvee'}), 404
-            conn.commit()
-
-        cache_invalidate(CACHE_PREFIX)
-        return jsonify({'success': True, 'message': 'Ligne supprimee'}), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Erreur suppression pe_tools {raw_id}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

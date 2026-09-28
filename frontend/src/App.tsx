@@ -62,6 +62,7 @@ import MaintenanceIbauPage from './pages/MaintenanceIbauPage';
 import MaintenanceLovPage from './pages/MaintenanceLovPage';
 import MaintenanceOperationsPage from './pages/MaintenanceOperationsPage';
 import MaintenanceOrderDetailPage from './pages/MaintenanceOrderDetailPage';
+import MaintenancePeToolDetailPage from './pages/MaintenancePeToolDetailPage';
 import ModeEmploi from './pages/ModeEmploi';
 import Parametres from './pages/Parametres';
 import ProjectDetailPage from './pages/ProjectDetailPage';
@@ -241,6 +242,7 @@ function App() {
           <Route path="maintenance/ih02" element={<IH02HierarchyPage />} />
           <Route path="maintenance/backups" element={<MaintenanceBackupsPage />} />
           <Route path="maintenance/pe-tools" element={<MaintenancePeToolsPage />} />
+          <Route path="maintenance/pe-tools/:rawId" element={<MaintenancePeToolDetailPage />} />
           <Route path="maintenance/pe-tools-organisations" element={<MaintenancePeToolsOrganisationsPage />} />
           <Route path="maintenance/ibau" element={<MaintenanceIbauPage />} />
           <Route path="maintenance/lov" element={<MaintenanceLovPage />} />
