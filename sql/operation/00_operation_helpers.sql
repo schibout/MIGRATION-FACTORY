@@ -12,7 +12,10 @@
 -- Vue (et non fonction) pour que le planificateur garde ses estimations sur
 -- les tables SAP ; pas de DISTINCT pour qu'elle reste aplatissable dans un
 -- NOT EXISTS. On passe par AUFK.OBJNR et non par 'OR' || AUFNR : 7 ordres
--- derogent a cette convention. Un ordre absent d'AUFK est considere ouvert.
+-- derogent a cette convention.
+-- Ordre present dans AFKO mais absent d'AUFK (trou d'extraction : 99 ordres
+-- <= 2013 le 2026-09-28) : on lit JEST sur l'objet 'OR' || AUFNR. Ils etaient
+-- jusque-la consideres ouverts alors qu'ils sont TOUS clos (seconde branche).
 CREATE OR REPLACE VIEW clean_data.v_sap_ordre_clos AS
 SELECT a.mandt, a.aufnr
 FROM raw_data.aufk a
@@ -20,6 +23,15 @@ JOIN raw_data.jest j
   ON j.mandt = a.mandt
  AND j.objnr = a.objnr
 WHERE (j.inact IS NULL OR trim(j.inact) <> 'X')
+  AND j.stat IN ('I0045', 'I0046', 'I0076')
+UNION ALL
+SELECT k.mandt, k.aufnr
+FROM raw_data.afko k
+JOIN raw_data.jest j
+  ON j.mandt = k.mandt
+ AND j.objnr = 'OR' || k.aufnr
+WHERE NOT EXISTS (SELECT 1 FROM raw_data.aufk a WHERE a.mandt = k.mandt AND a.aufnr = k.aufnr)
+  AND (j.inact IS NULL OR trim(j.inact) <> 'X')
   AND j.stat IN ('I0045', 'I0046', 'I0076');
 
 COMMENT ON VIEW clean_data.v_sap_ordre_clos IS

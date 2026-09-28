@@ -42,6 +42,15 @@ REFERENTIELS = """
     FROM raw_data.aufk a
     JOIN raw_data.jest j ON j.mandt = a.mandt AND j.objnr = a.objnr
     WHERE (j.inact IS NULL OR trim(j.inact) <> 'X')
+      AND j.stat IN ('I0045', 'I0046', 'I0076')
+    UNION
+    -- Ordre absent d'AUFK (99 ordres <= 2013, tous clos) : statut lu sur 'OR' || AUFNR.
+    SELECT k.mandt, trim(k.aufnr),
+           CASE WHEN trim(k.aufnr) ~ '^[0-9]+$' THEN trim(k.aufnr)::numeric END
+    FROM raw_data.afko k
+    JOIN raw_data.jest j ON j.mandt = k.mandt AND j.objnr = 'OR' || k.aufnr
+    WHERE NOT EXISTS (SELECT 1 FROM raw_data.aufk a WHERE a.mandt = k.mandt AND a.aufnr = k.aufnr)
+      AND (j.inact IS NULL OR trim(j.inact) <> 'X')
       AND j.stat IN ('I0045', 'I0046', 'I0076');
     CREATE TEMP TABLE t_ordre_annee AS
     SELECT trim(k.aufnr)::numeric AS aufnr, left(trim(k.gstrp), 4) AS annee
@@ -121,6 +130,12 @@ def test_jt_task_aucune_operation_d_ordre_clos(cur):
     r = _one(cur, "SELECT count(*) AS n FROM clean_data.jt_task t WHERE "
              + ORDRE_CLOS.format(aufnr='t.wo_no'))
     assert r['n'] == 0, f"{r['n']} operations d'ordres TECO/CLSD/DLFL chargees"
+
+
+def test_jt_task_exclut_les_ordres_clos_absents_d_aufk(cur):
+    """92234799 : dans AFKO/AFIH mais pas dans AUFK, statut TCLO sur 'OR' || AUFNR."""
+    r = _one(cur, "SELECT count(*) AS n FROM clean_data.jt_task WHERE wo_no = 92234799")
+    assert r['n'] == 0, "operation d'un ordre clos absent d'AUFK chargee comme en cours"
 
 
 def test_jt_task_garde_les_ordres_futurs(cur):

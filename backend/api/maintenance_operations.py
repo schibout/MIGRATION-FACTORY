@@ -30,7 +30,7 @@ _LISTE = """
                AND (j.inact IS NULL OR trim(j.inact) <> 'X')
              ORDER BY array_position(%(statuts)s::text[], j.stat::text) LIMIT 1) AS statut_ordre
     FROM (
-        SELECT k.mandt, a.objnr,
+        SELECT k.mandt, COALESCE(a.objnr, 'OR' || k.aufnr) AS objnr,
                LTRIM(k.aufnr, '0')         AS ordre,
                a.auart                     AS type_ordre,
                a.ktext                     AS texte_ordre,
@@ -144,8 +144,9 @@ def operation_choices():
 
 # Detail d'un ordre (ecran type IW33) : un bloc par onglet. Lecture seule.
 _ENTETE = """
-    SELECT LTRIM(a.aufnr, '0') AS ordre, a.auart AS type_ordre, a.ktext AS texte_ordre,
-           a.objnr, h.obknr,
+    SELECT LTRIM(k.aufnr, '0') AS ordre, a.auart AS type_ordre, a.ktext AS texte_ordre,
+           -- 99 ordres (<= 2013) sont dans AFKO/AFIH mais absents d'AUFK : objet de statut par convention.
+           COALESCE(a.objnr, 'OR' || k.aufnr) AS objnr, h.obknr,
            -- Donn.en-t.
            h.priok AS priorite, pt.priokx AS priorite_texte,
            h.ilart AS type_activite, it.ilatx AS type_activite_texte, h.iwerk AS division_planif,
@@ -164,9 +165,10 @@ _ENTETE = """
            NULLIF(k.gstrp, '00000000') AS debut_planifie, NULLIF(k.gltrp, '00000000') AS fin_planifiee,
            l.tplnr AS poste_technique, ft.pltxt AS poste_technique_texte,
            LTRIM(h.equnr, '0') AS equipement, et.eqktx AS equipement_texte
-    FROM raw_data.aufk a
-    LEFT JOIN raw_data.afih h ON h.mandt = a.mandt AND h.aufnr = a.aufnr
-    LEFT JOIN raw_data.afko k ON k.mandt = a.mandt AND k.aufnr = a.aufnr
+    -- Part d'AFKO (present pour toute operation listee), AUFK en complement.
+    FROM raw_data.afko k
+    LEFT JOIN raw_data.aufk a ON a.mandt = k.mandt AND a.aufnr = k.aufnr
+    LEFT JOIN raw_data.afih h ON h.mandt = k.mandt AND h.aufnr = k.aufnr
     LEFT JOIN raw_data.iloa l ON l.mandt = h.mandt AND l.iloan = h.iloan
     LEFT JOIN raw_data.crhd cr ON cr.mandt = h.mandt AND cr.objid = h.gewrk AND cr.objty = 'A'
     LEFT JOIN LATERAL (SELECT ktext FROM raw_data.crtx x WHERE x.mandt = cr.mandt AND x.objty = 'A'
@@ -179,7 +181,7 @@ _ENTETE = """
                         ORDER BY (x.spras = 'F') DESC LIMIT 1) ft ON TRUE
     LEFT JOIN LATERAL (SELECT eqktx FROM raw_data.eqkt x WHERE x.mandt = h.mandt AND x.equnr = h.equnr
                         ORDER BY (x.spras = 'F') DESC LIMIT 1) et ON TRUE
-    WHERE a.aufnr = %(aufnr)s
+    WHERE k.aufnr = %(aufnr)s
     LIMIT 1
 """
 
