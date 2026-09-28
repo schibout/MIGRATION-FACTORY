@@ -25,7 +25,8 @@ JOIN raw_data.jest j
 WHERE (j.inact IS NULL OR trim(j.inact) <> 'X')
   AND j.stat IN ('I0045', 'I0046', 'I0076')
 UNION ALL
-SELECT k.mandt, k.aufnr
+-- Types alignes sur AUFK (varchar(20)) : CREATE OR REPLACE VIEW refuse de les changer.
+SELECT k.mandt::varchar(20), k.aufnr::varchar(20)
 FROM raw_data.afko k
 JOIN raw_data.jest j
   ON j.mandt = k.mandt
