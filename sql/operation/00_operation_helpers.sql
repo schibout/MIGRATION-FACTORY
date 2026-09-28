@@ -37,3 +37,45 @@ WHERE NOT EXISTS (SELECT 1 FROM raw_data.aufk a WHERE a.mandt = k.mandt AND a.au
 
 COMMENT ON VIEW clean_data.v_sap_ordre_clos IS
 'Ordres SAP clos (statut actif TECO/CLSD/DLFL dans JEST). Les loaders du module Operations excluent leurs operations.';
+
+-- Perimetre de reprise des ordres de maintenance (regles IW39, 2026-09-28,
+-- demande explicite) :
+--   * date de debut de base (AFKO.GSTRP) du 01/01/2026 a aujourd'hui ;
+--   * poste de travail responsable (AFIH.GEWRK -> CRHD, objet 'A') de la
+--     division 9200 et d'un des secteurs 7.MATC, 7.MCAR, 7.MSCT, 7.MENG,
+--     7.MFIE, 7.MELY, 7.MNRJ, 7.MSGX (AUFK.VAPLZ/WAWRK ne sont pas extraits) ;
+--   * statut « en cours » : REL (I0002) actif et ordre non clos
+--     (v_sap_ordre_clos).
+-- Les avis SAP (QMEL) ne sont pas repris : on ne cree aucun BT a partir d'un
+-- avis, seuls les ordres existants passent. Environ 3 330 ordres le 2026-09-28.
+CREATE OR REPLACE VIEW clean_data.v_sap_ordre_repris AS
+SELECT k.mandt, k.aufnr
+FROM raw_data.afko k
+JOIN raw_data.aufk a
+  ON a.mandt = k.mandt
+ AND a.aufnr = k.aufnr
+JOIN raw_data.afih h
+  ON h.mandt = k.mandt
+ AND h.aufnr = k.aufnr
+JOIN raw_data.crhd c
+  ON c.mandt = h.mandt
+ AND c.objid = h.gewrk
+ AND c.objty = 'A'
+WHERE k.gstrp BETWEEN '20260101' AND to_char(CURRENT_DATE, 'YYYYMMDD')
+  AND c.werks = '9200'
+  AND c.arbpl IN ('7.MATC', '7.MCAR', '7.MSCT', '7.MENG',
+                  '7.MFIE', '7.MELY', '7.MNRJ', '7.MSGX')
+  AND EXISTS (
+      SELECT 1 FROM raw_data.jest j
+      WHERE j.mandt = a.mandt
+        AND j.objnr = a.objnr
+        AND j.stat = 'I0002'
+        AND (j.inact IS NULL OR trim(j.inact) <> 'X')
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM clean_data.v_sap_ordre_clos oc
+      WHERE oc.mandt = k.mandt AND oc.aufnr = k.aufnr
+  );
+
+COMMENT ON VIEW clean_data.v_sap_ordre_repris IS
+'Ordres SAP repris dans jt_task (regles IW39) : GSTRP 2026 a aujourd''hui, poste responsable 9200 / secteurs 7.M*, statut REL non clos.';

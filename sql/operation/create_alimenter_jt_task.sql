@@ -193,13 +193,12 @@ BEGIN
         WHERE v.aufpl IS NOT NULL
           AND v.aplzl IS NOT NULL
           AND (v.loekz IS NULL OR TRIM(v.loekz) = '')
-          -- Operations en cours ou futures uniquement : en-tete d'ordre present
-          -- (une operation sans AFKO n'a pas de bon de travail) et ordre non
-          -- clos (cf. clean_data.v_sap_ordre_clos, 00_operation_helpers.sql).
-          AND k.aufnr IS NOT NULL
-          AND NOT EXISTS (
-              SELECT 1 FROM clean_data.v_sap_ordre_clos oc
-              WHERE oc.mandt = k.mandt AND oc.aufnr = k.aufnr
+          -- Perimetre IW39 : ordres 2026, poste responsable 9200 / secteurs
+          -- 7.M*, statut en cours (cf. clean_data.v_sap_ordre_repris,
+          -- 00_operation_helpers.sql). Les avis SAP ne sont pas repris.
+          AND EXISTS (
+              SELECT 1 FROM clean_data.v_sap_ordre_repris orp
+              WHERE orp.mandt = k.mandt AND orp.aufnr = k.aufnr
           )
         ORDER BY v.mandt, v.aufpl, v.aplzl, v.vornr
     ), mapped AS (
