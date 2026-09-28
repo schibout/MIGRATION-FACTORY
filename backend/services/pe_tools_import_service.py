@@ -1,6 +1,7 @@
 """
-Parsing des fichiers CSV PE Tools ("PeTool - 7.<CODE>.csv") vers les colonnes
-de raw_data.pe_tools.
+Parsing des fichiers PE Tools -- CSV ("PeTool - 7.<CODE>.csv") ou classeur
+Excel d'origine ("PeTool - 7.<CODE>.xlsm") -- vers les colonnes de
+raw_data.pe_tools.
 
 Module pur : ni Flask ni base, pour etre testable seul. La logique (encodage
 cp850, cle de rapprochement sans accents, reparation des guillemets, surplus de
@@ -8,9 +9,11 @@ champs ignore) est reprise du script externe fusion_csv.py qui a servi au
 chargement initial de la table.
 """
 import csv
+import datetime
 import io
 import re
 import unicodedata
+import warnings
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -44,6 +47,12 @@ PE_TOOLS_COLUMNS: List[Tuple[str, str]] = [
 # Sans ces deux colonnes (noms SQL) le fichier n'est pas un export PE Tools.
 COLONNES_OBLIGATOIRES = ('poste_technique', 'plan_entretien')
 
+# Intitules alternatifs rencontres dans les classeurs -> colonne SQL
+# (cles calculees par cle(), apres sa definition).
+_ALIAS_INTITULES = {
+    "Poste technique ou N° d'équipement": 'poste_technique',   # 7.MENG
+}
+
 SEPARATEUR = ';'
 BOM_UTF8 = b'\xef\xbb\xbf'
 
@@ -63,6 +72,9 @@ def cle(nom: str) -> str:
     nom = ''.join(c for c in nom if not unicodedata.combining(c))
     nom = re.sub(r'\s+', ' ', nom.replace('\n', ' ').replace('\r', ' ')).strip()
     return nom.lower().rstrip(' .:')
+
+
+ALIAS = {cle(k): v for k, v in _ALIAS_INTITULES.items()}
 
 
 def _choisir_encodage_8bits(content: bytes) -> str:
@@ -130,6 +142,11 @@ def parse_pe_tools_csv(content: bytes) -> ParsedFile:
         raise ValueError('Fichier vide')
 
     lignes, reparees = _lire_lignes(_decoder(content))
+    return _construire(lignes, reparees)
+
+
+def _construire(lignes: List[List[str]], reparees: int = 0) -> ParsedFile:
+    """En-tete (lignes[0]) + donnees en texte -> ParsedFile. Commun CSV/Excel."""
     if not lignes:
         raise ValueError('Fichier vide')
 
@@ -138,6 +155,7 @@ def parse_pe_tools_csv(content: bytes) -> ParsedFile:
     # Accepte aussi en entete les noms de colonnes SQL eux-memes : c'est ce
     # que produit l'export CSV de l'ecran (re-import de son propre export).
     attendues.update({col_sql: col_sql for col_sql, _ in PE_TOOLS_COLUMNS})
+    attendues.update(ALIAS)
 
     # position dans la ligne -> colonne SQL (les colonnes inconnues et le
     # surplus de champs au-dela de l'en-tete sont ignores)
@@ -171,3 +189,67 @@ def parse_pe_tools_csv(content: bytes) -> ParsedFile:
         result.rows.append(ligne)
 
     return result
+
+
+# Valeurs d'erreur Excel (formule en echec) : traitees comme vides.
+ERREURS_EXCEL = {'#N/A', '#VALUE!', '#REF!', '#DIV/0!', '#NAME?', '#NUM!', '#NULL!'}
+
+
+def _texte_cellule(v) -> str:
+    """Cellule Excel -> texte au format des exports CSV d'Excel FR deja en
+    base (dates jj/mm/aaaa, decimales a virgule, entiers sans ',0')."""
+    if v is None:
+        return ''
+    if isinstance(v, (datetime.datetime, datetime.date)):
+        return v.strftime('%d/%m/%Y')
+    if isinstance(v, bool):
+        return 'VRAI' if v else 'FAUX'
+    if isinstance(v, float):
+        return str(int(v)) if v.is_integer() else f'{v:.10g}'.replace('.', ',')
+    v = str(v)
+    return '' if v.strip() in ERREURS_EXCEL else v
+
+
+def parse_pe_tools_excel(content: bytes) -> ParsedFile:
+    """Classeur PE Tools (.xlsx/.xlsm) -> ParsedFile.
+
+    L'onglet de donnees (« 7.<CODE> ») est celui dont une des 10 premieres
+    lignes porte l'en-tete « Plan Entretien » (ligne 2 dans les classeurs,
+    sous un bandeau). Valeurs lues en cache de calcul (data_only), les macros
+    ne sont pas executees. Le modele pre-rempli ~1 000 lignes de formules :
+    seules les lignes portant un poste technique ou un plan sont retenues,
+    comme dans les CSV exportes a la main."""
+    import openpyxl  # import local : inutile pour les CSV
+
+    if not content:
+        raise ValueError('Fichier vide')
+    # « Data Validation extension is not supported » (emis a la lecture des
+    # lignes en mode read_only) : sans effet sur les valeurs.
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        return _lire_classeur(openpyxl, content)
+
+
+def _lire_classeur(openpyxl, content: bytes) -> ParsedFile:
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    except Exception as exc:
+        raise ValueError(f'Classeur Excel illisible : {exc}')
+
+    try:
+        cible = {cle('Plan Entretien')}
+        for ws in wb.worksheets:
+            lignes = [[_texte_cellule(c) for c in r] for r in ws.iter_rows(values_only=True)]
+            for i, ligne in enumerate(lignes[:10]):
+                entete = [cle(c) for c in ligne]
+                if not cible & set(entete):
+                    continue
+                cles = {cle(lib) for c, lib in PE_TOOLS_COLUMNS if c in COLONNES_OBLIGATOIRES}
+                cles |= {k for k, c in ALIAS.items() if c in COLONNES_OBLIGATOIRES}
+                pos = [j for j, k in enumerate(entete) if k in cles]
+                utiles = [r for r in lignes[i + 1:]
+                          if any(j < len(r) and r[j].strip() for j in pos)]
+                return _construire([ligne] + utiles)
+        raise ValueError("Aucun onglet avec l'en-tete « Plan Entretien » (le classeur n'est pas un PE Tools ?)")
+    finally:
+        wb.close()

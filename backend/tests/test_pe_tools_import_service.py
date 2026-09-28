@@ -13,6 +13,7 @@ from services.pe_tools_import_service import (
     PE_TOOLS_COLUMNS,
     cle,
     parse_pe_tools_csv,
+    parse_pe_tools_excel,
 )
 
 FIXTURE = os.path.join(os.path.dirname(__file__), 'fixtures', 'petool_mcar_extrait.csv')
@@ -133,3 +134,47 @@ def test_en_tete_hors_format_refusee():
     contenu = _cp850('col1;col2;col3\r\n1;2;3\r\n')
     with pytest.raises(ValueError, match='Poste technique'):
         parse_pe_tools_csv(contenu)
+
+
+def test_excel_onglet_7_code_entete_ligne_2_lignes_modele_ignorees():
+    """Classeur d'origine : bandeau en ligne 1, en-tete en ligne 2, ~1 000
+    lignes de modele sans poste ni plan (ignorees), colonnes hors pe_tools."""
+    import datetime
+    import io
+
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    wb.active.title = 'Aide'
+    ws = wb.create_sheet('7.MENG')
+    ws.append([None, 'CARTOGRAPHIE DES PE'])
+    ws.append(['Poste Responsable', "Poste technique ou N° d'équipement", 'Plan Entretien',
+               'Poste entretien', 'Frequence', 'Date de validation', 'Charge', 'Décal.'])
+    ws.append(['7.MENG', 'T410-C', 35553, 70453, '4S', datetime.datetime(2023, 1, 26), 1.75, 'O'])
+    ws.append(['7.MENG', None, None, None, None, None, None, 'N'])    # ligne de modele
+    ws.append(['7.MENG', 'T410-D', 35554, None, '#N/A', None, 2.0, None])
+    tampon = io.BytesIO()
+    wb.save(tampon)
+
+    res = parse_pe_tools_excel(tampon.getvalue())
+
+    assert len(res.rows) == 2
+    r = res.rows[0]
+    assert (r['poste_technique'], r['plan_entretien'], r['poste_entretien']) == ('T410-C', '35553', '70453')
+    assert (r['date_validation'], r['charge'], r['decalage']) == ('26/01/2023', '1,75', 'O')
+    assert (res.rows[1]['frequence'], res.rows[1]['charge']) == (None, '2')
+    assert 'Poste Responsable' in res.unknown_columns
+
+
+def test_excel_sans_onglet_pe_tools_refuse():
+    import io
+
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    wb.active.append(["Plan d'entretien", 'Date dernière exécution'])
+    tampon = io.BytesIO()
+    wb.save(tampon)
+
+    with pytest.raises(ValueError, match='Plan Entretien'):
+        parse_pe_tools_excel(tampon.getvalue())

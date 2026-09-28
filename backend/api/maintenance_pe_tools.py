@@ -20,7 +20,7 @@ import psycopg2.extras
 from config.database import get_db_connection
 from config.settings import Config
 from services.cache_service import cache_get, cache_set, cache_invalidate
-from services.pe_tools_import_service import PE_TOOLS_COLUMNS, parse_pe_tools_csv
+from services.pe_tools_import_service import PE_TOOLS_COLUMNS, parse_pe_tools_csv, parse_pe_tools_excel
 
 maintenance_pe_tools_blueprint = Blueprint('maintenance_pe_tools', __name__)
 
@@ -541,10 +541,13 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
         'avertissements': [],
     }
     try:
-        if not nom_fichier.lower().endswith('.csv'):
-            raise ValueError('Extension attendue : .csv')
-
-        parsed = parse_pe_tools_csv(content)
+        extension = os.path.splitext(nom_fichier.lower())[1]
+        if extension == '.csv':
+            parsed = parse_pe_tools_csv(content)
+        elif extension in ('.xlsx', '.xlsm'):
+            parsed = parse_pe_tools_excel(content)
+        else:
+            raise ValueError('Extension attendue : .csv, .xlsx ou .xlsm')
         if not parsed.rows:
             raise ValueError('Aucune ligne de données')
         if parsed.missing_columns:

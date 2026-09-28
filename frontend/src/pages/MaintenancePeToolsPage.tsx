@@ -162,6 +162,8 @@ const MaintenancePeToolsPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<PeTool | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  // Meme route d'import : seul le type de fichier propose change.
+  const [importExcel, setImportExcel] = useState(false);
   const [importFiles, setImportFiles] = useState<File[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
@@ -358,7 +360,8 @@ const MaintenancePeToolsPage: React.FC = () => {
     }
   };
 
-  const openImport = () => {
+  const openImport = (excel: boolean) => {
+    setImportExcel(excel);
     setImportFiles([]);
     setImportResults(null);
     setImportOpen(true);
@@ -528,8 +531,11 @@ const MaintenancePeToolsPage: React.FC = () => {
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={startCreating} sx={{ mr: 1 }}>
           Nouvelle gamme
         </Button>
-        <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={openImport} sx={{ mr: 1 }}>
+        <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={() => openImport(false)} sx={{ mr: 1 }}>
           Importer
+        </Button>
+        <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={() => openImport(true)} sx={{ mr: 1 }}>
+          Importer Excel
         </Button>
         <Button
           variant="outlined"
@@ -743,7 +749,12 @@ const MaintenancePeToolsPage: React.FC = () => {
           {!importResults ? (
             <>
               <DialogContentText sx={{ mb: 2 }}>
-                Fichiers <code>PeTool - 7.&lt;CODE&gt;.csv</code> (export Excel, séparateur « ; »).
+                {importExcel ? (
+                  <>Classeurs <code>PeTool - 7.&lt;CODE&gt;.xlsm</code> d'origine (onglet <code>7.&lt;CODE&gt;</code>,
+                  seules les lignes portant un poste technique ou un plan sont reprises).</>
+                ) : (
+                  <>Fichiers <code>PeTool - 7.&lt;CODE&gt;.csv</code> (export Excel, séparateur « ; »).</>
+                )}
                 Les lignes déjà importées pour le même code de fichier sont remplacées ; les autres
                 fichiers et les lignes historiques ne bougent pas. L'organisation de maintenance est
                 déduite du nom du fichier.
@@ -752,8 +763,8 @@ const MaintenancePeToolsPage: React.FC = () => {
                 component="input"
                 type="file"
                 multiple
-                accept=".csv"
-                aria-label="Fichiers CSV PE Tools"
+                accept={importExcel ? '.xlsx,.xlsm' : '.csv'}
+                aria-label={importExcel ? 'Classeurs Excel PE Tools' : 'Fichiers CSV PE Tools'}
                 disabled={importing}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setImportFiles(Array.from(e.target.files || []))

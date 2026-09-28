@@ -228,10 +228,10 @@ def test_import_sans_audit_ni_organisation(petools, app_context, capture_execute
 
 def test_import_extension_invalide(petools, app_context, capture_execute_values, audit_detecte, contenu_fixture):
     conn = FakeConnection()
-    resultat = petools._import_one_file(conn, 'PeTool - 7.MCAR.xlsx', contenu_fixture, 'samir')
+    resultat = petools._import_one_file(conn, 'PeTool - 7.MCAR.txt', contenu_fixture, 'samir')
 
     assert resultat['status'] == 'error'
-    assert resultat['error'] == 'Extension attendue : .csv'
+    assert resultat['error'] == 'Extension attendue : .csv, .xlsx ou .xlsm'
     assert resultat['lignes_supprimees'] == 0
     assert resultat['lignes_inserees'] == 0
     assert conn.journal == []  # aucun SQL execute
