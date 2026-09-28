@@ -97,6 +97,7 @@ BEGIN
         pm_interval_unit,
         pm_interval_unit_db,
         description,
+        alternate_designation,
         note,
         latest_pm,
         last_changed
@@ -131,8 +132,14 @@ BEGIN
     rep AS (
         SELECT DISTINCT ON (s.pm_no)
             s.pm_no,
-            s.designation
+            s.designation,
+            -- plan_entretien - poste_entretien de la ligne representative ; un
+            -- pm_no peut couvrir plusieurs postes d'entretien (44 cas), seul
+            -- celui de la premiere gamme est retenu. Partie vide -> omise.
+            NULLIF(concat_ws('-', NULLIF(btrim(t.plan_entretien), ''),
+                                  NULLIF(btrim(t.poste_entretien), '')), '') AS alternate_designation
         FROM src s
+        JOIN raw_data.pe_tools t ON t.raw_id = s.raw_id
         ORDER BY s.pm_no, clean_data.pe_num(s.compteur_de_gamme) NULLS LAST, s.raw_id
     ),
     notes AS (
@@ -168,6 +175,7 @@ BEGIN
         -- sans repli : lettre inconnue ou frequence vide -> NULL
         public.get_transcodification('PM_INTERVAL_UNIT', right(a.freq_norm, 1), 'PETOOLS', 'IFS')     AS pm_interval_unit_db,
         left(r.designation, 2000),
+        left(r.alternate_designation, 2000),
         n.note,
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
