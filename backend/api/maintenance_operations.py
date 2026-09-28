@@ -105,6 +105,13 @@ def list_operations():
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             # Le JIT coute ~7 s de compilation sur cette requete pour rien.
             cursor.execute("SET LOCAL jit = off")
+            if en_cours and not clotures:
+                # Anti-jointure sur les ~660 000 ordres clos : par defaut le planificateur
+                # les trie pour une jointure par fusion (tri texte en collation francaise,
+                # ~6 s). En hachage la selection par defaut passe de 8,4 s a 2,8 s ; pour
+                # « clotures » les boucles indexees restent meilleures (1,4 s contre 2,6 s).
+                cursor.execute("SET LOCAL work_mem = '256MB'")
+                cursor.execute("SET LOCAL enable_mergejoin = off")
             cursor.execute(_LISTE.format(where=' AND '.join(where)), params)
             rows = cursor.fetchall()
             # Libelles TJ02T lus une fois (une recherche par ligne coutait ~3 s sur 10 000 lignes).
