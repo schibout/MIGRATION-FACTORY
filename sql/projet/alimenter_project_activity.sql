@@ -92,9 +92,14 @@ BEGIN
                         THEN UPPER(TRIM(vd.gate)) || 'ter'
                     ELSE NULL
                 END AS activity_source,
-                -- IFS ne veut QUE l'échéance ASAP (référentiel des jalons, heure de Paris) :
-                -- pas de repli sur la date réalisée / prévue de l'état d'avancement
-                (NULLIF(vd.ref_date_echeance, '')::timestamptz AT TIME ZONE 'Europe/Paris')::DATE AS activity_date,
+                -- « Fin / Échéance » du DERNIER état d'avancement (Actual, heure de Paris),
+                -- puis Forecast ; à défaut (porte absente de tout état, ex. 24.033 P3 bis)
+                -- l'échéance du référentiel des jalons
+                (COALESCE(
+                    vd.date_realisee,
+                    vd.date_prevue,
+                    NULLIF(vd.ref_date_echeance, '')::timestamptz
+                ) AT TIME ZONE 'Europe/Paris')::DATE AS activity_date,
                 vd.date_etat_source
             FROM clean_data.v_portes_detail vd
             WHERE vd.project_number IS NOT NULL
