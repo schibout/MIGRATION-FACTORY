@@ -97,14 +97,17 @@ export const FIELDS: { key: string; label: string; inTable?: boolean; monospace?
   { key: 'designation', label: 'Désignation', inTable: true },
   { key: 'frequence', label: 'Fréquence', inTable: true },
   { key: 'type', label: 'Type', inTable: true },
-  { key: 'nom_fichier', label: 'Fichier', inTable: true, monospace: true },
+  // Fichier retire de la liste (redondant avec Organisation, deduite du nom de fichier) :
+  // reste dans le detail et les filtres.
+  { key: 'nom_fichier', label: 'Fichier', monospace: true },
+  // A la place du fichier : cle de la date de derniere execution (plan, a defaut poste d'entretien).
+  { key: 'plan_entretien', label: 'Plan d\'entretien', inTable: true, monospace: true },
   { key: 'organisation_maintenance', label: 'Organisation', inTable: true, monospace: true },
   { key: 'criticite', label: 'Criticité' },
   // Calculee (migration 082) depuis raw_data.plan_entretien_derniere_exec, jamais saisie.
   { key: 'date_derniere_execution', label: 'Dernière exécution', inTable: true },
   // Generee (migration 083) : derniere execution + frequence (S/M/A ; H -> vide).
   { key: 'ifs_date_execution', label: 'Date exécution IFS', inTable: true },
-  { key: 'plan_entretien', label: 'Plan d\'entretien', monospace: true },
   { key: 'poste_entretien', label: 'Poste d\'entretien', monospace: true },
   { key: 'groupe_de_gamme', label: 'Groupe de gamme', monospace: true },
   { key: 'compteur_de_gamme', label: 'Compteur de gamme', monospace: true },
