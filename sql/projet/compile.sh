@@ -75,10 +75,9 @@ files=(
     "alimenter_ifs_project_role_assignment.sql"
     "alimenter_ifs_project_margin_matrix.sql"
     "alimenter_sub_project.sql"
-    "alimenter_activity.sql"
+    "source/v_portes_detail.sql"
     "alimenter_project_activity.sql"
     "alimenter_project_activity_class.sql"
-    "get_person_id_from_sharepoint_user_id.sql"
 )
 
 # Exécution de chaque fichier
