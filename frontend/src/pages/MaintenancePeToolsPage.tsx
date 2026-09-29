@@ -98,6 +98,8 @@ export const FIELDS: { key: string; label: string; inTable?: boolean; monospace?
   { key: 'designation', label: 'Désignation', inTable: true },
   { key: 'frequence', label: 'Fréquence', inTable: true },
   { key: 'type', label: 'Type', inTable: true },
+  // Generee (migration 087) depuis le type : MEC -> MM, ELEC -> ME.
+  { key: 'groupe_ressources', label: 'Groupe ressources', inTable: true, monospace: true },
   // Fichier retire de la liste (redondant avec Organisation, deduite du nom de fichier) :
   // reste dans le detail et les filtres.
   { key: 'nom_fichier', label: 'Fichier', monospace: true },

@@ -88,7 +88,7 @@ SEARCH_COLUMNS = [
 ]
 
 # Tris autorises (liste blanche : le nom de colonne est interpole dans le SQL).
-ORDERABLE = set(COLUMNS) | set(COMPUTED_COLUMNS) | {'raw_id', 'date_derniere_execution', 'ifs_date_execution'}
+ORDERABLE = set(COLUMNS) | set(COMPUTED_COLUMNS) | {'raw_id', 'date_derniere_execution', 'ifs_date_execution', 'groupe_ressources'}
 
 # Colonnes d'audit ajoutees par la migration 029. Elles peuvent manquer si la
 # migration n'a pas encore ete jouee, ou si la table a ete rechargee depuis le
@@ -165,6 +165,8 @@ def _has_import_columns(cursor) -> bool:
 # depuis raw_data.plan_entretien_derniere_exec) et 083 (ifs_date_execution = derniere
 # execution + frequence, colonne generee). Chacune n'est lue qu'une fois sa migration jouee.
 DATE_COLUMNS = ['date_derniere_execution', 'ifs_date_execution']
+# Colonne generee (087) : groupe de ressources IFS deduit du type, lecture seule.
+DERIVED_COLUMNS = ['groupe_ressources']
 _columns_present = {}
 
 
@@ -188,7 +190,7 @@ def _selected_columns(cursor):
     """Colonnes lues par la liste, le detail et l'export : les colonnes
     calculees en tete (si les migrations 077 / 082 / 083 sont jouees) puis les colonnes metier."""
     columns = list(COMPUTED_COLUMNS) if _has_import_columns(cursor) else []
-    columns += [c for c in DATE_COLUMNS if _has_column(cursor, c)]
+    columns += [c for c in DATE_COLUMNS + DERIVED_COLUMNS if _has_column(cursor, c)]
     return columns + COLUMNS
 
 

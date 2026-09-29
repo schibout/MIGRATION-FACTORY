@@ -5,7 +5,8 @@ CREATE OR REPLACE FUNCTION clean_data.pe_num(p_text text)
 AS $function$
     SELECT CASE
         WHEN p_text IS NULL THEN NULL
-        WHEN btrim(p_text) ~ '^-?[0-9]+(\.[0-9]+)?$' THEN btrim(p_text)::numeric
+        -- virgule decimale acceptee : PE Tools ecrit "3,5" (133 charges perdues avant)
+        WHEN replace(btrim(p_text), ',', '.') ~ '^-?[0-9]+(\.[0-9]+)?$' THEN replace(btrim(p_text), ',', '.')::numeric
         ELSE NULL
     END;
 $function$

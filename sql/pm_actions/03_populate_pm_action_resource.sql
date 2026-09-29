@@ -14,6 +14,7 @@ BEGIN
         pm_action_resource_seq,
         demand_type,
         demand_type_db,
+        resource_group,
         planned_hours,
         planned_quantity
     )
@@ -23,9 +24,12 @@ BEGIN
         row_number() OVER (ORDER BY s.pm_no, s.raw_id)  AS pm_action_resource_seq,
         v_demand_type,
         v_demand_type_db,
-        clean_data.pe_num(s.charge)                     AS planned_hours,
-        clean_data.pe_num(s.nb_intervenants)            AS planned_quantity
+        -- Groupe ressources : deduit du Type PE Tools (MEC -> MM, ELEC -> ME, migration 087)
+        t.groupe_ressources                             AS resource_group,
+        clean_data.pe_num(s.charge)                     AS planned_hours,     -- colonne "Charge"
+        clean_data.pe_num(s.nb_intervenants)            AS planned_quantity   -- colonne "Nombre intervenants"
     FROM clean_data.v_pm_source s
+    JOIN raw_data.pe_tools t ON t.raw_id = s.raw_id
     JOIN clean_data.pm_action p
       ON p.pm_no = s.pm_no
      AND p.pm_revision = v_pm_revision;

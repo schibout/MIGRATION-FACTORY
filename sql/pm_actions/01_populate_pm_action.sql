@@ -15,6 +15,8 @@ DECLARE
     v_connection_type     VARCHAR := clean_data.pm_connection_type_client(v_connection_type_db);
     -- Type de travail IFS (migration 086) : case vide dans l'ecran -> NULL
     v_work_type_id        VARCHAR := NULLIF(btrim(public.get_default_value('clean_data.pm_action', 'work_type_id')), '');
+    -- Delai de generation BT en jours (migration 086) : 30 si la ligne manque ou est desactivee
+    v_wo_gen_lead_time    NUMERIC := NULLIF(btrim(COALESCE(public.get_default_value('clean_data.pm_action', 'wo_gen_lead_time'), '30')), '')::numeric;
     v_count INTEGER := 0;
     v_reject_count INTEGER := 0;
     v_multi_org INTEGER := 0;
@@ -96,6 +98,9 @@ BEGIN
         connection_type,
         connection_type_db,
         work_type_id,
+        plan_hrs,
+        start_date,
+        wo_gen_lead_time,
         "interval",
         pm_interval_unit,
         pm_interval_unit_db,
@@ -113,12 +118,22 @@ BEGIN
             s.pm_no,
             NULLIF(btrim(min(s.poste_technique)), '') AS mch_code,
             min(s.freq_norm)       AS freq_norm,
+            -- Temps d'execution IFS (PLAN_HRS) = somme des charges des operations
+            -- (colonne "Charge" PE Tools, reprise en duree dans pm_action_role)
+            sum(clean_data.pe_num(s.charge))          AS plan_hrs,
+            -- Date debut IFS (START_DATE) = date IFS de pe_tools (migration 083 :
+            -- derniere execution + frequence) ; plus proche si plusieurs gammes
+            min(t.ifs_date_execution)::timestamp      AS start_date,
+            -- Derniere execution IFS (LATEST_PM) = "Derniere execution" de pe_tools
+            -- (migrations 082/084) ; la plus recente si plusieurs gammes
+            max(t.date_derniere_execution)::timestamp AS latest_pm,
             -- Organisation IFS du fichier importe (migration 077). min() ignore
             -- les NULL (lignes historiques) ; si un pm_no venait de plusieurs
             -- fichiers, la plus petite valeur est retenue et un WARNING est
             -- emis ci-dessous.
             min(s.organisation_maintenance)           AS org_code_fichier
         FROM src s
+        JOIN raw_data.pe_tools t ON t.raw_id = s.raw_id
         GROUP BY s.pm_no
     ),
     valid AS (
@@ -170,6 +185,9 @@ BEGIN
         v_connection_type,
         v_connection_type_db,
         v_work_type_id,
+        a.plan_hrs,
+        a.start_date,
+        v_wo_gen_lead_time,
         -- INTERVAL est obligatoire cote IFS : '0' quand la frequence est vide
         COALESCE(NULLIF(left(regexp_replace(COALESCE(a.freq_norm, ''), '\D', '', 'g'), 4), ''), '0')  AS "interval",
         -- PM_INTERVAL_UNIT (libelle) : volontairement vide, seul le code _db est charge
@@ -181,7 +199,7 @@ BEGIN
         left(r.designation, 2000),
         left(r.alternate_designation, 2000),
         n.note,
-        CURRENT_TIMESTAMP,
+        a.latest_pm,
         CURRENT_TIMESTAMP
     FROM valid a
     LEFT JOIN rep   r ON r.pm_no = a.pm_no
