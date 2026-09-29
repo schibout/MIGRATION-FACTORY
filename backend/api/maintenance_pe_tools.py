@@ -87,7 +87,7 @@ SEARCH_COLUMNS = [
 ]
 
 # Tris autorises (liste blanche : le nom de colonne est interpole dans le SQL).
-ORDERABLE = set(COLUMNS) | set(COMPUTED_COLUMNS) | {'raw_id', 'date_derniere_execution'}
+ORDERABLE = set(COLUMNS) | set(COMPUTED_COLUMNS) | {'raw_id', 'date_derniere_execution', 'ifs_date_execution'}
 
 # Colonnes d'audit ajoutees par la migration 029. Elles peuvent manquer si la
 # migration n'a pas encore ete jouee, ou si la table a ete rechargee depuis le
@@ -160,30 +160,34 @@ def _has_import_columns(cursor) -> bool:
     return _import_columns_available
 
 
-# Colonne de la migration 082 (date de derniere execution du plan, alimentee
-# par trigger depuis raw_data.plan_entretien_derniere_exec). Meme detection memorisee.
-_date_exec_available = None
+# Colonnes DATE calculees, jamais saisies : 082 (derniere execution du plan, trigger
+# depuis raw_data.plan_entretien_derniere_exec) et 083 (ifs_date_execution = derniere
+# execution + frequence, colonne generee). Chacune n'est lue qu'une fois sa migration jouee.
+DATE_COLUMNS = ['date_derniere_execution', 'ifs_date_execution']
+_columns_present = {}
 
 
-def _has_date_exec_column(cursor) -> bool:
-    global _date_exec_available
-    if _date_exec_available is None:
+def _has_column(cursor, column: str) -> bool:
+    """Presence d'une colonne de pe_tools, detectee une fois puis memorisee par worker."""
+    if column not in _columns_present:
         cursor.execute("""
             SELECT COUNT(*) AS nb
             FROM information_schema.columns
-            WHERE table_schema = 'raw_data' AND table_name = 'pe_tools'
-              AND column_name = 'date_derniere_execution'
-        """)
-        _date_exec_available = cursor.fetchone()['nb'] == 1
-    return _date_exec_available
+            WHERE table_schema = 'raw_data' AND table_name = 'pe_tools' AND column_name = %s
+        """, [column])
+        _columns_present[column] = cursor.fetchone()['nb'] == 1
+    return _columns_present[column]
+
+
+def _has_date_exec_column(cursor) -> bool:
+    return _has_column(cursor, 'date_derniere_execution')
 
 
 def _selected_columns(cursor):
     """Colonnes lues par la liste, le detail et l'export : les colonnes
-    calculees en tete (si les migrations 077 / 082 sont jouees) puis les colonnes metier."""
+    calculees en tete (si les migrations 077 / 082 / 083 sont jouees) puis les colonnes metier."""
     columns = list(COMPUTED_COLUMNS) if _has_import_columns(cursor) else []
-    if _has_date_exec_column(cursor):
-        columns.append('date_derniere_execution')
+    columns += [c for c in DATE_COLUMNS if _has_column(cursor, c)]
     return columns + COLUMNS
 
 
@@ -419,8 +423,9 @@ def get_pe_tool(raw_id: int):
             if not row:
                 return jsonify({'success': False, 'error': 'Ligne non trouvee'}), 404
             # jsonify rendrait une date au format HTTP (« Mon, 10 Aug 2026 00:00:00 GMT »).
-            if row.get('date_derniere_execution'):
-                row['date_derniere_execution'] = row['date_derniere_execution'].isoformat()
+            for c in ('date_derniere_execution', 'ifs_date_execution'):
+                if row.get(c):
+                    row[c] = row[c].isoformat()
             return jsonify({'success': True, 'data': row}), 200
 
     except Exception as e:

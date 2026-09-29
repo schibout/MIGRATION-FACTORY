@@ -102,6 +102,8 @@ export const FIELDS: { key: string; label: string; inTable?: boolean; monospace?
   { key: 'criticite', label: 'Criticité' },
   // Calculee (migration 082) depuis raw_data.plan_entretien_derniere_exec, jamais saisie.
   { key: 'date_derniere_execution', label: 'Dernière exécution', inTable: true },
+  // Generee (migration 083) : derniere execution + frequence (S/M/A ; H -> vide).
+  { key: 'ifs_date_execution', label: 'Date exécution IFS', inTable: true },
   { key: 'plan_entretien', label: 'Plan d\'entretien', monospace: true },
   { key: 'poste_entretien', label: 'Poste d\'entretien', monospace: true },
   { key: 'groupe_de_gamme', label: 'Groupe de gamme', monospace: true },
@@ -121,6 +123,8 @@ export const FIELDS: { key: string; label: string; inTable?: boolean; monospace?
 ];
 
 const TABLE_FIELDS = FIELDS.filter((f) => f.inTable);
+// Colonnes DATE (ISO cote API) affichees en JJ/MM/AAAA.
+const DATE_KEYS = ['date_derniere_execution', 'ifs_date_execution'];
 
 // Filtres a liste deroulante : doivent correspondre a FILTER_COLUMNS cote API.
 const SELECT_FILTERS: { key: string; label: string }[] = [
@@ -474,7 +478,7 @@ const MaintenancePeToolsPage: React.FC = () => {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {(f.key === 'date_derniere_execution' && r[f.key]
+                        {(DATE_KEYS.includes(f.key) && r[f.key]
                           ? String(r[f.key]).slice(0, 10).split('-').reverse().join('/')
                           : r[f.key]) || '—'}
                       </TableCell>
