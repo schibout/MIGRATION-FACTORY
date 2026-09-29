@@ -11,7 +11,8 @@ import api from '../services/api';
 // Date de derniere execution par plan d'entretien (raw_data.plan_entretien_derniere_exec),
 // completee par les gammes PE Tools du meme plan. Lecture seule, liste complete (~1 300 lignes).
 interface Plan {
-  plan_entretien: string;
+  id_type: 'PLAN' | 'POSTE';
+  identifiant: string;
   date_derniere_execution: string | null;
   jours_depuis: number | null;
   designation: string | null;
@@ -28,7 +29,8 @@ const fmtDate = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/$
 const couleur = (j: number | null) => (j == null ? 'default' : j > 365 ? 'error' : j > 31 ? 'warning' : 'success');
 
 const COLONNES: { key: Col; label: string }[] = [
-  { key: 'plan_entretien', label: 'Plan d\'entretien' },
+  { key: 'id_type', label: 'Type' },
+  { key: 'identifiant', label: 'Plan / poste d\'entretien' },
   { key: 'date_derniere_execution', label: 'Dernière exécution' },
   { key: 'jours_depuis', label: 'Depuis (jours)' },
   { key: 'designation', label: 'Désignation (PE Tools)' },
@@ -101,8 +103,9 @@ const MaintenancePlansDerniereExecPage: React.FC = () => {
         </Alert>
       )}
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-        Date de dernière exécution de chaque plan d'entretien SAP. Désignation, poste technique, fréquence et
-        organisation viennent des gammes PE Tools du même plan, quand il y en a.
+        Date de dernière exécution par plan d'entretien ou par poste d'entretien SAP (colonne Id_type du fichier
+        d'import, Plan par défaut). Une gamme PE Tools prend la date de son plan, à défaut celle de son poste
+        d'entretien. Désignation, poste technique, fréquence et organisation viennent des gammes correspondantes.
       </Typography>
 
       {erreur && <Alert severity="error" sx={{ mb: 2 }}>{erreur}</Alert>}
@@ -112,7 +115,7 @@ const MaintenancePlansDerniereExecPage: React.FC = () => {
           size="small" label="Rechercher" value={recherche} sx={{ width: 360 }}
           onChange={(e) => { setRecherche(e.target.value); setPage(0); }}
         />
-        <Typography variant="body2" color="text.secondary">{visibles.length.toLocaleString()} plan(s)</Typography>
+        <Typography variant="body2" color="text.secondary">{visibles.length.toLocaleString()} ligne(s)</Typography>
         {plusDunAn > 0 && <Chip size="small" color="error" variant="outlined" label={`${plusDunAn} non exécutés depuis plus d'un an`} />}
       </Box>
 
@@ -140,8 +143,12 @@ const MaintenancePlansDerniereExecPage: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {visibles.slice(page * parPage, (page + 1) * parPage).map((r) => (
-                    <TableRow hover key={r.plan_entretien}>
-                      <TableCell sx={{ fontFamily: 'monospace' }}>{r.plan_entretien}</TableCell>
+                    <TableRow hover key={`${r.id_type}-${r.identifiant}`}>
+                      <TableCell>
+                        <Chip size="small" variant="outlined" color={r.id_type === 'POSTE' ? 'secondary' : 'primary'}
+                          label={r.id_type === 'POSTE' ? 'Poste' : 'Plan'} />
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace' }}>{r.identifiant}</TableCell>
                       <TableCell>{fmtDate(r.date_derniere_execution)}</TableCell>
                       <TableCell>
                         {r.jours_depuis != null && (

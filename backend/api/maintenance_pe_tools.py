@@ -601,29 +601,31 @@ def import_pe_tools():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# Date de derniere execution par plan d'entretien (raw_data.plan_entretien_derniere_exec,
-# ~1 300 lignes, liste complete filtree cote ecran). MPLA n'est pas extraite : designation,
-# poste technique, frequence et organisation viennent des gammes PE Tools du meme plan.
+# Date de derniere execution par plan OU poste d'entretien (raw_data.plan_entretien_derniere_exec,
+# id_type = PLAN | POSTE depuis la 084 ; ~1 300 lignes, liste complete filtree cote ecran).
+# MPLA n'est pas extraite : designation, poste technique, frequence et organisation viennent
+# des gammes PE Tools du meme plan (id_type PLAN) ou du meme poste d'entretien (POSTE).
 _DERNIERE_EXEC = """
-    SELECT p.plan_entretien,
+    SELECT p.id_type, p.identifiant,
            p.jour AS date_derniere_execution,
            CURRENT_DATE - p.jour AS jours_depuis,
            t.designation, t.poste_technique, t.frequence, t.organisation_maintenance, t.nb_gammes
-    -- Une ligne par plan, date la plus recente (meme regle que pe_tools.date_derniere_execution, 082).
+    -- Une ligne par identifiant, date la plus recente (meme regle que pe_tools.date_derniere_execution).
     -- Date importee en texte 'YYYY-MM-DD hh:mm:ss' ; une valeur mal formee sort NULL au lieu de tout casser.
-    FROM (SELECT LTRIM(warpl, '0') AS plan_entretien,
+    FROM (SELECT id_type, LTRIM(warpl, '0') AS identifiant,
                  max(CASE WHEN date_derniere_execution ~ '^\\d{4}-\\d{2}-\\d{2}'
                           THEN left(date_derniere_execution, 10)::date END) AS jour
           FROM raw_data.plan_entretien_derniere_exec
-          GROUP BY 1) p
+          GROUP BY 1, 2) p
     LEFT JOIN LATERAL (
         SELECT min(x.designation) AS designation, min(x.poste_technique) AS poste_technique,
                min(x.frequence) AS frequence, min(x.organisation_maintenance) AS organisation_maintenance,
                count(*) AS nb_gammes
         FROM raw_data.pe_tools x
-        WHERE LTRIM(x.plan_entretien, '0') = p.plan_entretien
+        WHERE LTRIM(CASE p.id_type WHEN 'POSTE' THEN x.poste_entretien ELSE x.plan_entretien END, '0')
+              = p.identifiant
     ) t ON TRUE
-    ORDER BY p.jour NULLS FIRST, 1
+    ORDER BY p.jour NULLS FIRST, 1, 2
 """
 
 
@@ -646,7 +648,7 @@ def list_plans_derniere_execution():
 @maintenance_pe_tools_blueprint.route('/plans-derniere-execution/sync', methods=['POST'])
 @jwt_required()
 def sync_plans_derniere_execution():
-    """Recopie la date de derniere execution dans pe_tools (meme calcul que la 082).
+    """Recopie la date de derniere execution dans pe_tools (plan, a defaut poste d'entretien : 084).
     Les triggers la tiennent deja a jour ; ce bouton rattrape une ecriture qui les aurait
     contournes (table rechargee hors application, triggers desactives...)."""
     try:
@@ -657,9 +659,10 @@ def sync_plans_derniere_execution():
                                 'error': 'Migration 082 non jouée : colonne pe_tools.date_derniere_execution absente'}), 503
             cursor.execute("""
                 UPDATE raw_data.pe_tools t
-                   SET date_derniere_execution = raw_data.pe_tools_date_derniere_execution(t.plan_entretien)
-                 WHERE t.date_derniere_execution
-                       IS DISTINCT FROM raw_data.pe_tools_date_derniere_execution(t.plan_entretien)
+                   SET date_derniere_execution =
+                       raw_data.pe_tools_date_derniere_execution(t.plan_entretien, t.poste_entretien)
+                 WHERE t.date_derniere_execution IS DISTINCT FROM
+                       raw_data.pe_tools_date_derniere_execution(t.plan_entretien, t.poste_entretien)
             """)
             maj = cursor.rowcount
             cursor.execute("SELECT count(date_derniere_execution) AS datees, count(*) AS total FROM raw_data.pe_tools")
