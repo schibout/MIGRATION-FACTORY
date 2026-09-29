@@ -62,6 +62,7 @@ import {
   AccountTree as PosteIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
+import DateExecutionEditable, { fmtDateIso, ResultatSaisieDate } from '../components/maintenance/DateExecutionEditable';
 
 interface PeTool {
   raw_id: number;
@@ -104,7 +105,7 @@ export const FIELDS: { key: string; label: string; inTable?: boolean; monospace?
   { key: 'plan_entretien', label: 'Plan d\'entretien', inTable: true, monospace: true },
   { key: 'organisation_maintenance', label: 'Organisation', inTable: true, monospace: true },
   { key: 'criticite', label: 'Criticité' },
-  // Calculee (migration 082) depuis raw_data.plan_entretien_derniere_exec, jamais saisie.
+  // Calculee (082/084) depuis raw_data.plan_entretien_derniere_exec ; saisie possible sur place (085).
   { key: 'date_derniere_execution', label: 'Dernière exécution', inTable: true },
   // Generee (migration 083) : derniere execution + frequence (S/M/A ; H -> vide).
   { key: 'ifs_date_execution', label: 'Date exécution IFS', inTable: true },
@@ -232,6 +233,19 @@ const MaintenancePeToolsPage: React.FC = () => {
     }, 400);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  // Une saisie vaut pour toutes les gammes du meme plan (ou poste) : on relit la page.
+  const dateSaisie = (res: ResultatSaisieDate) => {
+    const cible = `${res.id_type === 'POSTE' ? 'poste d\'entretien' : 'plan'} ${res.identifiant}`;
+    setSnackbar({
+      open: true,
+      severity: 'success',
+      message: res.saisie_manuelle
+        ? `Date enregistrée pour le ${cible} (${res.nb_gammes} gamme(s)). Date IFS : ${fmtDateIso(res.ifs_date_execution) || '—'}`
+        : `Saisie retirée pour le ${cible} : retour à la date du fichier.`,
+    });
+    loadRows();
+  };
 
   const handleSort = (col: string) => {
     const isAsc = orderBy === col && order === 'asc';
@@ -475,15 +489,20 @@ const MaintenancePeToolsPage: React.FC = () => {
                         sx={{
                           fontFamily: f.monospace ? 'monospace' : 'inherit',
                           fontWeight: f.monospace ? 600 : 400,
-                          maxWidth: f.key === 'designation' ? 320 : 200,
+                          maxWidth: f.key === 'designation' ? 320 : f.key === 'date_derniere_execution' ? 'none' : 200,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {(DATE_KEYS.includes(f.key) && r[f.key]
-                          ? String(r[f.key]).slice(0, 10).split('-').reverse().join('/')
-                          : r[f.key]) || '—'}
+                        {f.key === 'date_derniere_execution' ? (
+                          <DateExecutionEditable
+                            rawId={r.raw_id}
+                            valeur={r[f.key]}
+                            onSaved={dateSaisie}
+                            onError={(message) => setSnackbar({ open: true, message, severity: 'error' })}
+                          />
+                        ) : (DATE_KEYS.includes(f.key) ? fmtDateIso(r[f.key]) : r[f.key]) || '—'}
                       </TableCell>
                     ))}
                   </TableRow>

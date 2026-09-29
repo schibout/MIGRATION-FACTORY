@@ -98,3 +98,28 @@ def test_date_par_poste_puis_priorite_au_plan(cur):
     # Le plan retire, la gamme revient a la date de son poste.
     cur.execute("DELETE FROM raw_data.plan_entretien_derniere_exec WHERE warpl = %s AND id_type = 'PLAN'", [PLAN_TEST])
     assert _date_gamme(cur, raw_id) == '2026-05-10'
+
+
+def test_saisie_manuelle_prioritaire(cur):
+    """085 : une saisie MANUEL prime sur le fichier, meme plus ancienne ; la retirer rend la date du fichier."""
+    cur.execute("""SELECT 1 FROM information_schema.columns WHERE table_schema = 'raw_data'
+                   AND table_name = 'plan_entretien_derniere_exec' AND column_name = 'source'""")
+    if not cur.fetchone():
+        pytest.skip('migration 085 non jouee')
+    raw_id = _gamme_de_test(cur)
+    _insere_date(cur, PLAN_TEST, '2026-06-01 00:00:00', 'Plan')
+    assert _date_gamme(cur, raw_id) == '2026-06-01'
+
+    cur.execute("""INSERT INTO raw_data.plan_entretien_derniere_exec (warpl, date_derniere_execution, id_type, source)
+                   VALUES (%s, '2026-02-15 00:00:00', 'PLAN', 'MANUEL')""", [PLAN_TEST])
+    assert _date_gamme(cur, raw_id) == '2026-02-15'
+
+    # Une seule saisie manuelle par identifiant (index unique partiel, cible de l'upsert de l'API).
+    cur.execute('SAVEPOINT s')
+    with pytest.raises(psycopg2.errors.UniqueViolation):
+        cur.execute("""INSERT INTO raw_data.plan_entretien_derniere_exec (warpl, date_derniere_execution, id_type, source)
+                       VALUES (%s, '2026-03-01 00:00:00', 'PLAN', 'MANUEL')""", ['00' + PLAN_TEST])
+    cur.execute('ROLLBACK TO SAVEPOINT s')
+
+    cur.execute("DELETE FROM raw_data.plan_entretien_derniere_exec WHERE warpl = %s AND source = 'MANUEL'", [PLAN_TEST])
+    assert _date_gamme(cur, raw_id) == '2026-06-01'

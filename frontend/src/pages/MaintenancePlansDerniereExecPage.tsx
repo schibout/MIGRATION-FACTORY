@@ -13,6 +13,7 @@ import api from '../services/api';
 interface Plan {
   id_type: 'PLAN' | 'POSTE';
   identifiant: string;
+  manuel: boolean;
   date_derniere_execution: string | null;
   jours_depuis: number | null;
   designation: string | null;
@@ -149,7 +150,11 @@ const MaintenancePlansDerniereExecPage: React.FC = () => {
                           label={r.id_type === 'POSTE' ? 'Poste' : 'Plan'} />
                       </TableCell>
                       <TableCell sx={{ fontFamily: 'monospace' }}>{r.identifiant}</TableCell>
-                      <TableCell>{fmtDate(r.date_derniere_execution)}</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        {fmtDate(r.date_derniere_execution)}
+                        {/* Saisie ecran PE Tools (085), prioritaire sur le fichier. */}
+                        {r.manuel && <Chip size="small" label="Saisie" color="warning" variant="outlined" sx={{ ml: 1 }} />}
+                      </TableCell>
                       <TableCell>
                         {r.jours_depuis != null && (
                           <Chip size="small" color={couleur(r.jours_depuis)} label={r.jours_depuis.toLocaleString()} />

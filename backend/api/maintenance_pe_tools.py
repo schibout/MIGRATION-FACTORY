@@ -12,6 +12,7 @@ import csv
 import io
 import json
 import os
+from datetime import date
 
 from flask import Blueprint, Response, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -167,16 +168,16 @@ DATE_COLUMNS = ['date_derniere_execution', 'ifs_date_execution']
 _columns_present = {}
 
 
-def _has_column(cursor, column: str) -> bool:
-    """Presence d'une colonne de pe_tools, detectee une fois puis memorisee par worker."""
-    if column not in _columns_present:
+def _has_column(cursor, column: str, table: str = 'pe_tools') -> bool:
+    """Presence d'une colonne d'une table raw_data, detectee une fois puis memorisee par worker."""
+    if (table, column) not in _columns_present:
         cursor.execute("""
             SELECT COUNT(*) AS nb
             FROM information_schema.columns
-            WHERE table_schema = 'raw_data' AND table_name = 'pe_tools' AND column_name = %s
-        """, [column])
-        _columns_present[column] = cursor.fetchone()['nb'] == 1
-    return _columns_present[column]
+            WHERE table_schema = 'raw_data' AND table_name = %s AND column_name = %s
+        """, [table, column])
+        _columns_present[(table, column)] = cursor.fetchone()['nb'] == 1
+    return _columns_present[(table, column)]
 
 
 def _has_date_exec_column(cursor) -> bool:
@@ -426,6 +427,18 @@ def get_pe_tool(raw_id: int):
             for c in ('date_derniere_execution', 'ifs_date_execution'):
                 if row.get(c):
                     row[c] = row[c].isoformat()
+            # Saisie manuelle en cours pour le plan (a defaut poste) de la gamme (migration 085).
+            if _has_column(cursor, 'source', 'plan_entretien_derniere_exec'):
+                id_type, identifiant = _cle_date_manuelle(cursor, raw_id) or (None, None)
+                if id_type:
+                    cursor.execute("""
+                        SELECT left(date_derniere_execution, 10) AS date, saisi_par,
+                               to_char(updated_at, 'YYYY-MM-DD HH24:MI') AS saisi_le
+                        FROM raw_data.plan_entretien_derniere_exec
+                        WHERE source = 'MANUEL' AND id_type = %s AND LTRIM(warpl, '0') = %s
+                    """, [id_type, identifiant])
+                    row['date_saisie_manuelle'] = cursor.fetchone()
+                row['date_rattachement'] = {'id_type': id_type, 'identifiant': identifiant}
             return jsonify({'success': True, 'data': row}), 200
 
     except Exception as e:
@@ -606,16 +619,20 @@ def import_pe_tools():
 # MPLA n'est pas extraite : designation, poste technique, frequence et organisation viennent
 # des gammes PE Tools du meme plan (id_type PLAN) ou du meme poste d'entretien (POSTE).
 _DERNIERE_EXEC = """
-    SELECT p.id_type, p.identifiant,
+    SELECT p.id_type, p.identifiant, p.manuel,
            p.jour AS date_derniere_execution,
            CURRENT_DATE - p.jour AS jours_depuis,
            t.designation, t.poste_technique, t.frequence, t.organisation_maintenance, t.nb_gammes
-    -- Une ligne par identifiant, date la plus recente (meme regle que pe_tools.date_derniere_execution).
+    -- Une ligne par identifiant : saisie MANUEL (085) sinon date la plus recente du fichier
+    -- (meme regle que pe_tools.date_derniere_execution).
     -- Date importee en texte 'YYYY-MM-DD hh:mm:ss' ; une valeur mal formee sort NULL au lieu de tout casser.
-    FROM (SELECT id_type, LTRIM(warpl, '0') AS identifiant,
-                 max(CASE WHEN date_derniere_execution ~ '^\\d{4}-\\d{2}-\\d{2}'
-                          THEN left(date_derniere_execution, 10)::date END) AS jour
-          FROM raw_data.plan_entretien_derniere_exec
+    FROM (SELECT id_type, identifiant,
+                 COALESCE(max(jour) FILTER (WHERE source = 'MANUEL'), max(jour)) AS jour,
+                 bool_or(source = 'MANUEL') AS manuel
+          FROM (SELECT id_type, source, LTRIM(warpl, '0') AS identifiant,
+                       CASE WHEN date_derniere_execution ~ '^\\d{4}-\\d{2}-\\d{2}'
+                            THEN left(date_derniere_execution, 10)::date END AS jour
+                FROM raw_data.plan_entretien_derniere_exec) d
           GROUP BY 1, 2) p
     LEFT JOIN LATERAL (
         SELECT min(x.designation) AS designation, min(x.poste_technique) AS poste_technique,
@@ -672,4 +689,89 @@ def sync_plans_derniere_execution():
         return jsonify({'success': True, 'lignes_mises_a_jour': maj, **compte}), 200
     except Exception as e:
         current_app.logger.error(f"Erreur synchro date derniere execution pe_tools: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _cle_date_manuelle(cursor, raw_id):
+    """(id_type, identifiant) portant la date de la gamme : son plan, a defaut son poste
+    d'entretien (meme priorite que raw_data.pe_tools_date_derniere_execution). None si
+    la gamme n'existe pas ; (None, None) si elle n'a ni plan ni poste."""
+    cursor.execute("""
+        SELECT NULLIF(LTRIM(btrim(plan_entretien), '0'), '') AS plan,
+               NULLIF(LTRIM(btrim(poste_entretien), '0'), '') AS poste
+        FROM raw_data.pe_tools WHERE raw_id = %s
+    """, [raw_id])
+    row = cursor.fetchone()
+    if not row:
+        return None
+    if row['plan']:
+        return 'PLAN', row['plan']
+    if row['poste']:
+        return 'POSTE', row['poste']
+    return None, None
+
+
+@maintenance_pe_tools_blueprint.route('/pe-tools/<int:raw_id>/date-derniere-execution', methods=['PUT'])
+@jwt_required()
+def set_date_derniere_execution(raw_id: int):
+    """Saisie manuelle de la date de derniere execution d'une gamme (migration 085).
+
+    Body : {"date": "YYYY-MM-DD"} pour saisir, {"date": null} ou "" pour revenir a la
+    date du fichier. La saisie est enregistree pour le PLAN de la gamme (a defaut son
+    POSTE d'entretien) dans raw_data.plan_entretien_derniere_exec (source MANUEL,
+    prioritaire) : elle vaut donc pour toutes les gammes du meme plan, survit aux
+    reimports, et les triggers recalculent date_derniere_execution / ifs_date_execution."""
+    valeur = ((request.get_json(silent=True) or {}).get('date') or '').strip()
+    if valeur:
+        try:
+            valeur = date.fromisoformat(valeur).isoformat()
+        except ValueError:
+            return jsonify({'success': False, 'error': f'Date invalide : {valeur} (attendu AAAA-MM-JJ)'}), 400
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            if not _has_column(cursor, 'source', 'plan_entretien_derniere_exec'):
+                return jsonify({'success': False,
+                                'error': 'Migration 085 non jouée : saisie manuelle indisponible'}), 503
+            cle = _cle_date_manuelle(cursor, raw_id)
+            if cle is None:
+                return jsonify({'success': False, 'error': 'Gamme non trouvée'}), 404
+            id_type, identifiant = cle
+            if not id_type:
+                return jsonify({'success': False, 'error':
+                                "Gamme sans plan ni poste d'entretien : la date ne peut pas être rattachée"}), 400
+
+            if valeur:
+                cursor.execute("""
+                    INSERT INTO raw_data.plan_entretien_derniere_exec
+                           (warpl, date_derniere_execution, id_type, source, saisi_par, created_at, updated_at)
+                    VALUES (%(id)s, %(date)s || ' 00:00:00', %(type)s, 'MANUEL', %(user)s,
+                            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT (id_type, (LTRIM(warpl, '0'))) WHERE source = 'MANUEL'
+                    DO UPDATE SET date_derniere_execution = EXCLUDED.date_derniere_execution,
+                                  saisi_par = EXCLUDED.saisi_par, updated_at = CURRENT_TIMESTAMP
+                """, {'id': identifiant, 'date': valeur, 'type': id_type, 'user': _user()})
+            else:
+                cursor.execute("""
+                    DELETE FROM raw_data.plan_entretien_derniere_exec
+                     WHERE source = 'MANUEL' AND id_type = %s AND LTRIM(warpl, '0') = %s
+                """, [id_type, identifiant])
+
+            cursor.execute("""
+                SELECT date_derniere_execution::text AS date_derniere_execution,
+                       ifs_date_execution::text AS ifs_date_execution
+                FROM raw_data.pe_tools WHERE raw_id = %s
+            """, [raw_id])
+            resultat = cursor.fetchone()
+            cursor.execute(f"""
+                SELECT count(*) AS nb FROM raw_data.pe_tools
+                WHERE LTRIM(btrim({'plan_entretien' if id_type == 'PLAN' else 'poste_entretien'}), '0') = %s
+            """, [identifiant])
+            nb_gammes = cursor.fetchone()['nb']
+            conn.commit()
+        cache_invalidate(CACHE_PREFIX)
+        return jsonify({'success': True, **resultat, 'id_type': id_type, 'identifiant': identifiant,
+                        'saisie_manuelle': bool(valeur), 'nb_gammes': nb_gammes}), 200
+    except Exception as e:
+        current_app.logger.error(f"Erreur saisie date derniere execution {raw_id}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
