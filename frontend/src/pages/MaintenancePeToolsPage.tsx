@@ -100,6 +100,8 @@ export const FIELDS: { key: string; label: string; inTable?: boolean; monospace?
   { key: 'nom_fichier', label: 'Fichier', inTable: true, monospace: true },
   { key: 'organisation_maintenance', label: 'Organisation', inTable: true, monospace: true },
   { key: 'criticite', label: 'Criticité' },
+  // Calculee (migration 082) depuis raw_data.plan_entretien_derniere_exec, jamais saisie.
+  { key: 'date_derniere_execution', label: 'Dernière exécution', inTable: true },
   { key: 'plan_entretien', label: 'Plan d\'entretien', monospace: true },
   { key: 'poste_entretien', label: 'Poste d\'entretien', monospace: true },
   { key: 'groupe_de_gamme', label: 'Groupe de gamme', monospace: true },
@@ -472,7 +474,9 @@ const MaintenancePeToolsPage: React.FC = () => {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {r[f.key] || '—'}
+                        {(f.key === 'date_derniere_execution' && r[f.key]
+                          ? String(r[f.key]).slice(0, 10).split('-').reverse().join('/')
+                          : r[f.key]) || '—'}
                       </TableCell>
                     ))}
                   </TableRow>

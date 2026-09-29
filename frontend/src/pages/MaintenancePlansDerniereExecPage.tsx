@@ -3,7 +3,7 @@ import {
   Alert, Box, Button, Chip, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead,
   TablePagination, TableRow, TableSortLabel, TextField, Typography,
 } from '@mui/material';
-import { Upload as ImportIcon } from '@mui/icons-material';
+import { Sync as SyncIcon, Upload as ImportIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 import api from '../services/api';
@@ -47,6 +47,21 @@ const MaintenancePlansDerniereExecPage: React.FC = () => {
   const [tri, setTri] = useState<{ col: Col; asc: boolean }>({ col: 'date_derniere_execution', asc: true });
   const [page, setPage] = useState(0);
   const [parPage, setParPage] = useState(50);
+  const [synchro, setSynchro] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null);
+
+  const synchroniser = () => {
+    setSynchro(true);
+    setMessage(null);
+    api.post('/maintenance/plans-derniere-execution/sync')
+      .then((res) => {
+        const d = res.data || {};
+        setMessage({ ok: true, texte: `PE Tools synchronisé : ${d.lignes_mises_a_jour} ligne(s) mise(s) à jour, `
+          + `${d.datees} gamme(s) sur ${d.total} portent une date de dernière exécution.` });
+      })
+      .catch((e) => setMessage({ ok: false, texte: e?.response?.data?.error || 'Synchronisation impossible' }))
+      .finally(() => setSynchro(false));
+  };
 
   useEffect(() => {
     api.get('/maintenance/plans-derniere-execution')
@@ -69,11 +84,22 @@ const MaintenancePlansDerniereExecPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
         <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>Dernière exécution des plans</Typography>
-        {/* Le fichier Excel se charge par l'import generique (table plan_entretien_derniere_exec). */}
-        <Button variant="outlined" startIcon={<ImportIcon />} onClick={() => navigate('/import/generic')}>
-          Importer
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {/* Recopie la date dans raw_data.pe_tools.date_derniere_execution (migration 082). */}
+          <Button variant="outlined" startIcon={<SyncIcon />} disabled={synchro} onClick={synchroniser}>
+            {synchro ? 'Synchronisation…' : 'Synchroniser avec PE Tools'}
+          </Button>
+          {/* Le fichier Excel se charge par l'import generique (table plan_entretien_derniere_exec). */}
+          <Button variant="outlined" startIcon={<ImportIcon />} onClick={() => navigate('/import/generic')}>
+            Importer
+          </Button>
+        </Box>
       </Box>
+      {message && (
+        <Alert severity={message.ok ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+          {message.texte}
+        </Alert>
+      )}
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
         Date de dernière exécution de chaque plan d'entretien SAP. Désignation, poste technique, fréquence et
         organisation viennent des gammes PE Tools du même plan, quand il y en a.

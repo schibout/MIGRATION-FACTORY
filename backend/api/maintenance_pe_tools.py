@@ -87,7 +87,7 @@ SEARCH_COLUMNS = [
 ]
 
 # Tris autorises (liste blanche : le nom de colonne est interpole dans le SQL).
-ORDERABLE = set(COLUMNS) | set(COMPUTED_COLUMNS) | {'raw_id'}
+ORDERABLE = set(COLUMNS) | set(COMPUTED_COLUMNS) | {'raw_id', 'date_derniere_execution'}
 
 # Colonnes d'audit ajoutees par la migration 029. Elles peuvent manquer si la
 # migration n'a pas encore ete jouee, ou si la table a ete rechargee depuis le
@@ -160,12 +160,31 @@ def _has_import_columns(cursor) -> bool:
     return _import_columns_available
 
 
+# Colonne de la migration 082 (date de derniere execution du plan, alimentee
+# par trigger depuis raw_data.plan_entretien_derniere_exec). Meme detection memorisee.
+_date_exec_available = None
+
+
+def _has_date_exec_column(cursor) -> bool:
+    global _date_exec_available
+    if _date_exec_available is None:
+        cursor.execute("""
+            SELECT COUNT(*) AS nb
+            FROM information_schema.columns
+            WHERE table_schema = 'raw_data' AND table_name = 'pe_tools'
+              AND column_name = 'date_derniere_execution'
+        """)
+        _date_exec_available = cursor.fetchone()['nb'] == 1
+    return _date_exec_available
+
+
 def _selected_columns(cursor):
     """Colonnes lues par la liste, le detail et l'export : les colonnes
-    calculees en tete (si la migration 077 est jouee) puis les colonnes metier."""
-    if _has_import_columns(cursor):
-        return COMPUTED_COLUMNS + COLUMNS
-    return list(COLUMNS)
+    calculees en tete (si les migrations 077 / 082 sont jouees) puis les colonnes metier."""
+    columns = list(COMPUTED_COLUMNS) if _has_import_columns(cursor) else []
+    if _has_date_exec_column(cursor):
+        columns.append('date_derniere_execution')
+    return columns + COLUMNS
 
 
 def _filter_columns(cursor):
@@ -399,6 +418,9 @@ def get_pe_tool(raw_id: int):
             row = cursor.fetchone()
             if not row:
                 return jsonify({'success': False, 'error': 'Ligne non trouvee'}), 404
+            # jsonify rendrait une date au format HTTP (« Mon, 10 Aug 2026 00:00:00 GMT »).
+            if row.get('date_derniere_execution'):
+                row['date_derniere_execution'] = row['date_derniere_execution'].isoformat()
             return jsonify({'success': True, 'data': row}), 200
 
     except Exception as e:
@@ -578,22 +600,25 @@ def import_pe_tools():
 # ~1 300 lignes, liste complete filtree cote ecran). MPLA n'est pas extraite : designation,
 # poste technique, frequence et organisation viennent des gammes PE Tools du meme plan.
 _DERNIERE_EXEC = """
-    SELECT LTRIM(p.warpl, '0') AS plan_entretien,
-           d.jour AS date_derniere_execution,
-           CURRENT_DATE - d.jour AS jours_depuis,
+    SELECT p.plan_entretien,
+           p.jour AS date_derniere_execution,
+           CURRENT_DATE - p.jour AS jours_depuis,
            t.designation, t.poste_technique, t.frequence, t.organisation_maintenance, t.nb_gammes
-    FROM raw_data.plan_entretien_derniere_exec p
+    -- Une ligne par plan, date la plus recente (meme regle que pe_tools.date_derniere_execution, 082).
     -- Date importee en texte 'YYYY-MM-DD hh:mm:ss' ; une valeur mal formee sort NULL au lieu de tout casser.
-    CROSS JOIN LATERAL (SELECT CASE WHEN p.date_derniere_execution ~ '^\\d{4}-\\d{2}-\\d{2}'
-                                    THEN left(p.date_derniere_execution, 10)::date END AS jour) d
+    FROM (SELECT LTRIM(warpl, '0') AS plan_entretien,
+                 max(CASE WHEN date_derniere_execution ~ '^\\d{4}-\\d{2}-\\d{2}'
+                          THEN left(date_derniere_execution, 10)::date END) AS jour
+          FROM raw_data.plan_entretien_derniere_exec
+          GROUP BY 1) p
     LEFT JOIN LATERAL (
         SELECT min(x.designation) AS designation, min(x.poste_technique) AS poste_technique,
                min(x.frequence) AS frequence, min(x.organisation_maintenance) AS organisation_maintenance,
                count(*) AS nb_gammes
         FROM raw_data.pe_tools x
-        WHERE LTRIM(x.plan_entretien, '0') = LTRIM(p.warpl, '0')
+        WHERE LTRIM(x.plan_entretien, '0') = p.plan_entretien
     ) t ON TRUE
-    ORDER BY d.jour NULLS FIRST, 1
+    ORDER BY p.jour NULLS FIRST, 1
 """
 
 
@@ -610,4 +635,33 @@ def list_plans_derniere_execution():
             return jsonify({'success': True, 'data': rows, 'total': len(rows)}), 200
     except Exception as e:
         current_app.logger.error(f"Erreur plans derniere execution: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@maintenance_pe_tools_blueprint.route('/plans-derniere-execution/sync', methods=['POST'])
+@jwt_required()
+def sync_plans_derniere_execution():
+    """Recopie la date de derniere execution dans pe_tools (meme calcul que la 082).
+    Les triggers la tiennent deja a jour ; ce bouton rattrape une ecriture qui les aurait
+    contournes (table rechargee hors application, triggers desactives...)."""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            if not _has_date_exec_column(cursor):
+                return jsonify({'success': False,
+                                'error': 'Migration 082 non jouée : colonne pe_tools.date_derniere_execution absente'}), 503
+            cursor.execute("""
+                UPDATE raw_data.pe_tools t
+                   SET date_derniere_execution = raw_data.pe_tools_date_derniere_execution(t.plan_entretien)
+                 WHERE t.date_derniere_execution
+                       IS DISTINCT FROM raw_data.pe_tools_date_derniere_execution(t.plan_entretien)
+            """)
+            maj = cursor.rowcount
+            cursor.execute("SELECT count(date_derniere_execution) AS datees, count(*) AS total FROM raw_data.pe_tools")
+            compte = cursor.fetchone()
+            conn.commit()
+        cache_invalidate(CACHE_PREFIX)
+        return jsonify({'success': True, 'lignes_mises_a_jour': maj, **compte}), 200
+    except Exception as e:
+        current_app.logger.error(f"Erreur synchro date derniere execution pe_tools: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
