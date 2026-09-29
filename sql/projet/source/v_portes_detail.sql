@@ -15,6 +15,12 @@
 --
 -- "le plus récent" = valeur de l'état d'avancement au status_date max
 -- (ROW_NUMBER rn=1). Robuste sans status_report_fk (jointure par titre).
+--
+-- FULL JOIN statuts <-> référentiel (2026-09-29) : une porte créée dans ASAP
+-- APRÈS le dernier état d'avancement (ex. 24.033 / P3 bis, créée le
+-- 03/08/2026, dernier état au 30/04/2026) n'existe que dans jalons_ref ; elle
+-- sort alors sans note/classement ni date d'état. À l'inverse, les statuts
+-- dont le jalon a disparu du référentiel restent (porte_libelle NULL).
 -- =====================================================================
 CREATE OR REPLACE VIEW clean_data.v_portes_detail AS
 WITH ranked AS (
@@ -53,10 +59,10 @@ SELECT
     -- Projet
     sp.project_number,
     sp.title                                              AS projet,
-    r.site_id,
+    COALESCE(r.site_id, jr.site_id)                       AS site_id,
     -- Porte
-    r.gate,
-    r.milestone_id,
+    COALESCE(r.gate, jr.raw_data->>'Gate')                AS gate,
+    COALESCE(r.milestone_id, jr.sharepoint_id)            AS milestone_id,
     jr.title                                              AS porte_libelle,       -- P3 / P3 bis / P3 Ters
     (jr.raw_data->>'PhaseId')::int                        AS phase_id,
     ph.title                                              AS phase,               -- ex. "Phase de préparation"
@@ -66,7 +72,9 @@ SELECT
     -- Dates de la porte (état le plus récent)
     r.date_realisee,
     r.date_baseline,
-    r.date_prevue,
+    -- porte sans état d'avancement : échéance du référentiel
+    CASE WHEN r.site_id IS NULL THEN NULLIF(jr.raw_data->>'DueDate', '')::timestamptz
+         ELSE r.date_prevue END                           AS date_prevue,
     -- Référentiel (jalons_ref)
     jr.raw_data->>'Status'                                AS statut_referentiel,
     jr.raw_data->>'PercentComplete'                       AS avancement_referentiel,
@@ -79,12 +87,14 @@ SELECT
     r.nb_etats,                                           -- profondeur d'historique de la porte
     r.statut_jalon_id,
     r.statut_jalon_modifie
-FROM ranked r
-LEFT JOIN raw_data.sharepoint_projets   sp ON sp.sharepoint_id::text = r.site_id
-LEFT JOIN raw_data.sharepoint_jalons_ref jr ON jr.site_id = r.site_id AND jr.sharepoint_id = r.milestone_id
-LEFT JOIN raw_data.sharepoint_phases    ph ON ph.site_id = r.site_id AND ph.sharepoint_id = (jr.raw_data->>'PhaseId')::int
-WHERE r.rn = 1
-ORDER BY sp.project_number, r.gate, jr.title;
+FROM (SELECT * FROM ranked WHERE rn = 1) r
+FULL JOIN raw_data.sharepoint_jalons_ref jr
+       ON jr.site_id = r.site_id AND jr.sharepoint_id = r.milestone_id
+LEFT JOIN raw_data.sharepoint_projets   sp ON sp.sharepoint_id::text = COALESCE(r.site_id, jr.site_id)
+LEFT JOIN raw_data.sharepoint_phases    ph ON ph.site_id = COALESCE(r.site_id, jr.site_id) AND ph.sharepoint_id = (jr.raw_data->>'PhaseId')::int
+-- jalon du référentiel sans statut : seulement s'il porte une porte (Gate)
+WHERE r.site_id IS NOT NULL OR jr.raw_data->>'Gate' IS NOT NULL
+ORDER BY sp.project_number, 4, jr.title;
 
 COMMENT ON VIEW clean_data.v_portes_detail IS
 'Détail des portes/jalons par projet avec note + classement les plus récents (dernier état d''avancement). 1 ligne par (projet, milestone). Enrichi : projet, libellé porte, phase, dates, référentiel, profondeur d''historique.';
