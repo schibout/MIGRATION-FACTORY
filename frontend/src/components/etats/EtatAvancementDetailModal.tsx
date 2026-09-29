@@ -48,6 +48,7 @@ interface JalonRow {
     actual: string | null;
     baseline: string | null;
     forecast: string | null;
+    echeance: string | null;
     milestone_id: number | null;
     jalon_label: string | null;
     raw_data: Record<string, any>;
@@ -241,7 +242,7 @@ const EtatAvancementDetailModal: React.FC<Props> = ({ open, siteId, etatId, onCl
                                                     <TableCell align="right">{formatNumber(j.mark)}</TableCell>
                                                     <TableCell>{j.ranking || ''}</TableCell>
                                                     <TableCell>{formatDate(j.actual || j.baseline)}</TableCell>
-                                                    <TableCell>{formatDate(j.forecast || j.baseline)}</TableCell>
+                                                    <TableCell>{formatDate(j.echeance || j.forecast || j.baseline)}</TableCell>
                                                 </TableRow>
                                                 <TableRow>
                                                     <TableCell colSpan={7} sx={{ py: 0, borderBottom: isOpen ? undefined : 'none' }}>
@@ -258,6 +259,7 @@ const EtatAvancementDetailModal: React.FC<Props> = ({ open, siteId, etatId, onCl
                                                                     <DetailKV label="Date réalisée" value={formatDate(j.actual)} />
                                                                     <DetailKV label="Baseline" value={formatDate(j.baseline)} />
                                                                     <DetailKV label="Prévue" value={formatDate(j.forecast)} />
+                                                                    <DetailKV label="Échéance ASAP" value={formatDate(j.echeance)} />
                                                                     <DetailKV label="Milestone" value={j.milestone_id != null ? String(j.milestone_id) : null} />
                                                                 </Box>
                                                                 <Typography variant="caption" color="text.secondary">Historique à travers les états</Typography>

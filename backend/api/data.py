@@ -753,6 +753,7 @@ def get_etat_avancement_detail(site_id, etat_id):
                         sj.raw_data->>'Actual'   AS actual,
                         sj.raw_data->>'Baseline' AS baseline,
                         sj.raw_data->>'Forecast' AS forecast,
+                        jr.raw_data->>'DueDate'  AS echeance,
                         (sj.raw_data->>'MilestoneId')::int AS milestone_id,
                         jr.title AS jalon_label,
                         sj.raw_data
@@ -873,6 +874,34 @@ def get_porte_historique(site_id, gate):
             return jsonify({'success': True, 'data': hist, 'total': len(hist)}), 200
     except Exception as e:
         current_app.logger.error(f"Erreur historique porte {gate} site {site_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@data_blueprint.route('/projets/<site_id>/jalons', methods=['GET'])
+def get_projet_jalons(site_id):
+    """Jalons du projet tels qu'affichés dans ASAP (liste « Jalons » du site) :
+    un par jalon du référentiel portant une porte, donc P3 et P3 bis séparés,
+    avec l'échéance ASAP (DueDate).
+    """
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute("""
+                SELECT jr.sharepoint_id                   AS milestone_id,
+                       jr.title                           AS libelle,
+                       jr.raw_data->>'Gate'               AS gate,
+                       jr.raw_data->>'DueDate'            AS echeance,
+                       jr.raw_data->>'Status'             AS statut,
+                       (jr.raw_data->>'PercentComplete')::numeric AS avancement
+                FROM raw_data.sharepoint_jalons_ref jr
+                WHERE jr.site_id = %s
+                  AND jr.raw_data->>'Gate' IS NOT NULL
+                ORDER BY jr.raw_data->>'Gate', jr.sharepoint_id
+            """, [site_id])
+            rows = cur.fetchall()
+            return jsonify({'success': True, 'data': rows}), 200
+    except Exception as e:
+        current_app.logger.error(f"Erreur jalons projet site {site_id}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

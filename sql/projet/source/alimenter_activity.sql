@@ -98,7 +98,11 @@ BEGIN
                         THEN UPPER(TRIM(vd.gate)) || 'ter'
                     ELSE NULL
                 END AS activity_source,
-                COALESCE(vd.date_realisee, vd.date_prevue)::DATE AS activity_date,
+                -- Échéance ASAP (référentiel des jalons) prioritaire, puis date réalisée / prévue
+                COALESCE(
+                    (NULLIF(vd.ref_date_echeance, '')::timestamptz AT TIME ZONE 'Europe/Paris')::DATE,
+                    COALESCE(vd.date_realisee, vd.date_prevue)::DATE
+                ) AS activity_date,
                 vd.date_etat_source
             FROM clean_data.v_portes_detail vd
             WHERE vd.project_number IS NOT NULL

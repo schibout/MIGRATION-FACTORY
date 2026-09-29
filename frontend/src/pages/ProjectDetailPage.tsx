@@ -65,6 +65,7 @@ const ProjectDetailPage: React.FC = () => {
     const [selectedGate, setSelectedGate] = useState<string | null>(null);
     const [cfvCommissions, setCfvCommissions] = useState<any[]>([]);
     const [cfvLoading, setCfvLoading] = useState(false);
+    const [jalons, setJalons] = useState<any[]>([]);
 
     useEffect(() => {
         loadProjectDetail();
@@ -113,7 +114,19 @@ const ProjectDetailPage: React.FC = () => {
         }
     };
 
+    const loadJalons = async () => {
+        try {
+            const response = await api.get(`/data/projets/${projectId}/jalons`);
+            if (response.data.success) setJalons(response.data.data);
+        } catch (err) {
+            console.error('Erreur chargement jalons:', err);
+        }
+    };
+
     useEffect(() => {
+        if (tabValue === 2) {
+            loadJalons();
+        }
         if (tabValue === 4) {
             loadEtatsAvancement();
         }
@@ -460,11 +473,16 @@ const ProjectDetailPage: React.FC = () => {
                     <Box p={3}>
                         <Typography variant="h6" gutterBottom>Jalons du Projet (Gates)</Typography>
                         <Grid container spacing={2} mt={2}>
-                            {['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6'].map((gate) => {
-                                const fieldName = `end_${gate.toLowerCase()}`;
-                                const date = project[fieldName];
+                            {/* Jalons du référentiel ASAP (P3 et P3 bis séparés, échéance ASAP) ;
+                                repli sur les dates end_p* du projet si aucun jalon n'est extrait */}
+                            {(jalons.length > 0
+                                ? jalons.map((j) => ({ key: String(j.milestone_id), gate: j.gate, label: j.libelle || j.gate,
+                                                       date: j.echeance, done: Number(j.avancement) >= 1 }))
+                                : ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6'].map((g) => ({ key: g, gate: g, label: g,
+                                                       date: project[`end_${g.toLowerCase()}`], done: !!project[`end_${g.toLowerCase()}`] }))
+                            ).map(({ key, gate, label, date, done }) => {
                                 return (
-                                    <Grid item xs={12} sm={6} md={4} lg={3} key={gate}>
+                                    <Grid item xs={12} sm={6} md={4} lg={3} key={key}>
                                         <Card
                                             variant="outlined"
                                             onClick={() => setSelectedGate(gate)}
@@ -476,9 +494,9 @@ const ProjectDetailPage: React.FC = () => {
                                         >
                                             <CardContent>
                                                 <Box display="flex" alignItems="center" gap={1}>
-                                                    {date && <CheckCircleIcon color="success" fontSize="small" />}
+                                                    {done && <CheckCircleIcon color="success" fontSize="small" />}
                                                     <Typography variant="subtitle1" fontWeight="bold">
-                                                        {gate}
+                                                        {label}
                                                     </Typography>
                                                 </Box>
                                                 <Typography variant="body2" color="text.secondary" mt={1}>
