@@ -13,6 +13,8 @@ DECLARE
     -- derive et la procedure s'arrete sur une valeur hors domaine (migration 080).
     v_connection_type_db  VARCHAR := public.get_default_value('clean_data.pm_action', 'connection_type_db');
     v_connection_type     VARCHAR := clean_data.pm_connection_type_client(v_connection_type_db);
+    -- Type de travail IFS (migration 086) : case vide dans l'ecran -> NULL
+    v_work_type_id        VARCHAR := NULLIF(btrim(public.get_default_value('clean_data.pm_action', 'work_type_id')), '');
     v_count INTEGER := 0;
     v_reject_count INTEGER := 0;
     v_multi_org INTEGER := 0;
@@ -93,6 +95,7 @@ BEGIN
         org_code,
         connection_type,
         connection_type_db,
+        work_type_id,
         "interval",
         pm_interval_unit,
         pm_interval_unit_db,
@@ -166,6 +169,7 @@ BEGIN
         COALESCE(a.org_code_fichier, v_org_code),
         v_connection_type,
         v_connection_type_db,
+        v_work_type_id,
         -- INTERVAL est obligatoire cote IFS : '0' quand la frequence est vide
         COALESCE(NULLIF(left(regexp_replace(COALESCE(a.freq_norm, ''), '\D', '', 'g'), 4), ''), '0')  AS "interval",
         -- PM_INTERVAL_UNIT (libelle) : volontairement vide, seul le code _db est charge

@@ -75,6 +75,7 @@ FICHIERS_SEED = [
     # passent par get_default_value(..., 'ARTICLEPHL'). Sans cette entree,
     # verifier_valeurs_defaut.py les signale toutes comme appels orphelins.
     RACINE / 'migrations' / '069_valeurs_defaut_colonnes_non_mappees_articlephl.sql',
+    RACINE / 'migrations' / '086_pm_action_work_type_id_defaut.sql',
 ]
 
 
