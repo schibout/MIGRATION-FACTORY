@@ -20,6 +20,7 @@ BEGIN
     ---------------------------------------------------------------------------
     -- Activités projet de type PORTE uniquement.
     -- Source : clean_data.v_portes_detail, pas raw_data.sharepoint_porte.
+    -- Seules les portes du DERNIER état d'avancement du projet, avec ses dates.
     --
     -- On conserve uniquement les jalons dont le libellé correspond à une porte
     -- IFS transcodifiable : P0..P6, P0bis..P6bis, P0ter..P6ter(s).
@@ -92,19 +93,19 @@ BEGIN
                         THEN UPPER(TRIM(vd.gate)) || 'ter'
                     ELSE NULL
                 END AS activity_source,
-                -- « Fin / Échéance » du DERNIER état d'avancement (Actual, heure de Paris),
-                -- puis Forecast ; à défaut (porte absente de tout état, ex. 24.033 P3 bis)
-                -- l'échéance du référentiel des jalons
-                (COALESCE(
-                    vd.date_realisee,
-                    vd.date_prevue,
-                    NULLIF(vd.ref_date_echeance, '')::timestamptz
-                ) AT TIME ZONE 'Europe/Paris')::DATE AS activity_date,
-                vd.date_etat_source
+                -- « Fin / Échéance » de l'état (Actual, heure de Paris), puis Forecast
+                (COALESCE(vd.date_realisee, vd.date_prevue) AT TIME ZONE 'Europe/Paris')::DATE AS activity_date,
+                vd.date_etat_source,
+                -- Dernier état d'avancement du projet PORTANT des jalons : depuis 2026-05
+                -- l'extraction ne ramène pas les statuts de jalons de tous les états
+                MAX(vd.date_etat_source) OVER (PARTITION BY vd.site_id) AS date_dernier_etat
             FROM clean_data.v_portes_detail vd
             WHERE vd.project_number IS NOT NULL
         ) x
         WHERE x.activity_source IS NOT NULL
+          -- Portes ET dates du dernier état uniquement (pas de porte d'un état antérieur,
+          -- ni de jalon du référentiel absent de l'état)
+          AND x.date_etat_source = x.date_dernier_etat
         ORDER BY x.project_id, x.activity_source, x.date_etat_source DESC NULLS LAST, x.milestone_id
     ) src
     JOIN clean_data.project_base pb
