@@ -11,6 +11,7 @@ import {
   AccountTree as OrganisationIcon,
   PlaylistAddCheck as OperationIcon,
   NotificationImportant as AvisIcon,
+  Update as DerniereExecIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -79,6 +80,14 @@ const cards = [
     icon: AvisIcon,
     color: 'warning' as const,
     tag: 'QMEL',
+  },
+  {
+    title: 'Dernière exécution des plans',
+    description: 'Date de dernière exécution de chaque plan d\'entretien, avec l\'ancienneté et la gamme PE Tools associée.',
+    path: '/maintenance/plans-derniere-execution',
+    icon: DerniereExecIcon,
+    color: 'info' as const,
+    tag: 'PLANS',
   },
   {
     title: 'Listes de valeurs',

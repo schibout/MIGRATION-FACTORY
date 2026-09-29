@@ -572,3 +572,42 @@ def import_pe_tools():
     except Exception as e:
         current_app.logger.error(f"Erreur import pe_tools: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# Date de derniere execution par plan d'entretien (raw_data.plan_entretien_derniere_exec,
+# ~1 300 lignes, liste complete filtree cote ecran). MPLA n'est pas extraite : designation,
+# poste technique, frequence et organisation viennent des gammes PE Tools du meme plan.
+_DERNIERE_EXEC = """
+    SELECT LTRIM(p.warpl, '0') AS plan_entretien,
+           d.jour AS date_derniere_execution,
+           CURRENT_DATE - d.jour AS jours_depuis,
+           t.designation, t.poste_technique, t.frequence, t.organisation_maintenance, t.nb_gammes
+    FROM raw_data.plan_entretien_derniere_exec p
+    -- Date importee en texte 'YYYY-MM-DD hh:mm:ss' ; une valeur mal formee sort NULL au lieu de tout casser.
+    CROSS JOIN LATERAL (SELECT CASE WHEN p.date_derniere_execution ~ '^\\d{4}-\\d{2}-\\d{2}'
+                                    THEN left(p.date_derniere_execution, 10)::date END AS jour) d
+    LEFT JOIN LATERAL (
+        SELECT min(x.designation) AS designation, min(x.poste_technique) AS poste_technique,
+               min(x.frequence) AS frequence, min(x.organisation_maintenance) AS organisation_maintenance,
+               count(*) AS nb_gammes
+        FROM raw_data.pe_tools x
+        WHERE LTRIM(x.plan_entretien, '0') = LTRIM(p.warpl, '0')
+    ) t ON TRUE
+    ORDER BY d.jour NULLS FIRST, 1
+"""
+
+
+@maintenance_pe_tools_blueprint.route('/plans-derniere-execution', methods=['GET'])
+@jwt_required()
+def list_plans_derniere_execution():
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cursor.execute(_DERNIERE_EXEC)
+            rows = cursor.fetchall()
+            for r in rows:
+                r['date_derniere_execution'] = r['date_derniere_execution'] and r['date_derniere_execution'].isoformat()
+            return jsonify({'success': True, 'data': rows, 'total': len(rows)}), 200
+    except Exception as e:
+        current_app.logger.error(f"Erreur plans derniere execution: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

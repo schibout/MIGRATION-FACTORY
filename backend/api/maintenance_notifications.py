@@ -2,7 +2,8 @@
 Avis de maintenance SAP -- blueprint /api/v1/maintenance/notifications.
 
 Meme principe que l'ecran Operations : ecran de selection type IW29 filtre cote
-serveur (statut, periode, division, type, poste technique, numero), au plus
+serveur (periode, division, type, poste technique, numero) sur les SEULS avis
+en cours, au plus
 MAX_LIGNES lignes, puis filtres/tri cote ecran. Detail type IW23 (QMEL + QMIH,
 postes QMFE, causes QMUR, mesures QMSM, actions QMMA). Lecture seule sur raw_data.
 « En cours » = avis sans statut actif ACLO (I0072) ni TSUP (I0076).
@@ -74,16 +75,8 @@ def _qmnum(avis):
 @jwt_required()
 def list_notifications():
     args = request.args
-    en_cours = args.get('en_cours', '1') == '1'
-    clotures = args.get('clotures') == '1'
-    if not (en_cours or clotures):
-        return jsonify({'success': False, 'error': 'Cocher au moins un statut (en cours ou clôturés).'}), 400
-
-    where, params = ['TRUE'], {'statuts': _STATUTS_AVIS, 'limite': MAX_LIGNES + 1}
-    if en_cours and not clotures:
-        where.append('NOT ' + _CLOS)
-    elif clotures and not en_cours:
-        where.append(_CLOS)
+    # Avis en cours uniquement (demande explicite) : les clotures ne sont jamais servis.
+    where, params = ['NOT ' + _CLOS], {'statuts': _STATUTS_AVIS, 'limite': MAX_LIGNES + 1}
     # Dates SAP en texte YYYYMMDD : comparaison texte = comparaison chronologique.
     if _date_sap(args.get('date_debut')):
         where.append('q.qmdat >= %(date_debut)s')

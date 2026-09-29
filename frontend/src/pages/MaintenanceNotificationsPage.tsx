@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Autocomplete, Box, Button, Checkbox, CircularProgress, Collapse, FormControlLabel, Paper, Table,
+  Alert, Autocomplete, Box, Button, CircularProgress, Collapse, Paper, Table,
   TableBody, TableCell, TableContainer,
   IconButton, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Tooltip, Typography,
 } from '@mui/material';
@@ -55,10 +55,8 @@ const COLONNES: { key: Col; label: string; texte?: (a: Avis) => string }[] = [
 // Valeur telle qu'affichee : c'est elle que filtrent la recherche et les filtres de colonne.
 const affiche = (a: Avis, c: typeof COLONNES[number]) => (c.texte ? c.texte(a) : String(a[c.key] ?? ''));
 
-// Criteres de l'ecran de selection. Par defaut : avis en cours, sans autre borne.
+// Criteres de l'ecran de selection, toujours limites aux avis en cours (cote serveur).
 interface Selection {
-  en_cours: boolean;
-  clotures: boolean;
   date_debut: string;
   date_fin: string;
   division: string;
@@ -68,7 +66,6 @@ interface Selection {
   avis: string;
 }
 const SELECTION_DEFAUT: Selection = {
-  en_cours: true, clotures: false,
   date_debut: '', date_fin: '', division: '', type_avis: '', poste_responsable: '', poste_technique: '', avis: '',
 };
 // La selection est gardee pour la session : revenir du detail d'un avis relance la meme.
@@ -77,8 +74,9 @@ const lireSelection = (): Selection => {
   try { return { ...SELECTION_DEFAUT, ...JSON.parse(sessionStorage.getItem(CLE_SELECTION) || '{}') }; } catch { return SELECTION_DEFAUT; }
 };
 const versParams = (s: Selection) => Object.fromEntries(Object.entries(s)
-  .filter(([, v]) => v !== '')
-  .map(([k, v]) => [k, typeof v === 'boolean' ? (v ? '1' : '0') : v.trim()]));
+  // typeof : une selection memorisee avant 2026-09-29 porte encore des cases a cocher.
+  .filter(([k, v]) => k in SELECTION_DEFAUT && typeof v === 'string' && v !== '')
+  .map(([k, v]) => [k, (v as string).trim()]));
 
 const MaintenanceNotificationsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -97,10 +95,6 @@ const MaintenanceNotificationsPage: React.FC = () => {
     { divisions: [], types_avis: [], postes_responsables: [] });
 
   const charger = (s: Selection = selection) => {
-    if (!s.en_cours && !s.clotures) {
-      setErreur('Cocher au moins un statut : en cours ou clôturés.');
-      return;
-    }
     try { sessionStorage.setItem(CLE_SELECTION, JSON.stringify(s)); } catch { /* confort seulement */ }
     setLoading(true);
     setErreur(null);
@@ -119,7 +113,7 @@ const MaintenanceNotificationsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const maj = (champ: keyof Selection, valeur: string | boolean) => setSelection((s) => ({ ...s, [champ]: valeur }));
+  const maj = (champ: keyof Selection, valeur: string) => setSelection((s) => ({ ...s, [champ]: valeur }));
 
   const choix = useMemo(() => Object.fromEntries(COLONNES.map((c) => [c.key,
     [...new Set(rows.map((a) => affiche(a, c)).filter(Boolean))]
@@ -147,7 +141,7 @@ const MaintenanceNotificationsPage: React.FC = () => {
         <SyncSapOperationsButton onDone={() => charger()} tables={TABLES_AVIS} ecran="Avis" />
       </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-        Avis de maintenance SAP. « En cours » = avis ni clôturé (ACLO), ni marqué pour suppression (TSUP).
+        Avis de maintenance SAP en cours uniquement : ni clôturés (ACLO), ni marqués pour suppression (TSUP).
       </Typography>
 
       <Paper variant="outlined" sx={{ mb: 2 }}>
@@ -164,17 +158,6 @@ const MaintenanceNotificationsPage: React.FC = () => {
             onSubmit={(e: React.FormEvent) => { e.preventDefault(); charger(); }}
             sx={{ px: 2, pb: 2, display: 'flex', flexDirection: 'column', gap: 2 }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>Statut de l'avis :</Typography>
-              <FormControlLabel
-                control={<Checkbox checked={selection.en_cours} onChange={(e) => maj('en_cours', e.target.checked)} />}
-                label="En cours (Ouvert + En traitement)"
-              />
-              <FormControlLabel
-                control={<Checkbox checked={selection.clotures} onChange={(e) => maj('clotures', e.target.checked)} />}
-                label="Clôturés"
-              />
-            </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
               <TextField
                 size="small" type="date" label="Date d'avis du" InputLabelProps={{ shrink: true }}
