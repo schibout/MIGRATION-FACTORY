@@ -706,6 +706,9 @@ def get_etat_avancement_detail(site_id, etat_id):
     FK enfants -> parent : raw_data->>'Status_x0020_Report' = parent.status_report_fk
     (status_report_fk est matérialisé par la migration 011 ; ce GUID
     SharePoint diffère du GUID interne de l'item — voir migration pour le pourquoi)
+    La 011 n'a été jouée qu'une fois (2026-05-28) : les états importés depuis
+    ont status_report_fk NULL. Repli : le GUID porté par les coûts / jalons
+    du même (site_id, title), comme le backfill de la 011.
     FK jalon -> referentiel : raw_data->>'MilestoneId' = jalons_ref.sharepoint_id
     """
     try:
@@ -714,14 +717,24 @@ def get_etat_avancement_detail(site_id, etat_id):
 
             # 1. Parent état d'avancement
             cur.execute("""
-                SELECT sharepoint_id, title, status_date, percent_completed,
-                       global_status, health, planning, cost, update_text,
-                       current_phase_id, end_project_mark,
-                       raw_data->>'GUID' AS guid,
-                       status_report_fk,
-                       created, modified, site_id, raw_data
-                FROM raw_data.sharepoint_etats_avancement
-                WHERE site_id = %s AND sharepoint_id = %s
+                SELECT ea.sharepoint_id, ea.title, ea.status_date, ea.percent_completed,
+                       ea.global_status, ea.health, ea.planning, ea.cost, ea.update_text,
+                       ea.current_phase_id, ea.end_project_mark,
+                       ea.raw_data->>'GUID' AS guid,
+                       COALESCE(ea.status_report_fk, (
+                           SELECT x.fk
+                           FROM (SELECT site_id, title, raw_data->>'Status_x0020_Report' AS fk
+                                 FROM raw_data.sharepoint_statut_couts
+                                 UNION ALL
+                                 SELECT site_id, title, raw_data->>'Status_x0020_Report'
+                                 FROM raw_data.sharepoint_statut_jalons) x
+                           WHERE x.site_id = ea.site_id AND x.title = ea.title AND x.fk IS NOT NULL
+                           ORDER BY x.fk
+                           LIMIT 1
+                       )) AS status_report_fk,
+                       ea.created, ea.modified, ea.site_id, ea.raw_data
+                FROM raw_data.sharepoint_etats_avancement ea
+                WHERE ea.site_id = %s AND ea.sharepoint_id = %s
             """, [site_id, etat_id])
             etat = cur.fetchone()
             if not etat:
@@ -765,6 +778,24 @@ def get_etat_avancement_detail(site_id, etat_id):
                       AND sj.raw_data->>'Status_x0020_Report' = %s
                     ORDER BY sj.raw_data->>'Gate'
                 """, [site_id, status_fk])
+                jalons = cur.fetchall()
+
+            # Aucun statut de jalon extrait pour cet état (cas fréquent depuis 2026-05) :
+            # on montre les jalons du référentiel ASAP (libellé + échéance, sans note)
+            if not jalons:
+                cur.execute("""
+                    SELECT jr.sharepoint_id, jr.title,
+                           jr.raw_data->>'Gate'    AS gate,
+                           NULL AS mark, NULL AS ranking,
+                           NULL AS actual, NULL AS baseline, NULL AS forecast,
+                           jr.raw_data->>'DueDate' AS echeance,
+                           jr.sharepoint_id        AS milestone_id,
+                           jr.title                AS jalon_label,
+                           jr.raw_data
+                    FROM raw_data.sharepoint_jalons_ref jr
+                    WHERE jr.site_id = %s AND jr.raw_data->>'Gate' IS NOT NULL
+                    ORDER BY jr.raw_data->>'Gate', jr.sharepoint_id
+                """, [site_id])
                 jalons = cur.fetchall()
 
             # 4. Commissions Feu Vert
