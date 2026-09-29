@@ -241,8 +241,10 @@ const EtatAvancementDetailModal: React.FC<Props> = ({ open, siteId, etatId, onCl
                                                     <TableCell>{j.jalon_label || ''}</TableCell>
                                                     <TableCell align="right">{formatNumber(j.mark)}</TableCell>
                                                     <TableCell>{j.ranking || ''}</TableCell>
-                                                    <TableCell>{formatDate(j.actual || j.baseline)}</TableCell>
-                                                    <TableCell>{formatDate(j.echeance || j.forecast || j.baseline)}</TableCell>
+                                                    {/* Comme ASAP : Date de début = Baseline, Fin / Échéance = Actual saisi dans
+                                                        l'état ; l'échéance du référentiel ne sert qu'aux jalons sans statut */}
+                                                    <TableCell>{formatDate(j.baseline)}</TableCell>
+                                                    <TableCell>{formatDate(j.actual || j.forecast || j.echeance)}</TableCell>
                                                 </TableRow>
                                                 <TableRow>
                                                     <TableCell colSpan={7} sx={{ py: 0, borderBottom: isOpen ? undefined : 'none' }}>
