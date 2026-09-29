@@ -62,6 +62,8 @@ import MaintenanceIbauPage from './pages/MaintenanceIbauPage';
 import MaintenanceLovPage from './pages/MaintenanceLovPage';
 import MaintenanceOperationsPage from './pages/MaintenanceOperationsPage';
 import MaintenanceOrderDetailPage from './pages/MaintenanceOrderDetailPage';
+import MaintenanceNotificationsPage from './pages/MaintenanceNotificationsPage';
+import MaintenanceNotificationDetailPage from './pages/MaintenanceNotificationDetailPage';
 import MaintenancePeToolDetailPage from './pages/MaintenancePeToolDetailPage';
 import ModeEmploi from './pages/ModeEmploi';
 import Parametres from './pages/Parametres';
@@ -248,6 +250,8 @@ function App() {
           <Route path="maintenance/lov" element={<MaintenanceLovPage />} />
           <Route path="maintenance/operations" element={<MaintenanceOperationsPage />} />
           <Route path="maintenance/operations/:ordre" element={<MaintenanceOrderDetailPage />} />
+          <Route path="maintenance/avis" element={<MaintenanceNotificationsPage />} />
+          <Route path="maintenance/avis/:avis" element={<MaintenanceNotificationDetailPage />} />
           <Route path="maintenance/assistant" element={<HermesChat profile="maintenance" />} />
           <Route path="export/clients" element={<ExportClients />} />
           <Route path="export/projets" element={<ExportProjects />} />

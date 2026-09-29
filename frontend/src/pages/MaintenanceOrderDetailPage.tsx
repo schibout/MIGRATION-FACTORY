@@ -22,15 +22,15 @@ interface Detail {
   couts: Ligne[];
 }
 
-const fmtDate = (d?: string | null) => (d && d.length === 8 ? `${d.slice(6)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : '');
-const fmtNum = (n?: string | null) => (n == null || n === '' ? '' : String(Number(n)));
+export const fmtDate = (d?: string | null) => (d && d.length === 8 ? `${d.slice(6)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : '');
+export const fmtNum = (n?: string | null) => (n == null || n === '' ? '' : String(Number(n)));
 const fmtMontant = (n?: string | number | null) =>
   Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // Domaine SAP AUF_PLKNZ (AFIH-PLKNZ).
 const CODES_PLANIF: Record<string, string> = { '1': 'OT planifié', '2': 'OT immédiat', '3': 'OT non planifié' };
 
 // Ligne « libelle | code | texte » a la maniere des ecrans SAP.
-const Champ: React.FC<{ label: string; code?: any; texte?: any }> = ({ label, code, texte }) => (
+export const Champ: React.FC<{ label: string; code?: any; texte?: any }> = ({ label, code, texte }) => (
   <Box sx={{ display: 'grid', gridTemplateColumns: '220px 160px 1fr', alignItems: 'center', gap: 1.5, py: 0.5 }}>
     <Typography variant="body2" color="text.secondary">{label}</Typography>
     <Box sx={{ px: 1, py: 0.25, bgcolor: 'action.hover', borderRadius: 0.5, minHeight: 24, fontFamily: 'monospace', fontSize: 14 }}>
@@ -40,7 +40,7 @@ const Champ: React.FC<{ label: string; code?: any; texte?: any }> = ({ label, co
   </Box>
 );
 
-const Bloc: React.FC<{ titre: string; children: React.ReactNode }> = ({ titre, children }) => (
+export const Bloc: React.FC<{ titre: string; children: React.ReactNode }> = ({ titre, children }) => (
   <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
     <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, pb: 0.5, borderBottom: 2, borderColor: 'primary.main' }}>
       {titre}
@@ -49,7 +49,7 @@ const Bloc: React.FC<{ titre: string; children: React.ReactNode }> = ({ titre, c
   </Paper>
 );
 
-const Liste: React.FC<{ lignes: Ligne[]; colonnes: { label: string; valeur: (l: Ligne) => any }[]; vide: string }> = ({ lignes, colonnes, vide }) =>
+export const Liste: React.FC<{ lignes: Ligne[]; colonnes: { label: string; valeur: (l: Ligne) => any }[]; vide: string }> = ({ lignes, colonnes, vide }) =>
   lignes.length === 0 ? <Typography color="text.secondary" sx={{ p: 2 }}>{vide}</Typography> : (
     <TableContainer component={Paper} variant="outlined">
       <Table size="small">

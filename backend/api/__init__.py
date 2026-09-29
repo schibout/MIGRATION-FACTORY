@@ -31,6 +31,7 @@ from .maintenance_pe_tools import maintenance_pe_tools_blueprint
 from .pe_tools_organisation import pe_tools_organisation_blueprint
 from .maintenance_ibau import maintenance_ibau_blueprint
 from .maintenance_operations import maintenance_operations_blueprint
+from .maintenance_notifications import maintenance_notifications_blueprint
 from .data_browser import data_browser_blueprint
 from .sap_data_explorer import sap_data_explorer_blueprint
 from .sap_view_structure import sap_view_structure_blueprint
@@ -87,6 +88,8 @@ def register_blueprints(app):
     app.register_blueprint(maintenance_ibau_blueprint, url_prefix=f'{API_PREFIX}/maintenance')
     # Operations SAP des ordres non clos (lecture seule)
     app.register_blueprint(maintenance_operations_blueprint, url_prefix=f'{API_PREFIX}/maintenance')
+    # Avis de maintenance SAP (QMEL/QMIH, lecture seule)
+    app.register_blueprint(maintenance_notifications_blueprint, url_prefix=f'{API_PREFIX}/maintenance')
     app.register_blueprint(data_browser_blueprint, url_prefix=f'{API_PREFIX}/data-browser')
     app.register_blueprint(sap_data_explorer_blueprint, url_prefix=f'{API_PREFIX}/sap-data-explorer')
     # Structure des vues SAP (DDIC dd25l/dd26s/dd27s/dd28s) + creation dans le schema sap_view

@@ -10,6 +10,7 @@ import {
   ListAlt as LovIcon,
   AccountTree as OrganisationIcon,
   PlaylistAddCheck as OperationIcon,
+  NotificationImportant as AvisIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -70,6 +71,14 @@ const cards = [
     icon: OperationIcon,
     color: 'secondary' as const,
     tag: 'AFVC',
+  },
+  {
+    title: 'Avis',
+    description: 'Consulter les avis de maintenance SAP : statut, objet, panne, dommages, causes, mesures et ordre lié.',
+    path: '/maintenance/avis',
+    icon: AvisIcon,
+    color: 'warning' as const,
+    tag: 'QMEL',
   },
   {
     title: 'Listes de valeurs',

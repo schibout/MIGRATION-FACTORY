@@ -18,7 +18,14 @@ const FIN_KO = ['failed', 'error', 'stopped', 'cancelled', 'canceled'];
 
 // Relance l'extraction SAP de ces tables (meme mode que le rechargement maintenance)
 // puis previent la page (onDone) pour qu'elle relise ses donnees.
-const SyncSapOperationsButton: React.FC<{ onDone?: () => void }> = ({ onDone }) => {
+// Tables lues par les ecrans Avis / detail d'un avis.
+export const TABLES_AVIS = [
+  'QMEL', 'QMIH', 'QMFE', 'QMUR', 'QMSM', 'QMMA', 'JEST', 'ILOA', 'CRHD', 'IFLOTX', 'EQKT', 'TJ02T', 'T356_T',
+];
+
+const SyncSapOperationsButton: React.FC<{ onDone?: () => void; tables?: string[]; ecran?: string }> = (
+  { onDone, tables = TABLES, ecran = 'Opérations' },
+) => {
   const [confirmer, setConfirmer] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [progression, setProgression] = useState(0);
@@ -50,7 +57,7 @@ const SyncSapOperationsButton: React.FC<{ onDone?: () => void }> = ({ onDone }) 
     setProgression(0);
     try {
       const { extraction_id } = await extractionService.startExtraction({
-        tables: TABLES, options: { mode: 'standard', clean: false },
+        tables, options: { mode: 'standard', clean: false },
       } as any);
       setJobId(extraction_id);
       suivre(extraction_id);
@@ -71,11 +78,11 @@ const SyncSapOperationsButton: React.FC<{ onDone?: () => void }> = ({ onDone }) 
         <DialogTitle>Synchroniser avec SAP</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Recharge depuis SAP les {TABLES.length} tables utilisées par les écrans Opérations :
+            Recharge depuis SAP les {tables.length} tables utilisées par les écrans {ecran} :
           </Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>{TABLES.join(', ')}</Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>{tables.join(', ')}</Typography>
           <Typography variant="body2" color="text.secondary">
-            L'extraction peut durer plusieurs dizaines de minutes (JEST, AFVC). Ces tables
+            L'extraction peut durer plusieurs dizaines de minutes (JEST notamment). Ces tables
             servent aussi à d'autres modules (ETL Opérations, maintenance).
           </Typography>
         </DialogContent>
