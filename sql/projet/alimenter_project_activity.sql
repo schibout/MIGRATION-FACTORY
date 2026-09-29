@@ -35,6 +35,8 @@ BEGIN
         activity_responsible,
         early_start,
         early_finish,
+        late_start,
+        late_finish,
         actual_start,
         actual_finish,
         task_id,
@@ -58,6 +60,8 @@ BEGIN
         COALESCE(pm_user.person_id, pb.manager) AS activity_responsible,
         src.activity_date AS early_start,
         src.activity_date AS early_finish,
+        src.activity_date AS late_start,
+        src.activity_date AS late_finish,
         src.activity_date AS actual_start,
         src.activity_date AS actual_finish,
         public.get_default_value('clean_data.project_activity', 'task_id')::numeric AS task_id,
@@ -88,11 +92,9 @@ BEGIN
                         THEN UPPER(TRIM(vd.gate)) || 'ter'
                     ELSE NULL
                 END AS activity_source,
-                -- Échéance ASAP (référentiel des jalons) prioritaire, puis date réalisée / prévue
-                COALESCE(
-                    (NULLIF(vd.ref_date_echeance, '')::timestamptz AT TIME ZONE 'Europe/Paris')::DATE,
-                    COALESCE(vd.date_realisee, vd.date_prevue)::DATE
-                ) AS activity_date,
+                -- IFS ne veut QUE l'échéance ASAP (référentiel des jalons, heure de Paris) :
+                -- pas de repli sur la date réalisée / prévue de l'état d'avancement
+                (NULLIF(vd.ref_date_echeance, '')::timestamptz AT TIME ZONE 'Europe/Paris')::DATE AS activity_date,
                 vd.date_etat_source
             FROM clean_data.v_portes_detail vd
             WHERE vd.project_number IS NOT NULL
