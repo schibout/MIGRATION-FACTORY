@@ -186,6 +186,7 @@ def _equipment_select():
     return f"""
         o.sap_key AS equnr,
         o.code    AS equnr_short,
+        o.attributes->>'equnr_origine' AS equnr_origine,
         COALESCE(o.designation, 'Équipement ' || o.code) AS designation,
         o.type_code AS type_poste,
         o.attributes->>'herst' AS manufacturer,
@@ -1002,6 +1003,7 @@ def get_equipment_details():
                 SELECT
                     o.sap_key AS equnr,
                     o.code    AS equnr_short,
+                    o.attributes->>'equnr_origine' AS equnr_origine,
                     COALESCE(o.designation, 'Équipement ' || o.code) AS designation,
                     o.type_code AS type_equipement,
                     o.category  AS categorie,
@@ -1170,8 +1172,23 @@ def add_equipment():
             new_equnr = str(cursor.fetchone()['max_eq'] + 1).zfill(18)
             code = new_equnr.lstrip('0') or new_equnr
 
+            # Equipement modele choisi dans la boite d'ajout (champ "Numero
+            # equipement") : on garde son numero comme equipement d'origine,
+            # seulement s'il existe (une saisie libre n'est pas une origine).
+            origine = None
+            src = (data.get('equnr') or '').strip()
+            if src:
+                cursor.execute(f"""
+                    SELECT code FROM {MO}
+                    WHERE object_type = 'EQUIPMENT' AND (sap_key = %s OR code = %s)
+                    LIMIT 1
+                """, [src.zfill(18) if src.isdigit() else src, src])
+                row = cursor.fetchone()
+                origine = row['code'] if row else None
+
             attrs = {
                 'equnr_long': new_equnr, 'tplnr_sap': parent_tplnr,
+                'equnr_origine': origine,
                 'herst': data.get('herst') or None, 'typbz': data.get('typbz') or None,
                 'sernr': data.get('sernr') or None, 'invnr': data.get('invnr') or None,
                 'matnr': data.get('matnr') or None, 'inbdt': data.get('inbdt') or None,
@@ -1188,7 +1205,8 @@ def add_equipment():
                   data.get('ingrp') or None, pid, json.dumps(attrs), user, user])
             conn.commit()
             return jsonify({'success': True, 'message': f'Équipement créé sous "{parent_tplnr}"',
-                            'data': {'equnr': new_equnr, 'linked_to_tplnr': True,
+                            'data': {'equnr': new_equnr, 'equnr_short': code,
+                                     'equnr_origine': origine, 'linked_to_tplnr': True,
                                      'kostl': data.get('kostl')}}), 201
     except Exception as e:
         current_app.logger.error(f"Erreur ajout équipement IH02: {e}")

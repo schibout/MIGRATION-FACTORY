@@ -102,6 +102,7 @@ interface LocationNode {
 interface EquipmentNode {
   equnr: string;
   equnr_short: string;
+  equnr_origine?: string | null;
   designation: string;
   type_poste: string | null;
   manufacturer: string | null;
@@ -146,6 +147,7 @@ interface ArticleResult {
 interface EquipmentDetails {
   equnr: string;
   equnr_short: string;
+  equnr_origine?: string | null;
   designation: string;
   type_equipement: string | null;
   categorie: string | null;
@@ -1309,11 +1311,13 @@ const IH02HierarchyPage: React.FC = () => {
         await loadBom(selectedNode.node_id, true);
         return; // la nomenclature est rechargée, pas les enfants de l'arbre
       } else {
-        await api.post('/ih02-hierarchy/add-equipment', {
+        const res = await api.post('/ih02-hierarchy/add-equipment', {
           parent_tplnr: selectedNode.node_id,
           ...addEquipmentData,
         });
-        setSnackbar({ open: true, message: `Équipement créé sous "${selectedNode.node_id}"`, severity: 'success' });
+        const created = res.data?.data || {};
+        const origine = created.equnr_origine ? ` (origine ${created.equnr_origine})` : '';
+        setSnackbar({ open: true, message: `Équipement ${created.equnr_short || ''}${origine} créé sous "${selectedNode.node_id}"`, severity: 'success' });
       }
       setAddDialogOpen(false);
       const key = getNodeKey(selectedNode);
@@ -1638,6 +1642,15 @@ const IH02HierarchyPage: React.FC = () => {
           >
             {eq.equnr_short}
           </Typography>
+          {eq.equnr_origine && (
+            <Tooltip title="Équipement d'origine (modèle utilisé à la création)">
+              <Chip
+                size="small"
+                label={`Origine : ${eq.equnr_origine}`}
+                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontFamily: 'monospace' }}
+              />
+            </Tooltip>
+          )}
           <Typography variant="body2" sx={{ ml: 2, flex: 1, fontWeight: isSelected ? 500 : 400 }}>
             {eq.designation}
           </Typography>
@@ -2262,6 +2275,7 @@ const IH02HierarchyPage: React.FC = () => {
             <Grid container spacing={2}>
               <Grid item xs={12}><DetailField label="Désignation" value={v('designation')} editing={e} fieldKey="designation" onFieldChange={f} /></Grid>
               <Grid item xs={6}><DetailField label="N° équipement" value={eq.equnr_short} monospace /></Grid>
+              {eq.equnr_origine && <Grid item xs={6}><DetailField label="N° équipement d'origine" value={eq.equnr_origine} monospace /></Grid>}
               <Grid item xs={6}><DetailField label="Catégorie" value={v('categorie')} editing={e} fieldKey="categorie" onFieldChange={f} /></Grid>
               <Grid item xs={6}><DetailField label="Type" value={v('type_equipement')} editing={e} fieldKey="type_equipement" onFieldChange={f} /></Grid>
               <Grid item xs={6}><DetailField label="N° inventaire" value={v('numero_inventaire')} monospace editing={e} fieldKey="numero_inventaire" onFieldChange={f} /></Grid>
