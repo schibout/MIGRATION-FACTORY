@@ -938,9 +938,9 @@ def get_projet_jalons(site_id):
 
 @data_blueprint.route('/projets/<site_id>/commissions-cfv', methods=['GET'])
 def get_commissions_cfv(site_id):
-    """Commissions Feu Vert du projet : dernier statut_cfv par phase
-    (Conception / Mise en service / Achèvement industriel) — même source que la popup
-    état d'avancement (raw_data.sharepoint_statut_cfv, le plus récent par 'modified').
+    """Commissions Feu Vert du projet : statut_cfv par phase
+    (Conception / Mise en service / Achèvement industriel) de l'état d'avancement
+    LE PLUS RÉCENT du projet (clean_data.v_dernier_etat_avancement), comme l'ETL.
     """
     try:
         with get_db_connection() as conn:
@@ -953,6 +953,9 @@ def get_commissions_cfv(site_id):
                     c.raw_data->>'Baseline' AS baseline,
                     c.modified
                 FROM raw_data.sharepoint_statut_cfv c
+                JOIN clean_data.v_dernier_etat_avancement de
+                  ON de.site_id = c.site_id
+                 AND de.status_report_fk = c.raw_data->>'Status_x0020_Report'
                 WHERE c.site_id = %s
                   AND c.title IN ('Conception', 'Mise en service', 'Achèvement industriel')
                 ORDER BY c.title, c.modified DESC NULLS LAST

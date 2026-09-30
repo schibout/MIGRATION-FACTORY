@@ -27,7 +27,9 @@ WITH ranked AS (
     SELECT
         sj.site_id,
         NULLIF(sj.raw_data->>'MilestoneId', '')::int      AS milestone_id,
-        sj.raw_data->>'Gate'                              AS gate,
+        -- Les statuts de l'ancien modèle ASAP (2020-2021, ex. 22.034) n'ont pas de
+        -- Gate : on la reprend du jalon du référentiel
+        COALESCE(sj.raw_data->>'Gate', jr0.raw_data->>'Gate') AS gate,
         sj.raw_data->>'Mark'                              AS note,
         sj.raw_data->>'Ranking'                           AS classement,
         NULLIF(sj.raw_data->>'Actual',   '')::timestamptz AS date_realisee,
@@ -46,6 +48,7 @@ WITH ranked AS (
         ROW_NUMBER() OVER (
             PARTITION BY sj.site_id, NULLIF(sj.raw_data->>'MilestoneId', '')::int
             ORDER BY ea.status_date DESC NULLS LAST,
+                     ea.sharepoint_id DESC,          -- même départage que v_dernier_etat_avancement
                      sj.modified     DESC NULLS LAST,
                      sj.sharepoint_id DESC
         )                                                 AS rn
@@ -53,7 +56,10 @@ WITH ranked AS (
     JOIN raw_data.sharepoint_etats_avancement ea
       ON ea.site_id = sj.site_id
      AND ea.title   = sj.title
-    WHERE sj.raw_data->>'Gate' IS NOT NULL
+    LEFT JOIN raw_data.sharepoint_jalons_ref jr0
+      ON jr0.site_id = sj.site_id
+     AND jr0.sharepoint_id = NULLIF(sj.raw_data->>'MilestoneId', '')::int
+    WHERE COALESCE(sj.raw_data->>'Gate', jr0.raw_data->>'Gate') IS NOT NULL
 )
 SELECT
     -- Projet

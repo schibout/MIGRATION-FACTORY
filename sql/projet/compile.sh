@@ -76,6 +76,7 @@ files=(
     "alimenter_ifs_project_margin_matrix.sql"
     "alimenter_sub_project.sql"
     "source/v_portes_detail.sql"
+    "source/v_dernier_etat_avancement.sql"
     "alimenter_project_activity.sql"
     "alimenter_project_activity_class.sql"
 )

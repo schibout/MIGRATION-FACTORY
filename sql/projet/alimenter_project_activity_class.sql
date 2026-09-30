@@ -57,13 +57,12 @@ BEGIN
             v.note        AS note,        -- Mark de la porte  -> QUAL_PORTE
             v.classement  AS classement   -- Ranking de la porte -> STATUT_PORTE
         FROM clean_data.project_activity pa
-        -- Note + classement du DERNIER état d'avancement du projet (même règle que
-        -- alimenter_project_activity : dernier état portant des jalons).
+        -- Note + classement de l'état d'avancement LE PLUS RÉCENT du projet
+        -- (clean_data.v_dernier_etat_avancement, même règle que alimenter_project_activity).
         -- Jointure par MILESTONE exact : on recalcule l'activity_no dérivé du libellé
         -- (P3 bis -> P3bis -> 0035-P3) pour que bis/ter aient LEUR note/classement.
         LEFT JOIN (
             SELECT vd.*,
-                   MAX(vd.date_etat_source) OVER (PARTITION BY vd.site_id) AS date_dernier_etat,
                    -- Même règle que alimenter_project_activity : un jalon n'est la porte
                    -- P<n> que si son libellé est vide ou égal à P<n> (sinon « Point
                    -- L. Maenner » ou « P23 plateforme déchets » doublonnaient P3)
@@ -76,9 +75,11 @@ BEGIN
                            THEN UPPER(TRIM(vd.gate)) || 'ter'
                    END AS porte
             FROM clean_data.v_portes_detail vd
+            JOIN clean_data.v_dernier_etat_avancement de
+                ON de.site_id = vd.site_id
+               AND de.etat_id = vd.etat_id
         ) v
             ON SUBSTRING(v.project_number, 1, 10) = pa.project_id
-           AND v.date_etat_source = v.date_dernier_etat
            AND COALESCE(
                  public.get_transcodification('Activity', v.porte, 'ASAP', 'IFS'),
                  v.porte
@@ -112,12 +113,10 @@ BEGIN
 
     ---------------------------------------------------------------------------
     -- 2) ACTIVITÉS CFV (CFV1/CFV2/CFV3) -> classe CFV
-    --    value = State du statut_cfv du DERNIER état d'avancement du projet pour la
-    --    phase (title), transcodé 'CFV' ; vide / pas de donnée -> 0.
+    --    value = State du statut_cfv de l'état d'avancement LE PLUS RÉCENT du projet
+    --    pour la phase (title), transcodé 'CFV' ; vide / pas de donnée -> 0.
     --    Le statut CFV ne porte pas le titre de l'état : rattachement par le GUID
-    --    Status_x0020_Report (status_report_fk, ou GUID des coûts/jalons du même
-    --    titre quand la migration 011 ne l'a pas matérialisé). Sans GUID résolu :
-    --    statut CFV modifié en dernier.
+    --    Status_x0020_Report résolu dans clean_data.v_dernier_etat_avancement.
     ---------------------------------------------------------------------------
     INSERT INTO clean_data.project_activity_class (
         project_id, sub_project_id, activity_no, value, activity_class_id
@@ -138,38 +137,19 @@ BEGIN
         -- Nom de la classe = celui du projet modèle : CFV1 (P3) / CFV2 (P4) / CFV3 (P6)
         pa.activity_no AS activity_class_id
     FROM clean_data.project_activity pa
-    LEFT JOIN LATERAL (
-        SELECT COALESCE(ea.status_report_fk, (
-                   SELECT x.fk
-                   FROM (SELECT site_id, title, raw_data->>'Status_x0020_Report' AS fk
-                         FROM raw_data.sharepoint_statut_couts
-                         UNION ALL
-                         SELECT site_id, title, raw_data->>'Status_x0020_Report'
-                         FROM raw_data.sharepoint_statut_jalons) x
-                   WHERE x.site_id = ea.site_id AND x.title = ea.title AND x.fk IS NOT NULL
-                   ORDER BY x.fk
-                   LIMIT 1
-               )) AS fk
-        FROM raw_data.sharepoint_etats_avancement ea
-        JOIN raw_data.sharepoint_projets sp ON ea.site_id = sp.sharepoint_id::TEXT
-        WHERE SUBSTRING(COALESCE(sp.project_number, sp.code), 1, 10) = pa.project_id
-          AND sp.project_number IS NOT NULL
-        ORDER BY ea.status_date DESC NULLS LAST, ea.sharepoint_id DESC
-        LIMIT 1
-    ) dernier_etat ON TRUE
+    LEFT JOIN clean_data.v_dernier_etat_avancement de
+        ON de.project_id = pa.project_id
     LEFT JOIN LATERAL (
         SELECT c.raw_data->>'State' AS state
         FROM raw_data.sharepoint_statut_cfv c
-        JOIN raw_data.sharepoint_projets sp ON c.site_id = sp.sharepoint_id::TEXT
-        WHERE SUBSTRING(COALESCE(sp.project_number, sp.code), 1, 10) = pa.project_id
-          AND sp.project_number IS NOT NULL
+        WHERE c.site_id = de.site_id
+          AND c.raw_data->>'Status_x0020_Report' = de.status_report_fk
           AND c.title = CASE pa.activity_no
                             WHEN 'CFV1' THEN 'Conception'
                             WHEN 'CFV2' THEN 'Mise en service'
                             WHEN 'CFV3' THEN 'Achèvement industriel'
                         END
-        ORDER BY COALESCE(c.raw_data->>'Status_x0020_Report' = dernier_etat.fk, FALSE) DESC,
-                 c.modified DESC NULLS LAST
+        ORDER BY c.modified DESC NULLS LAST
         LIMIT 1
     ) last_cfv ON TRUE
     WHERE pa.activity_no IN ('CFV1', 'CFV2', 'CFV3')

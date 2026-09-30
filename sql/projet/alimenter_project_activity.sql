@@ -95,17 +95,18 @@ BEGIN
                 END AS activity_source,
                 -- « Fin / Échéance » de l'état (Actual, heure de Paris), puis Forecast
                 (COALESCE(vd.date_realisee, vd.date_prevue) AT TIME ZONE 'Europe/Paris')::DATE AS activity_date,
-                vd.date_etat_source,
-                -- Dernier état d'avancement du projet PORTANT des jalons : depuis 2026-05
-                -- l'extraction ne ramène pas les statuts de jalons de tous les états
-                MAX(vd.date_etat_source) OVER (PARTITION BY vd.site_id) AS date_dernier_etat
+                vd.date_etat_source
             FROM clean_data.v_portes_detail vd
+            -- Portes ET dates de l'état d'avancement LE PLUS RÉCENT du projet, et d'aucun
+            -- autre : v_portes_detail porte, par jalon, son état le plus récent ; il n'est
+            -- égal au dernier état du projet que si le jalon figure dans ce dernier état.
+            -- Dernier état sans statut de jalon extrait -> projet sans porte.
+            JOIN clean_data.v_dernier_etat_avancement de
+                ON de.site_id = vd.site_id
+               AND de.etat_id = vd.etat_id
             WHERE vd.project_number IS NOT NULL
         ) x
         WHERE x.activity_source IS NOT NULL
-          -- Portes ET dates du dernier état uniquement (pas de porte d'un état antérieur,
-          -- ni de jalon du référentiel absent de l'état)
-          AND x.date_etat_source = x.date_dernier_etat
         ORDER BY x.project_id, x.activity_source, x.date_etat_source DESC NULLS LAST, x.milestone_id
     ) src
     JOIN clean_data.project_base pb
@@ -127,9 +128,9 @@ BEGIN
     -- Même correspondance que clean_data.alimenter_project_activity_class(),
     -- qui consomme ces lignes pour produire les classes CFV1/CFV2/CFV3.
     --
-    -- Source : raw_data.sharepoint_statut_cfv, DERNIER statut par (projet, phase)
-    -- (modified DESC) — exactement le grain de l'onglet « Commissions Feu Vert »
-    -- du détail projet (GET /projets/<site_id>/commissions-cfv).
+    -- Source : raw_data.sharepoint_statut_cfv de l'état d'avancement LE PLUS RÉCENT
+    -- du projet (clean_data.v_dernier_etat_avancement, rattachement par le GUID
+    -- Status_x0020_Report). GUID non résolu -> pas d'activité CFV.
     -- Aucune phase en dur côté sortie : une activité n'est créée que si la phase
     -- est présente dans les données du projet.
     ---------------------------------------------------------------------------
@@ -204,6 +205,10 @@ BEGIN
                 ON pm_user.sharepoint_user_id = sp.pm_id
             JOIN raw_data.sharepoint_statut_cfv c
                 ON c.site_id = sp.sharepoint_id::TEXT
+            JOIN clean_data.v_dernier_etat_avancement de
+                ON de.project_id = pb.project_id
+               AND de.site_id = c.site_id
+               AND de.status_report_fk = c.raw_data->>'Status_x0020_Report'
             CROSS JOIN LATERAL (
                 SELECT CASE lower(TRIM(c.title))
                            WHEN 'conception'            THEN 'CFV1'
@@ -233,7 +238,8 @@ BEGIN
     RAISE NOTICE 'Activités projet de type CFV insérées: %', v_count_cfv;
 
     ---------------------------------------------------------------------------
-    -- Enrichissement depuis les états d'avancement (dernier état par projet)
+    -- Enrichissement depuis l'état d'avancement le plus récent du projet
+    -- (l'ancien ORDER BY status_date DESC plaçait les dates NULL en tête)
     ---------------------------------------------------------------------------
     UPDATE clean_data.project_activity pa
     SET
@@ -242,16 +248,7 @@ BEGIN
             regexp_replace(last_ea.update_text, '<[^>]*>', '', 'g'),
             1, 2000
         )
-    FROM (
-        SELECT DISTINCT ON (sp.project_number)
-            SUBSTRING(COALESCE(sp.project_number, sp.code), 1, 10) AS project_id,
-            ea.percent_completed,
-            ea.update_text
-        FROM raw_data.sharepoint_etats_avancement ea
-        JOIN raw_data.sharepoint_projets sp ON ea.site_id = sp.sharepoint_id::TEXT
-        WHERE sp.project_number IS NOT NULL
-        ORDER BY sp.project_number, ea.status_date DESC
-    ) last_ea
+    FROM clean_data.v_dernier_etat_avancement last_ea
     WHERE pa.project_id = last_ea.project_id;
 
     RAISE NOTICE 'Enrichissement depuis états d''avancement terminé';
