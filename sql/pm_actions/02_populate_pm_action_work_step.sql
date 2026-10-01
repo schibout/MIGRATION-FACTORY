@@ -14,6 +14,7 @@ BEGIN
         pm_no,
         pm_revision,
         pm_action_work_step_seq,
+        work_list_no,
         description,
         order_no,
         mch_code_contract,
@@ -26,6 +27,7 @@ BEGIN
         v_pm_revision,
         -- 1, 2, 3... dans chaque action (migration 091)
         row_number() OVER (PARTITION BY s.pm_no ORDER BY s.raw_id)         AS pm_action_work_step_seq,
+        row_number() OVER (PARTITION BY s.pm_no ORDER BY s.raw_id)         AS work_list_no,
         left(COALESCE(NULLIF(btrim(s.designation), ''), 'N/A'), 500)       AS description,
         clean_data.pe_num(s.compteur_de_gamme)                             AS order_no,
         v_org_contract,

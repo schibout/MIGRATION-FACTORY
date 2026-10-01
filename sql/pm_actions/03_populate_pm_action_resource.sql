@@ -13,6 +13,7 @@ BEGIN
         pm_no,
         pm_revision,
         pm_action_resource_seq,
+        work_list_no,
         demand_type,
         demand_type_db,
         resource_group,
@@ -24,6 +25,8 @@ BEGIN
         v_pm_revision,
         -- 1, 2, 3... dans chaque action (1 si une seule operation, migration 091)
         row_number() OVER (PARTITION BY s.pm_no ORDER BY s.raw_id) AS pm_action_resource_seq,
+        -- meme numero que l'etape de travail de la meme operation (02_populate_pm_action_work_step)
+        row_number() OVER (PARTITION BY s.pm_no ORDER BY s.raw_id) AS work_list_no,
         v_demand_type,
         v_demand_type_db,
         -- Groupe ressources = organisation de maintenance de l'action (pm_action.org_code :
