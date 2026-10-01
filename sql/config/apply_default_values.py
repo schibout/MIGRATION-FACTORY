@@ -79,6 +79,7 @@ FICHIERS_SEED = [
     RACINE / 'migrations' / '088_pm_action_pm_start_unit_db_defaut.sql',
     RACINE / 'migrations' / '090_pm_action_state_objstate.sql',
     RACINE / 'migrations' / '093_jt_task_organization_site_defaut.sql',
+    RACINE / 'migrations' / '094_jt_task_site_defaut.sql',
 ]
 
 

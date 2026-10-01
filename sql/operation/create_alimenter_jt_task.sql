@@ -217,7 +217,8 @@ BEGIN
             END AS task_seq,
             CASE WHEN TRIM(COALESCE(aufnr, '')) ~ '^[0-9]+$' THEN TRIM(aufnr)::numeric END AS order_no,
             CASE WHEN TRIM(COALESCE(aufnr, '')) ~ '^[0-9]+$' THEN TRIM(aufnr)::numeric END AS wo_no,
-            SUBSTRING(COALESCE(NULLIF(TRIM(werks), ''), 'SJM'), 1, 5) AS site,
+            -- SITE : site IFS parametre dans l'ecran Valeurs par defaut (SJ, migration 094).
+            SUBSTRING(public.get_default_value('clean_data.jt_task', 'site'), 1, 5) AS site,
             public.get_default_value('clean_data.jt_task', 'company') AS company,
             -- ORGANIZATION_SITE : site IFS parametre dans l'ecran Valeurs par defaut
             -- (SJ, migration 093) et non plus la division SAP.
