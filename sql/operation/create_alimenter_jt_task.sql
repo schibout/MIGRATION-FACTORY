@@ -236,9 +236,11 @@ BEGIN
             SUBSTRING(NULLIF(TRIM(ltxa2), ''), 1, 4000) AS long_description,
             -- PREPARED_BY / REPORTED_BY : compte SAP -> personne IFS (PRENOM.NOM) via
             -- public.get_username. REPORTED_BY = createur de l'ordre (AUFK.ERNAM),
-            -- sinon auteur de la derniere confirmation (AFRU.ERNAM), sinon KAPEIFS.
+            -- sinon auteur de la derniere confirmation (AFRU.ERNAM), sinon valeur par
+            -- defaut (LOIC.DECHALOU, migration 096).
             SUBSTRING(public.get_username(afnam), 1, 20) AS prepared_by,
-            SUBSTRING(COALESCE(public.get_username(aufk_ernam), public.get_username(ernam), 'KAPEIFS'), 1, 20) AS reported_by,
+            SUBSTRING(COALESCE(public.get_username(aufk_ernam), public.get_username(ernam),
+                               public.get_default_value('clean_data.jt_task', 'reported_by')), 1, 20) AS reported_by,
             clean_data.sap_datetime(ersda, erzet) AS reported_date,
             afvc_updated_at::timestamp AS mpb_latest_update,
             COALESCE(
