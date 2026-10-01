@@ -309,7 +309,10 @@ BEGIN
         planned_start,
         planned_finish,
         duration,
-        actual_start,
+        -- Exigences IFS (demande explicite 2026-10-01) :
+        -- ACTUAL_START >= 01/01/2026 ; un NULL reste NULL (GREATEST ignore le NULL
+        -- et renverrait la borne, d'ou le CASE).
+        CASE WHEN actual_start IS NOT NULL THEN GREATEST(actual_start, TIMESTAMP '2026-01-01') END,
         actual_finish,
         earliest_start,
         latest_start,
@@ -336,7 +339,10 @@ BEGIN
         objid
     FROM mapped
     WHERE task_seq IS NOT NULL
-      AND description IS NOT NULL;
+      AND description IS NOT NULL
+      -- Operations non terminees uniquement (demande explicite 2026-10-01) :
+      -- fin reelle absente ou au plus tot aujourd'hui.
+      AND (actual_finish IS NULL OR actual_finish >= CURRENT_DATE);
 
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
 
