@@ -245,7 +245,8 @@ BEGIN
     SET
         estimated_progress = (last_ea.percent_completed * 100)::NUMERIC,
         note = SUBSTRING(
-            regexp_replace(last_ea.update_text, '<[^>]*>', '', 'g'),
+            -- ';' -> '-' : séparateur du CSV d'export IFS
+            REPLACE(regexp_replace(last_ea.update_text, '<[^>]*>', '', 'g'), ';', '-'),
             1, 2000
         )
     FROM clean_data.v_dernier_etat_avancement last_ea

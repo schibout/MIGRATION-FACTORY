@@ -52,10 +52,11 @@ BEGIN
         SUBSTRING(COALESCE(sp.project_number, sp.code), 1, 10) as project_id,
         
         -- NAME: 35 premiers caractères du titre (OBLIGATOIRE)
-        SUBSTRING(COALESCE(sp.title, 'Projet ' || sp.sharepoint_id), 1, 35) as name,
+        -- ';' -> '-' : séparateur du CSV d'export IFS
+        SUBSTRING(REPLACE(COALESCE(sp.title, 'Projet ' || sp.sharepoint_id), ';', '-'), 1, 35) as name,
         
         -- DESCRIPTION: Description limitée à 2000 caractères
-        SUBSTRING(COALESCE(sp.site_url_description, ''), 1, 2000) as description,
+        SUBSTRING(REPLACE(COALESCE(sp.site_url_description, ''), ';', '-'), 1, 2000) as description,
         
         -- ACTUAL_START: Date de début SharePoint
         sp.start_date::DATE as actual_start,
