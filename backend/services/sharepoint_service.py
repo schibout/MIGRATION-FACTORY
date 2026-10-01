@@ -1744,8 +1744,9 @@ class SharePointService:
             logger.error(f"❌ HTTP '{list_title}' site {site_id}: {e}")
             raise
         except requests.exceptions.RequestException as e:
-            if skip_missing:
-                return []
+            # Pas de repli silencieux sur [] (seule une liste absente, 404, est ignorée) :
+            # un délai dépassé en cours de pagination perdait toute la liste du site
+            # sans erreur ; l'appelant journalise l'exception par site.
             logger.error(f"❌ Connexion SharePoint '{list_title}' site {site_id}: {e}")
             raise
 

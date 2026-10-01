@@ -752,7 +752,7 @@ def import_all_etats_avancement_sharepoint():
     
     Body JSON:
     {
-        "top_per_site": 100
+        "top_per_site": 5000
     }
     """
     try:
@@ -762,7 +762,9 @@ def import_all_etats_avancement_sharepoint():
         config = request.get_json() or {}
         
         sharepoint_params = {
-            'top_per_site': config.get('top_per_site', 100)
+            # 100 tronquait les listes filles (lues par ID croissant) : au-delà de
+            # 100 statuts de jalons par site, les états récents n'avaient plus de jalons
+            'top_per_site': int(config.get('top_per_site', 5000))
         }
         
         current_app.logger.info(f"📋 Paramètres: {sharepoint_params}")
