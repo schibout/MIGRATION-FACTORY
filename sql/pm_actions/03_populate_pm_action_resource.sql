@@ -3,6 +3,8 @@ CREATE OR REPLACE PROCEDURE clean_data.populate_pm_action_resource()
 AS $procedure$
 DECLARE
     v_pm_revision     VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'pm_revision');
+    -- demand_type est NOT NULL : la ligne doit etre active dans l'ecran Valeurs par defaut
+    v_demand_type     VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'demand_type');
     v_demand_type_db  VARCHAR := public.get_default_value('clean_data.pm_action_resource', 'demand_type_db');
     v_count INTEGER := 0;
 BEGIN
@@ -11,6 +13,7 @@ BEGIN
         pm_no,
         pm_revision,
         pm_action_resource_seq,
+        demand_type,
         demand_type_db,
         resource_group,
         planned_hours,
@@ -20,7 +23,7 @@ BEGIN
         s.pm_no,
         v_pm_revision,
         row_number() OVER (ORDER BY s.pm_no, s.raw_id)  AS pm_action_resource_seq,
-        -- demand_type (libelle) non renseigne : seul le code _db est charge
+        v_demand_type,
         v_demand_type_db,
         -- Groupe ressources = organisation de maintenance de l'action (pm_action.org_code :
         -- organisation du fichier PE Tools, sinon valeur par defaut)
