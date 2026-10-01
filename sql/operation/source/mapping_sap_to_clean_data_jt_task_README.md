@@ -35,7 +35,8 @@ Points à valider métier:
 - TASK_SEQ: généré par IFS ou généré ETL depuis AFVC.AUFPL/APLZL.
 - WO_NO: mapping vers AFKO.AUFNR, en conservant ou non les zéros SAP.
 - ORGANIZATION_ID / TEAM_ID: transcodification CRHD.ARBPL vers référentiel IFS.
-- WORK_TYPE_ID / WORK_STAGE_ID: transcodification AFVC.STEUS.
+- WORK_TYPE_ID: AFIH.ILART transcode via la categorie WORK_TYPE (21 -> MP21, migration 092).
+- WORK_STAGE_ID: transcodification AFVC.STEUS.
 - PRIORITY_ID: AFKO.APRIO proposé, mais AFIH.PRIOK serait plus PM si AFIH est chargé.
 - Dates planifiées/réelles: choix entre dates AFVV et confirmations AFRU selon règle métier.
 - Champs défaut obligatoires IFS: EXCLUDE_FROM_SCHEDULING_DB, APPOINTMENT_REQUIRED, REMOTELY_FULFILLED, SCHEDULED_MANUALLY.

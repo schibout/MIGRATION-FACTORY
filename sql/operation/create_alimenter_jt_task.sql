@@ -113,6 +113,7 @@ BEGIN
             v.updated_at AS afvc_updated_at,
             k.aufnr,
             k.aprio,
+            h.ilart,
             k.gstrp,
             k.gsuzp,
             k.gltrp,
@@ -148,6 +149,9 @@ BEGIN
         LEFT JOIN raw_data.afko k
             ON k.mandt = v.mandt
            AND k.aufpl = v.aufpl
+        LEFT JOIN raw_data.afih h
+            ON h.mandt = k.mandt
+           AND h.aufnr = k.aufnr
         LEFT JOIN raw_data.afvv w
             ON w.mandt = v.mandt
            AND w.aufpl = v.aufpl
@@ -217,7 +221,10 @@ BEGIN
             -- Poste non transcode -> NULL (le code SAP brut n'existe pas cote IFS).
             SUBSTRING(public.get_transcodification('Organization', NULLIF(TRIM(arbpl), '')), 1, 8) AS organization_id,
             SUBSTRING(NULLIF(TRIM(aprio), ''), 1, 10) AS priority_id,
-            SUBSTRING(NULLIF(TRIM(steus), ''), 1, 20) AS work_type_id,
+            -- WORK_TYPE_ID : type d'activite de maintenance de l'ordre (AFIH.ILART)
+            -- transcode en type de travail IFS (21 -> MP21, migration 092).
+            -- Code non transcode -> NULL.
+            SUBSTRING(public.get_transcodification('WORK_TYPE', NULLIF(TRIM(ilart), '')), 1, 20) AS work_type_id,
             SUBSTRING(COALESCE(NULLIF(TRIM(ltxa1), ''), 'Opération SAP ' || COALESCE(vornr, aplzl)), 1, 200) AS description,
             SUBSTRING(NULLIF(TRIM(ltxa2), ''), 1, 4000) AS long_description,
             SUBSTRING(NULLIF(TRIM(afnam), ''), 1, 20) AS prepared_by,
