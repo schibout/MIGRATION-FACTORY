@@ -57,8 +57,8 @@ BEGIN
             v.note        AS note,        -- Mark de la porte  -> QUAL_PORTE
             v.classement  AS classement   -- Ranking de la porte -> STATUT_PORTE
         FROM clean_data.project_activity pa
-        -- Note + classement de l'état d'avancement LE PLUS RÉCENT du projet
-        -- (clean_data.v_dernier_etat_avancement, même règle que alimenter_project_activity).
+        -- Note + classement du dernier état d'avancement du projet portant des
+        -- statuts de jalon (même règle que alimenter_project_activity).
         -- Jointure par MILESTONE exact : on recalcule l'activity_no dérivé du libellé
         -- (P3 bis -> P3bis -> 0035-P3) pour que bis/ter aient LEUR note/classement.
         LEFT JOIN (
@@ -75,7 +75,14 @@ BEGIN
                            THEN UPPER(TRIM(vd.gate)) || 'ter'
                    END AS porte
             FROM clean_data.v_portes_detail vd
-            JOIN clean_data.v_dernier_etat_avancement de
+            -- Dernier état PORTANT des statuts de jalon (même règle que alimenter_project_activity)
+            JOIN (
+                SELECT DISTINCT ON (SUBSTRING(p.project_number, 1, 10)) p.site_id, p.etat_id
+                FROM clean_data.v_portes_detail p
+                WHERE p.etat_id IS NOT NULL
+                  AND p.project_number IS NOT NULL
+                ORDER BY SUBSTRING(p.project_number, 1, 10), p.date_etat_source DESC NULLS LAST, p.etat_id DESC
+            ) de
                 ON de.site_id = vd.site_id
                AND de.etat_id = vd.etat_id
         ) v

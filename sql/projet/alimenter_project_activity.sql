@@ -97,11 +97,19 @@ BEGIN
                 (COALESCE(vd.date_realisee, vd.date_prevue) AT TIME ZONE 'Europe/Paris')::DATE AS activity_date,
                 vd.date_etat_source
             FROM clean_data.v_portes_detail vd
-            -- Portes ET dates de l'état d'avancement LE PLUS RÉCENT du projet, et d'aucun
-            -- autre : v_portes_detail porte, par jalon, son état le plus récent ; il n'est
-            -- égal au dernier état du projet que si le jalon figure dans ce dernier état.
-            -- Dernier état sans statut de jalon extrait -> projet sans porte.
-            JOIN clean_data.v_dernier_etat_avancement de
+            -- Portes ET dates de l'état d'avancement le plus récent du projet QUI PORTE
+            -- des statuts de jalon, et d'aucun autre. Le dernier état tout court ne
+            -- convient pas : 75 projets (ex. 23.063, état du 29/05/2026) ont un dernier
+            -- état sans aucun statut de jalon et perdaient toutes leurs portes.
+            -- v_portes_detail porte, par jalon, son état le plus récent : le plus
+            -- récent de ces états est donc le dernier état renseignant des jalons.
+            JOIN (
+                SELECT DISTINCT ON (SUBSTRING(p.project_number, 1, 10)) p.site_id, p.etat_id
+                FROM clean_data.v_portes_detail p
+                WHERE p.etat_id IS NOT NULL
+                  AND p.project_number IS NOT NULL
+                ORDER BY SUBSTRING(p.project_number, 1, 10), p.date_etat_source DESC NULLS LAST, p.etat_id DESC
+            ) de
                 ON de.site_id = vd.site_id
                AND de.etat_id = vd.etat_id
             WHERE vd.project_number IS NOT NULL
