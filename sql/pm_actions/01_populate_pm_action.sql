@@ -17,6 +17,11 @@ DECLARE
     v_work_type_id        VARCHAR := NULLIF(btrim(public.get_default_value('clean_data.pm_action', 'work_type_id')), '');
     -- Delai de generation BT en jours (migration 086) : 30 si la ligne manque ou est desactivee
     v_wo_gen_lead_time    NUMERIC := NULLIF(btrim(COALESCE(public.get_default_value('clean_data.pm_action', 'wo_gen_lead_time'), '30')), '')::numeric;
+    -- Unite de depart IFS (migration 088) : DAY si la ligne manque ou est desactivee
+    v_pm_start_unit_db    VARCHAR := NULLIF(btrim(COALESCE(public.get_default_value('clean_data.pm_action', 'pm_start_unit_db'), 'DAY')), '');
+    -- Etat IFS (migration 090) : Actif / Active si la ligne manque ou est desactivee
+    v_state               VARCHAR := COALESCE(public.get_default_value('clean_data.pm_action', 'state'), 'Actif');
+    v_objstate            VARCHAR := COALESCE(public.get_default_value('clean_data.pm_action', 'objstate'), 'Active');
     v_count INTEGER := 0;
     v_reject_count INTEGER := 0;
     v_multi_org INTEGER := 0;
@@ -98,9 +103,14 @@ BEGIN
         connection_type,
         connection_type_db,
         work_type_id,
+        action_code_id,
         plan_hrs,
         start_date,
+        start_value,
+        state,
+        objstate,
         wo_gen_lead_time,
+        pm_start_unit_db,
         "interval",
         pm_interval_unit,
         pm_interval_unit_db,
@@ -155,7 +165,9 @@ BEGIN
             -- pm_no peut couvrir plusieurs postes d'entretien (44 cas), seul
             -- celui de la premiere gamme est retenu. Partie vide -> omise.
             NULLIF(concat_ws('-', NULLIF(btrim(t.plan_entretien), ''),
-                                  NULLIF(btrim(t.poste_entretien), '')), '') AS alternate_designation
+                                  NULLIF(btrim(t.poste_entretien), '')), '') AS alternate_designation,
+            -- Type d'action PE Tools de la ligne representative (transcode ci-dessous)
+            NULLIF(btrim(t.type), '') AS type_action
         FROM src s
         JOIN raw_data.pe_tools t ON t.raw_id = s.raw_id
         ORDER BY s.pm_no, clean_data.pe_num(s.compteur_de_gamme) NULLS LAST, s.raw_id
@@ -185,9 +197,17 @@ BEGIN
         v_connection_type,
         v_connection_type_db,
         v_work_type_id,
+        -- ACTION_CODE_ID : colonne "Type" PE Tools via la transcodification ACTION
+        -- (PE_TOOLS -> IFS, migration 089), sans repli : type inconnu -> NULL
+        public.get_transcodification('ACTION', r.type_action, 'PE_TOOLS', 'IFS'),
         a.plan_hrs,
         a.start_date,
+        -- START_VALUE (varchar 20) = meme date IFS que START_DATE, en texte
+        to_char(a.start_date, 'YYYY-MM-DD'),
+        v_state,
+        v_objstate,
         v_wo_gen_lead_time,
+        v_pm_start_unit_db,
         -- INTERVAL est obligatoire cote IFS : '0' quand la frequence est vide
         COALESCE(NULLIF(left(regexp_replace(COALESCE(a.freq_norm, ''), '\D', '', 'g'), 4), ''), '0')  AS "interval",
         -- PM_INTERVAL_UNIT (libelle) : volontairement vide, seul le code _db est charge

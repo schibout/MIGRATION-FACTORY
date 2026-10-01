@@ -76,6 +76,8 @@ FICHIERS_SEED = [
     # verifier_valeurs_defaut.py les signale toutes comme appels orphelins.
     RACINE / 'migrations' / '069_valeurs_defaut_colonnes_non_mappees_articlephl.sql',
     RACINE / 'migrations' / '086_pm_action_work_type_id_defaut.sql',
+    RACINE / 'migrations' / '088_pm_action_pm_start_unit_db_defaut.sql',
+    RACINE / 'migrations' / '090_pm_action_state_objstate.sql',
 ]
 
 
