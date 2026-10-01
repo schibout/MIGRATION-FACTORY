@@ -3,7 +3,8 @@
 -- ---------------------------------------------------------------------
 -- Enchaîne toutes les fonctions de chargement du module PROJET dans
 -- l'ordre des dépendances (même ordre que etl_modules/etl_project.py,
--- plus l'association des utilisateurs SharePoint et la matrice de marge).
+-- plus l'association des utilisateurs SharePoint). project_margin_matrix
+-- est obsolète et volontairement absente.
 --
 -- Tout s'exécute dans UNE transaction : la première erreur annule
 -- l'ensemble (chaque fonction fait un RAISE après son log d'erreur).
@@ -21,7 +22,6 @@ DECLARE
         'alimenter_ifs_project_site_ext',
         'alimenter_ifs_project_role',
         'alimenter_ifs_project_role_assignment',
-        'alimenter_ifs_project_margin_matrix',
         'alimenter_sub_project',
         'alimenter_activity',
         'alimenter_project_activity',
