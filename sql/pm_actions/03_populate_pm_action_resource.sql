@@ -22,7 +22,8 @@ BEGIN
     SELECT
         s.pm_no,
         v_pm_revision,
-        row_number() OVER (ORDER BY s.pm_no, s.raw_id)  AS pm_action_resource_seq,
+        -- 1, 2, 3... dans chaque action (1 si une seule operation, migration 091)
+        row_number() OVER (PARTITION BY s.pm_no ORDER BY s.raw_id) AS pm_action_resource_seq,
         v_demand_type,
         v_demand_type_db,
         -- Groupe ressources = organisation de maintenance de l'action (pm_action.org_code :

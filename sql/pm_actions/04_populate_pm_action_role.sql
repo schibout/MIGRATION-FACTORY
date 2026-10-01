@@ -19,7 +19,8 @@ BEGIN
     SELECT
         s.pm_no,
         v_pm_revision,
-        row_number() OVER (ORDER BY s.pm_no, s.raw_id)  AS row_no,
+        -- 1, 2, 3... dans chaque action (1 si une seule operation, migration 091)
+        row_number() OVER (PARTITION BY s.pm_no ORDER BY s.raw_id) AS row_no,
         left(s.designation, 200)                        AS description,
         clean_data.pe_num(s.charge)                     AS duration,
         v_org_contract,
