@@ -3,8 +3,8 @@ CREATE OR REPLACE PROCEDURE clean_data.populate_pm_action()
 AS $procedure$
 DECLARE
     -- Constantes de configuration IFS : paramétrables depuis l'écran
-    -- Configuration > Valeurs par défaut (public.get_default_value) ; le 3e argument
-    -- reste l'ancienne valeur codée en dur, donc comportement inchangé sans paramétrage.
+    -- Configuration > Valeurs par défaut (public.get_default_value), seule source :
+    -- aucune valeur codée en dur, ligne absente ou désactivée -> NULL.
     v_org_contract        VARCHAR := public.get_default_value('clean_data.pm_action', 'org_contract');
     v_org_code            VARCHAR := public.get_default_value('clean_data.pm_action', 'org_code');
     v_pm_revision         VARCHAR := public.get_default_value('clean_data.pm_action', 'pm_revision');
@@ -15,13 +15,12 @@ DECLARE
     v_connection_type     VARCHAR := clean_data.pm_connection_type_client(v_connection_type_db);
     -- Type de travail IFS (migration 086) : case vide dans l'ecran -> NULL
     v_work_type_id        VARCHAR := NULLIF(btrim(public.get_default_value('clean_data.pm_action', 'work_type_id')), '');
-    -- Delai de generation BT en jours (migration 086) : 30 si la ligne manque ou est desactivee
-    v_wo_gen_lead_time    NUMERIC := NULLIF(btrim(COALESCE(public.get_default_value('clean_data.pm_action', 'wo_gen_lead_time'), '30')), '')::numeric;
-    -- Unite de depart IFS (migration 088) : DAY si la ligne manque ou est desactivee
-    v_pm_start_unit_db    VARCHAR := NULLIF(btrim(COALESCE(public.get_default_value('clean_data.pm_action', 'pm_start_unit_db'), 'DAY')), '');
-    -- Etat IFS (migration 090) : Actif / Active si la ligne manque ou est desactivee
-    v_state               VARCHAR := COALESCE(public.get_default_value('clean_data.pm_action', 'state'), 'Actif');
-    v_objstate            VARCHAR := COALESCE(public.get_default_value('clean_data.pm_action', 'objstate'), 'Active');
+    -- Valeurs de l'ecran uniquement (migrations 086/088/090) : ligne absente,
+    -- desactivee ou case vide -> NULL au chargement
+    v_wo_gen_lead_time    NUMERIC := NULLIF(btrim(public.get_default_value('clean_data.pm_action', 'wo_gen_lead_time')), '')::numeric;
+    v_pm_start_unit_db    VARCHAR := NULLIF(btrim(public.get_default_value('clean_data.pm_action', 'pm_start_unit_db')), '');
+    v_state               VARCHAR := NULLIF(btrim(public.get_default_value('clean_data.pm_action', 'state')), '');
+    v_objstate            VARCHAR := NULLIF(btrim(public.get_default_value('clean_data.pm_action', 'objstate')), '');
     v_count INTEGER := 0;
     v_reject_count INTEGER := 0;
     v_multi_org INTEGER := 0;
