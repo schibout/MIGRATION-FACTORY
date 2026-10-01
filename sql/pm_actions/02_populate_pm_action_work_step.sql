@@ -24,7 +24,8 @@ BEGIN
     SELECT
         s.pm_no,
         v_pm_revision,
-        row_number() OVER (ORDER BY s.pm_no, s.raw_id)                     AS pm_action_work_step_seq,
+        -- 1, 2, 3... dans chaque action (migration 091)
+        row_number() OVER (PARTITION BY s.pm_no ORDER BY s.raw_id)         AS pm_action_work_step_seq,
         left(COALESCE(NULLIF(btrim(s.designation), ''), 'N/A'), 500)       AS description,
         clean_data.pe_num(s.compteur_de_gamme)                             AS order_no,
         v_org_contract,
