@@ -79,6 +79,8 @@ files=(
     "source/v_dernier_etat_avancement.sql"
     "alimenter_project_activity.sql"
     "alimenter_project_activity_class.sql"
+    "associer_sharepoint_users_ifs_person.sql"
+    "alimenter_all_projet.sql"
 )
 
 # Exécution de chaque fichier
