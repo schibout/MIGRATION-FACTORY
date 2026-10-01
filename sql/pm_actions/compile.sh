@@ -74,6 +74,7 @@ files=(
     "03_populate_pm_action_resource.sql"
     "04_populate_pm_action_role.sql"
     "05_populate_all_pm_actions.sql"
+    "06_keep_pm_action_sample.sql"
 )
 
 # Exécution de chaque fichier
