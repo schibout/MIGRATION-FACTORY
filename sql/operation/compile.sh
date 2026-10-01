@@ -89,6 +89,8 @@ files=(
     # Mapping LIFNR SAP -> numero de compte IFS du fichier de selection,
     # appele par les fonctions ci-dessous pour alimenter vendor_no.
     "../functions/get_vendor_no_ifs.sql"
+    # Compte SAP -> personne IFS (reported_by / prepared_by de jt_task).
+    "../functions/get_username.sql"
     # Vue des ordres SAP clos, lue par les 3 loaders (perimetre en cours/futur).
     "00_operation_helpers.sql"
     "create_alimenter_jt_task.sql"

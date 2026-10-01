@@ -114,6 +114,7 @@ BEGIN
             k.aufnr,
             k.aprio,
             h.ilart,
+            a.ernam AS aufk_ernam,
             k.gstrp,
             k.gsuzp,
             k.gltrp,
@@ -152,6 +153,9 @@ BEGIN
         LEFT JOIN raw_data.afih h
             ON h.mandt = k.mandt
            AND h.aufnr = k.aufnr
+        LEFT JOIN raw_data.aufk a
+            ON a.mandt = k.mandt
+           AND a.aufnr = k.aufnr
         LEFT JOIN raw_data.afvv w
             ON w.mandt = v.mandt
            AND w.aufpl = v.aufpl
@@ -215,7 +219,9 @@ BEGIN
             CASE WHEN TRIM(COALESCE(aufnr, '')) ~ '^[0-9]+$' THEN TRIM(aufnr)::numeric END AS wo_no,
             SUBSTRING(COALESCE(NULLIF(TRIM(werks), ''), 'SJM'), 1, 5) AS site,
             public.get_default_value('clean_data.jt_task', 'company') AS company,
-            SUBSTRING(COALESCE(NULLIF(TRIM(werks), ''), 'SJM'), 1, 5) AS organization_site,
+            -- ORGANIZATION_SITE : site IFS parametre dans l'ecran Valeurs par defaut
+            -- (SJ, migration 093) et non plus la division SAP.
+            SUBSTRING(public.get_default_value('clean_data.jt_task', 'organization_site'), 1, 5) AS organization_site,
             -- ORGANIZATION_ID : poste de travail SAP (7.MCAR) transcode en
             -- organisation IFS (SJ-MCAR) via la categorie 'Organization'.
             -- Poste non transcode -> NULL (le code SAP brut n'existe pas cote IFS).
@@ -227,8 +233,11 @@ BEGIN
             SUBSTRING(public.get_transcodification('WORK_TYPE', NULLIF(TRIM(ilart), '')), 1, 20) AS work_type_id,
             SUBSTRING(COALESCE(NULLIF(TRIM(ltxa1), ''), 'Opération SAP ' || COALESCE(vornr, aplzl)), 1, 200) AS description,
             SUBSTRING(NULLIF(TRIM(ltxa2), ''), 1, 4000) AS long_description,
-            SUBSTRING(NULLIF(TRIM(afnam), ''), 1, 20) AS prepared_by,
-            SUBSTRING(COALESCE(NULLIF(TRIM(ernam), ''), 'KAPEIFS'), 1, 20) AS reported_by,
+            -- PREPARED_BY / REPORTED_BY : compte SAP -> personne IFS (PRENOM.NOM) via
+            -- public.get_username. REPORTED_BY = createur de l'ordre (AUFK.ERNAM),
+            -- sinon auteur de la derniere confirmation (AFRU.ERNAM), sinon KAPEIFS.
+            SUBSTRING(public.get_username(afnam), 1, 20) AS prepared_by,
+            SUBSTRING(COALESCE(public.get_username(aufk_ernam), public.get_username(ernam), 'KAPEIFS'), 1, 20) AS reported_by,
             clean_data.sap_datetime(ersda, erzet) AS reported_date,
             afvc_updated_at::timestamp AS mpb_latest_update,
             COALESCE(
