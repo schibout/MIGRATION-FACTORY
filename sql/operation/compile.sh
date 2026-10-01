@@ -94,6 +94,8 @@ files=(
     "create_alimenter_jt_task.sql"
     "create_alimenter_jt_task_resource.sql"
     "create_alimenter_maint_material_req_line.sql"
+    # Enchaine les 3 loaders : CALL clean_data.alimenter_all_operation();
+    "create_alimenter_all_operation.sql"
 )
 
 # Exécution de chaque fichier
