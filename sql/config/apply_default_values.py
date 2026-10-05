@@ -81,6 +81,7 @@ FICHIERS_SEED = [
     RACINE / 'migrations' / '093_jt_task_organization_site_defaut.sql',
     RACINE / 'migrations' / '094_jt_task_site_defaut.sql',
     RACINE / 'migrations' / '096_jt_task_reported_by_defaut.sql',
+    RACINE / 'migrations' / '097_jt_task_allow_multiple_visits.sql',
 ]
 
 
