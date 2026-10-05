@@ -325,8 +325,10 @@ BEGIN
         reported_by,
         reported_date,
         mpb_latest_update,
-        planned_start,
-        planned_finish,
+        -- PLANNED_START / PLANNED_FINISH obligatoires cote IFS : l'une remplace
+        -- l'autre si elle manque, puis reported_date ; sinon la ligne n'est pas chargee.
+        COALESCE(planned_start, planned_finish, reported_date),
+        COALESCE(planned_finish, planned_start, reported_date),
         duration,
         -- Exigences IFS (demande explicite 2026-10-01) :
         -- ACTUAL_START >= 01/01/2026 ; un NULL reste NULL (GREATEST ignore le NULL
@@ -360,6 +362,7 @@ BEGIN
     FROM mapped
     WHERE task_seq IS NOT NULL
       AND description IS NOT NULL
+      AND COALESCE(planned_start, planned_finish, reported_date) IS NOT NULL
       -- Operations non terminees uniquement (demande explicite 2026-10-01) :
       -- fin reelle absente ou au plus tot aujourd'hui.
       AND (actual_finish IS NULL OR actual_finish >= CURRENT_DATE);
