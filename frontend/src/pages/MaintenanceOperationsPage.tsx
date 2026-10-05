@@ -20,10 +20,9 @@ interface Operation {
   texte_ordre: string | null;
   operation: string;
   texte_operation: string | null;
-  division: string | null;
   poste_travail: string | null;
   poste_technique: string | null;
-  equipement: string | null;
+  priorite: string | null;
   debut_planifie: string | null;
   fin_planifiee: string | null;
   travail: string | null;
@@ -44,9 +43,8 @@ const COLONNES: { key: Col; label: string; texte?: (o: Operation) => string }[] 
   { key: 'statut_ordre', label: 'Statut ordre' },
   { key: 'type_ordre', label: 'Type' },
   { key: 'texte_ordre', label: 'Désignation ordre' },
-  { key: 'division', label: 'Division' },
   { key: 'poste_technique', label: 'Poste technique' },
-  { key: 'equipement', label: 'Équipement' },
+  { key: 'priorite', label: 'Priorité' },
   { key: 'debut_planifie', label: 'Début planifié', texte: (o) => fmtDate(o.debut_planifie) },
   { key: 'fin_planifiee', label: 'Fin planifiée', texte: (o) => fmtDate(o.fin_planifiee) },
   { key: 'travail', label: 'Travail', texte: (o) => (o.travail ? `${Number(o.travail)} ${o.unite_travail || ''}` : '') },
