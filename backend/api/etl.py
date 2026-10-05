@@ -8,12 +8,45 @@ import importlib.util
 import inspect
 import sys
 import os
+import json
+import tempfile
 import logging
 
 etl_blueprint = Blueprint('etl', __name__)
+logger = logging.getLogger(__name__)
 
-# Dictionnaire pour suivre les exécutions en cours
+# Dictionnaire pour suivre les exécutions en cours (local au worker qui exécute)
 etl_executions = {}
+
+# gunicorn tourne avec plusieurs workers : le GET /status tombe rarement sur le
+# worker qui a lancé l'ETL (404 sinon). L'état est donc publié dans un fichier
+# JSON du répertoire temporaire, partagé par tous les workers du conteneur.
+# ponytail: un fichier par exécution jamais purgé (quelques Ko), nettoyer si ça gêne.
+_STATUS_DIR = os.path.join(tempfile.gettempdir(), 'etl_status')
+
+
+def _status_path(execution_id):
+    return os.path.join(_STATUS_DIR, f'{execution_id}.json')
+
+
+def _publish(execution_id):
+    """Écrit l'état courant de l'exécution (écriture atomique via os.replace)."""
+    execution = etl_executions.get(execution_id)
+    if execution is None:
+        return
+    os.makedirs(_STATUS_DIR, exist_ok=True)
+    tmp = _status_path(execution_id) + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump({**execution, 'messages': list(execution['messages'])}, f, default=str)
+    os.replace(tmp, _status_path(execution_id))
+
+
+def _publish_loop(execution_id):
+    """Publie l'état chaque seconde tant que l'ETL tourne."""
+    while etl_executions.get(execution_id, {}).get('status') == 'running':
+        _publish(execution_id)
+        time.sleep(1)
+    _publish(execution_id)
 
 @etl_blueprint.route('/target-tables', methods=['GET'])
 def get_target_tables():
@@ -96,9 +129,11 @@ def execute_etl():
         }
         
         # Démarrer le processus ETL en arrière-plan
+        _publish(execution_id)
         thread = threading.Thread(target=run_etl_process, args=(execution_id, result))
         thread.daemon = True
         thread.start()
+        threading.Thread(target=_publish_loop, args=(execution_id,), daemon=True).start()
         
         return jsonify({
             'success': True,
@@ -116,10 +151,13 @@ def execute_etl():
 def get_etl_status(execution_id):
     """Récupère le statut d'une exécution ETL en cours"""
     try:
-        if execution_id not in etl_executions:
-            return jsonify({'error': 'ID d\'exécution non trouvé'}), 404
-            
-        execution = etl_executions[execution_id]
+        execution = etl_executions.get(execution_id)
+        if execution is None:
+            try:
+                with open(_status_path(os.path.basename(execution_id)), encoding='utf-8') as f:
+                    execution = json.load(f)
+            except (OSError, ValueError):
+                return jsonify({'error': 'ID d\'exécution non trouvé'}), 404
         
         # Obtenir le dernier message
         last_message = execution['messages'][-1] if execution['messages'] else None
@@ -268,7 +306,7 @@ def run_etl_process(execution_id, table_data):
     
     except Exception as e:
         # Gestion des erreurs
-        current_app.logger.error(f"Erreur lors de l'exécution ETL: {str(e)}")
+        logger.error(f"Erreur lors de l'exécution ETL: {str(e)}")
         execution['status'] = 'error'
         execution['messages'].append({
             'time': time.time(),
