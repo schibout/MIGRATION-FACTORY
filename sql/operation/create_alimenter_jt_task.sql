@@ -239,7 +239,15 @@ BEGIN
             -- Code non transcode -> NULL.
             SUBSTRING(public.get_transcodification('WORK_TYPE', NULLIF(TRIM(ilart), '')), 1, 20) AS work_type_id,
             SUBSTRING(COALESCE(NULLIF(TRIM(ltxa1), ''), 'Opération SAP ' || COALESCE(vornr, aplzl)), 1, 200) AS description,
-            SUBSTRING(NULLIF(TRIM(ltxa2), ''), 1, 4000) AS long_description,
+            -- LONG_DESCRIPTION : texte long SAP (STXH/STXL) lu par RFC_READ_TEXT dans
+            -- raw_data.sap_long_text : texte de l'operation (AUFK/AVOT, nom =
+            -- mandt||aufpl||aplzl), sinon texte d'en-tete de l'ordre (AUFK/KOPF,
+            -- nom = mandt||aufnr). STXL.CLUSTD n'est pas lisible en SQL.
+            SUBSTRING(COALESCE(
+                clean_data.texte_long_sap('AUFK', 'AVOT', mandt || aufpl || aplzl, ARRAY['F','E','D']),
+                clean_data.texte_long_sap('AUFK', 'KOPF', mandt || aufnr, ARRAY['F','E','D']),
+                NULLIF(TRIM(ltxa2), '')
+            ), 1, 4000) AS long_description,
             -- PREPARED_BY / REPORTED_BY : compte SAP -> personne IFS (PRENOM.NOM) via
             -- public.get_username. REPORTED_BY = createur de l'ordre (AUFK.ERNAM),
             -- sinon auteur de la derniere confirmation (AFRU.ERNAM), sinon valeur par

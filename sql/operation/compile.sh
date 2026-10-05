@@ -91,6 +91,8 @@ files=(
     "../functions/get_vendor_no_ifs.sql"
     # Compte SAP -> personne IFS (reported_by / prepared_by de jt_task).
     "../functions/get_username.sql"
+    # Texte long SAP recompose depuis raw_data.sap_long_text (long_description).
+    "../functions/texte_long_sap.sql"
     # Vue des ordres SAP clos, lue par les 3 loaders (perimetre en cours/futur).
     "00_operation_helpers.sql"
     "create_alimenter_jt_task.sql"
