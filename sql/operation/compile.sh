@@ -98,6 +98,8 @@ files=(
     "create_alimenter_maint_material_req_line.sql"
     # Enchaine les 3 loaders : CALL clean_data.alimenter_all_operation();
     "create_alimenter_all_operation.sql"
+    # Echantillon de test : CALL clean_data.sp_keep_jt_task_recent(10);
+    "sp_keep_jt_task_recent.sql"
 )
 
 # Exécution de chaque fichier
