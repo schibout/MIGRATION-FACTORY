@@ -239,9 +239,10 @@ BEGIN
             -- organisation IFS (SJ-MCAR) via la categorie 'Organization'.
             -- Poste non transcode -> NULL (le code SAP brut n'existe pas cote IFS).
             SUBSTRING(public.get_transcodification('Organization', NULLIF(TRIM(arbpl), '')), 1, 8) AS organization_id,
-            -- PRIORITY_ID : priorite de l'ordre de maintenance (AFIH.PRIOK, 1-4) ;
-            -- AFKO.APRIO est vide sur tout le perimetre. Vide -> NULL.
-            SUBSTRING(NULLIF(TRIM(priok), ''), 1, 10) AS priority_id,
+            -- PRIORITY_ID : priorite de l'ordre de maintenance (AFIH.PRIOK ; AFKO.APRIO
+            -- est vide sur tout le perimetre) transcodee via la categorie
+            -- TASK_PRIORITY (1 -> U1). Vide ou non transcode -> NULL.
+            SUBSTRING(public.get_transcodification('TASK_PRIORITY', NULLIF(TRIM(priok), '')), 1, 10) AS priority_id,
             -- WORK_TYPE_ID : type d'activite de maintenance de l'ordre (AFIH.ILART)
             -- transcode en type de travail IFS (21 -> MP21, migration 092).
             -- Code non transcode -> NULL.
