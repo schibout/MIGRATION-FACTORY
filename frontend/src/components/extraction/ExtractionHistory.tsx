@@ -54,6 +54,7 @@ import {
 import { AppDispatch, RootState } from '../../store';
 import extractionService, { ExtractionLog } from '../../services/extractionService';
 import LogPanel from './LogPanel';
+import StrategyChip from './StrategyChip';
 
 // Statuts terminaux : ces jobs ne bougent plus, inutile de réinterroger leur statut.
 // ⚠️ Comparaison insensible à la casse : la base contient à la fois COMPLETED et completed.
@@ -307,7 +308,21 @@ const ExtractionHistory = () => {
                   <TableCell><UserCell job={job} /></TableCell>
 
                   {/* Status */}
-                  <TableCell><StatusChip status={job.status} /></TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                      <StatusChip status={job.status} />
+                      {/* Choix fait au lancement ; null = job antérieur au différentiel */}
+                      {job.rechargementComplet != null && (
+                        <Tooltip title={job.rechargementComplet
+                          ? 'Rechargement complet demandé (tables vidées puis rechargées)'
+                          : 'Différentiel demandé (bascule en complet table par table si impossible)'}>
+                          <Chip size="small" variant="outlined"
+                            label={job.rechargementComplet ? 'Complet' : 'Delta'}
+                            color={job.rechargementComplet ? 'warning' : 'info'} />
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </TableCell>
 
                   {/* Tables */}
                   <TableCell>
@@ -393,6 +408,7 @@ const ExtractionHistory = () => {
                             <TableRow>
                               <TableCell>Table</TableCell>
                               <TableCell>Statut</TableCell>
+                              <TableCell>Stratégie</TableCell>
                               <TableCell align="right">Lignes</TableCell>
                               <TableCell>Début</TableCell>
                               <TableCell>Fin</TableCell>
@@ -403,6 +419,7 @@ const ExtractionHistory = () => {
                               <TableRow key={td.name}>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{td.name}</TableCell>
                                 <TableCell><StatusChip status={td.status} /></TableCell>
+                                <TableCell><StrategyChip strategy={td.strategy} /></TableCell>
                                 <TableCell align="right">{td.rows ? td.rows.toLocaleString() : '-'}</TableCell>
                                 <TableCell sx={{ fontSize: '0.75rem' }}>
                                   {td.startTime ? format(new Date(td.startTime), 'HH:mm:ss') : '-'}
@@ -503,6 +520,7 @@ const ExtractionHistory = () => {
                     <TableRow>
                       <TableCell>Table</TableCell>
                       <TableCell>Statut</TableCell>
+                      <TableCell>Stratégie</TableCell>
                       <TableCell align="right">Lignes</TableCell>
                       <TableCell>Début</TableCell>
                       <TableCell>Fin</TableCell>
@@ -515,6 +533,7 @@ const ExtractionHistory = () => {
                         <TableRow key={d.name}>
                           <TableCell sx={{ fontFamily: 'monospace' }}>{d.name}</TableCell>
                           <TableCell><StatusChip status={d.status} /></TableCell>
+                          <TableCell><StrategyChip strategy={d.strategy} /></TableCell>
                           <TableCell align="right">{d.rows ? d.rows.toLocaleString() : '-'}</TableCell>
                           <TableCell>{d.startTime ? format(new Date(d.startTime), 'HH:mm:ss') : '-'}</TableCell>
                           <TableCell>{d.endTime ? format(new Date(d.endTime), 'HH:mm:ss') : '-'}</TableCell>
@@ -527,7 +546,7 @@ const ExtractionHistory = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} align="center">Aucun détail disponible</TableCell>
+                        <TableCell colSpan={7} align="center">Aucun détail disponible</TableCell>
                       </TableRow>
                     )}
                   </TableBody>

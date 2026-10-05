@@ -243,7 +243,12 @@ def start_extraction():
         if not tables:
             return jsonify({"error": "Aucune table spécifiée pour l'extraction"}), 400
 
-        result = extraction_service.start_extraction(tables, options, user_id)
+        # Même règle que l'API :8000 : options prime sur le premier niveau ; absent -> différentiel
+        rechargement_complet = options.get('rechargement_complet', data.get('rechargement_complet', False))
+        if not isinstance(rechargement_complet, bool):
+            return jsonify({"error": "rechargement_complet doit être un booléen"}), 400
+
+        result = extraction_service.start_extraction(tables, options, user_id, rechargement_complet)
         current_app.logger.info(
             f"Nouvelle extraction lancee : job_id={result.get('extraction_id')} "
             f"par user_id={user_id} sur {len(tables)} table(s)"

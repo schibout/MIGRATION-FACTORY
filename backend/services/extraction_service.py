@@ -351,23 +351,22 @@ class ExtractionService:
         tables: List[str],
         options: Dict[str, Any],
         user_id: str,
+        rechargement_complet: bool = False,
     ) -> Dict[str, Any]:
         self._ensure_engine()
         now = datetime.now()
-        mode = options.get("mode", "standard")
-        # L'API :8000 valide mode par regex : standard|debug|complet (pas "complete")
-        if mode == "complete":
-            mode = "complet"
+        # Le complet n'est piloté QUE par rechargement_complet : mode="complet"/"complete",
+        # truncate_before et clean en sont des synonymes côté API :8000 et forceraient
+        # le complet à chaque lancement -> jamais envoyés.
+        mode = "debug" if options.get("mode") == "debug" else "standard"
         batch_size = options.get("batch_size", options.get("batchSize", 500))
 
-        # Contrat API :8000 v2.1.0 : champs PLATS (pas d'objet "options" imbriqué).
-        # mode="complet" OU truncate_before=true => extraction complète (TRUNCATE + reload).
         sap_payload = {
             "tables": [t.upper() for t in tables],
             "batch_size": batch_size,
             "row_page_size": options.get("pageSize", options.get("page_size", 5000)),
             "workers": options.get("workers", 4),
-            "truncate_before": bool(options.get("clean", False)),
+            "rechargement_complet": rechargement_complet,
             "mode": mode,
             "user_id": user_id,
         }
@@ -430,7 +429,24 @@ class ExtractionService:
             )
             thread.start()
 
-        return {"extraction_id": sap_job_id}
+        # Mémorise le choix complet/différentiel avec le job (affiché dans l'historique).
+        # ponytail: si l'API :8000 n'a pas encore inséré sa ligne, 0 ligne mise à jour
+        # et le job s'affiche sans badge ; insérer la ligne ici si cela arrive.
+        try:
+            with self.engine.begin() as conn:
+                conn.execute(
+                    text("""
+                    UPDATE public.extraction_history
+                    SET configuration = COALESCE(configuration, '{}'::jsonb)
+                        || jsonb_build_object('rechargement_complet', CAST(:rc AS boolean))
+                    WHERE job_id = :job_id
+                    """),
+                    {"job_id": sap_job_id, "rc": rechargement_complet},
+                )
+        except Exception as exc:
+            current_app.logger.warning(f"Choix complet non memorise pour {sap_job_id}: {exc}")
+
+        return {"extraction_id": sap_job_id, "rechargement_complet": rechargement_complet}
 
     # ── Polling du statut SAP ────────────────────────────────────────────
 
@@ -463,7 +479,8 @@ class ExtractionService:
                                     WHEN :end_time IS NOT NULL
                                          THEN :end_time::timestamp
                                     ELSE end_time END,
-                                error_message = :error
+                                error_message = :error,
+                                strategie = COALESCE(:strategy, strategie)
                             WHERE job_id = :job_id AND table_name = :table_name
                             """),
                             {
@@ -473,6 +490,7 @@ class ExtractionService:
                                 "rows": td.get("rows", 0),
                                 "end_time": td.get("endTime"),
                                 "error": td.get("error"),
+                                "strategy": td.get("strategy"),
                             },
                         )
 
@@ -556,7 +574,7 @@ class ExtractionService:
         """)
         details_query = text("""
             SELECT table_name, rows_extracted, start_time, end_time,
-                   status, error_message
+                   status, error_message, strategie
             FROM public.extraction_details
             WHERE job_id = :job_id ORDER BY start_time
         """)
@@ -576,6 +594,7 @@ class ExtractionService:
                     "endTime": d.end_time.isoformat() if d.end_time else None,
                     "status": d.status,
                     "error": d.error_message,
+                    "strategy": d.strategie,
                 })
 
             tables_list = self._parse_tables_field(main.tables)
@@ -625,6 +644,7 @@ class ExtractionService:
                 eh.rows_extracted,
                 eh.extraction_mode,
                 eh.duration_seconds,
+                (eh.configuration->>'rechargement_complet')::boolean AS rechargement_complet,
                 u.username AS user_name,
                 u.email    AS user_email,
                 u.role     AS user_role
@@ -652,6 +672,7 @@ class ExtractionService:
                     "rowsExtracted": row.rows_extracted,
                     "mode": row.extraction_mode,
                     "duration": row.duration_seconds,
+                    "rechargementComplet": row.rechargement_complet,
                 })
             return history
 

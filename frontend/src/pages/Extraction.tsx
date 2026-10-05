@@ -74,13 +74,14 @@ import {
   setMode,
   setWorkers,
   setPageSize,
-  setClean,
+  setRechargementComplet,
   startExtraction,
   clearExtractionSettings,
   fetchExtractionHistory,
 } from '../store/slices/extractionSlice';
 
 // Import du nouveau composant d'historique
+import StrategyChip from '../components/extraction/StrategyChip';
 import ExtractionHistory from '../components/extraction/ExtractionHistory';
 
 // ── Composant récursif pour l'arbre IFLO ──────────────────────────────────────
@@ -220,7 +221,7 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
   const extractionMode = useSelector((state: RootState) => state.extraction.mode);
   const workers = useSelector((state: RootState) => state.extraction.workers);
   const pageSize = useSelector((state: RootState) => state.extraction.pageSize);
-  const clean = useSelector((state: RootState) => state.extraction.clean);
+  const rechargementComplet = useSelector((state: RootState) => state.extraction.rechargementComplet);
   const status = useSelector((state: RootState) => state.extraction.status);
 
   // Local state
@@ -441,19 +442,23 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
 
   // Handle mode change
   const handleModeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch(setMode(event.target.value as 'standard' | 'debug' | 'complet'));
+    dispatch(setMode(event.target.value as 'standard' | 'debug'));
   };
 
   // Start extraction — reste sur l'écran et affiche le journal d'exécution live
   const handleStartExtraction = async () => {
     if (selectedTables.length === 0) return;
+    if (
+      rechargementComplet &&
+      !window.confirm('Les tables sélectionnées vont être vidées puis rechargées entièrement. Continuer ?')
+    ) return;
     setRunLogs([]);
     setRunJob(null);
     setRunningJobId(null);
     const res: any = await dispatch(
       startExtraction({
         tables: selectedTables,
-        options: { batchSize, limit, mode: extractionMode, workers, pageSize, clean },
+        options: { batchSize, limit, mode: extractionMode, workers, pageSize, rechargement_complet: rechargementComplet },
       }) as any
     );
     const jobId = res?.payload?.extraction_id;
@@ -834,26 +839,27 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
                       control={<Radio />}
                       label="Debug (inclut les logs détaillés)"
                     />
-                    <FormControlLabel
-                      value="complet"
-                      control={<Radio />}
-                      label="Complet (vide la table puis recharge — TRUNCATE)"
-                    />
                   </RadioGroup>
                 </FormControl>
 
-                {/* clean : action destructive → visible avec avertissement */}
+                {/* Différentiel par défaut ; coché = TRUNCATE + rechargement (confirmé au lancement) */}
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={clean}
-                      onChange={(e) => dispatch(setClean(e.target.checked))}
+                      checked={rechargementComplet}
+                      onChange={(e) => dispatch(setRechargementComplet(e.target.checked))}
                       color="warning"
                     />
                   }
-                  label="TRUNCATE les tables avant extraction (clean)"
-                  sx={{ display: 'block', mb: 1 }}
+                  label="Recharger depuis le début (complet)"
+                  sx={{ display: 'block' }}
                 />
+                <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 2, ml: 4 }}>
+                  Décoché : seules les données SAP créées ou modifiées depuis la dernière extraction
+                  réussie sont relues (les tables sans date de modification sont toujours rechargées
+                  en entier). Coché : chaque table est vidée puis rechargée entièrement ; nécessaire
+                  pour prendre en compte les suppressions faites dans SAP.
+                </Typography>
 
                 {/* Options avancées repliables (techniques, rarement modifiées) */}
                 <Box
@@ -970,6 +976,16 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
                     <Typography variant="body2" sx={{ minWidth: 40 }}>
                       {Math.round(runJob?.progress ?? 0)}%
                     </Typography>
+                  </Box>
+                )}
+                {runJob?.tablesDetails?.length > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 1.5 }}>
+                    {runJob.tablesDetails.map((td: any) => (
+                      <Box key={td.name} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{td.name}</Typography>
+                        <StrategyChip strategy={td.strategy} />
+                      </Box>
+                    ))}
                   </Box>
                 )}
                 <LogPanel logs={runLogs} live={runActive} height={300} />

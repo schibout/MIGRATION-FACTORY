@@ -24,6 +24,7 @@ export interface ExtractionJob {
   batchSize?: number;
   duration?: number;
   error?: string;
+  rechargementComplet?: boolean | null;
   tablesDetails?: {
     name: string;
     rows?: number;
@@ -31,6 +32,7 @@ export interface ExtractionJob {
     endTime?: string;
     status: string;
     error?: string;
+    strategy?: string | null;
   }[];
 }
 
@@ -43,6 +45,7 @@ export interface ExtractionJobDetails extends ExtractionJob {
     endTime?: string;
     status: string;
     error?: string;
+    strategy?: string | null;
   }[];
   batchSize?: number;
   error?: string;
@@ -62,10 +65,10 @@ interface ExtractionState {
   selectedTables: string[];
   batchSize: number;
   limit: number | null;
-  mode: 'standard' | 'debug' | 'complet';
+  mode: 'standard' | 'debug';
   workers: number;
   pageSize: number;
-  clean: boolean;
+  rechargementComplet: boolean;
   extractionJobs: ExtractionJob[];
   activeExtractions: string[];
   selectedJob: ExtractionJobDetails | null;
@@ -81,7 +84,7 @@ const initialState: ExtractionState = {
   mode: 'standard',
   workers: 4,
   pageSize: 5000,
-  clean: false,
+  rechargementComplet: false,
   extractionJobs: [],
   activeExtractions: [],
   selectedJob: null,
@@ -137,10 +140,10 @@ export const startExtraction = createAsyncThunk(
     options: {
       batchSize?: number;
       limit?: number;
-      mode?: 'standard' | 'debug' | 'complet';
+      mode?: 'standard' | 'debug';
       workers?: number;
       pageSize?: number;
-      clean?: boolean;
+      rechargement_complet?: boolean;
     }
   }) => {
     const response = await api.post('/extraction/start', {
@@ -173,7 +176,7 @@ const extractionSlice = createSlice({
     setLimit(state, action: PayloadAction<number | null>) {
       state.limit = action.payload;
     },
-    setMode(state, action: PayloadAction<'standard' | 'debug' | 'complet'>) {
+    setMode(state, action: PayloadAction<'standard' | 'debug'>) {
       state.mode = action.payload;
     },
     setWorkers(state, action: PayloadAction<number>) {
@@ -182,8 +185,8 @@ const extractionSlice = createSlice({
     setPageSize(state, action: PayloadAction<number>) {
       state.pageSize = action.payload;
     },
-    setClean(state, action: PayloadAction<boolean>) {
-      state.clean = action.payload;
+    setRechargementComplet(state, action: PayloadAction<boolean>) {
+      state.rechargementComplet = action.payload;
     },
     clearExtractionSettings(state) {
       state.selectedTables = [];
@@ -192,7 +195,7 @@ const extractionSlice = createSlice({
       state.mode = 'standard';
       state.workers = 4;
       state.pageSize = 5000;
-      state.clean = false;
+      state.rechargementComplet = false;
     },
     clearSelectedJob(state) {
       state.selectedJob = null;
@@ -309,7 +312,7 @@ export const {
   setMode,
   setWorkers,
   setPageSize,
-  setClean,
+  setRechargementComplet,
   clearExtractionSettings,
   clearSelectedJob, 
   updateActiveExtractions 

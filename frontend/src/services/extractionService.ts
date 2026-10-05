@@ -4,7 +4,7 @@ import api from './api';
 export interface ExtractionOptions {
   batchSize?: number;
   limit?: number;
-  mode?: 'standard' | 'debug' | 'complet';
+  mode?: 'standard' | 'debug';
   workers?: number;
   pageSize?: number;
   clean?: boolean;

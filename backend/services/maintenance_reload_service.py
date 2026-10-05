@@ -458,7 +458,7 @@ def _run_extraction(job_id, user):
 
     result = extraction_service.start_extraction(
         tables=MAINTENANCE_SAP_TABLES,
-        options={'mode': 'standard', 'clean': False},
+        options={'mode': 'standard'},  # différentiel (rechargement_complet=False)
         user_id=user or 'maintenance-reload',
     )
     extraction_id = result.get('extraction_id')
