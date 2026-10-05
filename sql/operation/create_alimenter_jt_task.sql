@@ -80,7 +80,8 @@ BEGIN
         state,
         objtype,
         objversion,
-        objid
+        objid,
+        mach_code
     )
     WITH afru_last_op AS (
         -- Dernière confirmation AFRU par opération (mandt, aufpl, aplzl), pré-agrégée
@@ -112,8 +113,8 @@ BEGIN
             v.rmzhl,
             v.updated_at AS afvc_updated_at,
             k.aufnr,
-            k.aprio,
             h.ilart,
+            h.priok,
             a.ernam AS aufk_ernam,
             k.gstrp,
             k.gsuzp,
@@ -145,7 +146,9 @@ BEGIN
             r.ltxa1 AS afru_ltxa1,
             r.grund,
             c.arbpl,
-            js.stat AS active_status
+            js.stat AS active_status,
+            mo.code AS mo_code,
+            l.tplnr
         FROM raw_data.afvc v
         LEFT JOIN raw_data.afko k
             ON k.mandt = v.mandt
@@ -153,6 +156,15 @@ BEGIN
         LEFT JOIN raw_data.afih h
             ON h.mandt = k.mandt
            AND h.aufnr = k.aufnr
+        -- Poste technique de l'ordre : AFIH.ILOAN -> ILOA.TPLNR, puis code IFS
+        -- du poste (maintenance_object.code = equipment_functional.mch_code).
+        LEFT JOIN raw_data.iloa l
+            ON l.mandt = h.mandt
+           AND l.iloan = h.iloan
+        LEFT JOIN clean_data.maintenance_object mo
+            ON mo.object_type = 'FUNC_LOC'
+           AND mo.sap_key = l.tplnr
+           AND mo.is_active
         LEFT JOIN raw_data.aufk a
             ON a.mandt = k.mandt
            AND a.aufnr = k.aufnr
@@ -217,17 +229,19 @@ BEGIN
             END AS task_seq,
             CASE WHEN TRIM(COALESCE(aufnr, '')) ~ '^[0-9]+$' THEN TRIM(aufnr)::numeric END AS order_no,
             CASE WHEN TRIM(COALESCE(aufnr, '')) ~ '^[0-9]+$' THEN TRIM(aufnr)::numeric END AS wo_no,
-            -- SITE : site IFS parametre dans l'ecran Valeurs par defaut (SJ, migration 094).
-            SUBSTRING(public.get_default_value('clean_data.jt_task', 'site'), 1, 5) AS site,
+            -- SITE : valeur de l'ecran Valeurs par defaut (migration 094), sinon SJ.
+            SUBSTRING(COALESCE(public.get_default_value('clean_data.jt_task', 'site'), 'SJ'), 1, 5) AS site,
             public.get_default_value('clean_data.jt_task', 'company') AS company,
             -- ORGANIZATION_SITE : site IFS parametre dans l'ecran Valeurs par defaut
             -- (SJ, migration 093) et non plus la division SAP.
-            SUBSTRING(public.get_default_value('clean_data.jt_task', 'organization_site'), 1, 5) AS organization_site,
+            SUBSTRING(COALESCE(public.get_default_value('clean_data.jt_task', 'organization_site'), 'SJ'), 1, 5) AS organization_site,
             -- ORGANIZATION_ID : poste de travail SAP (7.MCAR) transcode en
             -- organisation IFS (SJ-MCAR) via la categorie 'Organization'.
             -- Poste non transcode -> NULL (le code SAP brut n'existe pas cote IFS).
             SUBSTRING(public.get_transcodification('Organization', NULLIF(TRIM(arbpl), '')), 1, 8) AS organization_id,
-            SUBSTRING(NULLIF(TRIM(aprio), ''), 1, 10) AS priority_id,
+            -- PRIORITY_ID : priorite de l'ordre de maintenance (AFIH.PRIOK, 1-4) ;
+            -- AFKO.APRIO est vide sur tout le perimetre. Vide -> NULL.
+            SUBSTRING(NULLIF(TRIM(priok), ''), 1, 10) AS priority_id,
             -- WORK_TYPE_ID : type d'activite de maintenance de l'ordre (AFIH.ILART)
             -- transcode en type de travail IFS (21 -> MP21, migration 092).
             -- Code non transcode -> NULL.
@@ -289,7 +303,9 @@ BEGIN
             SUBSTRING(NULLIF(TRIM(active_status), ''), 1, 4000) AS state,
             public.get_default_value('clean_data.jt_task', 'objtype') AS objtype,
             public.get_default_value('clean_data.jt_task', 'objversion') AS objversion,
-            SUBSTRING(MD5('SAP_AFVC_' || TRIM(aufpl) || '_' || TRIM(aplzl)), 1, 10) AS objid
+            SUBSTRING(MD5('SAP_AFVC_' || TRIM(aufpl) || '_' || TRIM(aplzl)), 1, 10) AS objid,
+            -- MACH_CODE : poste technique ; repli sur le TPLNR SAP si absent de maintenance_object.
+            SUBSTRING(COALESCE(mo_code, NULLIF(TRIM(tplnr), '')), 1, 100) AS mach_code
         FROM src
     )
     SELECT
@@ -338,7 +354,8 @@ BEGIN
         state,
         objtype,
         objversion,
-        objid
+        objid,
+        mach_code
     FROM mapped
     WHERE task_seq IS NOT NULL
       AND description IS NOT NULL
