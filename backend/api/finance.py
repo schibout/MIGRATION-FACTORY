@@ -1,19 +1,29 @@
-"""Menu Finance : ecrans Immobilisations (clean_data.immobilisation) et
-Commandes d'achat (clean_data.commande_achat_ifs).
+"""Menu Finance : ecrans Immobilisations (clean_data.immobilisation),
+Commandes d'achat (clean_data.commande_achat_ifs) et Comptes (conversion des
+comptes PCG SAP -> IFS, transcodification FA_ACCOUNT).
 
 Pour chaque ecran <e> = immobilisations | commandes-achat :
-  GET  /api/v1/finance/<e>              liste paginee + filtres + stats
+  GET  /api/v1/finance/<e>              liste paginee + filtres + stats + definitions de colonnes
   GET  /api/v1/finance/<e>/export.xlsx  classeur Excel (memes filtres que la liste)
-  POST /api/v1/finance/<e>/sync         re-extraction SAP des tables sources puis
-                                         rechargement de la table clean_data
+  POST /api/v1/finance/<e>/sync         rechargement de la table clean_data ; corps
+                                         {"source": "sap"} (defaut : re-extraction SAP
+                                         puis rechargement) ou {"source": "mf"}
+                                         (rechargement seul depuis raw_data : applique
+                                         les transcodifications / valeurs par defaut)
   GET  /api/v1/finance/<e>/sync         etat de la derniere synchronisation
-  GET  /api/v1/finance/immobilisations/synthese  KPI + sous-totaux (type d'amortissement,
-                                         famille, secteur, compte), memes filtres
+Immobilisations :
+  ?vue=immobilisations (defaut)         les 60 colonnes du fichier livre, toutes les fiches
+  ?vue=travail                          onglet « Travail » du classeur metier : fiches a
+                                         reprendre, date de sortie effacee, tri par date
+                                         d'acquisition, OBJECT_GROUP_ID, comptes / site IFS, OTP
+  GET  /api/v1/finance/immobilisations/synthese  KPI + sous-totaux, memes filtres
+  GET  /api/v1/finance/comptes          conversion des comptes (FA_ACCOUNT) + comptes des fiches
 """
 import io
 import json
 import logging
 import os
+import re
 import tempfile
 import threading
 import time
@@ -38,6 +48,7 @@ IMMO_SAP_TABLES = ['ANLA', 'ANLB', 'ANLC', 'ANLZ', 'ANKT', 'T001', 'T095', 'T095
 EXTRACTION_TIMEOUT_SECONDS = 3600
 EXTRACTION_POLL_SECONDS = 10
 
+
 # gunicorn -w4 : l'etat est publie dans un fichier partage par les workers du
 # conteneur (meme principe que api/etl.py).
 # ponytail: un fichier par ecran = une seule synchro a la fois par ecran ; perdu au
@@ -45,7 +56,9 @@ EXTRACTION_POLL_SECONDS = 10
 def _status_file(key):
     return os.path.join(tempfile.gettempdir(), f'{key}_sync.json')
 
-# (colonne, libelle de l'extraction transmise aux metiers) : en-tetes de l'export Excel.
+
+# (colonne, libelle de l'extraction transmise aux metiers) : en-tetes de l'onglet
+# « Immobilisations » du classeur, repris tels quels dans l'ecran et l'Excel.
 LIBELLES = [
     ('societe_sap', 'Société SAP (ANLA-BUKRS)'),
     ('num_immobilisation', 'Numéro immobilisation (ANLA-ANLN1)'),
@@ -112,14 +125,61 @@ LIBELLES = [
     ('motif_exclusion', "Motif d'exclusion"),
     ('compte_immobilisation_ifs', 'Compte immobilisation IFS'),
     ('compte_amort_cumule_ifs', 'Compte amortissement cumulé IFS'),
-    ('object_group_id', 'Groupe objet IFS (OBJECT_GROUP_ID)'),
+    ('object_group_id', 'OBJECT_GROUP_ID'),
     ('site_ifs', 'Site IFS'),
     ('element_otp', "Élément d'OTP (ANLA-POSNR -> PRPS-POSID)"),
     ('libelle_otp', 'Libellé OTP (PRPS-POST1)'),
 ]
+LIBELLE = dict(LIBELLES)
 COLONNES = [c for c, _ in LIBELLES]
 _MONTANTS = {'valeur_acq_debut_exercice', 'mouvements_acq_exercice', 'sorties_exercice',
              'valeur_acq_fin_exercice', 'amort_cumules', 'vnc', 'dotation_annuelle'}
+
+# Vue « immobilisations » = les 60 colonnes du fichier livre.
+COLONNES_IMMO = COLONNES[:60]
+# Vue « travail » = onglet Travail du classeur : les 60 colonnes avec OBJECT_GROUP_ID
+# insere apres la duree en annees (meme place que dans le classeur), puis les
+# colonnes converties (comptes IFS, site, OTP) que la Methode demande de remplir.
+_i = COLONNES_IMMO.index('duree_amort_annees') + 1
+COLONNES_TRAVAIL = (COLONNES_IMMO[:_i] + ['object_group_id'] + COLONNES_IMMO[_i:]
+                    + ['compte_immobilisation_ifs', 'compte_amort_cumule_ifs', 'site_ifs',
+                       'element_otp', 'libelle_otp'])
+
+# Etapes de l'onglet « Méthode » du classeur et leur automatisation (affichees
+# dans l'onglet Travail de l'ecran).
+METHODE = [
+    ("1/ Vérifier dans l'extraction SAP le cumul des comptes immo brutes et le cumul des comptes "
+     "d'amortissement par rapport à la balance générale.",
+     "Synthèse > sous-totaux par compte (acquisition / amortissements) ; le rapprochement avec la balance reste manuel."),
+    ("2/ Supprimer les immobilisations ayant une date de sortie antérieure ou égale à la date de bascule "
+     "IFS ; reprendre celles sorties après la bascule en effaçant leur date de sortie.",
+     "Colonne Reprise IFS (date de bascule = Valeurs par défaut) ; l'onglet Travail ne contient que les "
+     "fiches à reprendre, date de sortie effacée."),
+    ("3/ Convertir au format date les dates de désactivation.", "Dates typées au chargement."),
+    ("4/ Recontrôler les totaux (valeurs brutes et amortissements), qui doivent rester identiques.",
+     "Synthèse sur la vue Immobilisations et sur la vue Travail."),
+    ("5/ Retrier les immobilisations restantes par date d'acquisition.", "Tri de l'onglet Travail."),
+    ("6/ Mettre à blanc les dates en 00/01/1900.", "Dates SAP 00000000 chargées à NULL."),
+    ("7/ Remplir les colonnes du gabarit : groupe objet, comptes PCG -> IFS, site SJ / CS.",
+     "OBJECT_GROUP_ID (Transcodification FA_OBJECT_GROUP / FA_OBJECT_GROUP_IMMO), comptes IFS "
+     "(FA_ACCOUNT, écran Finance > Comptes), Site IFS (division 9200 -> SJ, 9000 -> CS)."),
+]
+
+
+def _kind(col):
+    if col == 'reprise_ifs':
+        return 'bool'
+    if col.startswith('date_'):
+        return 'date'
+    if col in _MONTANTS:
+        return 'montant'
+    if col in ('duree_amort_totale_mois', 'taux_amort_estime'):
+        return 'nombre'
+    return 'text'
+
+
+def _defs(cols):
+    return [{'key': c, 'label': LIBELLE[c], 'kind': _kind(c)} for c in cols]
 
 
 def _read_status(key):
@@ -152,12 +212,21 @@ def _now():
     return datetime.now().isoformat(timespec='seconds')
 
 
-def _filtres():
-    """Clause WHERE + parametres a partir de la query string (liste et export Excel)."""
+# ---------------------------------------------------------------------------
+# Immobilisations
+# ---------------------------------------------------------------------------
+
+def _vue():
+    return 'travail' if request.args.get('vue') == 'travail' else 'immobilisations'
+
+
+def _filtres(vue=None):
+    """Clause WHERE + parametres a partir de la query string (liste, synthese, Excel)."""
+    vue = vue or _vue()
     search = (request.args.get('search') or '').strip()
     secteur = (request.args.get('secteur') or '').strip()
     statut = (request.args.get('statut') or '').strip()
-    reprise = (request.args.get('reprise') or '').strip()
+    reprise = 'a_reprendre' if vue == 'travail' else (request.args.get('reprise') or '').strip()
 
     where, params = [], {}
     if reprise == 'a_reprendre':
@@ -180,19 +249,32 @@ def _filtres():
     return clause, params
 
 
+def _select_immo(vue, clause, params, limit=None):
+    """Lignes d'une vue. Travail : date de sortie effacee (etape 2 de la Methode),
+    tri par date d'acquisition (etape 5)."""
+    cols = COLONNES_TRAVAIL if vue == 'travail' else COLONNES_IMMO
+    exprs = ['NULL::date AS date_sortie' if vue == 'travail' and c == 'date_sortie' else c
+             for c in cols]
+    order = ('date_acquisition NULLS LAST, num_immobilisation, sous_numero' if vue == 'travail'
+             else 'num_immobilisation, sous_numero')
+    sql = f'SELECT {", ".join(exprs)} FROM clean_data.immobilisation {clause} ORDER BY {order}'
+    if limit:
+        sql += ' LIMIT :limit OFFSET :offset'
+    return cols, db.session.execute(text(sql), params).mappings().all()
+
+
 @finance_blueprint.route('/immobilisations', methods=['GET'])
 @jwt_required()
 def list_immobilisations():
+    vue = _vue()
     page = max(int(request.args.get('page', 1)), 1)
     page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
-    clause, params = _filtres()
+    clause, params = _filtres(vue)
 
     total = db.session.execute(
         text(f'SELECT count(*) FROM clean_data.immobilisation {clause}'), params).scalar()
-    rows = db.session.execute(text(
-        f'SELECT {", ".join(COLONNES)} FROM clean_data.immobilisation {clause} '
-        'ORDER BY num_immobilisation, sous_numero LIMIT :limit OFFSET :offset'
-    ), {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
+    cols, rows = _select_immo(vue, clause, {**params, 'limit': page_size,
+                                            'offset': (page - 1) * page_size}, limit=True)
 
     # Totaux sur la selection filtree (valeurs statutaires a l'ouverture)
     stats = db.session.execute(text(
@@ -214,6 +296,9 @@ def list_immobilisations():
         'GROUP BY secteur_sap ORDER BY secteur_sap')).mappings()]
 
     return jsonify({
+        'vue': vue,
+        'colonnes': _defs(cols),
+        'methode': METHODE if vue == 'travail' else None,
         'rows': [{k: _json(v) for k, v in r.items()} for r in rows],
         'total': total,
         'page': page,
@@ -280,14 +365,41 @@ def synthese_immobilisations():
 @finance_blueprint.route('/immobilisations/export.xlsx', methods=['GET'])
 @jwt_required()
 def export_immobilisations_excel():
-    """Classeur Excel des immobilisations filtrees, en-tetes metier, valeurs typees,
-    + feuille Synthese (memes blocs que le classeur metier)."""
-    clause, params = _filtres()
-    rows = db.session.execute(text(
-        f'SELECT {", ".join(COLONNES)} FROM clean_data.immobilisation {clause} '
-        'ORDER BY num_immobilisation, sous_numero'), params).all()
-    return _excel_response('Immobilisations', LIBELLES, rows, _MONTANTS, 'immobilisations',
-                           synthese=_synthese(clause, params))
+    """Classeur Excel a l'image du classeur metier : onglets Immobilisations (60
+    colonnes), Travail, Conversion cpte général, TRansco comptes generaux et
+    Synthèse. Les filtres de l'ecran (recherche, secteur, statut, reprise)
+    s'appliquent a l'onglet Immobilisations et a la Synthese ; Travail ne
+    retient que les fiches a reprendre."""
+    from openpyxl import Workbook
+
+    clause, params = _filtres('immobilisations')
+    clause_t, params_t = _filtres('travail')
+    wb = Workbook()
+    cols, rows = _select_immo('immobilisations', clause, params)
+    _feuille_tableau(wb.active, 'Immobilisations', [(c, LIBELLE[c]) for c in cols], rows, _MONTANTS)
+    cols, rows = _select_immo('travail', clause_t, params_t)
+    _feuille_tableau(wb.create_sheet('Travail'), 'Travail', [(c, LIBELLE[c]) for c in cols], rows, _MONTANTS)
+
+    conv = _conversion_comptes()
+    _feuille_tableau(wb.create_sheet('Conversion cpte général'), 'Conversion cpte général',
+                     [('compte_sap', 'PCG US SAP'), ('pcg_fr', 'PCG FR SAP'),
+                      ('compte_ifs', 'PCG IFS'), ('libelle', 'LIBELLE')],
+                     [(c['compte_sap'], c['pcg_fr'], c['compte_ifs'], c['libelle']) for c in conv], set())
+    transco = db.session.execute(text(
+        'SELECT num_immobilisation, compte_immobilisation, compte_immobilisation_ifs '
+        f'FROM clean_data.immobilisation {clause_t} '
+        'ORDER BY date_acquisition NULLS LAST, num_immobilisation, sous_numero'), params_t).all()
+    _feuille_tableau(wb.create_sheet('TRansco comptes generaux'), 'TRansco comptes generaux',
+                     [('num', LIBELLE['num_immobilisation']), ('cpt', 'Cpt fiche'),
+                      ('nv', 'Nv cpte fiche')], transco, set())
+    _feuille_synthese(wb.create_sheet('Synthèse'), _synthese(clause, params))
+    return _envoyer(wb, 'immobilisations')
+
+
+def _sync_source():
+    """'sap' (defaut : extraction puis rechargement) ou 'mf' (rechargement seul)."""
+    body = request.get_json(silent=True) or {}
+    return 'mf' if body.get('source') == 'mf' else 'sap'
 
 
 @finance_blueprint.route('/immobilisations/sync', methods=['GET'])
@@ -301,7 +413,64 @@ def get_sync_status():
 def start_sync():
     return _start_sync('immobilisation', IMMO_SAP_TABLES, 'clean_data.immobilisation',
                        lambda conn: conn.execute(
-                           text('SELECT clean_data.alimenter_immobilisation()')).scalar())
+                           text('SELECT clean_data.alimenter_immobilisation()')).scalar(),
+                       extraire=_sync_source() == 'sap')
+
+
+# ---------------------------------------------------------------------------
+# Comptes : conversion PCG SAP -> IFS (transcodification FA_ACCOUNT) et comptes
+# portes par les fiches (onglets « Conversion cpte général » et « TRansco
+# comptes generaux » du classeur)
+# ---------------------------------------------------------------------------
+
+# La description d'une ligne FA_ACCOUNT porte « LIBELLE (PCG FR nnn) » : le PCG
+# francais n'a pas de colonne propre dans TranscodificationTable.
+_PCG_FR = re.compile(r'\s*\(PCG FR ([^)]*)\)\s*$')
+
+
+def _conversion_comptes():
+    rows = db.session.execute(text(
+        'SELECT id, source_value, target_value, description, is_active, updated_at '
+        'FROM public."TranscodificationTable" '
+        "WHERE category = 'FA_ACCOUNT' AND source_system = 'SAP' AND target_system = 'IFS' "
+        'ORDER BY source_value')).mappings().all()
+    out = []
+    for r in rows:
+        desc = r['description'] or ''
+        m = _PCG_FR.search(desc)
+        out.append({
+            'id': r['id'], 'compte_sap': r['source_value'], 'compte_ifs': r['target_value'],
+            'pcg_fr': m.group(1) if m else None,
+            'libelle': _PCG_FR.sub('', desc).strip(),
+            'is_active': r['is_active'], 'updated_at': _json(r['updated_at']),
+        })
+    return out
+
+
+@finance_blueprint.route('/comptes', methods=['GET'])
+@jwt_required()
+def comptes():
+    """Conversion des comptes + comptes reellement portes par les fiches, avec
+    la conversion resolue EN DIRECT (une saisie est visible sans recharger ;
+    les colonnes de la table, elles, suivent au prochain rechargement)."""
+    fiches = db.session.execute(text(
+        "SELECT role, compte_sap, "
+        "       public.get_transcodification('FA_ACCOUNT', compte_sap, 'SAP', 'IFS') AS compte_ifs, "
+        "       count(*) AS nb_fiches, count(*) FILTER (WHERE reprise_ifs) AS nb_reprises, "
+        "       sum(valeur_acq_debut_exercice) AS acquisition, sum(amort_cumules) AS amortissements, "
+        "       sum(vnc) AS vnc "
+        "FROM (SELECT 'immobilisation' AS role, compte_immobilisation AS compte_sap, reprise_ifs, "
+        "             valeur_acq_debut_exercice, amort_cumules, vnc FROM clean_data.immobilisation "
+        "      UNION ALL "
+        "      SELECT 'amortissement', compte_amort_cumule, reprise_ifs, "
+        "             valeur_acq_debut_exercice, amort_cumules, vnc FROM clean_data.immobilisation) u "
+        "WHERE compte_sap IS NOT NULL GROUP BY role, compte_sap ORDER BY role, compte_sap"
+    )).mappings().all()
+    return jsonify({
+        'conversion': _conversion_comptes(),
+        'fiches': [{k: _json(v) for k, v in r.items()} for r in fiches],
+        'sync': _read_status('immobilisation'),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -421,14 +590,17 @@ def list_commandes_achat():
 @finance_blueprint.route('/commandes-achat/export.xlsx', methods=['GET'])
 @jwt_required()
 def export_commandes_achat_excel():
+    from openpyxl import Workbook
+
     clause, params = _ca_filtres()
     rows = db.session.execute(text(
         f'SELECT {", ".join(CA_COLONNES)} FROM clean_data.commande_achat_ifs {clause} '
         'ORDER BY num_commande_sap, num_ligne_sap'), params).all()
     dates = [i for i, c in enumerate(CA_COLONNES) if c in _CA_DATES]
     rows = [[_ca_date(v) if i in dates else v for i, v in enumerate(r)] for r in rows]
-    return _excel_response("Commandes d'achat", CA_LIBELLES, rows,
-                           _CA_MONTANTS | _CA_QUANTITES, 'commandes_achat')
+    wb = Workbook()
+    _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES, rows, _CA_MONTANTS | _CA_QUANTITES)
+    return _envoyer(wb, 'commandes_achat')
 
 
 @finance_blueprint.route('/commandes-achat/sync', methods=['GET'])
@@ -452,22 +624,19 @@ def start_ca_sync():
             'CAST(:d AS date), CAST(:f AS date), NULL)'),
             {'d': module_params.get('date_debut'), 'f': module_params.get('date_fin')}).scalar()
 
-    return _start_sync('commande_achat', CA_SAP_TABLES, 'clean_data.commande_achat_ifs', load)
+    return _start_sync('commande_achat', CA_SAP_TABLES, 'clean_data.commande_achat_ifs', load,
+                       extraire=_sync_source() == 'sap')
 
 
 # ---------------------------------------------------------------------------
 # Communs : export Excel, synchronisation SAP
 # ---------------------------------------------------------------------------
 
-def _excel_response(title, libelles, rows, numeriques, prefix, synthese=None):
-    """Classeur Excel : en-tetes metier, dates et nombres types, en-tete fige + filtres.
-    synthese (dict de _synthese) ajoute une seconde feuille « Synthèse »."""
-    from openpyxl import Workbook
+def _feuille_tableau(ws, title, libelles, rows, numeriques):
+    """Feuille tableau : en-tetes metier, dates et nombres types, en-tete fige + filtres."""
     from openpyxl.styles import Alignment, Font, PatternFill
 
     colonnes = [c for c, _ in libelles]
-    wb = Workbook()
-    ws = wb.active
     ws.title = title[:31]
     ws.append([l for _, l in libelles])
     for cell in ws[1]:
@@ -496,20 +665,11 @@ def _excel_response(title, libelles, rows, numeriques, prefix, synthese=None):
     ws.freeze_panes = 'C2'
     ws.auto_filter.ref = ws.dimensions
 
-    if synthese:
-        _feuille_synthese(wb.create_sheet('Synthèse'), synthese, Font, PatternFill)
 
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    return send_file(
-        buffer, as_attachment=True,
-        download_name=f'{prefix}_{datetime.now():%Y%m%d_%H%M}.xlsx',
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-
-def _feuille_synthese(ws, synthese, Font, PatternFill):
+def _feuille_synthese(ws, synthese):
     """Feuille Synthese : en-tete, KPI, un bloc par axe (valeurs, pas de formules)."""
+    from openpyxl.styles import Font, PatternFill
+
     titre = Font(bold=True, color='FFFFFF')
     fond = PatternFill('solid', fgColor='1F4E78')
     sous = PatternFill('solid', fgColor='5B9BD5')
@@ -545,8 +705,18 @@ def _feuille_synthese(ws, synthese, Font, PatternFill):
         ws.column_dimensions[col].width = w
 
 
-def _start_sync(key, tables, cible, load):
-    """Lance extraction SAP + rechargement dans un thread ; 409 si deja en cours."""
+def _envoyer(wb, prefix):
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return send_file(
+        buffer, as_attachment=True,
+        download_name=f'{prefix}_{datetime.now():%Y%m%d_%H%M}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+def _start_sync(key, tables, cible, load, extraire=True):
+    """Lance (extraction SAP +) rechargement dans un thread ; 409 si deja en cours."""
     current = _read_status(key)
     if current and current.get('status') == 'running':
         return jsonify({'error': 'Une synchronisation est deja en cours.', **current}), 409
@@ -554,18 +724,20 @@ def _start_sync(key, tables, cible, load):
     user = str(get_jwt_identity() or 'finance-sync')
     status = _write_status(
         key, status='running', step='Demarrage', progress=0, error=None, rows=None,
+        source='sap' if extraire else 'mf',
         started_at=_now(), finished_at=None, started_by=user, extraction_id=None,
     )
     app = current_app._get_current_object()
-    threading.Thread(target=_run_sync, args=(app, user, key, tables, cible, load),
+    threading.Thread(target=_run_sync, args=(app, user, key, tables, cible, load, extraire),
                      daemon=True, name=f'{key}-sync').start()
     return jsonify(status), 202
 
 
-def _run_sync(app, user, key, tables, cible, load):
+def _run_sync(app, user, key, tables, cible, load, extraire):
     with app.app_context():
         try:
-            _extract(user, key, tables)
+            if extraire:
+                _extract(user, key, tables)
             _write_status(key, step=f'Rechargement de {cible}', progress=90)
             with db.engine.begin() as conn:
                 rows = load(conn)

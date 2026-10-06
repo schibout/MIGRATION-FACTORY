@@ -1,5 +1,6 @@
 import {
     AccountBalance as ImmobilisationIcon,
+    AccountTree as ComptesIcon,
     ShoppingCart as CommandeAchatIcon,
     Euro as FinanceIcon,
 } from '@mui/icons-material';
@@ -14,6 +15,12 @@ const financeItems = [
     path: '/finance/immobilisations',
     icon: <ImmobilisationIcon sx={{ fontSize: 48, color: '#5d4037' }} />,
     description: 'Immobilisations SAP STJN : comptes, amortissement, imputation, valeur d\'acquisition et VNC, synchronisables depuis SAP',
+  },
+  {
+    title: 'Comptes des immobilisations',
+    path: '/finance/comptes',
+    icon: <ComptesIcon sx={{ fontSize: 48, color: '#5d4037' }} />,
+    description: 'Conversion des comptes PCG SAP vers IFS et transco des comptes portés par les fiches immobilisations',
   },
   {
     title: 'Commandes d\'achat',

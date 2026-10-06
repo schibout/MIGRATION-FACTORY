@@ -1,5 +1,6 @@
 import {
     AccountBalance as ImmobilisationIcon,
+    Cached as RecalculIcon,
     FileDownload as ExcelIcon,
     Search as SearchIcon,
     Summarize as SyntheseIcon,
@@ -14,14 +15,16 @@ import {
     DialogContent,
     DialogTitle,
     FormControl,
-    FormControlLabel,
     InputAdornment,
     InputLabel,
     LinearProgress,
+    List,
+    ListItem,
+    ListItemText,
     MenuItem,
     Paper,
     Select,
-    Switch,
+    Tab,
     Table,
     TableBody,
     TableCell,
@@ -29,6 +32,7 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    Tabs,
     TextField,
     Tooltip,
     Typography,
@@ -38,13 +42,22 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 type ImmoRow = Record<string, string | number | boolean | null>;
+type Kind = 'text' | 'date' | 'montant' | 'nombre' | 'bool';
+type Vue = 'immobilisations' | 'travail';
 
-interface SyncStatus {
+interface Colonne {
+  key: string;
+  label: string;
+  kind: Kind;
+}
+
+export interface SyncStatus {
   status: 'never' | 'running' | 'completed' | 'failed';
   step?: string;
   progress?: number;
   error?: string | null;
   rows?: number | null;
+  source?: 'sap' | 'mf';
   started_at?: string;
   finished_at?: string | null;
   started_by?: string;
@@ -65,6 +78,9 @@ interface Stats {
 }
 
 interface ListResponse {
+  vue: Vue;
+  colonnes: Colonne[];
+  methode: [string, string][] | null;
   rows: ImmoRow[];
   total: number;
   stats: Stats;
@@ -95,83 +111,7 @@ const SYNTHESE_BLOCS: { key: keyof Omit<Synthese, 'kpi'>; titre: string }[] = [
   { key: 'par_compte', titre: 'Sous-totaux par compte immobilisation (SAP → IFS)' },
 ];
 
-type Kind = 'text' | 'date' | 'montant' | 'nombre' | 'bool';
-
-// Colonnes de clean_data.immobilisation, libellés de l'extraction transmise aux métiers.
-// principale = affichée par défaut (toutes avec « Toutes les colonnes »).
-const COLONNES: { key: string; label: string; kind?: Kind; principale?: boolean }[] = [
-  { key: 'societe_sap', label: 'Société SAP' },
-  { key: 'num_immobilisation', label: 'Numéro immobilisation', principale: true },
-  { key: 'sous_numero', label: 'Sous-numéro', principale: true },
-  { key: 'cle_immobilisation', label: 'Clé immobilisation' },
-  { key: 'libelle', label: 'Libellé immobilisation', principale: true },
-  { key: 'libelle_complementaire', label: 'Libellé complémentaire' },
-  { key: 'classe_immo', label: 'Classe immobilisation' },
-  { key: 'famille_immo', label: 'Famille immobilisation', principale: true },
-  { key: 'indicateur_suppression', label: 'Indicateur suppression' },
-  { key: 'numero_serie', label: 'Numéro de série' },
-  { key: 'pays', label: 'Pays' },
-  { key: 'groupe_evaluation_1', label: 'Groupe évaluation 1' },
-  { key: 'groupe_evaluation_2', label: 'Groupe évaluation 2' },
-  { key: 'groupe_evaluation_3', label: 'Groupe évaluation 3' },
-  { key: 'groupe_evaluation_4', label: 'Groupe évaluation 4' },
-  { key: 'projet', label: 'Projet' },
-  { key: 'cle_comptes_immo', label: 'Clé détermination comptes immo' },
-  { key: 'libelle_cle_comptes_immo', label: 'Libellé clé comptable immo' },
-  { key: 'compte_immobilisation', label: 'Compte immobilisation SAP', principale: true },
-  { key: 'compte_amort_cumule', label: 'Compte amortissement cumulé SAP' },
-  { key: 'compte_dotation_amort', label: 'Compte dotation amortissement' },
-  { key: 'date_acquisition', label: 'Date acquisition / capitalisation', kind: 'date', principale: true },
-  { key: 'date_premiere_acquisition', label: 'Date première acquisition', kind: 'date' },
-  { key: 'date_debut_amort', label: 'Date début amortissement', kind: 'date', principale: true },
-  { key: 'date_fin_amort_estimee', label: 'Date fin amortissement estimée', kind: 'date' },
-  { key: 'duree_amort_annees', label: 'Durée amort. années' },
-  { key: 'duree_amort_periodes', label: 'Durée amort. périodes' },
-  { key: 'duree_amort_totale_mois', label: 'Durée amort. totale (mois)', kind: 'nombre', principale: true },
-  { key: 'zone_amortissement', label: 'Zone amortissement retenue' },
-  { key: 'type_amortissement', label: 'Type amortissement' },
-  { key: 'libelle_type_amortissement', label: 'Libellé type amortissement', principale: true },
-  { key: 'taux_amort_estime', label: 'Taux amortissement estimé %', kind: 'nombre' },
-  { key: 'centre_cout', label: 'Centre de coût', principale: true },
-  { key: 'libelle_centre_cout', label: 'Libellé centre de coût' },
-  { key: 'site_sap', label: 'Site SAP' },
-  { key: 'secteur_sap', label: 'Secteur SAP' },
-  { key: 'libelle_secteur', label: 'Libellé secteur', principale: true },
-  { key: 'emplacement', label: 'Lieu / emplacement' },
-  { key: 'immo_origine', label: "Immobilisation d'origine" },
-  { key: 'sous_numero_origine', label: "Sous-numéro d'origine" },
-  { key: 'date_origine', label: 'Date origine immobilisation', kind: 'date' },
-  { key: 'numero_inventaire', label: 'Numéro inventaire' },
-  { key: 'fabricant', label: 'Fabricant' },
-  { key: 'type_modele', label: 'Type / modèle' },
-  { key: 'fournisseur', label: 'Fournisseur' },
-  { key: 'quantite', label: 'Quantité' },
-  { key: 'unite', label: 'Unité' },
-  { key: 'ordre_investissement', label: 'Ordre investissement' },
-  { key: 'zone_valorisation', label: 'Zone valorisation retenue' },
-  { key: 'exercice_valorisation', label: 'Exercice de valorisation' },
-  { key: 'valeur_acq_debut_exercice', label: 'Valeur acquisition début exercice', kind: 'montant', principale: true },
-  { key: 'mouvements_acq_exercice', label: 'Mouvements acquisition exercice', kind: 'montant' },
-  { key: 'sorties_exercice', label: 'Sorties valeur exercice', kind: 'montant' },
-  { key: 'valeur_acq_fin_exercice', label: 'Valeur acquisition fin exercice', kind: 'montant' },
-  { key: 'amort_cumules', label: 'Amortissements cumulés', kind: 'montant', principale: true },
-  { key: 'vnc', label: 'VNC', kind: 'montant', principale: true },
-  { key: 'dotation_annuelle', label: 'Dotation annuelle comptabilisée', kind: 'montant' },
-  { key: 'blocage_comptabilisation', label: 'Blocage comptabilisation' },
-  { key: 'date_sortie', label: 'Date sortie', kind: 'date', principale: true },
-  { key: 'date_desactivation', label: 'Date désactivation', kind: 'date' },
-  // Reprise IFS (migration 098, classeur métier du 18/08/2026)
-  { key: 'reprise_ifs', label: 'Reprise IFS', kind: 'bool', principale: true },
-  { key: 'motif_exclusion', label: "Motif d'exclusion" },
-  { key: 'compte_immobilisation_ifs', label: 'Compte immobilisation IFS', principale: true },
-  { key: 'compte_amort_cumule_ifs', label: 'Compte amortissement cumulé IFS' },
-  { key: 'object_group_id', label: 'Groupe objet IFS', principale: true },
-  { key: 'site_ifs', label: 'Site IFS', principale: true },
-  { key: 'element_otp', label: "Élément d'OTP", principale: true },
-  { key: 'libelle_otp', label: 'Libellé OTP' },
-];
-
-const euros = (v: number | null | undefined) =>
+export const euros = (v: number | null | undefined) =>
   v == null ? '—' : v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const formatCell = (v: string | number | boolean | null, kind?: Kind) => {
@@ -184,10 +124,35 @@ const formatCell = (v: string | number | boolean | null, kind?: Kind) => {
 };
 
 const formatDate = (iso?: string | null) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('fr-FR') : '');
-const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : '');
+export const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : '');
+
+// Bandeau d'état de la synchronisation (partagé avec l'écran Comptes)
+export const SyncAlerts: React.FC<{ sync: SyncStatus | null }> = ({ sync }) => (
+  <>
+    {sync?.status === 'running' && (
+      <Alert severity="info" sx={{ mb: 2 }}>
+        {sync.step} — démarrée le {formatDateTime(sync.started_at)}
+        {sync.source === 'mf' ? ' (rechargement Migration Factory)' : ' (synchronisation SAP)'}
+        <LinearProgress variant="determinate" value={sync.progress ?? 0} sx={{ mt: 1 }} />
+      </Alert>
+    )}
+    {sync?.status === 'completed' && (
+      <Alert severity="success" sx={{ mb: 2 }}>
+        Dernier rechargement le {formatDateTime(sync.finished_at)}
+        {sync.source === 'mf' ? ' (Migration Factory)' : ' (SAP)'} : {sync.rows?.toLocaleString('fr-FR')} immobilisations chargées.
+      </Alert>
+    )}
+    {sync?.status === 'failed' && (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        Rechargement en échec le {formatDateTime(sync.finished_at)} : {sync.error}
+      </Alert>
+    )}
+  </>
+);
 
 const FinanceImmobilisations: React.FC = () => {
   const navigate = useNavigate();
+  const [vue, setVue] = useState<Vue>('immobilisations');
   const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,23 +162,21 @@ const FinanceImmobilisations: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [secteur, setSecteur] = useState('');
   const [statut, setStatut] = useState('');
-  const [reprise, setReprise] = useState('a_reprendre');
-  const [toutes, setToutes] = useState(false);
+  const [reprise, setReprise] = useState('');
   const [sync, setSync] = useState<SyncStatus | null>(null);
   const [exporting, setExporting] = useState(false);
   const [synthese, setSynthese] = useState<Synthese | null>(null);
   const [syntheseOpen, setSyntheseOpen] = useState(false);
   const [syntheseLoading, setSyntheseLoading] = useState(false);
 
-  const colonnes = toutes ? COLONNES : COLONNES.filter((c) => c.principale);
-  const filtres = { search, secteur, statut, reprise };
+  const filtres = { vue, search, secteur, statut, reprise };
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const res = await api.get<ListResponse>('/finance/immobilisations', {
-        params: { page: page + 1, page_size: pageSize, search, secteur, statut, reprise },
+        params: { page: page + 1, page_size: pageSize, ...filtres },
       });
       setData(res.data);
       setSync(res.data.sync);
@@ -223,13 +186,14 @@ const FinanceImmobilisations: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, secteur, statut, reprise]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, vue, search, secteur, statut, reprise]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Suivi de la synchronisation en cours (rechargement de la liste à la fin)
+  // Suivi du rechargement en cours (rafraîchissement de la liste à la fin)
   useEffect(() => {
     if (sync?.status !== 'running') return undefined;
     const timer = setInterval(async () => {
@@ -244,21 +208,24 @@ const FinanceImmobilisations: React.FC = () => {
     return () => clearInterval(timer);
   }, [sync?.status, load]);
 
-  const handleSync = async () => {
+  // source 'sap' = ré-extraction SAP puis rechargement ; 'mf' = rechargement seul
+  // depuis les tables SAP déjà extraites (applique transcodifications et valeurs par défaut)
+  const handleSync = async (source: 'sap' | 'mf') => {
     try {
       setError(null);
-      const res = await api.post<SyncStatus>('/finance/immobilisations/sync');
+      const res = await api.post<SyncStatus>('/finance/immobilisations/sync', { source });
       setSync(res.data);
     } catch (err: any) {
       if (err?.response?.status === 409) {
         setSync(err.response.data);
       } else {
-        setError('Impossible de lancer la synchronisation');
+        setError('Impossible de lancer le rechargement');
       }
     }
   };
 
-  // Export Excel des immobilisations filtrées (toutes les pages, toutes les colonnes + feuille Synthèse)
+  // Export Excel = le classeur complet : Immobilisations, Travail, Conversion cpte général,
+  // TRansco comptes generaux, Synthèse (filtres de l'écran appliqués)
   const handleExportExcel = async () => {
     try {
       setExporting(true);
@@ -284,7 +251,6 @@ const FinanceImmobilisations: React.FC = () => {
     }
   };
 
-  // Synthèse (KPI + sous-totaux) sur la sélection filtrée
   const handleSynthese = async () => {
     try {
       setSyntheseLoading(true);
@@ -302,8 +268,9 @@ const FinanceImmobilisations: React.FC = () => {
 
   const running = sync?.status === 'running';
   const stats = data?.stats;
+  const colonnes = data?.colonnes ?? [];
   const transcoTooltip = (categorie: string) =>
-    `À compléter dans Configuration > Transcodification, catégorie ${categorie}, puis Synchroniser`;
+    `À compléter dans ${categorie}, puis « Recalculer »`;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -312,43 +279,61 @@ const FinanceImmobilisations: React.FC = () => {
         <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
           Immobilisations
         </Typography>
-        <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button variant="outlined" startIcon={<SyntheseIcon />} onClick={handleSynthese} disabled={!data?.total}>
             Synthèse
           </Button>
-          <Tooltip title="Classeur Excel des immobilisations filtrées (toutes les pages, toutes les colonnes, libellés métier) + feuille Synthèse">
+          <Tooltip title="Classeur Excel complet : Immobilisations, Travail, Conversion cpte général, TRansco comptes generaux, Synthèse (filtres de l'écran appliqués)">
             <span>
-              <Button
-                variant="outlined"
-                color="success"
-                startIcon={<ExcelIcon />}
-                onClick={handleExportExcel}
-                disabled={exporting || !data?.total}
-              >
+              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExportExcel} disabled={exporting || !data?.total}>
                 {exporting ? 'Export…' : 'Exporter Excel'}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="Recharge la table depuis les tables SAP déjà extraites dans Migration Factory : applique les transcodifications (comptes, groupes objet) et la date de bascule, sans appeler SAP">
+            <span>
+              <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
+                Recalculer
               </Button>
             </span>
           </Tooltip>
           <Tooltip title="Ré-extrait de SAP ANLA, ANLB, ANLC, ANLZ, ANKT, T001, T095, T095T, T090NAT, CSKT, TGSBT, PRPS puis recharge la table">
             <span>
-              <Button variant="contained" startIcon={<SyncIcon />} onClick={handleSync} disabled={running}>
-                {running ? 'Synchronisation…' : 'Synchroniser'}
+              <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
+                {running ? 'Rechargement…' : 'Synchroniser SAP'}
               </Button>
             </span>
           </Tooltip>
         </Box>
       </Box>
 
+      <Tabs value={vue} onChange={(_, v: Vue) => { setVue(v); setPage(0); }} sx={{ mb: 2 }}>
+        <Tab value="immobilisations" label="Immobilisations (extraction SAP)" />
+        <Tab value="travail" label="Travail (reprise IFS)" />
+      </Tabs>
+
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Société STJN, une ligne par immobilisation. Valeurs statutaires (zone 02) à l'ouverture de
-        l'exercice SAP {stats?.exercice ?? '2027'}. Reprise IFS : les immobilisations sorties au plus tard le{' '}
-        {formatDate(stats?.date_bascule) || '30/06/2026'} (date de bascule, écran Valeurs par défaut) sont exclues.
+        {vue === 'immobilisations'
+          ? `Société STJN, une ligne par immobilisation, les 60 colonnes de l'extraction transmise aux métiers. Valeurs statutaires (zone 02) à l'ouverture de l'exercice SAP ${stats?.exercice ?? '2027'}.`
+          : `Onglet « Travail » du classeur métier, fabriqué selon la Méthode : immobilisations à reprendre (sortie après le ${formatDate(stats?.date_bascule) || '30/06/2026'}, date de bascule paramétrée dans Valeurs par défaut), date de sortie effacée, tri par date d'acquisition, OBJECT_GROUP_ID et colonnes converties pour IFS.`}
       </Typography>
+
+      {vue === 'travail' && data?.methode && (
+        <Paper variant="outlined" sx={{ mb: 2, px: 2 }}>
+          <List dense>
+            {data.methode.map(([etape, automatisation]) => (
+              <ListItem key={etape} disableGutters>
+                <ListItemText primary={etape} secondary={`→ ${automatisation}`} />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+      )}
 
       {stats && (
         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Chip label={`${stats.immobilisations.toLocaleString('fr-FR')} immobilisations`} color="primary" />
-          {reprise === '' && (
+          {vue === 'immobilisations' && reprise === '' && (
             <>
               <Chip label={`${stats.a_reprendre.toLocaleString('fr-FR')} à reprendre`} color="success" variant="outlined" />
               <Chip label={`${stats.exclues.toLocaleString('fr-FR')} exclues (sortie avant bascule)`} variant="outlined" />
@@ -358,42 +343,19 @@ const FinanceImmobilisations: React.FC = () => {
           <Chip label={`Amortissements cumulés : ${euros(stats.amort_cumules)} €`} />
           <Chip label={`VNC : ${euros(stats.vnc)} €`} color="success" />
           {stats.sans_groupe_objet > 0 && (
-            <Tooltip title={transcoTooltip('FA_OBJECT_GROUP (par classe) ou FA_OBJECT_GROUP_IMMO (par fiche)')}>
-              <Chip
-                label={`${stats.sans_groupe_objet.toLocaleString('fr-FR')} sans groupe objet`}
-                color="warning"
-                onClick={() => navigate('/transcodification')}
-              />
+            <Tooltip title={transcoTooltip('Configuration > Transcodification (FA_OBJECT_GROUP par classe, FA_OBJECT_GROUP_IMMO par fiche)')}>
+              <Chip label={`${stats.sans_groupe_objet.toLocaleString('fr-FR')} sans groupe objet`} color="warning" onClick={() => navigate('/transcodification')} />
             </Tooltip>
           )}
           {stats.sans_compte_ifs > 0 && (
-            <Tooltip title={transcoTooltip('FA_ACCOUNT')}>
-              <Chip
-                label={`${stats.sans_compte_ifs.toLocaleString('fr-FR')} sans compte IFS`}
-                color="warning"
-                onClick={() => navigate('/transcodification')}
-              />
+            <Tooltip title={transcoTooltip('Finance > Comptes')}>
+              <Chip label={`${stats.sans_compte_ifs.toLocaleString('fr-FR')} sans compte IFS`} color="warning" onClick={() => navigate('/finance/comptes')} />
             </Tooltip>
           )}
         </Box>
       )}
 
-      {running && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {sync?.step} — démarrée le {formatDateTime(sync?.started_at)}
-          <LinearProgress variant="determinate" value={sync?.progress ?? 0} sx={{ mt: 1 }} />
-        </Alert>
-      )}
-      {sync?.status === 'completed' && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          Dernière synchronisation le {formatDateTime(sync.finished_at)} : {sync.rows?.toLocaleString('fr-FR')} immobilisations chargées.
-        </Alert>
-      )}
-      {sync?.status === 'failed' && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Synchronisation en échec le {formatDateTime(sync.finished_at)} : {sync.error}
-        </Alert>
-      )}
+      <SyncAlerts sync={sync} />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -411,14 +373,16 @@ const FinanceImmobilisations: React.FC = () => {
           sx={{ minWidth: 380 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
         />
-        <FormControl size="small" sx={{ minWidth: 170 }}>
-          <InputLabel>Reprise IFS</InputLabel>
-          <Select label="Reprise IFS" value={reprise} onChange={(e) => { setPage(0); setReprise(e.target.value); }}>
-            <MenuItem value="a_reprendre">À reprendre</MenuItem>
-            <MenuItem value="exclues">Exclues</MenuItem>
-            <MenuItem value="">Toutes</MenuItem>
-          </Select>
-        </FormControl>
+        {vue === 'immobilisations' && (
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <InputLabel>Reprise IFS</InputLabel>
+            <Select label="Reprise IFS" value={reprise} onChange={(e) => { setPage(0); setReprise(e.target.value); }}>
+              <MenuItem value="">Toutes</MenuItem>
+              <MenuItem value="a_reprendre">À reprendre</MenuItem>
+              <MenuItem value="exclues">Exclues</MenuItem>
+            </Select>
+          </FormControl>
+        )}
         <FormControl size="small" sx={{ minWidth: 220 }}>
           <InputLabel>Secteur</InputLabel>
           <Select label="Secteur" value={secteur} onChange={(e) => { setPage(0); setSecteur(e.target.value); }}>
@@ -436,20 +400,20 @@ const FinanceImmobilisations: React.FC = () => {
             <MenuItem value="desactivees">Désactivées</MenuItem>
           </Select>
         </FormControl>
-        <FormControlLabel
-          control={<Switch checked={toutes} onChange={(e) => setToutes(e.target.checked)} />}
-          label="Toutes les colonnes"
-        />
       </Box>
 
       <Paper>
         {loading && <LinearProgress />}
-        <TableContainer sx={{ maxHeight: 'calc(100vh - 420px)' }}>
+        <TableContainer sx={{ maxHeight: 'calc(100vh - 440px)' }}>
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
                 {colonnes.map((c) => (
-                  <TableCell key={c.key} align={c.kind === 'montant' || c.kind === 'nombre' ? 'right' : 'left'} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  <TableCell
+                    key={c.key}
+                    align={c.kind === 'montant' || c.kind === 'nombre' ? 'right' : 'left'}
+                    sx={{ fontWeight: 600, minWidth: 120, maxWidth: 220, verticalAlign: 'top', lineHeight: 1.2 }}
+                  >
                     {c.label}
                   </TableCell>
                 ))}
@@ -477,7 +441,7 @@ const FinanceImmobilisations: React.FC = () => {
               ))}
               {data && data.rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={colonnes.length} align="center">Aucune immobilisation</TableCell>
+                  <TableCell colSpan={Math.max(colonnes.length, 1)} align="center">Aucune immobilisation</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -496,7 +460,7 @@ const FinanceImmobilisations: React.FC = () => {
       </Paper>
 
       <Dialog open={syntheseOpen} onClose={() => setSyntheseOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Synthèse des immobilisations statutaires — sélection en cours</DialogTitle>
+        <DialogTitle>Synthèse des immobilisations statutaires — {vue === 'travail' ? 'onglet Travail' : 'sélection en cours'}</DialogTitle>
         <DialogContent>
           {syntheseLoading && <LinearProgress sx={{ mb: 2 }} />}
           {synthese && (
