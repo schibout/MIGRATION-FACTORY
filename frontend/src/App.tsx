@@ -245,7 +245,7 @@ function App() {
               <ExportCommandeAchat
                 category="Immobilisation"
                 title="Export Immobilisations"
-                description="Exportez les immobilisations SAP (tout ANLA, une ligne par zone d'amortissement) avec leurs comptes FI-AA, en ZIP contenant un fichier CSV."
+                description="Exportez les immobilisations SAP STJN au format de l'extraction transmise aux métiers (une ligne par immobilisation, valeurs et VNC à l'ouverture de l'exercice), en ZIP contenant un fichier CSV."
                 fileType="immobilisation"
                 icon={<AccountBalanceIcon sx={{ fontSize: 32, mr: 2, color: '#5d4037' }} />}
               />

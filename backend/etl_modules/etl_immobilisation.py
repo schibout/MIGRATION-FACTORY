@@ -3,8 +3,8 @@
 
 """
 Module ETL pour le chargement des IMMOBILISATIONS SAP.
-Source : raw_data.v_immo_comptes (anla x zones d'amortissement + comptes FI-AA T095/T095B).
-Cible  : clean_data.immobilisation (meme structure que la vue, tout ANLA).
+Source : raw_data.anla/anlb/anlc/anlz + libelles (ankt, t095, t095t, t090nat, cskt, tgsbt).
+Cible  : clean_data.immobilisation (format de l'extraction transmise aux metiers, STJN).
 
 Appelle la fonction stockee clean_data.alimenter_immobilisation()
 (voir sql/immobilisation/02_alimenter_immobilisation.sql) : TRUNCATE + INSERT (idempotent).

@@ -12,9 +12,9 @@ INSERT INTO public.etl_export_queries (table_name, table_schema, display_name, c
 VALUES (
     'immobilisation',
     'clean_data',
-    'Immobilisations SAP et comptes FI-AA',
-    'mandt, bukrs, anln1, anln2, designation, classe_immo, ktogr_immo, ktogr_classe, ecart_ktogr, ktogr_libelle, plan_comptable, afabe, afabe_libelle, indic_comptabilisation, cpt_valeur_acquisition, cpt_contrepartie_acq, cpt_produit_cession, cpt_vnc_cession, cpt_vnc_mise_au_rebut, cpt_amort_cumules, cpt_dotation_amort, cpt_amort_deroga_bilan, cpt_amort_deroga_charge, cpt_amort_except_bilan, cpt_amort_except_charge',
-    'Immobilisations SAP (tout ANLA), une ligne par immobilisation et zone d''amortissement, avec la determination comptable FI-AA (comptes de valeur d''acquisition, d''amortissement, de cession). Snapshot recharge par le module ETL Immobilisations.',
+    'Immobilisations SAP (format metiers)',
+    'societe_sap, num_immobilisation, sous_numero, cle_immobilisation, libelle, libelle_complementaire, classe_immo, famille_immo, indicateur_suppression, numero_serie, pays, groupe_evaluation_1, groupe_evaluation_2, groupe_evaluation_3, groupe_evaluation_4, projet, cle_comptes_immo, libelle_cle_comptes_immo, compte_immobilisation, compte_amort_cumule, compte_dotation_amort, date_acquisition, date_premiere_acquisition, date_debut_amort, date_fin_amort_estimee, duree_amort_annees, duree_amort_periodes, duree_amort_totale_mois, zone_amortissement, type_amortissement, libelle_type_amortissement, taux_amort_estime, centre_cout, libelle_centre_cout, site_sap, secteur_sap, libelle_secteur, emplacement, immo_origine, sous_numero_origine, date_origine, numero_inventaire, fabricant, type_modele, fournisseur, quantite, unite, ordre_investissement, zone_valorisation, exercice_valorisation, valeur_acq_debut_exercice, mouvements_acq_exercice, sorties_exercice, valeur_acq_fin_exercice, amort_cumules, vnc, dotation_annuelle, blocage_comptabilisation, date_sortie, date_desactivation',
+    'Immobilisations SAP STJN au format de l''extraction transmise aux metiers : une ligne par immobilisation, comptes T095 zone 02, parametres d''amortissement ANLB, imputation ANLZ, valeurs statutaires zone 02 a l''ouverture de l''exercice (acquisition, amortissements cumules, VNC). Snapshot recharge par le module ETL Immobilisations.',
     'Immobilisation',
     true,
     'ETL_SYSTEM',

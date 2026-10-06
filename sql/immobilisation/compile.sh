@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de compilation du module ETL Immobilisations (SAP ANLA + FI-AA -> clean_data.immobilisation)
+# Script de compilation du module ETL Immobilisations (SAP FI-AA -> clean_data.immobilisation)
 # Ce script exécute toutes les procédures dans l'ordre requis
 
 # Charger les variables depuis .profile
@@ -81,10 +81,9 @@ echo ""
 # Compteur d'erreurs
 errors=0
 
-# Liste des fichiers dans l'ordre d'execution : la vue d'abord (lue par la
-# fonction de chargement), puis la table, puis la fonction.
+# Liste des fichiers dans l'ordre d'execution. 00_v_immo_comptes.sql (vue des
+# comptes par zone) n'est plus lue par le chargement : versionnee, pas compilee.
 files=(
-    "00_v_immo_comptes.sql"
     "01_create_clean_data_immobilisation.sql"
     "02_alimenter_immobilisation.sql"
 )

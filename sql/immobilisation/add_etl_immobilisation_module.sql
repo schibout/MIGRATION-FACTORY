@@ -1,6 +1,6 @@
 -- =====================================================
 -- Enregistrement du module ETL Immobilisations dans etl_target_tables
--- Description : snapshot de raw_data.v_immo_comptes vers
+-- Description : immobilisations SAP au format metiers vers
 --               clean_data.immobilisation (module etl_immobilisation.py,
 --               fonction sql/immobilisation/02_alimenter_immobilisation.sql).
 -- ORDRE : execution_order = 16 (apres Commandes d'achat, order 15). Aucune
@@ -30,8 +30,8 @@ BEGIN
         ) VALUES (
             v_id,
             'immobilisation',
-            'Immobilisations SAP (comptes FI-AA)',
-            'Module ETL des immobilisations SAP : snapshot de raw_data.v_immo_comptes (tout ANLA x zones d''amortissement, avec la determination comptable FI-AA T095/T095B : comptes de valeur d''acquisition, d''amortissement et de cession) vers clean_data.immobilisation. TRUNCATE + INSERT (idempotent).',
+            'Immobilisations SAP (format metiers)',
+            'Module ETL des immobilisations SAP au format de l''extraction transmise aux metiers : societe STJN, une ligne par immobilisation ANLA (sorties comprises), comptes T095 zone 02, amortissement ANLB, imputation ANLZ, valeurs statutaires zone 02 a l''ouverture de l''exercice 2027 (ANLC : acquisition, amortissements cumules, VNC). Cible clean_data.immobilisation. TRUNCATE + INSERT (idempotent).',
             'raw_data',
             'clean_data',
             'etl_immobilisation.py',
@@ -50,8 +50,8 @@ BEGIN
     ELSE
         UPDATE etl_target_tables SET
             table_name          = 'immobilisation',
-            display_name        = 'Immobilisations SAP (comptes FI-AA)',
-            description         = 'Module ETL des immobilisations SAP : snapshot de raw_data.v_immo_comptes (tout ANLA x zones d''amortissement, avec la determination comptable FI-AA T095/T095B : comptes de valeur d''acquisition, d''amortissement et de cession) vers clean_data.immobilisation. TRUNCATE + INSERT (idempotent).',
+            display_name        = 'Immobilisations SAP (format metiers)',
+            description         = 'Module ETL des immobilisations SAP au format de l''extraction transmise aux metiers : societe STJN, une ligne par immobilisation ANLA (sorties comprises), comptes T095 zone 02, amortissement ANLB, imputation ANLZ, valeurs statutaires zone 02 a l''ouverture de l''exercice 2027 (ANLC : acquisition, amortissements cumules, VNC). Cible clean_data.immobilisation. TRUNCATE + INSERT (idempotent).',
             source_schema       = 'raw_data',
             target_schema       = 'clean_data',
             python_module       = 'etl_immobilisation.py',

@@ -1,9 +1,8 @@
 """Menu Finance : ecran des immobilisations (clean_data.immobilisation).
 
   GET  /api/v1/finance/immobilisations       liste paginee + filtres + stats
-  POST /api/v1/finance/immobilisations/sync  re-extraction SAP des tables sources
-                                              de raw_data.v_immo_comptes, puis
-                                              clean_data.alimenter_immobilisation()
+  POST /api/v1/finance/immobilisations/sync  re-extraction SAP des tables sources,
+                                              puis clean_data.alimenter_immobilisation()
   GET  /api/v1/finance/immobilisations/sync  etat de la derniere synchronisation
 """
 import json
@@ -12,7 +11,8 @@ import os
 import tempfile
 import threading
 import time
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -23,9 +23,11 @@ from models import db
 finance_blueprint = Blueprint('finance', __name__)
 logger = logging.getLogger(__name__)
 
-# Tables lues par raw_data.v_immo_comptes (sql/immobilisation/00_v_immo_comptes.sql).
+# Tables lues par clean_data.alimenter_immobilisation
+# (sql/immobilisation/02_alimenter_immobilisation.sql).
 # Uniquement des tables transparentes : une vue SAP s'extrait vide.
-IMMO_SAP_TABLES = ['ANLA', 'ANKA', 'T001', 'T095', 'T095B', 'T095T', 'T093', 'T093T']
+IMMO_SAP_TABLES = ['ANLA', 'ANLB', 'ANLC', 'ANLZ', 'ANKT', 'T001', 'T095', 'T095T',
+                   'T090NAT', 'CSKT', 'TGSBT']
 
 EXTRACTION_TIMEOUT_SECONDS = 3600
 EXTRACTION_POLL_SECONDS = 10
@@ -37,13 +39,66 @@ EXTRACTION_POLL_SECONDS = 10
 _STATUS_FILE = os.path.join(tempfile.gettempdir(), 'immobilisation_sync.json')
 
 COLONNES = [
-    'mandt', 'bukrs', 'anln1', 'anln2', 'designation', 'classe_immo', 'ktogr_immo',
-    'ktogr_classe', 'ecart_ktogr', 'ktogr_libelle', 'plan_comptable', 'afabe',
-    'afabe_libelle', 'indic_comptabilisation', 'cpt_valeur_acquisition',
-    'cpt_contrepartie_acq', 'cpt_produit_cession', 'cpt_vnc_cession',
-    'cpt_vnc_mise_au_rebut', 'cpt_amort_cumules', 'cpt_dotation_amort',
-    'cpt_amort_deroga_bilan', 'cpt_amort_deroga_charge', 'cpt_amort_except_bilan',
-    'cpt_amort_except_charge',
+    'societe_sap',
+    'num_immobilisation',
+    'sous_numero',
+    'cle_immobilisation',
+    'libelle',
+    'libelle_complementaire',
+    'classe_immo',
+    'famille_immo',
+    'indicateur_suppression',
+    'numero_serie',
+    'pays',
+    'groupe_evaluation_1',
+    'groupe_evaluation_2',
+    'groupe_evaluation_3',
+    'groupe_evaluation_4',
+    'projet',
+    'cle_comptes_immo',
+    'libelle_cle_comptes_immo',
+    'compte_immobilisation',
+    'compte_amort_cumule',
+    'compte_dotation_amort',
+    'date_acquisition',
+    'date_premiere_acquisition',
+    'date_debut_amort',
+    'date_fin_amort_estimee',
+    'duree_amort_annees',
+    'duree_amort_periodes',
+    'duree_amort_totale_mois',
+    'zone_amortissement',
+    'type_amortissement',
+    'libelle_type_amortissement',
+    'taux_amort_estime',
+    'centre_cout',
+    'libelle_centre_cout',
+    'site_sap',
+    'secteur_sap',
+    'libelle_secteur',
+    'emplacement',
+    'immo_origine',
+    'sous_numero_origine',
+    'date_origine',
+    'numero_inventaire',
+    'fabricant',
+    'type_modele',
+    'fournisseur',
+    'quantite',
+    'unite',
+    'ordre_investissement',
+    'zone_valorisation',
+    'exercice_valorisation',
+    'valeur_acq_debut_exercice',
+    'mouvements_acq_exercice',
+    'sorties_exercice',
+    'valeur_acq_fin_exercice',
+    'amort_cumules',
+    'vnc',
+    'dotation_annuelle',
+    'blocage_comptabilisation',
+    'date_sortie',
+    'date_desactivation',
 ]
 
 
@@ -64,6 +119,15 @@ def _write_status(**fields):
     return status
 
 
+def _json(v):
+    """date -> 'YYYY-MM-DD', Decimal -> float (jsonify ferait une date HTTP et une chaine)."""
+    if isinstance(v, date):
+        return v.isoformat()
+    if isinstance(v, Decimal):
+        return float(v)
+    return v
+
+
 def _now():
     return datetime.now().isoformat(timespec='seconds')
 
@@ -74,48 +138,51 @@ def list_immobilisations():
     page = max(int(request.args.get('page', 1)), 1)
     page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
     search = (request.args.get('search') or '').strip()
-    bukrs = (request.args.get('bukrs') or '').strip()
-    afabe = (request.args.get('afabe') or '').strip()
+    secteur = (request.args.get('secteur') or '').strip()
+    statut = (request.args.get('statut') or '').strip()
 
     where, params = [], {}
     if search:
-        where.append("(anln1 ILIKE :s OR designation ILIKE :s OR classe_immo ILIKE :s "
-                     "OR cpt_valeur_acquisition ILIKE :s OR cpt_amort_cumules ILIKE :s)")
+        where.append("(num_immobilisation ILIKE :s OR libelle ILIKE :s OR famille_immo ILIKE :s "
+                     "OR centre_cout ILIKE :s OR numero_inventaire ILIKE :s "
+                     "OR compte_immobilisation ILIKE :s)")
         params['s'] = f'%{search}%'
-    if bukrs:
-        where.append('bukrs = :bukrs')
-        params['bukrs'] = bukrs
-    if afabe:
-        where.append('afabe = :afabe')
-        params['afabe'] = afabe
+    if secteur:
+        where.append('secteur_sap = :secteur')
+        params['secteur'] = secteur
+    if statut == 'actives':
+        where.append('date_desactivation IS NULL')
+    elif statut == 'desactivees':
+        where.append('date_desactivation IS NOT NULL')
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
 
     total = db.session.execute(
         text(f'SELECT count(*) FROM clean_data.immobilisation {clause}'), params).scalar()
     rows = db.session.execute(text(
         f'SELECT {", ".join(COLONNES)} FROM clean_data.immobilisation {clause} '
-        'ORDER BY bukrs, anln1, anln2, afabe LIMIT :limit OFFSET :offset'
+        'ORDER BY num_immobilisation, sous_numero LIMIT :limit OFFSET :offset'
     ), {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
 
+    # Totaux sur la selection filtree (valeurs statutaires a l'ouverture)
     stats = db.session.execute(text(
-        'SELECT count(*) AS lignes, '
-        'count(DISTINCT (bukrs, anln1, anln2)) AS immobilisations, '
-        'count(DISTINCT bukrs) AS societes '
-        'FROM clean_data.immobilisation')).mappings().one()
-    societes = [r[0] for r in db.session.execute(text(
-        'SELECT DISTINCT bukrs FROM clean_data.immobilisation ORDER BY 1'))]
-    zones = [dict(r) for r in db.session.execute(text(
-        'SELECT afabe, max(afabe_libelle) AS libelle FROM clean_data.immobilisation '
-        'GROUP BY afabe ORDER BY afabe')).mappings()]
+        'SELECT count(*) AS immobilisations, '
+        'count(*) FILTER (WHERE date_desactivation IS NULL) AS actives, '
+        'sum(valeur_acq_debut_exercice) AS valeur_acquisition, '
+        'sum(amort_cumules) AS amort_cumules, sum(vnc) AS vnc, '
+        'max(exercice_valorisation) AS exercice '
+        f'FROM clean_data.immobilisation {clause}'), params).mappings().one()
+    secteurs = [dict(r) for r in db.session.execute(text(
+        'SELECT secteur_sap AS code, max(libelle_secteur) AS libelle '
+        'FROM clean_data.immobilisation WHERE secteur_sap IS NOT NULL '
+        'GROUP BY secteur_sap ORDER BY secteur_sap')).mappings()]
 
     return jsonify({
-        'rows': [dict(r) for r in rows],
+        'rows': [{k: _json(v) for k, v in r.items()} for r in rows],
         'total': total,
         'page': page,
         'page_size': page_size,
-        'stats': dict(stats),
-        'societes': societes,
-        'zones': zones,
+        'stats': {k: _json(v) for k, v in stats.items()},
+        'secteurs': secteurs,
         'sync': _read_status(),
     })
 

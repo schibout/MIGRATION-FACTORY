@@ -100,7 +100,7 @@ const ExportData: React.FC = () => {
       title: 'Export Immobilisations',
       path: '/export/immobilisations',
       icon: <ImmobilisationIcon sx={{ fontSize: 40, color: '#5d4037' }} />,
-      description: 'Exporter les immobilisations SAP avec leurs comptes FI-AA (une ligne par zone d\'amortissement)'
+      description: 'Exporter les immobilisations SAP au format de l\'extraction transmise aux métiers (une ligne par immobilisation, VNC)'
     }
   ];
 

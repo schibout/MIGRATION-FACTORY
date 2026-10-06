@@ -9,7 +9,7 @@ const financeItems = [
     title: 'Immobilisations',
     path: '/finance/immobilisations',
     icon: <ImmobilisationIcon sx={{ fontSize: 48, color: '#5d4037' }} />,
-    description: 'Immobilisations SAP et leurs comptes FI-AA par zone d\'amortissement, synchronisables depuis SAP',
+    description: 'Immobilisations SAP STJN : comptes, amortissement, imputation, valeur d\'acquisition et VNC, synchronisables depuis SAP',
   },
 ];
 
