@@ -892,6 +892,8 @@ class ExportService:
             export_result = self.export_projects_data(config)
         elif primary_category == 'Commande Achat':
             export_result = self.export_category_data(config, 'Commande Achat', 'commandes d\'achat')
+        elif primary_category == 'Immobilisation':
+            export_result = self.export_category_data(config, 'Immobilisation', 'immobilisations')
         else:
             # Par défaut, utiliser l'export supplier (pour 'supplier' et autres)
             export_result = self.export_supplier_data(config)

@@ -275,9 +275,10 @@ export const exportOperationData = async (config: ExportConfig) => {
   }
 };
 
-// Fonction pour exporter les commandes d'achat SAP ouvertes (categorie "Commande Achat").
+// Fonction pour exporter les commandes d'achat SAP ouvertes (categorie "Commande Achat"),
+// ou toute autre categorie generique (fileType = prefixe du ZIP, ex. 'immobilisation').
 // Endpoint generique : le backend dispatche sur la categorie de la table demandee.
-export const exportCommandeAchatData = async (config: ExportConfig) => {
+export const exportCommandeAchatData = async (config: ExportConfig, fileType = 'commande_achat') => {
   try {
     console.log('🚀 Démarrage de l\'export Commandes d\'achat via l\'API backend');
     console.log('📋 Configuration:', config);
@@ -292,7 +293,7 @@ export const exportCommandeAchatData = async (config: ExportConfig) => {
       responseType: 'blob'
     });
 
-    return handleExportResponse(response, 'commande_achat');
+    return handleExportResponse(response, fileType);
   } catch (error) {
     console.error('❌ Erreur lors de l\'export Commandes d\'achat:', error);
     throw error;

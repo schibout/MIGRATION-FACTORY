@@ -23,6 +23,7 @@ import ExportFournisseurs from './pages/ExportFournisseurs';
 import ExportMaintenance from './pages/ExportMaintenance';
 import ExportOperation from './pages/ExportOperation';
 import ExportCommandeAchat from './pages/ExportCommandeAchat';
+import { AccountBalance as AccountBalanceIcon } from '@mui/icons-material';
 import ExportPmAction from './pages/ExportPmAction';
 import ExportProjects from './pages/ExportProjects';
 import ExportStructureMaintenance from './pages/ExportStructureMaintenance';
@@ -234,6 +235,18 @@ function App() {
           <Route path="export/pm-action" element={<ExportPmAction />} />
           <Route path="export/operations" element={<ExportOperation />} />
           <Route path="export/commandes-achat" element={<ExportCommandeAchat />} />
+          <Route
+            path="export/immobilisations"
+            element={
+              <ExportCommandeAchat
+                category="Immobilisation"
+                title="Export Immobilisations"
+                description="Exportez les immobilisations SAP (tout ANLA, une ligne par zone d'amortissement) avec leurs comptes FI-AA, en ZIP contenant un fichier CSV."
+                fileType="immobilisation"
+                icon={<AccountBalanceIcon sx={{ fontSize: 32, mr: 2, color: '#5d4037' }} />}
+              />
+            }
+          />
           <Route path="export/structure-maintenance" element={<ExportStructureMaintenance />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="maintenance/hierarchy" element={<MaintenanceHierarchyPage />} />

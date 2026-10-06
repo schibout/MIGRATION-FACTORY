@@ -18,7 +18,23 @@ import {
     refreshQueriesCache
 } from '../services/exportService';
 
-const ExportCommandeAchat: React.FC = () => {
+// Page d'export d'une categorie generique de etl_export_queries. Par defaut :
+// Commandes d'achat ; reutilisee pour les Immobilisations (cf. App.tsx).
+interface ExportCommandeAchatProps {
+  category?: string;
+  title?: string;
+  description?: string;
+  fileType?: string;
+  icon?: React.ReactNode;
+}
+
+const ExportCommandeAchat: React.FC<ExportCommandeAchatProps> = ({
+  category = 'Commande Achat',
+  title = "Export Commandes d'achat",
+  description = "Exportez les commandes d'achat SAP ouvertes (reliquat à livrer) au format de reprise IFS, en ZIP contenant un fichier CSV par table.",
+  fileType = 'commande_achat',
+  icon = <CommandeAchatIcon sx={{ fontSize: 32, mr: 2, color: '#00897b' }} />,
+}) => {
   const [includeHeaders, setIncludeHeaders] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
@@ -31,13 +47,13 @@ const ExportCommandeAchat: React.FC = () => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  // Chargement des tables disponibles (catégorie Commande Achat)
+  // Chargement des tables disponibles de la catégorie
   const loadTables = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await loadExportQueries('Commande Achat');
+      const response = await loadExportQueries(category);
       setAvailableTables(response.queries);
 
       const tableNames = response.queries.map(q => q.table_name);
@@ -49,7 +65,7 @@ const ExportCommandeAchat: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [category]);
 
   // Chargement initial
   useEffect(() => {
@@ -93,7 +109,7 @@ const ExportCommandeAchat: React.FC = () => {
 
       console.log('🚀 Début de l\'export Commandes d\'achat avec la configuration:', config);
 
-      await exportCommandeAchatData(config);
+      await exportCommandeAchatData(config, fileType);
       console.log('✅ Export terminé avec succès');
 
       setSuccess('Export terminé avec succès! Le fichier a été téléchargé.');
@@ -126,9 +142,9 @@ const ExportCommandeAchat: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <CommandeAchatIcon sx={{ fontSize: 32, mr: 2, color: '#00897b' }} />
+        {icon}
         <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-          Export Commandes d'achat
+          {title}
         </Typography>
         <Button
           variant="outlined"
@@ -142,7 +158,7 @@ const ExportCommandeAchat: React.FC = () => {
       </Box>
 
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Exportez les opérations de maintenance (JT Task, ressources, besoins matière) en format ZIP contenant des fichiers CSV pour chaque table.
+        {description}
       </Typography>
 
       {error && (
@@ -165,7 +181,7 @@ const ExportCommandeAchat: React.FC = () => {
         <>
           {availableTables.length === 0 && (
             <Alert severity="info" sx={{ mb: 3 }}>
-              Aucune requête d'export n'est encore configurée pour la catégorie « Commande Achat ».
+              Aucune requête d'export n'est encore configurée pour la catégorie « {category} ».
               Ajoutez-en via la page d'administration « Requêtes d'export ».
             </Alert>
           )}

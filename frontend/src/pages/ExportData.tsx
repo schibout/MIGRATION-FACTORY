@@ -21,6 +21,7 @@ import {
     Engineering as OperationIcon,
     Build as PmActionIcon,
     ShoppingCart as CommandeAchatIcon,
+    AccountBalance as ImmobilisationIcon,
     AccountTree as StructureIcon
 } from '@mui/icons-material';
 
@@ -94,6 +95,12 @@ const ExportData: React.FC = () => {
       path: '/export/commandes-achat',
       icon: <CommandeAchatIcon sx={{ fontSize: 40, color: '#00897b' }} />,
       description: 'Exporter les commandes d\'achat SAP ouvertes (reliquat à livrer) au format de reprise IFS'
+    },
+    {
+      title: 'Export Immobilisations',
+      path: '/export/immobilisations',
+      icon: <ImmobilisationIcon sx={{ fontSize: 40, color: '#5d4037' }} />,
+      description: 'Exporter les immobilisations SAP avec leurs comptes FI-AA (une ligne par zone d\'amortissement)'
     }
   ];
 
