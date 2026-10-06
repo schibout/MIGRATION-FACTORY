@@ -11,6 +11,8 @@
 -- Finance > Immobilisations et en COMMENT de colonne.
 -- Table de SNAPSHOT (TRUNCATE + INSERT par clean_data.alimenter_immobilisation),
 -- le DROP est sans risque.
+-- 2026-10-06 (soir) : + 8 colonnes de reprise IFS en fin de table (statut de
+-- reprise, comptes IFS, groupe objet, site, OTP), cf. migration 098.
 -- ============================================================================
 
 DROP TABLE IF EXISTS clean_data.immobilisation;
@@ -76,8 +78,28 @@ CREATE TABLE clean_data.immobilisation (
     blocage_comptabilisation    varchar(1),
     date_sortie                 date,
     date_desactivation          date,
+    -- Colonnes de reprise IFS (migration 098, classeur metier du 18/08/2026,
+    -- onglets Methode / Travail / Conversion cpte general). Toujours APRES les
+    -- 60 colonnes du fichier livre.
+    reprise_ifs                 boolean,
+    motif_exclusion             text,
+    compte_immobilisation_ifs   varchar(10),
+    compte_amort_cumule_ifs     varchar(10),
+    object_group_id             varchar(10),
+    site_ifs                    varchar(2),
+    element_otp                 varchar(24),
+    libelle_otp                 varchar(40),
     PRIMARY KEY (societe_sap, num_immobilisation, sous_numero)
 );
+
+COMMENT ON COLUMN clean_data.immobilisation.reprise_ifs IS 'Dans le perimetre de reprise IFS : pas de date de sortie, ou sortie posterieure a la date de bascule (etl_default_values date_bascule_ifs). Une sortie posterieure a la bascule est reprise SANS date de sortie cote IFS';
+COMMENT ON COLUMN clean_data.immobilisation.motif_exclusion IS 'Raison de l''exclusion quand reprise_ifs = false';
+COMMENT ON COLUMN clean_data.immobilisation.compte_immobilisation_ifs IS 'Transcodification FA_ACCOUNT (SAP -> IFS) de compte_immobilisation ; NULL si le compte n''est pas dans l''ecran Transcodification';
+COMMENT ON COLUMN clean_data.immobilisation.compte_amort_cumule_ifs IS 'Transcodification FA_ACCOUNT de compte_amort_cumule';
+COMMENT ON COLUMN clean_data.immobilisation.object_group_id IS 'Groupe objet IFS : FA_OBJECT_GROUP_IMMO (par numero d''immobilisation) sinon FA_OBJECT_GROUP (par classe_immo) ; NULL = a completer dans Transcodification';
+COMMENT ON COLUMN clean_data.immobilisation.site_ifs IS 'SJ / CS : site_sap 9200 -> SJ, 9000 -> CS ; sans site, secteur 9030 (Fonderie Castel) -> CS sinon SJ';
+COMMENT ON COLUMN clean_data.immobilisation.element_otp IS 'Element d''OTP (code projet) : ANLA-POSNR -> PRPS-POSID';
+COMMENT ON COLUMN clean_data.immobilisation.libelle_otp IS 'PRPS-POST1';
 
 COMMENT ON TABLE clean_data.immobilisation IS
     'Immobilisations SAP STJN au format de l''extraction transmise aux metiers (1 ligne / immobilisation, valeurs statutaires zone 02 a l''ouverture de l''exercice). Recharge par clean_data.alimenter_immobilisation().';

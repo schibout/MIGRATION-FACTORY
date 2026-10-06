@@ -31,7 +31,7 @@ BEGIN
             v_id,
             'immobilisation',
             'Immobilisations SAP (format metiers)',
-            'Module ETL des immobilisations SAP au format de l''extraction transmise aux metiers : societe STJN, une ligne par immobilisation ANLA (sorties comprises), comptes T095 zone 02, amortissement ANLB, imputation ANLZ, valeurs statutaires zone 02 a l''ouverture de l''exercice 2027 (ANLC : acquisition, amortissements cumules, VNC). Cible clean_data.immobilisation. TRUNCATE + INSERT (idempotent).',
+            'Module ETL des immobilisations SAP au format de l''extraction transmise aux metiers : societe STJN, une ligne par immobilisation ANLA (sorties comprises), comptes T095 zone 02, amortissement ANLB, imputation ANLZ, valeurs statutaires zone 02 a l''ouverture de l''exercice 2027 (ANLC : acquisition, amortissements cumules, VNC). Cible clean_data.immobilisation, avec les colonnes de reprise IFS (statut selon la date de bascule, comptes IFS et groupe objet via Transcodification, site, element d''OTP). TRUNCATE + INSERT (idempotent).',
             'raw_data',
             'clean_data',
             'etl_immobilisation.py',
@@ -51,7 +51,7 @@ BEGIN
         UPDATE etl_target_tables SET
             table_name          = 'immobilisation',
             display_name        = 'Immobilisations SAP (format metiers)',
-            description         = 'Module ETL des immobilisations SAP au format de l''extraction transmise aux metiers : societe STJN, une ligne par immobilisation ANLA (sorties comprises), comptes T095 zone 02, amortissement ANLB, imputation ANLZ, valeurs statutaires zone 02 a l''ouverture de l''exercice 2027 (ANLC : acquisition, amortissements cumules, VNC). Cible clean_data.immobilisation. TRUNCATE + INSERT (idempotent).',
+            description         = 'Module ETL des immobilisations SAP au format de l''extraction transmise aux metiers : societe STJN, une ligne par immobilisation ANLA (sorties comprises), comptes T095 zone 02, amortissement ANLB, imputation ANLZ, valeurs statutaires zone 02 a l''ouverture de l''exercice 2027 (ANLC : acquisition, amortissements cumules, VNC). Cible clean_data.immobilisation, avec les colonnes de reprise IFS (statut selon la date de bascule, comptes IFS et groupe objet via Transcodification, site, element d''OTP). TRUNCATE + INSERT (idempotent).',
             source_schema       = 'raw_data',
             target_schema       = 'clean_data',
             python_module       = 'etl_immobilisation.py',

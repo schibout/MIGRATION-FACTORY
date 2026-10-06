@@ -7,6 +7,8 @@ Pour chaque ecran <e> = immobilisations | commandes-achat :
   POST /api/v1/finance/<e>/sync         re-extraction SAP des tables sources puis
                                          rechargement de la table clean_data
   GET  /api/v1/finance/<e>/sync         etat de la derniere synchronisation
+  GET  /api/v1/finance/immobilisations/synthese  KPI + sous-totaux (type d'amortissement,
+                                         famille, secteur, compte), memes filtres
 """
 import io
 import json
@@ -31,7 +33,7 @@ logger = logging.getLogger(__name__)
 # (sql/immobilisation/02_alimenter_immobilisation.sql).
 # Uniquement des tables transparentes : une vue SAP s'extrait vide.
 IMMO_SAP_TABLES = ['ANLA', 'ANLB', 'ANLC', 'ANLZ', 'ANKT', 'T001', 'T095', 'T095T',
-                   'T090NAT', 'CSKT', 'TGSBT']
+                   'T090NAT', 'CSKT', 'TGSBT', 'PRPS']
 
 EXTRACTION_TIMEOUT_SECONDS = 3600
 EXTRACTION_POLL_SECONDS = 10
@@ -105,6 +107,15 @@ LIBELLES = [
     ('blocage_comptabilisation', 'Blocage comptabilisation (ANLA-XSPEB)'),
     ('date_sortie', 'Date sortie (ANLA-ABGDT)'),
     ('date_desactivation', 'Date désactivation (ANLA-DEAKT)'),
+    # Reprise IFS (migration 098, classeur metier du 18/08/2026)
+    ('reprise_ifs', 'Reprise IFS'),
+    ('motif_exclusion', "Motif d'exclusion"),
+    ('compte_immobilisation_ifs', 'Compte immobilisation IFS'),
+    ('compte_amort_cumule_ifs', 'Compte amortissement cumulé IFS'),
+    ('object_group_id', 'Groupe objet IFS (OBJECT_GROUP_ID)'),
+    ('site_ifs', 'Site IFS'),
+    ('element_otp', "Élément d'OTP (ANLA-POSNR -> PRPS-POSID)"),
+    ('libelle_otp', 'Libellé OTP (PRPS-POST1)'),
 ]
 COLONNES = [c for c, _ in LIBELLES]
 _MONTANTS = {'valeur_acq_debut_exercice', 'mouvements_acq_exercice', 'sorties_exercice',
@@ -146,8 +157,13 @@ def _filtres():
     search = (request.args.get('search') or '').strip()
     secteur = (request.args.get('secteur') or '').strip()
     statut = (request.args.get('statut') or '').strip()
+    reprise = (request.args.get('reprise') or '').strip()
 
     where, params = [], {}
+    if reprise == 'a_reprendre':
+        where.append('reprise_ifs')
+    elif reprise == 'exclues':
+        where.append('NOT reprise_ifs')
     if search:
         where.append("(num_immobilisation ILIKE :s OR libelle ILIKE :s OR famille_immo ILIKE :s "
                      "OR centre_cout ILIKE :s OR numero_inventaire ILIKE :s "
@@ -182,9 +198,15 @@ def list_immobilisations():
     stats = db.session.execute(text(
         'SELECT count(*) AS immobilisations, '
         'count(*) FILTER (WHERE date_desactivation IS NULL) AS actives, '
+        'count(*) FILTER (WHERE reprise_ifs) AS a_reprendre, '
+        'count(*) FILTER (WHERE NOT reprise_ifs) AS exclues, '
+        'count(*) FILTER (WHERE reprise_ifs AND compte_immobilisation IS NOT NULL '
+        '                   AND compte_immobilisation_ifs IS NULL) AS sans_compte_ifs, '
+        'count(*) FILTER (WHERE reprise_ifs AND object_group_id IS NULL) AS sans_groupe_objet, '
         'sum(valeur_acq_debut_exercice) AS valeur_acquisition, '
         'sum(amort_cumules) AS amort_cumules, sum(vnc) AS vnc, '
-        'max(exercice_valorisation) AS exercice '
+        'max(exercice_valorisation) AS exercice, '
+        "public.get_default_value('clean_data.immobilisation', 'date_bascule_ifs', 'STANDARD') AS date_bascule "
         f'FROM clean_data.immobilisation {clause}'), params).mappings().one()
     secteurs = [dict(r) for r in db.session.execute(text(
         'SELECT secteur_sap AS code, max(libelle_secteur) AS libelle '
@@ -202,15 +224,70 @@ def list_immobilisations():
     })
 
 
+# Axes de la synthese : (cle json, colonne, titre de bloc) — memes blocs que
+# l'onglet « Synthèse » du classeur metier, plus le compte pour le controle des
+# cumuls par compte general (etapes 1 et 4 de la Methode).
+_SYNTHESE_AXES = [
+    ('par_type', 'libelle_type_amortissement', "Sous-totaux par type d'amortissement"),
+    ('par_famille', 'famille_immo', 'Sous-totaux par famille'),
+    ('par_secteur', 'libelle_secteur', 'Sous-totaux par secteur'),
+    ('par_compte', 'compte_immobilisation', 'Sous-totaux par compte immobilisation (SAP -> IFS)'),
+]
+
+
+def _synthese(clause, params):
+    """KPI + sous-totaux en une requete (GROUPING SETS), sur la selection filtree."""
+    axes = [col for _, col, _ in _SYNTHESE_AXES]
+    rows = db.session.execute(text(
+        'SELECT ' + ', '.join(f'GROUPING({c}) AS g_{c}' for c in axes) + ', '
+        + ', '.join(axes) + ', max(compte_immobilisation_ifs) AS compte_ifs, '
+        'count(*) AS nombre, sum(valeur_acq_debut_exercice) AS acquisition, '
+        'sum(amort_cumules) AS amortissements, sum(vnc) AS vnc, '
+        'max(exercice_valorisation) AS exercice '
+        f'FROM clean_data.immobilisation {clause} '
+        'GROUP BY GROUPING SETS ((), ' + ', '.join(f'({c})' for c in axes) + ')'
+    ), params).mappings().all()
+
+    result = {'kpi': {}, **{k: [] for k, _, _ in _SYNTHESE_AXES}}
+    for row in rows:
+        mesures = {k: _json(row[k]) for k in ('nombre', 'acquisition', 'amortissements', 'vnc')}
+        actifs = [c for c in axes if not row[f'g_{c}']]
+        if not actifs:
+            exercice = row['exercice']
+            result['kpi'] = {
+                **mesures, 'exercice': exercice,
+                'date_situation': f'01/07/{int(exercice) - 1}' if exercice else None,
+                'zone': '02 - Amortissement statutaire CRC2002-10',
+            }
+            continue
+        key = next(k for k, c, _ in _SYNTHESE_AXES if c == actifs[0])
+        libelle = row[actifs[0]]
+        if actifs[0] == 'compte_immobilisation' and libelle:
+            libelle = f"{libelle} -> {row['compte_ifs'] or '(sans compte IFS)'}"
+        result[key].append({'libelle': libelle or '(vide)', **mesures})
+    for k, _, _ in _SYNTHESE_AXES:
+        result[k].sort(key=lambda x: x['libelle'])
+    return result
+
+
+@finance_blueprint.route('/immobilisations/synthese', methods=['GET'])
+@jwt_required()
+def synthese_immobilisations():
+    clause, params = _filtres()
+    return jsonify(_synthese(clause, params))
+
+
 @finance_blueprint.route('/immobilisations/export.xlsx', methods=['GET'])
 @jwt_required()
 def export_immobilisations_excel():
-    """Classeur Excel des immobilisations filtrees, en-tetes metier, valeurs typees."""
+    """Classeur Excel des immobilisations filtrees, en-tetes metier, valeurs typees,
+    + feuille Synthese (memes blocs que le classeur metier)."""
     clause, params = _filtres()
     rows = db.session.execute(text(
         f'SELECT {", ".join(COLONNES)} FROM clean_data.immobilisation {clause} '
         'ORDER BY num_immobilisation, sous_numero'), params).all()
-    return _excel_response('Immobilisations', LIBELLES, rows, _MONTANTS, 'immobilisations')
+    return _excel_response('Immobilisations', LIBELLES, rows, _MONTANTS, 'immobilisations',
+                           synthese=_synthese(clause, params))
 
 
 @finance_blueprint.route('/immobilisations/sync', methods=['GET'])
@@ -382,8 +459,9 @@ def start_ca_sync():
 # Communs : export Excel, synchronisation SAP
 # ---------------------------------------------------------------------------
 
-def _excel_response(title, libelles, rows, numeriques, prefix):
-    """Classeur Excel : en-tetes metier, dates et nombres types, en-tete fige + filtres."""
+def _excel_response(title, libelles, rows, numeriques, prefix, synthese=None):
+    """Classeur Excel : en-tetes metier, dates et nombres types, en-tete fige + filtres.
+    synthese (dict de _synthese) ajoute une seconde feuille « Synthèse »."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -416,6 +494,9 @@ def _excel_response(title, libelles, rows, numeriques, prefix):
     ws.freeze_panes = 'C2'
     ws.auto_filter.ref = ws.dimensions
 
+    if synthese:
+        _feuille_synthese(wb.create_sheet('Synthèse'), synthese, Font, PatternFill)
+
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)
@@ -423,6 +504,43 @@ def _excel_response(title, libelles, rows, numeriques, prefix):
         buffer, as_attachment=True,
         download_name=f'{prefix}_{datetime.now():%Y%m%d_%H%M}.xlsx',
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+def _feuille_synthese(ws, synthese, Font, PatternFill):
+    """Feuille Synthese : en-tete, KPI, un bloc par axe (valeurs, pas de formules)."""
+    titre = Font(bold=True, color='FFFFFF')
+    fond = PatternFill('solid', fgColor='1F4E78')
+    sous = PatternFill('solid', fgColor='5B9BD5')
+    kpi = synthese['kpi']
+    ws['A1'] = 'Synthèse des immobilisations statutaires'
+    ws['A1'].font = Font(bold=True, size=14)
+    for i, (k, v) in enumerate([('Société', 'STJN'), ('Date de situation', kpi.get('date_situation')),
+                                ('Exercice SAP', kpi.get('exercice')), ('Zone retenue', kpi.get('zone'))], 2):
+        ws.cell(i, 1, k)
+        ws.cell(i, 2, v)
+    ws.cell(7, 1, 'Indicateurs').font = titre
+    ws.cell(7, 1).fill = fond
+    for i, (k, v) in enumerate([("Nombre d'immobilisations", kpi.get('nombre')),
+                                ("Valeur d'acquisition début exercice", kpi.get('acquisition')),
+                                ('Amortissements cumulés', kpi.get('amortissements')),
+                                ('Valeur nette comptable', kpi.get('vnc'))], 8):
+        ws.cell(i, 1, k)
+        ws.cell(i, 2, v).number_format = '#,##0.00'
+    ligne = 13
+    for key, _, bloc in _SYNTHESE_AXES:
+        for j, h in enumerate([bloc, 'Nombre', 'Acquisition', 'Amortissements cumulés', 'VNC'], 1):
+            c = ws.cell(ligne, j, h)
+            c.font = titre
+            c.fill = sous
+        for item in synthese[key]:
+            ligne += 1
+            ws.cell(ligne, 1, item['libelle'])
+            ws.cell(ligne, 2, item['nombre'])
+            for j, k in enumerate(('acquisition', 'amortissements', 'vnc'), 3):
+                ws.cell(ligne, j, item[k]).number_format = '#,##0.00'
+        ligne += 2
+    for col, w in zip('ABCDE', (48, 14, 20, 24, 20)):
+        ws.column_dimensions[col].width = w
 
 
 def _start_sync(key, tables, cible, load):
