@@ -1,4 +1,8 @@
-import { AccountBalance as ImmobilisationIcon, Euro as FinanceIcon } from '@mui/icons-material';
+import {
+    AccountBalance as ImmobilisationIcon,
+    ShoppingCart as CommandeAchatIcon,
+    Euro as FinanceIcon,
+} from '@mui/icons-material';
 import { Box, Card, CardActionArea, Grid, Typography } from '@mui/material';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +14,12 @@ const financeItems = [
     path: '/finance/immobilisations',
     icon: <ImmobilisationIcon sx={{ fontSize: 48, color: '#5d4037' }} />,
     description: 'Immobilisations SAP STJN : comptes, amortissement, imputation, valeur d\'acquisition et VNC, synchronisables depuis SAP',
+  },
+  {
+    title: 'Commandes d\'achat',
+    path: '/finance/commandes-achat',
+    icon: <CommandeAchatIcon sx={{ fontSize: 48, color: '#00897b' }} />,
+    description: 'Commandes d\'achat SAP ouvertes (reliquat à livrer) au format de reprise IFS, synchronisables depuis SAP',
   },
 ];
 
