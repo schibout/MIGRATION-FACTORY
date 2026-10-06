@@ -1,6 +1,7 @@
 import {
     AccountBalance as ImmobilisationIcon,
     AccountTree as ComptesIcon,
+    MenuBook as GuideIcon,
     ShoppingCart as CommandeAchatIcon,
     Euro as FinanceIcon,
 } from '@mui/icons-material';
@@ -21,6 +22,12 @@ const financeItems = [
     path: '/finance/comptes',
     icon: <ComptesIcon sx={{ fontSize: 48, color: '#5d4037' }} />,
     description: 'Conversion des comptes PCG SAP vers IFS et transco des comptes portés par les fiches immobilisations',
+  },
+  {
+    title: 'Mode d\'emploi immobilisations',
+    path: '/mode-emploi?guide=finance-immobilisations.html',
+    icon: <GuideIcon sx={{ fontSize: 48, color: '#5d4037' }} />,
+    description: 'Sources SAP, calculs (zone 02, VNC), Méthode de reprise IFS, utilisation des écrans Immobilisations et Comptes',
   },
   {
     title: 'Commandes d\'achat',

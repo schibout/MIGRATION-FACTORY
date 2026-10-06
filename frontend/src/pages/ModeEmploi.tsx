@@ -5,6 +5,7 @@ import {
 } from '@mui/icons-material';
 import { Box, Button, Typography } from '@mui/material';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 // Les modes d'emploi sont des pages HTML autonomes deposees dans
 // frontend/public/guides/ (servies par Vite sous /guides/...).
@@ -18,6 +19,11 @@ const ModeEmploi = () => {
   // Incrementer la cle recharge l'iframe sur le sommaire (retour "accueil"),
   // quelle que soit la page ouverte a l'interieur du cadre.
   const [resetKey, setResetKey] = useState(0);
+  // /mode-emploi?guide=<fichier>.html ouvre directement ce guide (cartes des
+  // menus metier, ex. Finance) ; le bouton Sommaire ramene a l'index.
+  const [searchParams] = useSearchParams();
+  const guide = searchParams.get('guide');
+  const src = resetKey === 0 && guide && /^[\w-]+\.html$/.test(guide) ? `/guides/${guide}` : SOMMAIRE;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)' }}>
@@ -37,7 +43,7 @@ const ModeEmploi = () => {
         <Button
           endIcon={<OpenInNewIcon />}
           size="small"
-          onClick={() => window.open(SOMMAIRE, '_blank')}
+          onClick={() => window.open(src, '_blank')}
         >
           Plein écran
         </Button>
@@ -45,7 +51,7 @@ const ModeEmploi = () => {
       <Box
         key={resetKey}
         component="iframe"
-        src={SOMMAIRE}
+        src={src}
         title="Modes d'emploi Migration Factory"
         sx={{
           flexGrow: 1,
