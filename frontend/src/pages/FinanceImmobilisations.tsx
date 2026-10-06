@@ -1,5 +1,6 @@
 import {
     AccountBalance as ImmobilisationIcon,
+    FileDownload as ExcelIcon,
     Search as SearchIcon,
     Sync as SyncIcon,
 } from '@mui/icons-material';
@@ -153,6 +154,7 @@ const FinanceImmobilisations: React.FC = () => {
   const [statut, setStatut] = useState('');
   const [toutes, setToutes] = useState(false);
   const [sync, setSync] = useState<SyncStatus | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const colonnes = toutes ? COLONNES : COLONNES.filter((c) => c.principale);
 
@@ -206,6 +208,32 @@ const FinanceImmobilisations: React.FC = () => {
     }
   };
 
+  // Export Excel des immobilisations filtrées (toutes les pages, 60 colonnes)
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+      setError(null);
+      const res = await api.get('/finance/immobilisations/export.xlsx', {
+        params: { search, secteur, statut },
+        responseType: 'blob',
+      });
+      const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
+      const url = window.URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = match?.[1] ?? 'immobilisations.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erreur export Excel immobilisations:', err);
+      setError("Erreur lors de l'export Excel");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const running = sync?.status === 'running';
   const stats = data?.stats;
 
@@ -216,7 +244,20 @@ const FinanceImmobilisations: React.FC = () => {
         <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
           Immobilisations
         </Typography>
-        <Box sx={{ ml: 'auto' }}>
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
+          <Tooltip title="Classeur Excel des immobilisations filtrées (toutes les pages, 60 colonnes, libellés métier)">
+            <span>
+              <Button
+                variant="outlined"
+                color="success"
+                startIcon={<ExcelIcon />}
+                onClick={handleExportExcel}
+                disabled={exporting || !data?.total}
+              >
+                {exporting ? 'Export…' : 'Exporter Excel'}
+              </Button>
+            </span>
+          </Tooltip>
           <Tooltip title="Ré-extrait de SAP ANLA, ANLB, ANLC, ANLZ, ANKT, T001, T095, T095T, T090NAT, CSKT, TGSBT puis recharge la table">
             <span>
               <Button variant="contained" startIcon={<SyncIcon />} onClick={handleSync} disabled={running}>
