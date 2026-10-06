@@ -392,7 +392,11 @@ def export_immobilisations_excel():
     _feuille_tableau(wb.create_sheet('TRansco comptes generaux'), 'TRansco comptes generaux',
                      [('num', LIBELLE['num_immobilisation']), ('cpt', 'Cpt fiche'),
                       ('nv', 'Nv cpte fiche')], transco, set())
-    _feuille_synthese(wb.create_sheet('Synthèse'), _synthese(clause, params))
+    synthese = _synthese(clause, params)
+    # Lectures terminees : liberer la transaction (et ses verrous) avant de
+    # construire le classeur, qui prend plusieurs secondes.
+    db.session.commit()
+    _feuille_synthese(wb.create_sheet('Synthèse'), synthese)
     return _envoyer(wb, 'immobilisations')
 
 
@@ -598,6 +602,7 @@ def export_commandes_achat_excel():
         'ORDER BY num_commande_sap, num_ligne_sap'), params).all()
     dates = [i for i, c in enumerate(CA_COLONNES) if c in _CA_DATES]
     rows = [[_ca_date(v) if i in dates else v for i, v in enumerate(r)] for r in rows]
+    db.session.commit()  # liberer la transaction de lecture avant la generation
     wb = Workbook()
     _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES, rows, _CA_MONTANTS | _CA_QUANTITES)
     return _envoyer(wb, 'commandes_achat')

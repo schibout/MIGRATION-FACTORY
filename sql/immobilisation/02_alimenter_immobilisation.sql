@@ -36,7 +36,12 @@
 --     reponse a la question « code projet des fiches » (ANLA-PROJN est vide).
 --   Les transcodifications sont resolues par valeur DISTINCTE (petites CTE),
 --   jamais par ligne.
--- TRUNCATE + INSERT (idempotent). Retour : lignes chargees.
+-- DELETE + INSERT (idempotent). Retour : lignes chargees. DELETE et non
+-- TRUNCATE : TRUNCATE prend un verrou ACCESS EXCLUSIVE et attend la fin de
+-- toute lecture en cours (export Excel, ecran...) ; avec lock_timeout = 30 s
+-- sur la base, le rechargement echouait « canceling statement due to lock
+-- timeout » (2026-10-06 18:42). Sur 7 700 lignes le DELETE est immediat et ne
+-- bloque personne (MVCC).
 -- ============================================================================
 
 -- Date SAP 'YYYYMMDD' -> date (NULL si vide ou 00000000).
@@ -74,7 +79,7 @@ BEGIN
         NULLIF(public.get_default_value('clean_data.immobilisation', 'date_bascule_ifs', 'STANDARD'), '')::date,
         DATE '2026-06-30');
 
-    TRUNCATE clean_data.immobilisation;
+    DELETE FROM clean_data.immobilisation;
 
     INSERT INTO clean_data.immobilisation
     WITH company AS (

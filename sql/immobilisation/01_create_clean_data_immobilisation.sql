@@ -9,7 +9,7 @@
 -- fichier, dans le meme ordre ; noms techniques en minuscules (le service
 -- d'export les reprend tels quels en en-tete), libelles metier dans l'ecran
 -- Finance > Immobilisations et en COMMENT de colonne.
--- Table de SNAPSHOT (TRUNCATE + INSERT par clean_data.alimenter_immobilisation),
+-- Table de SNAPSHOT (DELETE + INSERT par clean_data.alimenter_immobilisation),
 -- le DROP est sans risque.
 -- 2026-10-06 (soir) : + 8 colonnes de reprise IFS en fin de table (statut de
 -- reprise, comptes IFS, groupe objet, site, OTP), cf. migration 098.
