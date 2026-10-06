@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance : immobilisations</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #F6F7FA; --surface: #FFFFFF; --surface-sunken: #EEF1F6;
+    --ink: #17202B; --ink-soft: #4C5666; --ink-faint: #7C8698; --line: #DDE2EA;
+    --accent: #2454C7; --accent-ink: #17347A; --accent-soft: #E7EDFB; --accent-soft-line: #C6D4F5;
+    --success: #187A57; --success-soft: #E3F5EC; --success-line: #BFE6D3;
+    --amber: #9C6B0B; --amber-soft: #FBF0DB; --amber-line: #EFD6A0;
+    --shadow: 0 1px 2px rgba(23,32,43,0.04), 0 8px 24px -12px rgba(23,32,43,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10141C; --surface: #171D28; --surface-sunken: #131822;
+      --ink: #E8ECF3; --ink-soft: #A7B0C0; --ink-faint: #737E91; --line: #262E3C;
+      --accent: #7CA0FF; --accent-ink: #C4D4FF; --accent-soft: #1B2947; --accent-soft-line: #2C3F6C;
+      --success: #4FCB9B; --success-soft: #143327; --success-line: #1F5A44;
+      --amber: #E3B255; --amber-soft: #34290F; --amber-line: #5A4517;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10141C; --surface: #171D28; --surface-sunken: #131822;
+    --ink: #E8ECF3; --ink-soft: #A7B0C0; --ink-faint: #737E91; --line: #262E3C;
+    --accent: #7CA0FF; --accent-ink: #C4D4FF; --accent-soft: #1B2947; --accent-soft-line: #2C3F6C;
+    --success: #4FCB9B; --success-soft: #143327; --success-line: #1F5A44;
+    --amber: #E3B255; --amber-soft: #34290F; --amber-line: #5A4517;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.85em; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.45em; color: var(--accent-ink); white-space: nowrap; }
+  a { color: var(--accent); }
+  .masthead { padding: 3.2rem 1.5rem 2.4rem; border-bottom: 1px solid var(--line); background: radial-gradient(1100px 420px at 12% -10%, var(--accent-soft) 0%, transparent 60%); }
+  .masthead-inner { max-width: 920px; margin: 0 auto; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-soft-line); padding: 0.35rem 0.7rem; border-radius: 999px; margin-bottom: 1.2rem; }
+  h1 { font-size: clamp(2rem, 4vw, 2.7rem); line-height: 1.1; letter-spacing: -0.015em; margin: 0 0 0.9rem; font-weight: 700; text-wrap: balance; }
+  .subtitle { font-size: 1.05rem; color: var(--ink-soft); max-width: 66ch; margin: 0 0 1.6rem; }
+  .flow-strip { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .flow-strip .node { font-family: "IBM Plex Mono", monospace; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); padding: 0.4rem 0.75rem; border-radius: 7px; box-shadow: var(--shadow); }
+  .flow-strip .arrow { color: var(--ink-faint); }
+  .layout { max-width: 920px; margin: 0 auto; padding: 2.6rem 1.5rem 5rem; }
+  .toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; margin-bottom: 3rem; }
+  .toc a { text-decoration: none; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem 0.7rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .toc a:hover { border-color: var(--accent-soft-line); }
+  .toc .n { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); }
+  .toc .t { font-size: 0.82rem; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  section.step { padding-bottom: 2.6rem; margin-bottom: 2.6rem; border-bottom: 1px solid var(--line); scroll-margin-top: 1.5rem; }
+  section.step:last-of-type { border-bottom: none; }
+  .step-head { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+  .step-num { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: "IBM Plex Mono", monospace; font-weight: 600; box-shadow: var(--shadow); }
+  .step-kicker { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.2rem; }
+  h2 { font-size: 1.45rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 0.6rem; font-weight: 600; }
+  p { margin: 0.6rem 0; }
+  .intro { color: var(--ink-soft); max-width: 70ch; }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1.2rem; font-size: 0.92rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--surface-sunken); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-soft); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+  .callout { display: flex; gap: 0.8rem; padding: 0.9rem 1.1rem; border-radius: 10px; border: 1px solid var(--accent-soft-line); background: var(--accent-soft); margin: 1rem 0; font-size: 0.95rem; }
+  .callout.warn { border-color: var(--amber-line); background: var(--amber-soft); }
+  .callout.ok { border-color: var(--success-line); background: var(--success-soft); }
+  .callout .ic { flex: none; font-weight: 700; }
+  ul { padding-left: 1.3rem; margin: 0.5rem 0; }
+  li { margin: 0.25rem 0; }
+  .btn { display: inline-block; font-size: 0.82rem; font-weight: 600; padding: 0.1rem 0.55rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pill { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; font-weight: 600; border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
+  .pill.warn { color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber-line); }
+  .pill.ok { color: var(--success); background: var(--success-soft); border: 1px solid var(--success-line); }
+  .back { display: inline-block; margin-bottom: 1.2rem; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <span class="eyebrow">Migration Factory &middot; Finance</span>
+    <h1>Immobilisations SAP &rarr; IFS : calculs et &eacute;crans</h1>
+    <p class="subtitle">
+      Comment Migration Factory reconstruit, &agrave; partir des tables SAP FI-AA, l'extraction transmise
+      aux m&eacute;tiers et la pr&eacute;pare pour la reprise IFS&nbsp;: d'o&ugrave; viennent les chiffres,
+      quelles r&egrave;gles sont appliqu&eacute;es, et comment utiliser les &eacute;crans Finance.
+    </p>
+    <div class="flow-strip">
+      <span class="node">SAP (ANLA, ANLB, ANLC, ANLZ&hellip;)</span><span class="arrow">&rarr;</span>
+      <span class="node">Extraction</span><span class="arrow">&rarr;</span>
+      <span class="node">raw_data</span><span class="arrow">&rarr;</span>
+      <span class="node">Calcul (alimenter_immobilisation)</span><span class="arrow">&rarr;</span>
+      <span class="node">clean_data.immobilisation</span><span class="arrow">&rarr;</span>
+      <span class="node">&Eacute;crans / Excel / export IFS</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <a class="back" href="index.html">&larr; Sommaire des modes d'emploi</a>
+
+  <nav class="toc">
+    <a href="#s1"><span class="n">01</span><span class="t">Sources SAP</span></a>
+    <a href="#s2"><span class="n">02</span><span class="t">Calculs fiche par fiche</span></a>
+    <a href="#s3"><span class="n">03</span><span class="t">Reprise IFS (M&eacute;thode)</span></a>
+    <a href="#s4"><span class="n">04</span><span class="t">&Eacute;cran Immobilisations</span></a>
+    <a href="#s5"><span class="n">05</span><span class="t">&Eacute;cran Comptes</span></a>
+    <a href="#s6"><span class="n">06</span><span class="t">Param&eacute;trages</span></a>
+    <a href="#s7"><span class="n">07</span><span class="t">Contr&ocirc;les et points ouverts</span></a>
+  </nav>
+
+  <!-- 01 -->
+  <section class="step" id="s1">
+    <div class="step-head">
+      <div class="step-num">01</div>
+      <div><div class="step-kicker">Donn&eacute;es</div><h2>D'o&ugrave; viennent les donn&eacute;es</h2></div>
+    </div>
+    <p class="intro">
+      Rien n'est saisi ni repris d'un fichier&nbsp;: chaque rechargement repart des tables SAP extraites dans
+      Migration Factory (sch&eacute;ma <code>raw_data</code>). La soci&eacute;t&eacute; retenue est <b>STJN</b>&nbsp;;
+      toutes ses immobilisations sont charg&eacute;es, sorties et d&eacute;sactiv&eacute;es comprises (le p&eacute;rim&egrave;tre
+      de reprise est trait&eacute; ensuite, voir <a href="#s3">03</a>).
+    </p>
+    <table>
+      <tr><th>Table SAP</th><th>R&ocirc;le</th></tr>
+      <tr><td><code>ANLA</code></td><td>Fiche immobilisation&nbsp;: num&eacute;ro, libell&eacute;s, classe, groupe de comptes, dates (capitalisation, premi&egrave;re acquisition, origine, sortie, d&eacute;sactivation), inventaire, fabricant, fournisseur, quantit&eacute;, ordre d'investissement, &eacute;l&eacute;ment d'OTP (<code>POSNR</code>).</td></tr>
+      <tr><td><code>ANLB</code></td><td>Param&egrave;tres d'amortissement par zone&nbsp;: d&eacute;but d'amortissement, dur&eacute;e (ann&eacute;es + p&eacute;riodes), cl&eacute; d'amortissement.</td></tr>
+      <tr><td><code>ANLC</code></td><td>Valeurs cumul&eacute;es par zone et exercice&nbsp;: valeur d'acquisition, amortissements cumul&eacute;s (normal, sp&eacute;cial, non planifi&eacute;, manuel).</td></tr>
+      <tr><td><code>ANLZ</code></td><td>Imputation&nbsp;: centre de co&ucirc;t, division (site), secteur, emplacement.</td></tr>
+      <tr><td><code>ANKT</code>, <code>T095T</code>, <code>T090NAT</code>, <code>CSKT</code>, <code>TGSBT</code></td><td>Libell&eacute;s (famille, groupe de comptes, type d'amortissement, centre de co&ucirc;t, secteur), en fran&ccedil;ais puis anglais si le fran&ccedil;ais manque.</td></tr>
+      <tr><td><code>T001</code>, <code>T095</code></td><td>Plan comptable de la soci&eacute;t&eacute; et d&eacute;termination des comptes (compte d'immobilisation, d'amortissement cumul&eacute;, de dotation) pour la zone 02.</td></tr>
+      <tr><td><code>PRPS</code></td><td>&Eacute;l&eacute;ments d'OTP (code projet et libell&eacute;), joints par <code>ANLA-POSNR</code>.</td></tr>
+    </table>
+    <div class="callout"><span class="ic">i</span><div>
+      La table r&eacute;sultat <code>clean_data.immobilisation</code> est un <b>instantan&eacute;</b>&nbsp;: elle est vid&eacute;e et
+      recalcul&eacute;e int&eacute;gralement &agrave; chaque rechargement. Les 60 premi&egrave;res colonnes sont, dans le m&ecirc;me ordre
+      et avec les m&ecirc;mes en-t&ecirc;tes, celles du fichier <i>sap_immobilisations_champs_importants</i> transmis aux m&eacute;tiers
+      le 18/08/2026&nbsp;; les suivantes sont les colonnes de reprise IFS.
+    </div></div>
+  </section>
+
+  <!-- 02 -->
+  <section class="step" id="s2">
+    <div class="step-head">
+      <div class="step-num">02</div>
+      <div><div class="step-kicker">R&egrave;gles de calcul</div><h2>Les calculs, fiche par fiche</h2></div>
+    </div>
+
+    <h3>P&eacute;riode et zone de valorisation</h3>
+    <p>
+      Les montants sont les valeurs <b>statutaires</b> de la <b>zone d'amortissement 02</b> (amortissement statutaire
+      CRC 2002-10), lues &agrave; l'<b>ouverture de l'exercice SAP 2027</b>, c'est-&agrave;-dire la situation au
+      <b>01/07/2026</b> (exercice SAP du 1<sup>er</sup> juillet au 30 juin). L'exercice est un param&egrave;tre du
+      chargement (<code>p_gjahr</code>, d&eacute;faut 2027)&nbsp;: &agrave; changer au prochain exercice.
+    </p>
+    <table>
+      <tr><th>Colonne</th><th>Calcul</th></tr>
+      <tr><td>Valeur acquisition d&eacute;but exercice</td><td>Somme de <code>ANLC-KANSW</code> (zone 02, exercice 2027).</td></tr>
+      <tr><td>Mouvements acquisition, Sorties valeur, Dotation annuelle</td><td>0 &agrave; l'ouverture (aucun mouvement de l'exercice n'est repris).</td></tr>
+      <tr><td>Valeur acquisition fin exercice</td><td>= valeur d'acquisition d&eacute;but exercice (mouvements et sorties &agrave; 0).</td></tr>
+      <tr><td>Amortissements cumul&eacute;s</td><td>Valeur absolue de la somme <code>KNAFA + KSAFA + KAAFA + KMAFA</code> (normal, sp&eacute;cial, non planifi&eacute;, manuel), zone 02, exercice 2027. SAP les stocke en n&eacute;gatif, le fichier les pr&eacute;sente en positif.</td></tr>
+      <tr><td>VNC</td><td>Valeur acquisition d&eacute;but exercice &minus; amortissements cumul&eacute;s.</td></tr>
+      <tr><td colspan="2"><span class="pill warn">&agrave; savoir</span> Une immobilisation sans ligne <code>ANLC</code> en zone 02 pour l'exercice (1&nbsp;855 fiches, essentiellement des en-cours et des fiches sorties) a toutes ces colonnes <b>vides</b>, pas &agrave; z&eacute;ro.</td></tr>
+    </table>
+
+    <h3>Amortissement (ANLB)</h3>
+    <table>
+      <tr><th>Colonne</th><th>Calcul</th></tr>
+      <tr><td>Zone amortissement retenue</td><td>Une seule ligne <code>ANLB</code> par fiche, par priorit&eacute; de zone <b>03 &gt; 73 &gt; 02 &gt; 60 &gt; 01</b>, puis la plus r&eacute;cente (<code>BDATU</code>). La zone 01 est peu renseign&eacute;e chez TRIMET, d'o&ugrave; cet ordre.</td></tr>
+      <tr><td>Date d&eacute;but amortissement</td><td><code>ANLB-AFABG</code> de la zone retenue.</td></tr>
+      <tr><td>Dur&eacute;e totale (mois)</td><td><code>NDJAR &times; 12 + NDPER</code>.</td></tr>
+      <tr><td>Date fin amortissement estim&eacute;e</td><td>D&eacute;but + dur&eacute;e en mois &minus; 1 jour&nbsp;; vide si la dur&eacute;e est nulle.</td></tr>
+      <tr><td>Taux amortissement estim&eacute; %</td><td><code>1200 / dur&eacute;e en mois</code> (taux annuel lin&eacute;aire), arrondi &agrave; 4 d&eacute;cimales&nbsp;; vide si la dur&eacute;e est nulle.</td></tr>
+      <tr><td>Type / libell&eacute; type amortissement</td><td><code>ANLB-AFASL</code> et son libell&eacute; <code>T090NAT</code>.</td></tr>
+    </table>
+
+    <h3>Comptes, imputation, dates</h3>
+    <table>
+      <tr><th>Colonne</th><th>Calcul</th></tr>
+      <tr><td>Comptes SAP (immobilisation, amortissement cumul&eacute;, dotation)</td><td><code>T095</code> pour le plan comptable de la soci&eacute;t&eacute; (<code>T001</code>), le groupe de comptes de la fiche (<code>ANLA-KTOGR</code>) et la <b>zone 02</b>. Z&eacute;ros de t&ecirc;te retir&eacute;s.</td></tr>
+      <tr><td>Centre de co&ucirc;t, site, secteur, emplacement</td><td>Ligne <code>ANLZ</code> en cours de validit&eacute; (<code>BDATU</code> = 31/12/9999), sinon la plus r&eacute;cente.</td></tr>
+      <tr><td>Famille immobilisation</td><td>Libell&eacute; de la classe (<code>ANKT</code>).</td></tr>
+      <tr><td>Libell&eacute; compl&eacute;mentaire</td><td><code>ANLA-TXA50</code> (le fichier du 18/08 y recopiait par erreur le libell&eacute; principal&nbsp;; 1&nbsp;682 fiches ont un vrai libell&eacute; compl&eacute;mentaire).</td></tr>
+      <tr><td>Toutes les dates</td><td>Converties en vraies dates&nbsp;; une date SAP &agrave; <code>00000000</code> (affich&eacute;e 00/01/1900 dans Excel) devient vide.</td></tr>
+    </table>
+  </section>
+
+  <!-- 03 -->
+  <section class="step" id="s3">
+    <div class="step-head">
+      <div class="step-num">03</div>
+      <div><div class="step-kicker">Pr&eacute;paration IFS</div><h2>La reprise IFS&nbsp;: la M&eacute;thode automatis&eacute;e</h2></div>
+    </div>
+    <p class="intro">
+      Le classeur de travail du m&eacute;tier d&eacute;crit en 7 &eacute;tapes comment passer de l'extraction &agrave; l'onglet
+      &laquo;&nbsp;Travail&nbsp;&raquo; pr&ecirc;t pour IFS. Chaque &eacute;tape est appliqu&eacute;e par le chargement&nbsp;;
+      l'onglet &laquo;&nbsp;Travail&nbsp;&raquo; de l'&eacute;cran en est le r&eacute;sultat.
+    </p>
+    <table>
+      <tr><th>&Eacute;tape de la M&eacute;thode</th><th>Ce que fait Migration Factory</th></tr>
+      <tr><td>1. V&eacute;rifier les cumuls des comptes immo brutes et des comptes d'amortissement par rapport &agrave; la balance g&eacute;n&eacute;rale.</td><td>Synth&egrave;se &rsaquo; sous-totaux par compte (acquisition, amortissements). Le rapprochement avec la balance reste manuel.</td></tr>
+      <tr><td>2. Supprimer les immobilisations sorties au plus tard &agrave; la date de bascule IFS&nbsp;; reprendre celles sorties apr&egrave;s en effa&ccedil;ant leur date de sortie.</td><td>Colonne <b>Reprise IFS</b>&nbsp;: <code>Oui</code> si pas de date de sortie ou sortie <b>post&eacute;rieure</b> &agrave; la date de bascule (param&egrave;tre, 30/06/2026), sinon <code>Exclue</code> avec le motif. L'onglet Travail ne contient que les fiches reprises, date de sortie vide.</td></tr>
+      <tr><td>3. Convertir les dates de d&eacute;sactivation au format date.</td><td>Fait au chargement (toutes les dates).</td></tr>
+      <tr><td>4. Recontr&ocirc;ler les totaux (valeurs brutes, amortissements), qui doivent rester identiques.</td><td>Synth&egrave;se disponible sur chaque onglet&nbsp;; les 423 fiches exclues n'ont pas de valeur en zone 02, les totaux sont donc inchang&eacute;s.</td></tr>
+      <tr><td>5. Retrier par date d'acquisition.</td><td>Tri de l'onglet Travail (puis num&eacute;ro de fiche).</td></tr>
+      <tr><td>6. Mettre &agrave; blanc les dates 00/01/1900.</td><td>Fait au chargement.</td></tr>
+      <tr><td>7. Remplir les colonnes du gabarit&nbsp;: groupe objet, comptes PCG &rarr; IFS, site SJ / CS.</td><td>Colonnes <b>OBJECT_GROUP_ID</b>, <b>Compte immobilisation IFS</b>, <b>Compte amortissement cumul&eacute; IFS</b>, <b>Site IFS</b> (voir ci-dessous), plus l'<b>&eacute;l&eacute;ment d'OTP</b> demand&eacute; par le m&eacute;tier.</td></tr>
+    </table>
+
+    <h3>R&egrave;gles des colonnes de reprise</h3>
+    <table>
+      <tr><th>Colonne</th><th>R&egrave;gle</th></tr>
+      <tr><td>Reprise IFS / Motif d'exclusion</td><td>Date de sortie (<code>ANLA-ABGDT</code>) compar&eacute;e &agrave; la <b>date de bascule</b> (Configuration &rsaquo; Valeurs par d&eacute;faut, <code>date_bascule_ifs</code>). Une sortie post&eacute;rieure &agrave; la bascule est reprise&nbsp;: la sortie sera saisie dans IFS, pas dans la reprise.</td></tr>
+      <tr><td>Compte immobilisation IFS, Compte amortissement cumul&eacute; IFS</td><td>Conversion du compte SAP par la table <b>Conversion cpte g&eacute;n&eacute;ral</b> (&eacute;cran Finance &rsaquo; Comptes, transcodification <code>FA_ACCOUNT</code>). Compte absent de la table &rarr; vide et signal&eacute;.</td></tr>
+      <tr><td>OBJECT_GROUP_ID</td><td>Groupe objet IFS d&eacute;duit de la <b>classe</b> d'immobilisation (transcodification <code>FA_OBJECT_GROUP</code>, ex. 00515000 &rarr; 515-001). Pour les classes o&ugrave; le m&eacute;tier a choisi un sous-groupe fiche par fiche (00411000, 00451000, 00625000, 00641000), l'exception par num&eacute;ro de fiche (<code>FA_OBJECT_GROUP_IMMO</code>) prime. Classe sans r&egrave;gle &rarr; vide et signal&eacute;.</td></tr>
+      <tr><td>Site IFS</td><td>Division SAP 9200 &rarr; <b>SJ</b>, 9000 &rarr; <b>CS</b>. Sans division (122 fiches)&nbsp;: secteur 9030 &laquo;&nbsp;Fonderie Castel&nbsp;&raquo; &rarr; CS, sinon SJ.</td></tr>
+      <tr><td>&Eacute;l&eacute;ment d'OTP / Libell&eacute; OTP</td><td><code>ANLA-POSNR</code> &rarr; <code>PRPS</code> (code <code>POSID</code>, libell&eacute; <code>POST1</code>). R&eacute;pond &agrave; la question &laquo;&nbsp;o&ugrave; est le code projet des fiches&nbsp;?&nbsp;&raquo; (<code>ANLA-PROJN</code> est vide dans SAP). Renseign&eacute; sur 3&nbsp;550 fiches.</td></tr>
+    </table>
+  </section>
+
+  <!-- 04 -->
+  <section class="step" id="s4">
+    <div class="step-head">
+      <div class="step-num">04</div>
+      <div><div class="step-kicker">Utilisation</div><h2>&Eacute;cran Finance &rsaquo; Immobilisations</h2></div>
+    </div>
+    <p class="intro">Menu <b>Finance</b>, carte <b>Immobilisations</b>.</p>
+
+    <h3>Les deux onglets</h3>
+    <ul>
+      <li><b>Immobilisations (extraction SAP)</b>&nbsp;: toutes les fiches STJN (7&nbsp;748), les 60 colonnes de l'extraction avec leurs en-t&ecirc;tes d'origine. Le filtre <b>Reprise IFS</b> permet d'isoler les fiches &agrave; reprendre ou exclues&nbsp;; les exclues apparaissent gris&eacute;es avec le motif au survol.</li>
+      <li><b>Travail (reprise IFS)</b>&nbsp;: les fiches &agrave; reprendre (7&nbsp;325), tri&eacute;es par date d'acquisition, date de sortie effac&eacute;e, avec <code>OBJECT_GROUP_ID</code> &agrave; sa place du classeur puis les colonnes converties (comptes IFS, site, OTP). Les &eacute;tapes de la M&eacute;thode sont rappel&eacute;es en t&ecirc;te d'onglet.</li>
+    </ul>
+
+    <h3>Filtres et indicateurs</h3>
+    <ul>
+      <li>Recherche (touche Entr&eacute;e) sur le num&eacute;ro, le libell&eacute;, la famille, le centre de co&ucirc;t, l'inventaire, le compte.</li>
+      <li>Filtres <b>Secteur</b> et <b>Statut</b> (actives / d&eacute;sactiv&eacute;es).</li>
+      <li>Pastilles&nbsp;: nombre de fiches, acquisition, amortissements cumul&eacute;s, VNC <b>de la s&eacute;lection filtr&eacute;e</b>. Les pastilles orange <span class="pill warn">sans groupe objet</span> et <span class="pill warn">sans compte IFS</span> comptent les fiches &agrave; reprendre dont la conversion manque&nbsp;; un clic ouvre l'&eacute;cran o&ugrave; la compl&eacute;ter.</li>
+    </ul>
+
+    <h3>Boutons</h3>
+    <table>
+      <tr><th>Bouton</th><th>Effet</th></tr>
+      <tr><td><span class="btn">Synth&egrave;se</span></td><td>KPI et sous-totaux par type d'amortissement, famille, secteur et compte (SAP &rarr; IFS), sur la s&eacute;lection en cours. M&ecirc;mes blocs que l'onglet Synth&egrave;se du classeur.</td></tr>
+      <tr><td><span class="btn">Exporter Excel</span></td><td>Le classeur complet, &agrave; l'image du classeur m&eacute;tier&nbsp;: onglets <b>Immobilisations</b>, <b>Travail</b>, <b>Conversion cpte g&eacute;n&eacute;ral</b>, <b>TRansco comptes generaux</b>, <b>Synth&egrave;se</b>. Dates et montants typ&eacute;s, en-t&ecirc;te fig&eacute; avec filtres. Les filtres de l'&eacute;cran s'appliquent &agrave; l'onglet Immobilisations et &agrave; la Synth&egrave;se&nbsp;; Travail ne retient que les fiches &agrave; reprendre.</td></tr>
+      <tr><td><span class="btn">Recalculer</span></td><td>Recharge la table depuis les tables SAP <b>d&eacute;j&agrave; extraites</b> dans Migration Factory, sans appeler SAP. &Agrave; utiliser apr&egrave;s une modification de param&eacute;trage (conversion de compte, groupe objet, date de bascule). Quelques secondes.</td></tr>
+      <tr><td><span class="btn primary">Synchroniser SAP</span></td><td>R&eacute;-extrait de SAP les 12 tables sources (<code>ANLA, ANLB, ANLC, ANLZ, ANKT, T001, T095, T095T, T090NAT, CSKT, TGSBT, PRPS</code>) puis recharge la table. &Agrave; utiliser quand SAP a chang&eacute; (nouvelles fiches, sorties, cl&ocirc;ture). Une barre de progression suit l'extraction&nbsp;; la liste se rafra&icirc;chit &agrave; la fin.</td></tr>
+    </table>
+    <div class="callout"><span class="ic">i</span><div>
+      Le m&ecirc;me chargement est disponible dans <b>Chargement des donn&eacute;es</b> (module &laquo;&nbsp;Immobilisations SAP (format metiers)&nbsp;&raquo;)
+      et l'export CSV dans <b>Export des donn&eacute;es &rsaquo; Export Immobilisations</b>. Un seul rechargement &agrave; la fois&nbsp;: si un autre
+      est en cours, le bouton le signale.
+    </div></div>
+  </section>
+
+  <!-- 05 -->
+  <section class="step" id="s5">
+    <div class="step-head">
+      <div class="step-num">05</div>
+      <div><div class="step-kicker">Utilisation</div><h2>&Eacute;cran Finance &rsaquo; Comptes des immobilisations</h2></div>
+    </div>
+    <p class="intro">
+      R&eacute;unit les onglets &laquo;&nbsp;Conversion cpte g&eacute;n&eacute;ral&nbsp;&raquo; et &laquo;&nbsp;TRansco comptes generaux&nbsp;&raquo; du classeur.
+    </p>
+    <ul>
+      <li><b>Conversion cpte g&eacute;n&eacute;ral</b>&nbsp;: la table PCG US SAP &rarr; PCG FR SAP &rarr; PCG IFS avec son libell&eacute; (28 comptes au d&eacute;part). <span class="btn">Ajouter</span> ou le crayon ouvre la saisie en ligne&nbsp;; l'interrupteur d&eacute;sactive une conversion sans la supprimer. Les lignes sont celles de la transcodification <code>FA_ACCOUNT</code>, &eacute;galement visibles dans Configuration &rsaquo; Transcodification.</li>
+      <li><b>TRansco comptes g&eacute;n&eacute;raux des fiches</b>&nbsp;: les comptes r&eacute;ellement port&eacute;s par les fiches (compte d'immobilisation et compte d'amortissement cumul&eacute;), avec le compte IFS r&eacute;solu <b>en direct</b>, le nombre de fiches, celles &agrave; reprendre, l'acquisition, les amortissements et la VNC. Un compte <span class="pill warn">sans conversion</span> a un bouton <span class="btn">Convertir</span> qui pr&eacute;-remplit la saisie.</li>
+      <li>Apr&egrave;s une saisie, <span class="btn primary">Recalculer les immobilisations</span> applique la conversion aux fiches (onglet Travail, export).</li>
+    </ul>
+  </section>
+
+  <!-- 06 -->
+  <section class="step" id="s6">
+    <div class="step-head">
+      <div class="step-num">06</div>
+      <div><div class="step-kicker">Configuration</div><h2>O&ugrave; se trouvent les param&eacute;trages</h2></div>
+    </div>
+    <table>
+      <tr><th>Param&eacute;trage</th><th>&Eacute;cran</th><th>Contenu</th></tr>
+      <tr><td>Conversion des comptes</td><td>Finance &rsaquo; Comptes (ou Configuration &rsaquo; Transcodification, cat&eacute;gorie <code>FA_ACCOUNT</code>)</td><td>Compte PCG SAP &rarr; compte IFS.</td></tr>
+      <tr><td>Groupe objet par classe</td><td>Configuration &rsaquo; Transcodification, cat&eacute;gorie <code>FA_OBJECT_GROUP</code></td><td>Classe d'immobilisation (8 caract&egrave;res, ex. <code>00515000</code>) &rarr; <code>OBJECT_GROUP_ID</code> (ex. <code>515-001</code>).</td></tr>
+      <tr><td>Groupe objet par fiche</td><td>Configuration &rsaquo; Transcodification, cat&eacute;gorie <code>FA_OBJECT_GROUP_IMMO</code></td><td>Num&eacute;ro d'immobilisation &rarr; groupe, pour les exceptions &agrave; la r&egrave;gle de classe (99 fiches au d&eacute;part).</td></tr>
+      <tr><td>Date de bascule IFS</td><td>Configuration &rsaquo; Valeurs par d&eacute;faut, module <code>immobilisation</code>, colonne <code>date_bascule_ifs</code></td><td>Format <code>AAAA-MM-JJ</code>, 2026-06-30 au d&eacute;part.</td></tr>
+      <tr><td>Exercice de valorisation</td><td>Param&egrave;tre du chargement (<code>p_gjahr</code>, d&eacute;faut 2027)</td><td>&Agrave; faire changer par l'&eacute;quipe Migration Factory au passage &agrave; l'exercice suivant.</td></tr>
+    </table>
+    <div class="callout ok"><span class="ic">&#10003;</span><div>
+      Toute modification de param&eacute;trage est prise en compte au prochain <b>Recalculer</b> (ou Synchroniser SAP)&nbsp;: les
+      donn&eacute;es affich&eacute;es ne changent jamais toutes seules.
+    </div></div>
+  </section>
+
+  <!-- 07 -->
+  <section class="step" id="s7">
+    <div class="step-head">
+      <div class="step-num">07</div>
+      <div><div class="step-kicker">V&eacute;rifier</div><h2>Contr&ocirc;les et points ouverts</h2></div>
+    </div>
+    <h3>Chiffres de r&eacute;f&eacute;rence (06/10/2026)</h3>
+    <table>
+      <tr><th>Indicateur</th><th>Valeur</th></tr>
+      <tr><td>Fiches STJN charg&eacute;es</td><td class="num">7&nbsp;748 (7&nbsp;725 dans le fichier du 18/08&nbsp;: 23 fiches cr&eacute;&eacute;es depuis)</td></tr>
+      <tr><td>&Agrave; reprendre / exclues (sortie &le; 30/06/2026)</td><td class="num">7&nbsp;325 / 423</td></tr>
+      <tr><td>Valeur d'acquisition d&eacute;but exercice</td><td class="num">300&nbsp;323&nbsp;895,07</td></tr>
+      <tr><td>Amortissements cumul&eacute;s</td><td class="num">174&nbsp;088&nbsp;108,19</td></tr>
+      <tr><td>VNC</td><td class="num">126&nbsp;235&nbsp;786,88</td></tr>
+      <tr><td>Groupe objet</td><td>Identique &agrave; l'onglet Travail du classeur sur ses 7&nbsp;302 fiches (8 fiches de classe 00505000 laiss&eacute;es vides par le m&eacute;tier re&ccedil;oivent 505-001 par la r&egrave;gle de classe).</td></tr>
+    </table>
+    <h3>&Agrave; compl&eacute;ter par le m&eacute;tier</h3>
+    <ul>
+      <li><b>3 comptes sans conversion IFS</b> (55 fiches)&nbsp;: 46112000 (terrains am&eacute;nag&eacute;s), 46322100, 14141000 (cr&eacute;dit-bail) &rarr; &eacute;cran Comptes, bouton Convertir.</li>
+      <li><b>10 classes sans groupe objet</b> (2&nbsp;334 fiches &agrave; reprendre)&nbsp;: en-cours 00140000 et 00160000, am&eacute;nagements &eacute;lectriques 00585000, transformateurs 00504000, mobilier 00651000, int&eacute;r&ecirc;ts intercalaires 00518000, canalisations 00503000, 00505000 (8 fiches), 00584000, 00561000 &rarr; Transcodification <code>FA_OBJECT_GROUP</code>.</li>
+      <li><b>Site</b>&nbsp;: 4 fiches en division 9200 avec le secteur &laquo;&nbsp;Fonderie Castel&nbsp;&raquo; sont affect&eacute;es &agrave; SJ (la division prime). &Agrave; confirmer.</li>
+      <li><b>Gabarit de reprise IFS</b> (onglets H, K, P cit&eacute;s dans le classeur)&nbsp;: non encore fourni&nbsp;; l'export produira une feuille par onglet d&egrave;s r&eacute;ception.</li>
+    </ul>
+    <div class="callout warn"><span class="ic">!</span><div>
+      Le rechargement ne doit pas &ecirc;tre lanc&eacute; pendant qu'un gros export est en cours de g&eacute;n&eacute;ration par un autre utilisateur&nbsp;;
+      le cas &eacute;ch&eacute;ant il se termine normalement mais peut attendre quelques secondes.
+    </div></div>
+  </section>
+
+</main>
+</body>
+</html>
