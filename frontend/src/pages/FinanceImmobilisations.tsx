@@ -348,8 +348,12 @@ const FinanceImmobilisations: React.FC = () => {
       {stats && (
         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Chip label={`${stats.immobilisations.toLocaleString('fr-FR')} immobilisations`} color="primary" />
-          <Chip label={`${stats.a_reprendre.toLocaleString('fr-FR')} à reprendre`} color="success" variant="outlined" />
-          <Chip label={`${stats.exclues.toLocaleString('fr-FR')} exclues (sortie avant bascule)`} variant="outlined" />
+          {reprise === '' && (
+            <>
+              <Chip label={`${stats.a_reprendre.toLocaleString('fr-FR')} à reprendre`} color="success" variant="outlined" />
+              <Chip label={`${stats.exclues.toLocaleString('fr-FR')} exclues (sortie avant bascule)`} variant="outlined" />
+            </>
+          )}
           <Chip label={`Acquisition : ${euros(stats.valeur_acquisition)} €`} />
           <Chip label={`Amortissements cumulés : ${euros(stats.amort_cumules)} €`} />
           <Chip label={`VNC : ${euros(stats.vnc)} €`} color="success" />

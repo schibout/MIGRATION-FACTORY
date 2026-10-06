@@ -476,7 +476,9 @@ def _excel_response(title, libelles, rows, numeriques, prefix, synthese=None):
         cell.alignment = Alignment(wrap_text=True, vertical='top')
     ws.row_dimensions[1].height = 45
     for r in rows:
-        ws.append([float(v) if isinstance(v, Decimal) else v for v in r])
+        ws.append([float(v) if isinstance(v, Decimal)
+                   else ('Oui' if v else 'Non') if isinstance(v, bool) else v
+                   for v in r])
         for cell in ws[ws.max_row]:
             # Texte SAP commencant par '=' : openpyxl en ferait une formule -> forcer le texte
             if cell.data_type == 'f':
