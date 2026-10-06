@@ -5,6 +5,7 @@ AS $function$
 DECLARE
     v_count_inserted INTEGER := 0;
     v_count_cfv INTEGER := 0;
+    v_count_asap INTEGER := 0;
     v_max_seq NUMERIC := 0;
     v_start_time TIMESTAMP;
     v_end_time TIMESTAMP;
@@ -127,6 +128,80 @@ BEGIN
 
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
     RAISE NOTICE 'Activités projet de type porte insérées: %', v_count_inserted;
+
+    ---------------------------------------------------------------------------
+    -- Dates des portes P0..P6 : le fichier ASAP « projets à reprendre »
+    -- (raw_data.sharepoint_project_to_save, écran /projets/a-reprendre) fait foi
+    -- (demande métier 2026-10-06). Il porte la DERNIÈRE date de chaque porte
+    -- (replanification bis/ter comprise) ; v_portes_detail ne garde que la porte
+    -- d'origine du dernier état -> 118 dates divergentes, 142 portes absentes.
+    -- Les portes bis/ter et P5 (absentes du fichier) gardent leur date d'état.
+    ---------------------------------------------------------------------------
+    DROP TABLE IF EXISTS tmp_porte_asap;
+    CREATE TEMP TABLE tmp_porte_asap ON COMMIT DROP AS
+    SELECT DISTINCT ON (SUBSTRING(t."Numéro du projet", 1, 10), g.gate)
+        SUBSTRING(t."Numéro du projet", 1, 10) AS project_id,
+        g.gate,
+        TO_DATE(TRIM(g.d), 'DD/MM/YYYY') AS gate_date
+    FROM raw_data.sharepoint_project_to_save t
+    CROSS JOIN LATERAL (VALUES ('P0', t."P0"), ('P1', t."P1"), ('P2', t."P2"),
+                               ('P3', t."P3"), ('P4', t."P4"), ('P6', t."P6")) g(gate, d)
+    WHERE TRIM(g.d) ~ '^\d{2}/\d{2}/\d{4}$'
+    ORDER BY SUBSTRING(t."Numéro du projet", 1, 10), g.gate, t.loaded_at DESC NULLS LAST;
+
+    UPDATE clean_data.project_activity pa
+    SET early_start = a.gate_date, early_finish = a.gate_date,
+        late_start = a.gate_date, late_finish = a.gate_date,
+        actual_start = a.gate_date, actual_finish = a.gate_date
+    FROM tmp_porte_asap a
+    WHERE pa.project_id = a.project_id
+      AND pa.description = 'Porte ' || a.gate
+      AND pa.early_start IS DISTINCT FROM a.gate_date;
+    GET DIAGNOSTICS v_count_asap = ROW_COUNT;
+    RAISE NOTICE 'Dates de portes réalignées sur le fichier ASAP: %', v_count_asap;
+
+    SELECT COALESCE(MAX(activity_seq), 0) INTO v_max_seq FROM clean_data.project_activity;
+
+    INSERT INTO clean_data.project_activity (
+        activity_seq, project_id, sub_project_id, activity_no, description, activity_responsible,
+        early_start, early_finish, late_start, late_finish, actual_start, actual_finish,
+        task_id, progress_method_db, planned_cost_driver_db, exclude_periodical_cap_db,
+        exclude_resource_progress_db, exclude_from_integrations_db, node_type_db,
+        mandatory_invoice_comment_db
+    )
+    SELECT
+        v_max_seq + ROW_NUMBER() OVER (ORDER BY a.project_id, a.gate),
+        a.project_id,
+        public.get_default_value('clean_data.project_activity', 'sub_project_id'),
+        COALESCE(public.get_transcodification('Activity', a.gate, 'ASAP', 'IFS'), a.gate),
+        'Porte ' || a.gate,
+        COALESCE(pm.person_id, pb.manager),
+        a.gate_date, a.gate_date, a.gate_date, a.gate_date, a.gate_date, a.gate_date,
+        public.get_default_value('clean_data.project_activity', 'task_id')::numeric,
+        public.get_default_value('clean_data.project_activity', 'progress_method_db'),
+        public.get_default_value('clean_data.project_activity', 'planned_cost_driver_db'),
+        public.get_default_value('clean_data.project_activity', 'exclude_periodical_cap_db'),
+        public.get_default_value('clean_data.project_activity', 'exclude_resource_progress_db'),
+        public.get_default_value('clean_data.project_activity', 'exclude_from_integrations_db'),
+        public.get_default_value('clean_data.project_activity', 'node_type_db'),
+        public.get_default_value('clean_data.project_activity', 'mandatory_invoice_comment_db')
+    FROM tmp_porte_asap a
+    JOIN clean_data.project_base pb ON pb.project_id = a.project_id
+    LEFT JOIN LATERAL (
+        SELECT u.person_id
+        FROM raw_data.sharepoint_projets sp
+        JOIN raw_data.sharepoint_users u ON u.sharepoint_user_id = sp.pm_id
+        WHERE SUBSTRING(sp.project_number, 1, 10) = a.project_id
+        ORDER BY sp.sharepoint_id
+        LIMIT 1
+    ) pm ON TRUE
+    WHERE NOT EXISTS (
+        SELECT 1 FROM clean_data.project_activity pa
+        WHERE pa.project_id = a.project_id AND pa.description = 'Porte ' || a.gate
+    );
+    GET DIAGNOSTICS v_count_asap = ROW_COUNT;
+    v_count_inserted := v_count_inserted + v_count_asap;
+    RAISE NOTICE 'Portes du fichier ASAP ajoutées (absentes du dernier état): %', v_count_asap;
 
     ---------------------------------------------------------------------------
     -- Activités CFV : les Commissions Feu Vert deviennent des activités projet.
