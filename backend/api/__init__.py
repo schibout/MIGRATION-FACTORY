@@ -43,6 +43,7 @@ from .ai_assistant import ai_blueprint
 from .ai_config import ai_config_blueprint
 from .hermes import hermes_blueprint
 from .interface_contracts import interface_contracts_blueprint
+from .finance import finance_blueprint
 
 def register_blueprints(app):
     """Enregistrement des blueprints d'API dans l'application"""
@@ -106,6 +107,8 @@ def register_blueprints(app):
     # Contrats d'interface SAP -> IFS (remplace le classeur Excel fige)
     app.register_blueprint(interface_contracts_blueprint,
                            url_prefix=f'{API_PREFIX}/interface-contracts')
+    # Menu Finance : immobilisations (liste + synchronisation SAP)
+    app.register_blueprint(finance_blueprint, url_prefix=f'{API_PREFIX}/finance')
 
     # Enregistrement des blueprints SAP
     register_sap_blueprints(app, API_PREFIX)

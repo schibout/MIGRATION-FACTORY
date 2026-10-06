@@ -24,6 +24,8 @@ import ExportMaintenance from './pages/ExportMaintenance';
 import ExportOperation from './pages/ExportOperation';
 import ExportCommandeAchat from './pages/ExportCommandeAchat';
 import { AccountBalance as AccountBalanceIcon } from '@mui/icons-material';
+import Finance from './pages/Finance';
+import FinanceImmobilisations from './pages/FinanceImmobilisations';
 import ExportPmAction from './pages/ExportPmAction';
 import ExportProjects from './pages/ExportProjects';
 import ExportStructureMaintenance from './pages/ExportStructureMaintenance';
@@ -234,6 +236,8 @@ function App() {
           <Route path="export/maintenance" element={<ExportMaintenance />} />
           <Route path="export/pm-action" element={<ExportPmAction />} />
           <Route path="export/operations" element={<ExportOperation />} />
+          <Route path="finance" element={<Finance />} />
+          <Route path="finance/immobilisations" element={<FinanceImmobilisations />} />
           <Route path="export/commandes-achat" element={<ExportCommandeAchat />} />
           <Route
             path="export/immobilisations"
