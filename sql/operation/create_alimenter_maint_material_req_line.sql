@@ -226,7 +226,12 @@ BEGIN
     LEFT JOIN raw_data.aufk a ON a.mandt = r.mandt AND a.aufnr = r.aufnr
     WHERE nullif(trim(coalesce(r.matnr,'')), '') IS NOT NULL
       AND (r.xloek IS NULL OR trim(r.xloek) = '')
-      AND (r.kzear IS NULL OR trim(r.kzear) = '')
+      -- Composants de type article uniquement (RESB.POSTP = 'L', article
+      -- stocke), comme l'onglet Composants de l'ecran Operations ; les postes
+      -- non stockes (N), texte (T) et autres sont ecartes. Le filtre sur la
+      -- sortie finale (KZEAR = 'X') est retire (2026-10-07, demande explicite) :
+      -- il ne gardait que ~7 % des composants (473 lignes au lieu de ~5 900).
+      AND r.postp = 'L'
       -- Besoins en cours ou futurs uniquement : en-tete d'ordre present
       -- (134 lignes RESB n'en ont pas, dont 94 sans AUFNR) et ordre non clos
       -- (cf. clean_data.v_sap_ordre_clos, 00_operation_helpers.sql).
