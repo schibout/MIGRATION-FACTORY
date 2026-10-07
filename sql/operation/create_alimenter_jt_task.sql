@@ -53,6 +53,7 @@ BEGIN
         reported_by,
         reported_date,
         mpb_latest_update,
+        earliest_start,
         latest_start,
         latest_finish,
         duration,
@@ -320,10 +321,12 @@ BEGIN
         reported_by,
         reported_date,
         mpb_latest_update,
-        -- Seules LATEST_START / LATEST_FINISH sont alimentees (demande explicite
-        -- 2026-10-07) avec les dates planifiees SAP (AFVV FSAV/FSED, sinon AFKO
-        -- GSTRP/GLTRP) ; l'une remplace l'autre si elle manque, puis reported_date.
+        -- Seules EARLIEST_START, LATEST_START et LATEST_FINISH sont alimentees
+        -- (demande explicite 2026-10-07) avec les dates planifiees SAP (AFVV
+        -- FSAV/FSED, sinon AFKO GSTRP/GLTRP) ; EARLIEST_START = LATEST_START.
+        -- L'une remplace l'autre si elle manque, puis reported_date.
         -- PLANNED_* et ACTUAL_* restent NULL (actual_finish ne sert plus qu'au filtre).
+        COALESCE(planned_start, planned_finish, reported_date),
         COALESCE(planned_start, planned_finish, reported_date),
         COALESCE(planned_finish, planned_start, reported_date),
         duration,
