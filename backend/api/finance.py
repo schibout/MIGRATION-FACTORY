@@ -649,11 +649,14 @@ def _feuille_tableau(ws, title, libelles, rows, numeriques):
         cell.fill = PatternFill('solid', fgColor='1F4E78')
         cell.alignment = Alignment(wrap_text=True, vertical='top')
     ws.row_dimensions[1].height = 45
-    for r in rows:
+    # ws.max_row / ws[n] parcourent toutes les cellules : indices tenus a la main,
+    # sinon l'export est quadratique (7 748 x 60 cellules -> ne se termine pas).
+    for i, r in enumerate(rows, 2):
         ws.append([float(v) if isinstance(v, Decimal)
                    else ('Oui' if v else 'Non') if isinstance(v, bool) else v
                    for v in r])
-        for cell in ws[ws.max_row]:
+        for j in range(1, len(colonnes) + 1):
+            cell = ws.cell(i, j)
             # Texte SAP commencant par '=' : openpyxl en ferait une formule -> forcer le texte
             if cell.data_type == 'f':
                 cell.data_type = 's'
