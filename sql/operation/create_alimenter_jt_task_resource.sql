@@ -19,6 +19,7 @@ BEGIN
         planned_quantity,
         "offset",
         demand_type_db,
+        resource_seq,
         resource_group_seq,
         wo_no,
         sourcing_option_db,
@@ -99,22 +100,21 @@ BEGIN
         FROM src
     )
     SELECT
-        task_seq,
-        task_resource_seq,
-        planned_quantity,
-        offset_value,
-        demand_type_db,
-        resource_group_seq,
-        wo_no,
-        sourcing_option_db,
-        crew_time_invoicing
+        m.task_seq,
+        m.task_resource_seq,
+        m.planned_quantity,
+        m.offset_value,
+        m.demand_type_db,
+        -- RESOURCE_SEQ : organisation de maintenance de la tache (SJ-MATC...),
+        -- deja transcodee dans jt_task (demande explicite 2026-10-07, migration 101).
+        t.organization_id,
+        m.resource_group_seq,
+        m.wo_no,
+        m.sourcing_option_db,
+        m.crew_time_invoicing
     FROM mapped m
-    WHERE task_seq IS NOT NULL
-      AND EXISTS (
-          SELECT 1
-          FROM clean_data.jt_task t
-          WHERE t.task_seq = m.task_seq
-      );
+    -- jt_task.task_seq unique par construction : la jointure ne duplique pas.
+    JOIN clean_data.jt_task t ON t.task_seq = m.task_seq;
 
     GET DIAGNOSTICS v_count_inserted = ROW_COUNT;
     v_end_time := clock_timestamp();

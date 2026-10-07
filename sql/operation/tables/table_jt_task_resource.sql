@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS clean_data.jt_task_resource (
     created_date timestamp without time zone,
     demand_type varchar(4000),
     demand_type_db varchar(20),
-    resource_seq numeric,
+    resource_seq varchar(20),
     resource_group_seq numeric,
     wo_no numeric,
     task_plan_line_seq numeric,
@@ -44,7 +44,7 @@ COMMENT ON COLUMN clean_data.jt_task_resource.created_by IS 'ne pas renseigner';
 COMMENT ON COLUMN clean_data.jt_task_resource.created_date IS 'ne pas renseigner';
 COMMENT ON COLUMN clean_data.jt_task_resource.demand_type IS 'ne pas renseigner';
 COMMENT ON COLUMN clean_data.jt_task_resource.demand_type_db IS 'PERSON ou EQUIPMENT';
-COMMENT ON COLUMN clean_data.jt_task_resource.resource_seq IS 'ne pas renseigner';
+COMMENT ON COLUMN clean_data.jt_task_resource.resource_seq IS 'Organisation de maintenance de la tache (jt_task.organization_id, ex. SJ-MATC)';
 COMMENT ON COLUMN clean_data.jt_task_resource.resource_group_seq IS 'Resource_Group_seq = groupe ressource ; info dans RESOURCE_DETAIL';
 COMMENT ON COLUMN clean_data.jt_task_resource.wo_no IS '= No BT de JT_TASK';
 COMMENT ON COLUMN clean_data.jt_task_resource.task_plan_line_seq IS 'ne pas renseigner';
