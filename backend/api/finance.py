@@ -42,8 +42,9 @@ logger = logging.getLogger(__name__)
 # Tables lues par clean_data.alimenter_immobilisation
 # (sql/immobilisation/02_alimenter_immobilisation.sql).
 # Uniquement des tables transparentes : une vue SAP s'extrait vide.
+# ANLP : date d'arrete (derniere periode d'amortissement comptabilisee).
 IMMO_SAP_TABLES = ['ANLA', 'ANLB', 'ANLC', 'ANLZ', 'ANKT', 'T001', 'T095', 'T095T',
-                   'T090NAT', 'CSKT', 'TGSBT', 'PRPS']
+                   'T090NAT', 'CSKT', 'TGSBT', 'PRPS', 'ANLP']
 
 EXTRACTION_TIMEOUT_SECONDS = 3600
 EXTRACTION_POLL_SECONDS = 10
@@ -111,12 +112,12 @@ LIBELLES = [
     ('zone_valorisation', 'Zone valorisation retenue (ANLC-AFABE)'),
     ('exercice_valorisation', 'Exercice de valorisation retenu (ANLC-GJAHR)'),
     ('valeur_acq_debut_exercice', 'Valeur acquisition début exercice (ANLC-KANSW)'),
-    ('mouvements_acq_exercice', 'Mouvements acquisition exercice (ANLC-ANSWL)'),
-    ('sorties_exercice', 'Sorties valeur exercice (ANLC-ABGAN)'),
-    ('valeur_acq_fin_exercice', 'Valeur acquisition fin exercice (ANLC-KANSW + ANLC-ANSWL - ANLC-ABGAN)'),
-    ('amort_cumules', "Amortissements cumulés à l'ouverture de l'exercice (ANLC-KNAFA/KSAFA/KAAFA/KMAFA)"),
-    ('vnc', "VNC à l'ouverture de l'exercice (calcul)"),
-    ('dotation_annuelle', "Dotation annuelle comptabilisée (non incluse à l'ouverture)"),
+    ('mouvements_acq_exercice', "Entrées de l'exercice à l'arrêté (ANLC-ANSWL > 0)"),
+    ('sorties_exercice', "Sorties de l'exercice à l'arrêté (ANLC-ANSWL < 0)"),
+    ('valeur_acq_fin_exercice', "Valeur acquisition à l'arrêté (ANLC-KANSW + ANLC-ANSWL)"),
+    ('amort_cumules', "Amortissements cumulés à l'arrêté (ANLC-K*AFA + *AFAG + *AFAV + *AFAL)"),
+    ('vnc', "VNC à l'arrêté (calcul)"),
+    ('dotation_annuelle', "Dotation de l'exercice comptabilisée à l'arrêté (ANLC-*AFAG)"),
     ('blocage_comptabilisation', 'Blocage comptabilisation (ANLA-XSPEB)'),
     ('date_sortie', 'Date sortie (ANLA-ABGDT)'),
     ('date_desactivation', 'Date désactivation (ANLA-DEAKT)'),
@@ -276,7 +277,7 @@ def list_immobilisations():
     cols, rows = _select_immo(vue, clause, {**params, 'limit': page_size,
                                             'offset': (page - 1) * page_size}, limit=True)
 
-    # Totaux sur la selection filtree (valeurs statutaires a l'ouverture)
+    # Totaux sur la selection filtree (valeurs statutaires a la date d'arrete)
     stats = db.session.execute(text(
         'SELECT count(*) AS immobilisations, '
         'count(*) FILTER (WHERE date_desactivation IS NULL) AS actives, '
@@ -285,9 +286,9 @@ def list_immobilisations():
         'count(*) FILTER (WHERE reprise_ifs AND compte_immobilisation IS NOT NULL '
         '                   AND compte_immobilisation_ifs IS NULL) AS sans_compte_ifs, '
         'count(*) FILTER (WHERE reprise_ifs AND object_group_id IS NULL) AS sans_groupe_objet, '
-        'sum(valeur_acq_debut_exercice) AS valeur_acquisition, '
+        'sum(valeur_acq_fin_exercice) AS valeur_acquisition, '
         'sum(amort_cumules) AS amort_cumules, sum(vnc) AS vnc, '
-        'max(exercice_valorisation) AS exercice, '
+        'max(exercice_valorisation) AS exercice, max(date_arrete) AS date_arrete, '
         "public.get_default_value('clean_data.immobilisation', 'date_bascule_ifs', 'STANDARD') AS date_bascule "
         f'FROM clean_data.immobilisation {clause}'), params).mappings().one()
     secteurs = [dict(r) for r in db.session.execute(text(
@@ -326,9 +327,9 @@ def _synthese(clause, params):
     rows = db.session.execute(text(
         'SELECT ' + ', '.join(f'GROUPING({c}) AS g_{c}' for c in axes) + ', '
         + ', '.join(axes) + ', max(compte_immobilisation_ifs) AS compte_ifs, '
-        'count(*) AS nombre, sum(valeur_acq_debut_exercice) AS acquisition, '
+        'count(*) AS nombre, sum(valeur_acq_fin_exercice) AS acquisition, '
         'sum(amort_cumules) AS amortissements, sum(vnc) AS vnc, '
-        'max(exercice_valorisation) AS exercice '
+        'max(exercice_valorisation) AS exercice, max(date_arrete) AS date_arrete '
         f'FROM clean_data.immobilisation {clause} '
         'GROUP BY GROUPING SETS ((), ' + ', '.join(f'({c})' for c in axes) + ')'
     ), params).mappings().all()
@@ -341,7 +342,8 @@ def _synthese(clause, params):
             exercice = row['exercice']
             result['kpi'] = {
                 **mesures, 'exercice': exercice,
-                'date_situation': f'01/07/{int(exercice) - 1}' if exercice else None,
+                'date_situation': (row['date_arrete'].strftime('%d/%m/%Y') if row['date_arrete']
+                                   else f'01/07/{int(exercice) - 1}' if exercice else None),
                 'zone': '02 - Amortissement statutaire CRC2002-10',
             }
             continue
@@ -464,13 +466,13 @@ def comptes():
         "SELECT role, compte_sap, "
         "       public.get_transcodification('FA_ACCOUNT', compte_sap, 'SAP', 'IFS') AS compte_ifs, "
         "       count(*) AS nb_fiches, count(*) FILTER (WHERE reprise_ifs) AS nb_reprises, "
-        "       sum(valeur_acq_debut_exercice) AS acquisition, sum(amort_cumules) AS amortissements, "
+        "       sum(valeur_acq_fin_exercice) AS acquisition, sum(amort_cumules) AS amortissements, "
         "       sum(vnc) AS vnc "
         "FROM (SELECT 'immobilisation' AS role, compte_immobilisation AS compte_sap, reprise_ifs, "
-        "             valeur_acq_debut_exercice, amort_cumules, vnc FROM clean_data.immobilisation "
+        "             valeur_acq_fin_exercice, amort_cumules, vnc FROM clean_data.immobilisation "
         "      UNION ALL "
         "      SELECT 'amortissement', compte_amort_cumule, reprise_ifs, "
-        "             valeur_acq_debut_exercice, amort_cumules, vnc FROM clean_data.immobilisation) u "
+        "             valeur_acq_fin_exercice, amort_cumules, vnc FROM clean_data.immobilisation) u "
         "WHERE compte_sap IS NOT NULL GROUP BY role, compte_sap ORDER BY role, compte_sap"
     )).mappings().all()
     return jsonify({
@@ -694,7 +696,7 @@ def _feuille_synthese(ws, synthese):
     ws.cell(7, 1, 'Indicateurs').font = titre
     ws.cell(7, 1).fill = fond
     for i, (k, v) in enumerate([("Nombre d'immobilisations", kpi.get('nombre')),
-                                ("Valeur d'acquisition début exercice", kpi.get('acquisition')),
+                                ("Valeur d'acquisition à l'arrêté", kpi.get('acquisition')),
                                 ('Amortissements cumulés', kpi.get('amortissements')),
                                 ('Valeur nette comptable', kpi.get('vnc'))], 8):
         ws.cell(i, 1, k)

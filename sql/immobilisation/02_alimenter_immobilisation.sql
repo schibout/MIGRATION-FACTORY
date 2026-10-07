@@ -13,10 +13,22 @@
 --     = AFABG + duree - 1 jour, taux = 1200 / duree ;
 --   * ANLZ : periode en cours (BDATU 99991231), sinon la plus recente ;
 --   * valeurs (passe « statutaire ») : zone 02, exercice p_gjahr (2027 = SAP
---     ouvert le 01/07/2026) ; acquisition = somme KANSW, amortissements cumules
---     = |somme KNAFA+KSAFA+KAAFA+KMAFA|, VNC = acquisition - cumul ;
---     mouvements, sorties et dotation a 0 ; tout a NULL si l'immobilisation
---     n'a pas de ligne ANLC sur cette zone et cet exercice ;
+--     ouvert le 01/07/2026), ARRETEES A LA DERNIERE CLOTURE MENSUELLE (les
+--     immobilisations sont arretees chaque fin de mois ; jusqu'au 2026-10-07
+--     seule l'ouverture d'exercice etait reprise, mouvements et dotation a 0) :
+--       debut   = KANSW (ouverture) ;
+--       entrees = ANSWL si positif, sorties = ANSWL si negatif (ANSWL est le
+--                 net des mouvements de l'annee ; ABGAN n'est pas alimente) ;
+--       fin     = KANSW + ANSWL ;
+--       dotation = |NAFAG+SAFAG+AAFAG+MAFAG| (comptabilisee a l'arrete) ;
+--       amort. cumules = |cumul ouverture (K*AFA) + dotation (*AFAG)
+--                 + part des sorties (*AFAV, *AFAL) + reintegrations (ZUS*)| ;
+--       VNC     = fin - amort. cumules.
+--     Controle : la cloture 2026 ainsi calculee egale l'ouverture 2027 au
+--     centime (300 323 895,07 / 174 088 108,19). Tout a NULL si
+--     l'immobilisation n'a pas de ligne ANLC sur cette zone et cet exercice ;
+--   * date_arrete : fin du mois de la derniere periode d'amortissement
+--     comptabilisee (max ANLP-PERAF de l'exercice, periode 1 = juillet) ;
 --   * libelles : langue F, puis E, puis le reste.
 -- Seul ecart volontaire : libelle_complementaire = ANLA-TXA50 (le script y
 -- recopiait TXT50).
@@ -73,7 +85,16 @@ DECLARE
     v_exclues  integer;
     v_sans_cpt integer;
     v_sans_grp integer;
+    v_arrete   date;
 BEGIN
+    -- Derniere periode d'amortissement comptabilisee ; exercice N = 01/07/N-1 -> 30/06/N
+    SELECT (make_date(p_gjahr::int - 1, 7, 1)
+            + make_interval(months => max(TRIM(peraf)::int)) - interval '1 day')::date
+    INTO v_arrete
+    FROM raw_data.anlp
+    WHERE bukrs = 'STJN' AND TRIM(afaber) = '02' AND TRIM(gjahr) = p_gjahr
+      AND TRIM(peraf) ~ '^[0-9]+$';
+
     v_bascule := COALESCE(
         p_date_bascule,
         NULLIF(public.get_default_value('clean_data.immobilisation', 'date_bascule_ifs', 'STANDARD'), '')::date,
@@ -118,8 +139,14 @@ BEGIN
     ), anlc AS (
         SELECT TRIM(bukrs) AS bukrs, TRIM(anln1) AS anln1, TRIM(anln2) AS anln2,
                SUM(COALESCE(kansw, 0)) AS acq,
-               ABS(SUM(COALESCE(knafa, 0) + COALESCE(ksafa, 0)
-                     + COALESCE(kaafa, 0) + COALESCE(kmafa, 0))) AS cum
+               SUM(COALESCE(answl, 0)) AS mvt,
+               ABS(SUM(COALESCE(nafag, 0) + COALESCE(safag, 0)
+                     + COALESCE(aafag, 0) + COALESCE(mafag, 0))) AS dot,
+               ABS(SUM(COALESCE(knafa, 0) + COALESCE(ksafa, 0) + COALESCE(kaafa, 0) + COALESCE(kmafa, 0)
+                     + COALESCE(nafag, 0) + COALESCE(safag, 0) + COALESCE(aafag, 0) + COALESCE(mafag, 0)
+                     + COALESCE(nafav, 0) + COALESCE(safav, 0) + COALESCE(aafav, 0) + COALESCE(mafav, 0)
+                     + COALESCE(nafal, 0) + COALESCE(safal, 0) + COALESCE(aafal, 0) + COALESCE(mafal, 0)
+                     + COALESCE(zusna, 0) + COALESCE(zussa, 0) + COALESCE(zusaa, 0) + COALESCE(zusma, 0))) AS cum
         FROM raw_data.anlc
         WHERE bukrs = 'STJN' AND TRIM(afabe) = '02' AND TRIM(gjahr) = p_gjahr
         GROUP BY 1, 2, 3
@@ -165,7 +192,7 @@ BEGIN
                COALESCE(NULLIF(b.ndjar, '')::int, 0) * 12
                  + COALESCE(NULLIF(b.ndper, '')::int, 0) AS duree,
                z.kostl, cc.txt AS kostl_txt, z.werks, z.gsber, gs.gtext, z.stort,
-               c.acq, c.cum
+               c.acq, c.mvt, c.dot, c.cum
         FROM raw_data.anla a
         LEFT JOIN class_txt ct ON ct.anlkl = a.anlkl
         LEFT JOIN company co   ON co.bukrs = a.bukrs
@@ -197,19 +224,20 @@ BEGIN
            invnr, herst, typbz, lifnr, menge, meins, eaufn,
            '02', p_gjahr,
            acq,
-           CASE WHEN acq IS NOT NULL THEN 0 END,
-           CASE WHEN acq IS NOT NULL THEN 0 END,
-           acq,
+           GREATEST(mvt, 0),
+           LEAST(mvt, 0),
+           acq + mvt,
            cum,
-           acq - cum,
-           CASE WHEN acq IS NOT NULL THEN 0 END,
+           acq + mvt - cum,
+           dot,
            xspeb, date_sortie, clean_data.immo_to_date(deakt),
            -- reprise IFS
            (date_sortie IS NULL OR date_sortie > v_bascule),
            CASE WHEN date_sortie <= v_bascule
                 THEN 'Sortie le ' || to_char(date_sortie, 'DD/MM/YYYY')
                      || ' <= bascule IFS ' || to_char(v_bascule, 'DD/MM/YYYY') END,
-           ktansw_ifs, ktanza_ifs, object_group_id, site_ifs, element_otp, libelle_otp
+           ktansw_ifs, ktanza_ifs, object_group_id, site_ifs, element_otp, libelle_otp,
+           v_arrete
     FROM base;
 
     GET DIAGNOSTICS v_nb = ROW_COUNT;
@@ -224,6 +252,10 @@ BEGIN
            count(*) FILTER (WHERE reprise_ifs AND object_group_id IS NULL)
     INTO v_reprise, v_exclues, v_sans_cpt, v_sans_grp
     FROM clean_data.immobilisation;
+    IF v_arrete IS NULL THEN
+        RAISE WARNING 'date_arrete inconnue : aucune ligne raw_data.anlp (zone 02, exercice %)', p_gjahr;
+    END IF;
+
     RAISE NOTICE 'Immobilisations : % lignes, % a reprendre, % exclues (sortie <= %), % sans compte IFS, % sans groupe objet',
         v_nb, v_reprise, v_exclues, to_char(v_bascule, 'DD/MM/YYYY'), v_sans_cpt, v_sans_grp;
 

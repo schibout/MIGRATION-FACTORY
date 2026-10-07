@@ -89,6 +89,7 @@ CREATE TABLE clean_data.immobilisation (
     site_ifs                    varchar(2),
     element_otp                 varchar(24),
     libelle_otp                 varchar(40),
+    date_arrete                 date,        -- migration 102
     PRIMARY KEY (societe_sap, num_immobilisation, sous_numero)
 );
 
@@ -102,9 +103,9 @@ COMMENT ON COLUMN clean_data.immobilisation.element_otp IS 'Element d''OTP (code
 COMMENT ON COLUMN clean_data.immobilisation.libelle_otp IS 'PRPS-POST1';
 
 COMMENT ON TABLE clean_data.immobilisation IS
-    'Immobilisations SAP STJN au format de l''extraction transmise aux metiers (1 ligne / immobilisation, valeurs statutaires zone 02 a l''ouverture de l''exercice). Recharge par clean_data.alimenter_immobilisation().';
+    'Immobilisations SAP STJN au format de l''extraction transmise aux metiers (1 ligne / immobilisation, valeurs statutaires zone 02 arretees a la derniere cloture mensuelle). Recharge par clean_data.alimenter_immobilisation().';
 COMMENT ON COLUMN clean_data.immobilisation.libelle_complementaire IS 'ANLA-TXA50 (le fichier Hermes du 18/08 y mettait TXT50 par erreur)';
 COMMENT ON COLUMN clean_data.immobilisation.zone_amortissement IS 'ANLB-AFABE retenue : 03 > 73 > 02 > 60 > 01, puis BDATU la plus recente';
 COMMENT ON COLUMN clean_data.immobilisation.valeur_acq_debut_exercice IS 'Somme ANLC-KANSW, zone 02, exercice de valorisation';
-COMMENT ON COLUMN clean_data.immobilisation.amort_cumules IS '|Somme ANLC-KNAFA+KSAFA+KAAFA+KMAFA|, zone 02, exercice de valorisation (positif)';
-COMMENT ON COLUMN clean_data.immobilisation.vnc IS 'valeur_acq_debut_exercice - amort_cumules';
+COMMENT ON COLUMN clean_data.immobilisation.amort_cumules IS 'Amortissements cumules a la date d''arrete (positif), cf. migration 102';
+COMMENT ON COLUMN clean_data.immobilisation.vnc IS 'valeur_acq_fin_exercice - amort_cumules, a la date d''arrete';

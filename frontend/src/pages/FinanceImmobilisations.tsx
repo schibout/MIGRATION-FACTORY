@@ -74,6 +74,7 @@ interface Stats {
   amort_cumules: number | null;
   vnc: number | null;
   exercice: string | null;
+  date_arrete: string | null;
   date_bascule: string | null;
 }
 
@@ -314,7 +315,7 @@ const FinanceImmobilisations: React.FC = () => {
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {vue === 'immobilisations'
-          ? `Société STJN, une ligne par immobilisation, les 60 colonnes de l'extraction transmise aux métiers. Valeurs statutaires (zone 02) à l'ouverture de l'exercice SAP ${stats?.exercice ?? '2027'}.`
+          ? `Société STJN, une ligne par immobilisation, les 60 colonnes de l'extraction transmise aux métiers. Valeurs statutaires (zone 02) de l'exercice SAP ${stats?.exercice ?? '2027'}, arrêtées au ${stats?.date_arrete ? new Date(stats.date_arrete).toLocaleDateString('fr-FR') : 'dernier mois clôturé'}.`
           : `Onglet « Travail » du classeur métier, fabriqué selon la Méthode : immobilisations à reprendre (sortie après le ${formatDate(stats?.date_bascule) || '30/06/2026'}, date de bascule paramétrée dans Valeurs par défaut), date de sortie effacée, tri par date d'acquisition, OBJECT_GROUP_ID et colonnes converties pour IFS.`}
       </Typography>
 
