@@ -119,6 +119,13 @@ const MaintenanceOrderDetailPage: React.FC = () => {
 
           {onglet === 'Donn.en-t.' && (
             <>
+              <Bloc titre="Description">
+                <Champ label="Description" texte={e.texte_ordre} />
+                <Box sx={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 1.5, py: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary">Description longue</Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{e.texte_long_ordre || ''}</Typography>
+                </Box>
+              </Bloc>
               <Bloc titre="Responsables">
                 <Champ label="GrpeGestio" code={`${e.groupe_planif || ''} / ${e.division_planif || ''}`} />
                 <Champ label="PosteResp." code={`${e.poste_responsable || ''} / ${e.poste_responsable_division || ''}`} texte={e.poste_responsable_texte} />
