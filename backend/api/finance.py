@@ -375,10 +375,13 @@ def export_immobilisations_excel():
     clause, params = _filtres('immobilisations')
     clause_t, params_t = _filtres('travail')
     wb = Workbook()
+    # _select_immo renvoie des mappings : iterer une ligne donnerait les noms de colonnes
     cols, rows = _select_immo('immobilisations', clause, params)
-    _feuille_tableau(wb.active, 'Immobilisations', [(c, LIBELLE[c]) for c in cols], rows, _MONTANTS)
+    _feuille_tableau(wb.active, 'Immobilisations', [(c, LIBELLE[c]) for c in cols],
+                     [[r[c] for c in cols] for r in rows], _MONTANTS)
     cols, rows = _select_immo('travail', clause_t, params_t)
-    _feuille_tableau(wb.create_sheet('Travail'), 'Travail', [(c, LIBELLE[c]) for c in cols], rows, _MONTANTS)
+    _feuille_tableau(wb.create_sheet('Travail'), 'Travail', [(c, LIBELLE[c]) for c in cols],
+                     [[r[c] for c in cols] for r in rows], _MONTANTS)
 
     conv = _conversion_comptes()
     _feuille_tableau(wb.create_sheet('Conversion cpte général'), 'Conversion cpte général',
