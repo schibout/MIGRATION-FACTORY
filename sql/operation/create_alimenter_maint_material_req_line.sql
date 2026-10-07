@@ -220,7 +220,7 @@ BEGIN
         public.get_default_value('clean_data.maint_material_req_line', 'purchase_method') AS purchase_method,
         public.get_default_value('clean_data.maint_material_req_line', 'purchase_method_db') AS purchase_method_db,
         public.get_default_value('clean_data.maint_material_req_line', 'service_type') AS service_type,
-        substring(nullif(trim(r.sgtxt),''),1,2000) AS note
+        public.get_default_value('clean_data.maint_material_req_line', 'note', 'Déjà sortie SAP') AS note
 
     FROM raw_data.resb r
     LEFT JOIN raw_data.aufk a ON a.mandt = r.mandt AND a.aufnr = r.aufnr
