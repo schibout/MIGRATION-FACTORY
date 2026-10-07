@@ -232,20 +232,13 @@ BEGIN
       -- sortie finale (KZEAR = 'X') est retire (2026-10-07, demande explicite) :
       -- il ne gardait que ~7 % des composants (473 lignes au lieu de ~5 900).
       AND r.postp = 'L'
-      -- Besoins en cours ou futurs uniquement : en-tete d'ordre present
-      -- (134 lignes RESB n'en ont pas, dont 94 sans AUFNR) et ordre non clos
-      -- (cf. clean_data.v_sap_ordre_clos, 00_operation_helpers.sql).
-      AND EXISTS (
-          SELECT 1 FROM raw_data.afko k
-          WHERE k.mandt = r.mandt AND k.aufnr = r.aufnr
-      )
-      AND NOT EXISTS (
-          SELECT 1 FROM clean_data.v_sap_ordre_clos oc
-          WHERE oc.mandt = r.mandt AND oc.aufnr = r.aufnr
-      )
       -- Operations chargees dans jt_task uniquement (2026-10-07, demande
       -- explicite), comme jt_task_resource : une ligne de materiel sans tache
       -- IFS n'a pas de rattachement. jt_task est chargee avant (alimenter_all_operation).
+      -- Son perimetre (v_sap_ordre_repris : en-tete AFKO, statut REL non clos)
+      -- remplace les anciens filtres AFKO / v_sap_ordre_clos, retires : avec
+      -- jt_task fraichement rechargee (stats perimees) l'anti-jointure sur
+      -- v_sap_ordre_clos passait en boucle imbriquee (> 9 min).
       AND trim(r.aufpl) ~ '^[0-9]+$' AND trim(r.aplzl) ~ '^[0-9]+$'
       AND EXISTS (
           SELECT 1 FROM clean_data.jt_task t
