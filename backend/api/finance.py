@@ -342,8 +342,8 @@ def _synthese(clause, params):
             exercice = row['exercice']
             result['kpi'] = {
                 **mesures, 'exercice': exercice,
-                'date_situation': (row['date_arrete'].strftime('%d/%m/%Y') if row['date_arrete']
-                                   else f'01/07/{int(exercice) - 1}' if exercice else None),
+                # Montants arretes a la derniere cloture : sans ANLP, date inconnue
+                'date_situation': row['date_arrete'].strftime('%d/%m/%Y') if row['date_arrete'] else None,
                 'zone': '02 - Amortissement statutaire CRC2002-10',
             }
             continue
