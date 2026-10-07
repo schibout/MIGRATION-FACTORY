@@ -53,11 +53,9 @@ BEGIN
         reported_by,
         reported_date,
         mpb_latest_update,
-        planned_start,
-        planned_finish,
+        latest_start,
+        latest_finish,
         duration,
-        actual_start,
-        actual_finish,
         fixed_start,
         exclude_from_scheduling,
         exclude_from_scheduling_db,
@@ -322,16 +320,13 @@ BEGIN
         reported_by,
         reported_date,
         mpb_latest_update,
-        -- PLANNED_START / PLANNED_FINISH obligatoires cote IFS : l'une remplace
-        -- l'autre si elle manque, puis reported_date ; sinon la ligne n'est pas chargee.
+        -- Seules LATEST_START / LATEST_FINISH sont alimentees (demande explicite
+        -- 2026-10-07) avec les dates planifiees SAP (AFVV FSAV/FSED, sinon AFKO
+        -- GSTRP/GLTRP) ; l'une remplace l'autre si elle manque, puis reported_date.
+        -- PLANNED_* et ACTUAL_* restent NULL (actual_finish ne sert plus qu'au filtre).
         COALESCE(planned_start, planned_finish, reported_date),
         COALESCE(planned_finish, planned_start, reported_date),
         duration,
-        -- Exigences IFS (demande explicite 2026-10-01) :
-        -- ACTUAL_START >= 01/01/2026 ; un NULL reste NULL (GREATEST ignore le NULL
-        -- et renverrait la borne, d'ou le CASE).
-        CASE WHEN actual_start IS NOT NULL THEN GREATEST(actual_start, TIMESTAMP '2026-01-01') END,
-        actual_finish,
         fixed_start,
         exclude_from_scheduling,
         exclude_from_scheduling_db,
