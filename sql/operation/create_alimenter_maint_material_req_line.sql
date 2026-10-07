@@ -243,6 +243,14 @@ BEGIN
           SELECT 1 FROM clean_data.v_sap_ordre_clos oc
           WHERE oc.mandt = r.mandt AND oc.aufnr = r.aufnr
       )
+      -- Operations chargees dans jt_task uniquement (2026-10-07, demande
+      -- explicite), comme jt_task_resource : une ligne de materiel sans tache
+      -- IFS n'a pas de rattachement. jt_task est chargee avant (alimenter_all_operation).
+      AND trim(r.aufpl) ~ '^[0-9]+$' AND trim(r.aplzl) ~ '^[0-9]+$'
+      AND EXISTS (
+          SELECT 1 FROM clean_data.jt_task t
+          WHERE t.task_seq = trim(r.aufpl)::numeric * 100000000 + trim(r.aplzl)::numeric
+      )
     -- resb n'a pas de colonne updated_at : on departage par extraction_date
     ORDER BY r.mandt, r.rsnum, r.rspos, r.extraction_date DESC NULLS LAST;
 

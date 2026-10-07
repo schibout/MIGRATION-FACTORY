@@ -1,11 +1,11 @@
 -- Echantillon de test : ne garde que les p_nb operations les plus recentes de
 -- clean_data.jt_task (10 par defaut, tri reported_date DESC puis task_seq DESC)
--- et supprime les jt_task_resource des operations retirees.
--- A lancer APRES alimenter_all_operation ; un rechargement du module retablit
--- le jeu complet. maint_material_req_line n'est pas touchee (perimetre propre).
+-- et supprime les jt_task_resource et maint_material_req_line des operations
+-- retirees (rattachement par task_seq). A lancer APRES alimenter_all_operation ;
+-- un rechargement du module retablit le jeu complet.
 -- p_task_seq_debut (optionnel) : renumerote les task_seq gardes a partir de
 -- cette valeur, +1 par operation (ordre des anciens task_seq), dans jt_task et
--- jt_task_resource. NULL = inchanges. order_no n'est jamais modifie.
+-- jt_task_resource et maint_material_req_line. NULL = inchanges. order_no n'est jamais modifie.
 -- Usage : CALL clean_data.sp_keep_jt_task_recent();          -- 10 lignes
 --         CALL clean_data.sp_keep_jt_task_recent(25);
 --         CALL clean_data.sp_keep_jt_task_recent(10, 1000);  -- task_seq 1000..1009
@@ -32,6 +32,8 @@ BEGIN
 
     DELETE FROM clean_data.jt_task_resource r
     WHERE NOT EXISTS (SELECT 1 FROM tmp_jt_garde g WHERE g.task_seq = r.task_seq);
+    DELETE FROM clean_data.maint_material_req_line m
+    WHERE NOT EXISTS (SELECT 1 FROM tmp_jt_garde g WHERE g.task_seq = m.task_seq);
     DELETE FROM clean_data.jt_task t
     WHERE NOT EXISTS (SELECT 1 FROM tmp_jt_garde g WHERE g.task_seq = t.task_seq);
     GET DIAGNOSTICS v_supprimes = ROW_COUNT;
@@ -43,6 +45,7 @@ BEGIN
             FROM tmp_jt_garde;
 
         UPDATE clean_data.jt_task_resource r SET task_seq = m.nouveau FROM tmp_jt_renum m WHERE r.task_seq = m.ancien;
+        UPDATE clean_data.maint_material_req_line l SET task_seq = m.nouveau FROM tmp_jt_renum m WHERE l.task_seq = m.ancien;
         UPDATE clean_data.jt_task t          SET task_seq = m.nouveau FROM tmp_jt_renum m WHERE t.task_seq = m.ancien;
 
         DROP TABLE tmp_jt_renum;
