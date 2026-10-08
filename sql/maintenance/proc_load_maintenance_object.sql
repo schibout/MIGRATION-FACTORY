@@ -310,9 +310,9 @@ BEGIN
         --   eqkt = designation (FR prioritaire, sinon premiere langue trouvee)
         --   equz = enregistrement courant (datbi = '99991231') -> iwerk/ingrp/iloan
         --   iloa = localisation via equz.iloan -> tplnr (le rattachement !)
-        -- hequi (equipement superieur) n'existe dans AUCUNE table extraite :
-        -- la hierarchie equipement -> equipement n'est pas reconstituable, seul
-        -- le rattachement au poste technique l'est.
+        -- hequi = equipement superieur (equz.hequi, extrait depuis : 3 493
+        -- equipements le portent) -> la hierarchie equipement -> equipement
+        -- prime sur le rattachement au poste technique, comme dans IH01.
         -- ------------------------------------------------------------------
         SELECT
             e.mandt, e.equnr,
@@ -324,7 +324,7 @@ BEGIN
             ez2.iwerk, ez2.ingrp,
             il.tplnr, il.kostl, il.swerk, il.stort, il.beber, il.bukrs, il.gsber,
             il.ppsid,
-            NULL::varchar AS hequi
+            ez2.hequi
         FROM raw_data.equi e
         LEFT JOIN raw_data.eqkt kt_fr
                ON kt_fr.mandt = e.mandt AND kt_fr.equnr = e.equnr AND kt_fr.spras = 'F'
