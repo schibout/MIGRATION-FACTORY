@@ -60,6 +60,33 @@ UPDATE public.etl_target_tables
 - **Pre-imputation** : `PROJET=` (`PRPS.posid`) > `CENTRE_COUT=` > `ORDRE=` > `COMPTE=` depuis `EKKN`.
 - Non transcode : `acheteur_sap` (`ekgrp`, pas de table de correspondance), `mode_expedition` = `'10'`.
 
+## Dispatch vers les objets IFS (Lot 11)
+
+`clean_data.alimenter_purchase_order()` (`04_alimenter_purchase_order.sql`) eclate `commande_achat_ifs`
+en trois tables au format des fichiers modeles `docs/Lot11_*_V2.csv` (DDL : `03_create_purchase_order_tables.sql`,
+colonnes et types de la spec `docs/Lot11_AchatAppro_CommandeAchat_V4.1 - final.xlsx`) :
+`purchase_order` (en-tete), `purchase_order_line_part`, `purchase_order_line_nopart`. A lancer APRES le module.
+
+```sql
+SELECT clean_data.alimenter_commande_achat_ifs();  -- 1. SAP -> table a plat
+SELECT clean_data.alimenter_purchase_order();      -- 2. dispatch (NOTICE : volumes et exclusions)
+```
+
+- **Identifiants IFS par jointure, jamais SAP** : fournisseur et fournisseur de facturation =
+  `supplier_info_general.supplier_id` (sur `supplier_legacy_sap_id`), `ADDR_NO`/`DOC_ADDR_NO` =
+  `supplier_info_address.address_id`, `PART_NO` = `part_catalog.part_no`, condition de paiement =
+  transco `PAY_TERM` sinon `supplier.pay_term_id`, Incoterm = SAP sinon `supplier_address.delivery_terms`,
+  pre-imputation = transco `COST_CENTER` (centre de couts) ou `PRE_ACCOUNTING` (chaine `ORDRE=...` complete).
+- **Constantes** : `public.get_default_value('clean_data.<table>', '<colonne>')`, seedees par la migration 104
+  (ecran Valeurs par defaut, module `commandeAchat`). `purchase_order.order_date` = date de bascule,
+  `mois_anteriorite` = fenetre d'eligibilite, `address1..city` par site (variante `SJ` / `CS`).
+- **Perimetre** : commande avec une date de reception souhaitee, sinon creee dans les 6 mois avant la bascule.
+- **Exclusions** (NOTICE) : commande sans fournisseur, fournisseur de facturation ou condition de paiement IFS ;
+  ligne PART dont l'article n'est pas dans `part_catalog`.
+
+Installation : migration 104, puis `./compile.sh`, puis `insert_etl_export_queries.sql` (les 3 tables sortent
+dans l'export `Commande Achat`).
+
 ## Repli en-tete
 
 Si `raw_data.ekpo` est **vide** (cas rencontre le 11/09/2026, rechargee le 12/09), la fonction emet un

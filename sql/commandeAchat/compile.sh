@@ -84,10 +84,14 @@ errors=0
 # Liste des fichiers dans l'ordre d'exécution
 # get_vendor_no_ifs (LIFNR -> numero de compte IFS du fichier) est appelee par la
 # fonction de chargement ; la table doit exister avant la fonction.
+# 03/04 : dispatch vers les 3 objets IFS (purchase_order, _line_part, _line_nopart) ;
+# jouer la migration 104 (valeurs par defaut + transcodifications) AVANT.
 files=(
     "../functions/get_vendor_no_ifs.sql"
     "01_create_clean_data_commande_achat_ifs.sql"
     "02_alimenter_commande_achat_ifs.sql"
+    "03_create_purchase_order_tables.sql"
+    "04_alimenter_purchase_order.sql"
 )
 
 # Exécution de chaque fichier

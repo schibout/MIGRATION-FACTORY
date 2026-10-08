@@ -83,6 +83,7 @@ FICHIERS_SEED = [
     RACINE / 'migrations' / '096_jt_task_reported_by_defaut.sql',
     RACINE / 'migrations' / '097_jt_task_allow_multiple_visits.sql',
     RACINE / 'migrations' / '103_maint_material_req_line_note_defaut.sql',
+    RACINE / 'migrations' / '104_seed_valeurs_defaut_commande_achat.sql',
 ]
 
 
