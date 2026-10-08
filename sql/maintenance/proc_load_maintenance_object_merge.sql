@@ -410,7 +410,8 @@ BEGIN
     )
     SELECT
         'BOM_ITEM',
-        'T:' || t.stlnr || ':' || COALESCE(NULLIF(TRIM(t.stlal), ''), '01') || ':' || p.posnr,
+        -- stlkn obligatoire : plusieurs articles partagent souvent un posnr (migration 104)
+        'T:' || t.stlnr || ':' || COALESCE(NULLIF(TRIM(t.stlal), ''), '01') || ':' || p.posnr || ':' || p.stlkn,
         'FUNC_LOC',
         t.tplnr,
         p.idnrk,

@@ -431,7 +431,8 @@ BEGIN
     )
     SELECT
         'BOM_ITEM',
-        'T:' || t.stlnr || ':' || COALESCE(NULLIF(TRIM(t.stlal), ''), '01') || ':' || p.posnr,
+        -- stlkn obligatoire : plusieurs articles partagent souvent un posnr (migration 104)
+        'T:' || t.stlnr || ':' || COALESCE(NULLIF(TRIM(t.stlal), ''), '01') || ':' || p.posnr || ':' || p.stlkn,
         fl.id,
         art.id,
         NULLIF(regexp_replace(p.posnr, '[^0-9]', '', 'g'), '')::int,
