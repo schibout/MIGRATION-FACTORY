@@ -34,6 +34,7 @@ import {
     Typography,
 } from '@mui/material';
 import React, { useCallback, useEffect, useState } from 'react';
+import CommandesAchatModeEmploi from '../components/finance/CommandesAchatModeEmploi';
 import api from '../services/api';
 
 // Même logique que FinanceImmobilisations : liste, export Excel, synchronisation SAP.
@@ -70,7 +71,8 @@ type Kind = 'text' | 'montant' | 'nombre';
 
 // Onglet « commandes » = table à plat commande_achat_ifs ; les trois autres = objets de
 // reprise IFS (Lot 11) remplis par clean_data.alimenter_purchase_order().
-type Vue = 'commandes' | 'purchase_order' | 'purchase_order_line_part' | 'purchase_order_line_nopart';
+type IfsVue = 'purchase_order' | 'purchase_order_line_part' | 'purchase_order_line_nopart';
+type Vue = 'commandes' | IfsVue | 'mode_emploi';
 
 interface IfsResponse {
   colonnes: string[];
@@ -80,7 +82,7 @@ interface IfsResponse {
 }
 
 // Colonnes affichées par défaut dans les onglets IFS (« Toutes les colonnes » montre le reste)
-const IFS_PRINCIPALES: Record<Exclude<Vue, 'commandes'>, string[]> = {
+const IFS_PRINCIPALES: Record<IfsVue, string[]> = {
   purchase_order: ['order_no', 'contract', 'vendor_no', 'invoicing_supplier', 'currency_code', 'pay_term_id',
     'delivery_terms', 'del_terms_location', 'ship_via_code', 'addr_no', 'pre_accounting_id', 'date_entered',
     'order_date', 'wanted_receipt_date', 'buyer_code', 'address1', 'city'],
@@ -101,6 +103,8 @@ const ONGLETS: { value: Vue; label: string; description: string }[] = [
     description: "Lignes IFS avec article (PURCHASE_ORDER_LINE_PART) : postes dont l'article existe dans le catalogue IFS (part_catalog)." },
   { value: 'purchase_order_line_nopart', label: 'Order line no part',
     description: 'Lignes IFS sans article (PURCHASE_ORDER_LINE_NOPART).' },
+  { value: 'mode_emploi', label: "Mode d'emploi",
+    description: "Comment utiliser l'écran, règles de gestion appliquées et transcodifications utilisées." },
 ];
 
 // Les dates IFS arrivent en ISO ('2026-09-01T00:00:00') : affichées JJ/MM/AAAA
@@ -165,6 +169,7 @@ const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleStr
 
 const FinanceCommandesAchat: React.FC = () => {
   const [vue, setVue] = useState<Vue>('commandes');
+  const isIfs = vue !== 'commandes' && vue !== 'mode_emploi';
   const [data, setData] = useState<ListResponse | null>(null);
   const [ifs, setIfs] = useState<IfsResponse | null>(null);
   const [sites, setSites] = useState<string[]>([]);
@@ -186,6 +191,7 @@ const FinanceCommandesAchat: React.FC = () => {
       setLoading(true);
       setError(null);
       const params = { page: page + 1, page_size: pageSize, search, site };
+      if (vue === 'mode_emploi') return;
       if (vue === 'commandes') {
         const res = await api.get<ListResponse>('/finance/commandes-achat', { params });
         setData(res.data);
@@ -246,7 +252,7 @@ const FinanceCommandesAchat: React.FC = () => {
       setExporting(true);
       setError(null);
       const res = await api.get(`/finance/commandes-achat/export.${zip ? 'zip' : 'xlsx'}`, {
-        params: { search, site, vue: zip || vue === 'commandes' ? undefined : vue },
+        params: { search, site, vue: zip || !isIfs ? undefined : vue },
         responseType: 'blob',
       });
       const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
@@ -268,11 +274,10 @@ const FinanceCommandesAchat: React.FC = () => {
 
   const running = sync?.status === 'running';
   const stats = data?.stats;
-  const isIfs = vue !== 'commandes';
-  const total = isIfs ? ifs?.total : data?.total;
-  const colonnesIfs = vue === 'commandes'
-    ? []
-    : (ifs?.colonnes ?? []).filter((c) => toutes || IFS_PRINCIPALES[vue].includes(c));
+  const total = vue === 'mode_emploi' ? undefined : isIfs ? ifs?.total : data?.total;
+  const colonnesIfs = isIfs
+    ? (ifs?.colonnes ?? []).filter((c) => toutes || IFS_PRINCIPALES[vue as IfsVue].includes(c))
+    : [];
   const nbColonnes = isIfs ? colonnesIfs.length : colonnes.length;
 
   return (
@@ -334,7 +339,7 @@ const FinanceCommandesAchat: React.FC = () => {
         </Box>
       )}
 
-      {!isIfs && stats && (
+      {vue === 'commandes' && stats && (
         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Chip label={`${stats.commandes.toLocaleString('fr-FR')} commandes`} color="primary" />
           <Chip label={`${stats.lignes.toLocaleString('fr-FR')} lignes`} />
@@ -362,6 +367,7 @@ const FinanceCommandesAchat: React.FC = () => {
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
+      {vue === 'mode_emploi' ? <CommandesAchatModeEmploi /> : (<>
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           size="small"
@@ -446,6 +452,7 @@ const FinanceCommandesAchat: React.FC = () => {
           labelRowsPerPage="Lignes par page"
         />
       </Paper>
+      </>)}
     </Box>
   );
 };
