@@ -1,4 +1,5 @@
 import {
+    Cached as RecalculIcon,
     FileDownload as ExcelIcon,
     Search as SearchIcon,
     ShoppingCart as CommandeAchatIcon,
@@ -18,6 +19,7 @@ import {
     Paper,
     Select,
     Switch,
+    Tab,
     Table,
     TableBody,
     TableCell,
@@ -25,6 +27,7 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    Tabs,
     TextField,
     Tooltip,
     Typography,
@@ -63,6 +66,49 @@ interface ListResponse {
 }
 
 type Kind = 'text' | 'montant' | 'nombre';
+
+// Onglet « commandes » = table à plat commande_achat_ifs ; les trois autres = objets de
+// reprise IFS (Lot 11) remplis par clean_data.alimenter_purchase_order().
+type Vue = 'commandes' | 'purchase_order' | 'purchase_order_line_part' | 'purchase_order_line_nopart';
+
+interface IfsResponse {
+  colonnes: string[];
+  rows: CdeRow[];
+  total: number;
+  sync: SyncStatus | null;
+}
+
+// Colonnes affichées par défaut dans les onglets IFS (« Toutes les colonnes » montre le reste)
+const IFS_PRINCIPALES: Record<Exclude<Vue, 'commandes'>, string[]> = {
+  purchase_order: ['order_no', 'contract', 'vendor_no', 'invoicing_supplier', 'currency_code', 'pay_term_id',
+    'delivery_terms', 'del_terms_location', 'ship_via_code', 'addr_no', 'pre_accounting_id', 'date_entered',
+    'order_date', 'wanted_receipt_date', 'buyer_code', 'address1', 'city'],
+  purchase_order_line_part: ['order_no', 'line_no', 'contract', 'part_no', 'description', 'buy_qty_due',
+    'buy_unit_meas', 'buy_unit_price', 'currency_code', 'currency_rate', 'planned_delivery_date',
+    'promised_delivery_date', 'pre_accounting_id', 'invoicing_supplier'],
+  purchase_order_line_nopart: ['order_no', 'line_no', 'contract', 'description', 'buy_qty_due', 'buy_unit_meas',
+    'buy_unit_price', 'currency_code', 'currency_rate', 'planned_delivery_date', 'promised_delivery_date',
+    'pre_accounting_id', 'invoicing_supplier'],
+};
+
+const ONGLETS: { value: Vue; label: string; description: string }[] = [
+  { value: 'commandes', label: "Commandes d'achat SAP",
+    description: "Commandes d'achat SAP ouvertes de la société STJN (postes non clos, reliquat à livrer), au format de reprise IFS." },
+  { value: 'purchase_order', label: 'Purchase order',
+    description: 'En-têtes IFS (PURCHASE_ORDER) : une ligne par commande éligible, identifiants IFS (fournisseur, adresse, condition de paiement) résolus par jointure.' },
+  { value: 'purchase_order_line_part', label: 'Order line part',
+    description: "Lignes IFS avec article (PURCHASE_ORDER_LINE_PART) : postes dont l'article existe dans le catalogue IFS (part_catalog)." },
+  { value: 'purchase_order_line_nopart', label: 'Order line no part',
+    description: 'Lignes IFS sans article (PURCHASE_ORDER_LINE_NOPART).' },
+];
+
+// Les dates IFS arrivent en ISO ('2026-09-01T00:00:00') : affichées JJ/MM/AAAA
+const formatIfs = (v: string | number | null) => {
+  if (v == null || v === '') return '';
+  if (typeof v === 'number') return v.toLocaleString('fr-FR');
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(T00:00:00)?$/.exec(v);
+  return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : v;
+};
 
 // Colonnes de clean_data.commande_achat_ifs (dates déjà au format JJ/MM/AAAA en base).
 const COLONNES: { key: string; label: string; kind?: Kind; principale?: boolean }[] = [
@@ -115,7 +161,10 @@ const formatCell = (v: string | number | null, kind?: Kind) => {
 const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : '');
 
 const FinanceCommandesAchat: React.FC = () => {
+  const [vue, setVue] = useState<Vue>('commandes');
   const [data, setData] = useState<ListResponse | null>(null);
+  const [ifs, setIfs] = useState<IfsResponse | null>(null);
+  const [sites, setSites] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -133,18 +182,24 @@ const FinanceCommandesAchat: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get<ListResponse>('/finance/commandes-achat', {
-        params: { page: page + 1, page_size: pageSize, search, site },
-      });
-      setData(res.data);
-      setSync(res.data.sync);
+      const params = { page: page + 1, page_size: pageSize, search, site };
+      if (vue === 'commandes') {
+        const res = await api.get<ListResponse>('/finance/commandes-achat', { params });
+        setData(res.data);
+        setSites(res.data.sites);
+        setSync(res.data.sync);
+      } else {
+        const res = await api.get<IfsResponse>(`/finance/commandes-achat/ifs/${vue}`, { params });
+        setIfs(res.data);
+        setSync(res.data.sync);
+      }
     } catch (err) {
       console.error("Erreur chargement commandes d'achat:", err);
       setError("Erreur lors du chargement des commandes d'achat");
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, site]);
+  }, [vue, page, pageSize, search, site]);
 
   useEffect(() => {
     load();
@@ -165,10 +220,12 @@ const FinanceCommandesAchat: React.FC = () => {
     return () => clearInterval(timer);
   }, [sync?.status, load]);
 
-  const handleSync = async () => {
+  // 'sap' : extraction SAP puis rechargement ; 'mf' : rechargement seul depuis raw_data
+  // (commande_achat_ifs puis dispatch alimenter_purchase_order)
+  const handleSync = async (source: 'sap' | 'mf') => {
     try {
       setError(null);
-      const res = await api.post<SyncStatus>('/finance/commandes-achat/sync');
+      const res = await api.post<SyncStatus>('/finance/commandes-achat/sync', { source });
       setSync(res.data);
     } catch (err: any) {
       if (err?.response?.status === 409) {
@@ -185,7 +242,7 @@ const FinanceCommandesAchat: React.FC = () => {
       setExporting(true);
       setError(null);
       const res = await api.get('/finance/commandes-achat/export.xlsx', {
-        params: { search, site },
+        params: { search, site, vue: vue === 'commandes' ? undefined : vue },
         responseType: 'blob',
       });
       const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
@@ -207,6 +264,12 @@ const FinanceCommandesAchat: React.FC = () => {
 
   const running = sync?.status === 'running';
   const stats = data?.stats;
+  const isIfs = vue !== 'commandes';
+  const total = isIfs ? ifs?.total : data?.total;
+  const colonnesIfs = vue === 'commandes'
+    ? []
+    : (ifs?.colonnes ?? []).filter((c) => toutes || IFS_PRINCIPALES[vue].includes(c));
+  const nbColonnes = isIfs ? colonnesIfs.length : colonnes.length;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -223,27 +286,44 @@ const FinanceCommandesAchat: React.FC = () => {
                 color="success"
                 startIcon={<ExcelIcon />}
                 onClick={handleExportExcel}
-                disabled={exporting || !data?.total}
+                disabled={exporting || !total}
               >
                 {exporting ? 'Export…' : 'Exporter Excel'}
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Ré-extrait de SAP EKKO, EKPO, EKBE, EKET, EKPA, EKKN, LFA1, T001W, ADRC, PRPS puis recharge la table">
+          <Tooltip title="Recharge les commandes depuis les tables SAP déjà extraites dans Migration Factory, puis exécute la procédure de dispatch vers Purchase order / Order line part / Order line no part (valeurs par défaut et transcodifications appliquées), sans appeler SAP">
             <span>
-              <Button variant="contained" startIcon={<SyncIcon />} onClick={handleSync} disabled={running}>
-                {running ? 'Synchronisation…' : 'Synchroniser'}
+              <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
+                Recalculer
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="Ré-extrait de SAP EKKO, EKPO, EKBE, EKET, EKPA, EKKN, LFA1, T001W, ADRC, PRPS, recharge la table puis exécute le dispatch IFS">
+            <span>
+              <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
+                {running ? 'Synchronisation…' : 'Synchroniser SAP'}
               </Button>
             </span>
           </Tooltip>
         </Box>
       </Box>
 
+      <Tabs value={vue} onChange={(_, v: Vue) => { setVue(v); setPage(0); }} sx={{ mb: 2 }}>
+        {ONGLETS.map((o) => <Tab key={o.value} value={o.value} label={o.label} />)}
+      </Tabs>
+
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Commandes d'achat SAP ouvertes de la société STJN (postes non clos, reliquat à livrer), au format de reprise IFS.
+        {ONGLETS.find((o) => o.value === vue)?.description}
       </Typography>
 
-      {stats && (
+      {isIfs && ifs && (
+        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <Chip label={`${ifs.total.toLocaleString('fr-FR')} lignes`} color="primary" />
+        </Box>
+      )}
+
+      {!isIfs && stats && (
         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Chip label={`${stats.commandes.toLocaleString('fr-FR')} commandes`} color="primary" />
           <Chip label={`${stats.lignes.toLocaleString('fr-FR')} lignes`} />
@@ -274,7 +354,7 @@ const FinanceCommandesAchat: React.FC = () => {
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           size="small"
-          placeholder="N° commande, fournisseur, article, désignation…"
+          placeholder={isIfs ? 'N° commande (S…), fournisseur, article, description…' : 'N° commande, fournisseur, article, désignation…'}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={(e) => {
@@ -290,7 +370,7 @@ const FinanceCommandesAchat: React.FC = () => {
           <InputLabel>Site</InputLabel>
           <Select label="Site" value={site} onChange={(e) => { setPage(0); setSite(e.target.value); }}>
             <MenuItem value="">Tous</MenuItem>
-            {data?.sites.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+            {sites.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </Select>
         </FormControl>
         <FormControlLabel
@@ -305,7 +385,10 @@ const FinanceCommandesAchat: React.FC = () => {
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                {colonnes.map((c) => (
+                {colonnesIfs.map((c) => (
+                  <TableCell key={c} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.toUpperCase()}</TableCell>
+                ))}
+                {!isIfs && colonnes.map((c) => (
                   <TableCell key={c.key} align={c.kind ? 'right' : 'left'} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                     {c.label}
                   </TableCell>
@@ -313,7 +396,16 @@ const FinanceCommandesAchat: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {data?.rows.map((r) => (
+              {isIfs && ifs?.rows.map((r) => (
+                <TableRow key={`${r.order_no}-${r.line_no ?? ''}`} hover>
+                  {colonnesIfs.map((c) => (
+                    <TableCell key={c} align={typeof r[c] === 'number' ? 'right' : 'left'} sx={{ whiteSpace: 'nowrap' }}>
+                      {formatIfs(r[c])}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+              {!isIfs && data?.rows.map((r) => (
                 <TableRow key={`${r.num_commande_sap}-${r.num_ligne_sap}`} hover>
                   {colonnes.map((c) => (
                     <TableCell key={c.key} align={c.kind ? 'right' : 'left'} sx={{ whiteSpace: 'nowrap' }}>
@@ -322,9 +414,11 @@ const FinanceCommandesAchat: React.FC = () => {
                   ))}
                 </TableRow>
               ))}
-              {data && data.rows.length === 0 && (
+              {((isIfs && ifs?.rows.length === 0) || (!isIfs && data?.rows.length === 0)) && (
                 <TableRow>
-                  <TableCell colSpan={colonnes.length} align="center">Aucune commande d'achat</TableCell>
+                  <TableCell colSpan={nbColonnes} align="center">
+                    {isIfs ? 'Aucune ligne : lancer « Recalculer » pour exécuter le dispatch' : "Aucune commande d'achat"}
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -332,7 +426,7 @@ const FinanceCommandesAchat: React.FC = () => {
         </TableContainer>
         <TablePagination
           component="div"
-          count={data?.total ?? 0}
+          count={total ?? 0}
           page={page}
           rowsPerPage={pageSize}
           rowsPerPageOptions={[25, 50, 100, 250]}

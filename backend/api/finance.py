@@ -17,6 +17,11 @@ Immobilisations :
                                          reprendre, date de sortie effacee, tri par date
                                          d'acquisition, OBJECT_GROUP_ID, comptes / site IFS, OTP
   GET  /api/v1/finance/immobilisations/synthese  KPI + sous-totaux, memes filtres
+Commandes d'achat :
+  GET  /api/v1/finance/commandes-achat/ifs/<table>  onglets IFS purchase_order /
+                                         purchase_order_line_part / _line_nopart
+                                         (export.xlsx?vue=<table> pour le classeur) ;
+                                         /sync enchaine alimenter_purchase_order()
   GET  /api/v1/finance/comptes          conversion des comptes (FA_ACCOUNT) + comptes des fiches
 """
 import io
@@ -596,10 +601,69 @@ def list_commandes_achat():
     })
 
 
+# Objets de reprise IFS (Lot 11) alimentes par clean_data.alimenter_purchase_order() :
+# onglet -> colonnes de recherche (en plus de order_no). Toutes les colonnes sont
+# renvoyees (SELECT *), l'ecran choisit lesquelles afficher.
+CA_IFS_TABLES = {
+    'purchase_order': ['vendor_no', 'invoicing_supplier'],
+    'purchase_order_line_part': ['part_no', 'description'],
+    'purchase_order_line_nopart': ['description'],
+}
+
+
+def _ca_ifs_requete(table):
+    """SELECT filtre (recherche, site = contract) d'un objet IFS, ou None si onglet inconnu."""
+    if table not in CA_IFS_TABLES:
+        return None
+    search = (request.args.get('search') or '').strip()
+    site = (request.args.get('site') or '').strip()
+    where, params = [], {}
+    if search:
+        where.append('(' + ' OR '.join(f'{c} ILIKE :s' for c in ['order_no'] + CA_IFS_TABLES[table]) + ')')
+        params['s'] = f'%{search}%'
+    if site:
+        where.append('contract = :site')
+        params['site'] = site
+    clause = ('WHERE ' + ' AND '.join(where)) if where else ''
+    # line_no est du texte ('10', '100') : tri numerique par la longueur puis la valeur
+    order = 'order_no' if table == 'purchase_order' else 'order_no, length(line_no), line_no'
+    return f'FROM clean_data.{table} {clause}', order, params
+
+
+@finance_blueprint.route('/commandes-achat/ifs/<table>', methods=['GET'])
+@jwt_required()
+def list_commandes_achat_ifs(table):
+    requete = _ca_ifs_requete(table)
+    if requete is None:
+        return jsonify({'error': f'Onglet inconnu : {table}'}), 404
+    source, order, params = requete
+    page = max(int(request.args.get('page', 1)), 1)
+    page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
+
+    total = db.session.execute(text(f'SELECT count(*) {source}'), params).scalar()
+    result = db.session.execute(text(f'SELECT * {source} ORDER BY {order} LIMIT :limit OFFSET :offset'),
+                                {**params, 'limit': page_size, 'offset': (page - 1) * page_size})
+    colonnes = list(result.keys())
+    rows = [{k: _json(v) for k, v in r.items()} for r in result.mappings().all()]
+    return jsonify({'colonnes': colonnes, 'rows': rows, 'total': total, 'page': page,
+                    'page_size': page_size, 'sync': _read_status('commande_achat')})
+
+
 @finance_blueprint.route('/commandes-achat/export.xlsx', methods=['GET'])
 @jwt_required()
 def export_commandes_achat_excel():
     from openpyxl import Workbook
+
+    vue = request.args.get('vue') or ''
+    if vue in CA_IFS_TABLES:
+        source, order, params = _ca_ifs_requete(vue)
+        result = db.session.execute(text(f'SELECT * {source} ORDER BY {order}'), params)
+        colonnes, rows = list(result.keys()), result.all()
+        db.session.commit()
+        wb = Workbook()
+        # En-tetes = noms de colonnes IFS en majuscules, comme les fichiers modeles Lot11
+        _feuille_tableau(wb.active, vue, [(c, c.upper()) for c in colonnes], rows, set())
+        return _envoyer(wb, vue)
 
     clause, params = _ca_filtres()
     rows = db.session.execute(text(
@@ -629,12 +693,16 @@ def start_ca_sync():
         "WHERE python_module = 'etl_commande_achat.py' LIMIT 1")).scalar() or {}
 
     def load(conn):
-        return conn.execute(text(
+        lignes = conn.execute(text(
             'SELECT clean_data.alimenter_commande_achat_ifs('
             'CAST(:d AS date), CAST(:f AS date), NULL)'),
             {'d': module_params.get('date_debut'), 'f': module_params.get('date_fin')}).scalar()
+        # Puis dispatch vers purchase_order / _line_part / _line_nopart (onglets IFS)
+        conn.execute(text('SELECT clean_data.alimenter_purchase_order()'))
+        return lignes
 
-    return _start_sync('commande_achat', CA_SAP_TABLES, 'clean_data.commande_achat_ifs', load,
+    return _start_sync('commande_achat', CA_SAP_TABLES,
+                       'clean_data.commande_achat_ifs puis purchase_order*', load,
                        extraire=_sync_source() == 'sap')
 
 
