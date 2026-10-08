@@ -26,10 +26,13 @@
 --     DEL_TERMS_LOCATION = reste du libelle SAP, seulement si l'Incoterm vient de SAP ;
 --   - SHIP_VIA_CODE = mode_expedition, sinon supplier_address.ship_via_code,
 --     sinon valeur par defaut ;
---   - PRE_ACCOUNTING_ID = CENTRE_COUT=<cc> -> transcodification COST_CENTER ;
---     ORDRE= / PROJET= / COMPTE= -> transcodification PRE_ACCOUNTING sur la
---     chaine complete ('ORDRE=000004001234') ; NULL sans transcodification
---     (jamais la chaine TYPE=CODE). L'en-tete prend celle du premier poste.
+--   - PRE_ACCOUNTING_ID = transcodification COST_CENTER (SAP -> IFS, migration 105)
+--     du centre de couts de l'imputation : commande_achat_ifs.centre_cout_sap
+--     = ekkn.kostl, ou pour une imputation sur ordre le centre de couts
+--     responsable de l'ordre (aufk.kostv). NULL si le centre n'est pas transcode,
+--     et pour une imputation sur OTP (PRPS ne porte pas de centre de couts) ;
+--   - PROJECT_ID = commande_achat_ifs.numero_projet (projet SharePoint de l'OTP).
+--   L'en-tete prend la pre-imputation et le projet du premier poste.
 -- Toutes les autres constantes : public.get_default_value('clean_data.<table>',
 -- '<colonne>') (migration 104, ecran Valeurs par defaut), resolues UNE fois.
 --
@@ -73,14 +76,11 @@ BEGIN
     -- Pre-imputation IFS, resolue une fois par valeur distincte
     DROP TABLE IF EXISTS tmp_po_pre_accounting;
     CREATE TEMP TABLE tmp_po_pre_accounting ON COMMIT DROP AS
-    SELECT p.pre_imputation_projet,
-           CASE WHEN p.pre_imputation_projet LIKE 'CENTRE_COUT=%'
-                THEN public.get_transcodification('COST_CENTER', SUBSTR(p.pre_imputation_projet, 13))
-                ELSE public.get_transcodification('PRE_ACCOUNTING', p.pre_imputation_projet)
-           END AS pre_accounting_id
-    FROM (SELECT DISTINCT pre_imputation_projet
+    SELECT p.centre_cout_sap,
+           public.get_transcodification('COST_CENTER', p.centre_cout_sap) AS pre_accounting_id
+    FROM (SELECT DISTINCT centre_cout_sap
           FROM clean_data.commande_achat_ifs
-          WHERE pre_imputation_projet IS NOT NULL) p;
+          WHERE centre_cout_sap IS NOT NULL) p;
 
     -- En-tetes candidats avec leurs identifiants IFS resolus
     DROP TABLE IF EXISTS tmp_po_entete;
@@ -158,13 +158,14 @@ BEGIN
                     public.get_default_value('clean_data.purchase_order', 'ship_via_code')) AS ship_via_code,
            af.address_id AS addr_no_fournisseur,
            pre.pre_accounting_id,
+           b.numero_projet,
            b.pays_livraison
     FROM base b
     LEFT JOIN paiement pa ON pa.condition_paiement = b.condition_paiement
     LEFT JOIN clean_data.supplier s ON s.vendor_no = b.vendor_no
     LEFT JOIN livraison_fournisseur lf ON lf.vendor_no = b.vendor_no
     LEFT JOIN adresse_fournisseur af ON af.supplier_id = b.vendor_no
-    LEFT JOIN tmp_po_pre_accounting pre ON pre.pre_imputation_projet = b.pre_imputation_projet
+    LEFT JOIN tmp_po_pre_accounting pre ON pre.centre_cout_sap = b.centre_cout_sap
     WHERE b.date_reception IS NOT NULL
        OR b.d_creation >= v_bascule - make_interval(months => v_mois);
 
@@ -187,6 +188,7 @@ BEGIN
             delivery_terms,
             language_code,
             pre_accounting_id,
+            project_id,
             ship_via_code,
             vendor_no,
             date_entered,
@@ -308,6 +310,7 @@ BEGIN
             p.delivery_terms,
             d.language_code,
             p.pre_accounting_id,
+            p.numero_projet,
             p.ship_via_code,
             p.vendor_no,
             p.date_creation::timestamp,
@@ -397,6 +400,7 @@ BEGIN
             close_code,
             close_code_db,
             pre_accounting_id,
+            project_id,
             contract,
             buy_unit_meas,
             price_conv_factor,
@@ -532,6 +536,7 @@ BEGIN
             d.close_code,
             d.close_code_db,
             pa.pre_accounting_id,
+            l.numero_projet,
             po.contract,
             l.unite_achat,
             NULLIF(d.price_conv_factor, '')::numeric,
@@ -592,7 +597,7 @@ BEGIN
     FROM clean_data.commande_achat_ifs l
     JOIN clean_data.purchase_order po ON po.order_no = 'S' || l.num_commande_sap
     JOIN clean_data.part_catalog pc ON pc.part_no = l.article_sap
-    LEFT JOIN tmp_po_pre_accounting pa ON pa.pre_imputation_projet = l.pre_imputation_projet
+    LEFT JOIN tmp_po_pre_accounting pa ON pa.centre_cout_sap = l.centre_cout_sap
     CROSS JOIN d
     WHERE l.type_ligne_ifs = 'PART'
     ORDER BY l.num_commande_sap, l.num_ligne_sap;
@@ -620,6 +625,7 @@ BEGIN
             close_code,
             close_code_db,
             pre_accounting_id,
+            project_id,
             contract,
             buy_unit_meas,
             price_conv_factor,
@@ -739,6 +745,7 @@ BEGIN
             d.close_code,
             d.close_code_db,
             pa.pre_accounting_id,
+            l.numero_projet,
             po.contract,
             l.unite_achat,
             NULLIF(d.price_conv_factor, '')::numeric,
@@ -789,7 +796,7 @@ BEGIN
             d.is_exchange_part
     FROM clean_data.commande_achat_ifs l
     JOIN clean_data.purchase_order po ON po.order_no = 'S' || l.num_commande_sap
-    LEFT JOIN tmp_po_pre_accounting pa ON pa.pre_imputation_projet = l.pre_imputation_projet
+    LEFT JOIN tmp_po_pre_accounting pa ON pa.centre_cout_sap = l.centre_cout_sap
     CROSS JOIN d
     WHERE COALESCE(l.type_ligne_ifs, 'NOPART') = 'NOPART'
       AND l.num_ligne_sap IS NOT NULL

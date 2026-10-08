@@ -55,7 +55,8 @@ CREATE TABLE clean_data.commande_achat_ifs (
     pays_livraison              text,
     pre_imputation_projet       text,         -- PROJET= / CENTRE_COUT= / ORDRE= / COMPTE=
     element_otp                 varchar(24),  -- prps.posid de l'imputation EKKN (ps_psp_pnr)
-    numero_projet               text          -- raw_data.sharepoint_projets.project_number de l'OTP
+    numero_projet               text,         -- raw_data.sharepoint_projets.project_number de l'OTP
+    centre_cout_sap             varchar(10)   -- ekkn.kostl, sinon centre responsable de l'ordre (aufk.kostv)
 );
 
 CREATE INDEX idx_commande_achat_ifs_ebeln

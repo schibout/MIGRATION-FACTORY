@@ -238,7 +238,7 @@ BEGIN
             date_livraison_planifiee, date_reception_souhaitee, date_livraison_promise,
             acheteur_sap, condition_paiement, condition_livraison, mode_expedition,
             adresse_livraison, code_postal_livraison, ville_livraison, pays_livraison,
-            pre_imputation_projet, element_otp, numero_projet
+            pre_imputation_projet, element_otp, numero_projet, centre_cout_sap
         )
         WITH
         -- Projet SharePoint d'un element OTP. Les codes different par la forme :
@@ -321,7 +321,8 @@ BEGIN
                 COALESCE(pf.lifn2, ekko.lifnr) AS fournisseur_facturation_sap,
                 adrc.name1 AS adresse_nom, adrc.street, adrc.house_num1, adrc.post_code1,
                 adrc.city1, adrc.country,
-                prps.posid AS projet_posid
+                prps.posid AS projet_posid,
+                aufk.kostv AS ordre_kostv
             FROM raw_data.ekko ekko
             INNER JOIN raw_data.ekpo ekpo
                 ON ekpo.mandt = ekko.mandt AND ekpo.ebeln = ekko.ebeln
@@ -342,6 +343,9 @@ BEGIN
             LEFT JOIN raw_data.adrc adrc
                 ON adrc.client = ekpo.mandt
                AND adrc.addrnumber = COALESCE(NULLIF(TRIM(ekpo.adrnr), ''), NULLIF(TRIM(ekpo.adrn2), ''), t001w.adrnr)
+            -- Centre de couts responsable d'un ordre (pre-imputation IFS des postes sur ordre)
+            LEFT JOIN raw_data.aufk aufk
+                ON aufk.mandt = ekkn.mandt AND aufk.aufnr = ekkn.aufnr
             LEFT JOIN raw_data.prps prps
                 ON prps.mandt = ekkn.mandt AND prps.pspnr = ekkn.ps_psp_pnr
             WHERE ekko.bstyp = 'F'
@@ -407,7 +411,8 @@ BEGIN
                 ELSE NULL
             END,
             NULLIF(TRIM(base.projet_posid), ''),
-            ps.project_number
+            ps.project_number,
+            COALESCE(NULLIF(TRIM(base.kostl), ''), NULLIF(TRIM(base.ordre_kostv), ''))
         FROM base
         LEFT JOIN fournisseur_ifs f1 ON f1.lifnr = base.lifnr
         LEFT JOIN fournisseur_ifs f2 ON f2.lifnr = base.fournisseur_facturation_sap
