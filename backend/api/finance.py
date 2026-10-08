@@ -530,6 +530,8 @@ CA_LIBELLES = [
     ('ville_livraison', 'Ville livraison'),
     ('pays_livraison', 'Pays livraison'),
     ('pre_imputation_projet', 'Pré-imputation projet'),
+    ('element_otp', 'Élément OTP'),
+    ('numero_projet', 'N° projet'),
 ]
 CA_COLONNES = [c for c, _ in CA_LIBELLES]
 _CA_MONTANTS = {'prix_net_unitaire', 'montant_restant_livrer', 'montant_restant_facturer'}

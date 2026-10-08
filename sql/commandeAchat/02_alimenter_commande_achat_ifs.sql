@@ -4,7 +4,8 @@
 -- ============================================================================
 -- Sources : raw_data.ekko (en-tete), ekpo (postes), ekbe (mouvements : recu /
 --           facture), eket (echeances de livraison), ekpa (partenaires),
---           ekkn (imputations), lfa1, t001w, adrc, prps.
+--           ekkn (imputations), lfa1, t001w, adrc, prps (element OTP),
+--           sharepoint_projets (numero du projet de l'OTP).
 -- Fournisseur IFS : public.get_vendor_no_ifs(lifnr) -> numero de compte IFS
 --           du fichier de selection (regle projet du 2026-09-10), NULL si le
 --           fournisseur n'y figure pas. Jamais le LIFNR brut.
@@ -237,9 +238,24 @@ BEGIN
             date_livraison_planifiee, date_reception_souhaitee, date_livraison_promise,
             acheteur_sap, condition_paiement, condition_livraison, mode_expedition,
             adresse_livraison, code_postal_livraison, ville_livraison, pays_livraison,
-            pre_imputation_projet
+            pre_imputation_projet, element_otp, numero_projet
         )
         WITH
+        -- Projet SharePoint d'un element OTP. Les codes different par la forme :
+        -- OTP SAP 'SN26052IM' / 'CS.23004.EX' / 'SN20007EP', code SharePoint
+        -- 'SN.26052' -> cle commune = sans les points ni le suffixe alphabetique
+        -- final (IM, EX, EP...). Quelques codes SharePoint portent plusieurs
+        -- projets (SN.17024, SN.17033, SN.20004) : le plus recemment modifie gagne.
+        projet_sharepoint AS (
+            SELECT DISTINCT ON (cle) cle, project_number
+            FROM (
+                SELECT REGEXP_REPLACE(REPLACE(UPPER(TRIM(code)), '.', ''), '[A-Z]+$', '') AS cle,
+                       NULLIF(TRIM(project_number), '') AS project_number, modified
+                FROM raw_data.sharepoint_projets
+                WHERE NULLIF(TRIM(code), '') IS NOT NULL
+            ) s
+            ORDER BY cle, modified DESC NULLS LAST
+        ),
         -- Quantites recues (vgabe 1) et facturees (vgabe 2/3), les annulations
         -- (shkzg = 'H') en negatif ; date de la derniere reception.
         ekbe_resume AS (
@@ -389,10 +405,14 @@ BEGIN
                 WHEN NULLIF(TRIM(base.aufnr), '') IS NOT NULL THEN 'ORDRE=' || TRIM(base.aufnr)
                 WHEN NULLIF(TRIM(base.sakto), '') IS NOT NULL THEN 'COMPTE=' || TRIM(base.sakto)
                 ELSE NULL
-            END
+            END,
+            NULLIF(TRIM(base.projet_posid), ''),
+            ps.project_number
         FROM base
         LEFT JOIN fournisseur_ifs f1 ON f1.lifnr = base.lifnr
         LEFT JOIN fournisseur_ifs f2 ON f2.lifnr = base.fournisseur_facturation_sap
+        LEFT JOIN projet_sharepoint ps
+            ON ps.cle = REGEXP_REPLACE(REPLACE(UPPER(TRIM(base.projet_posid)), '.', ''), '[A-Z]+$', '')
         WHERE COALESCE(base.menge, 0) - COALESCE(base.qte_recue, 0) > 0
         ORDER BY base.ebeln, base.ebelp;
 

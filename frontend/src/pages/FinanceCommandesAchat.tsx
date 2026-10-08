@@ -146,6 +146,8 @@ const COLONNES: { key: string; label: string; kind?: Kind; principale?: boolean 
   { key: 'ville_livraison', label: 'Ville' },
   { key: 'pays_livraison', label: 'Pays' },
   { key: 'pre_imputation_projet', label: 'Pré-imputation projet' },
+  { key: 'element_otp', label: 'Élément OTP', principale: true },
+  { key: 'numero_projet', label: 'N° projet', principale: true },
 ];
 
 const euros = (v: number | null | undefined) =>

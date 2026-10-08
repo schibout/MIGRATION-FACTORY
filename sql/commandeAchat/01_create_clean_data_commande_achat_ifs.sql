@@ -53,7 +53,9 @@ CREATE TABLE clean_data.commande_achat_ifs (
     code_postal_livraison       text,
     ville_livraison             text,
     pays_livraison              text,
-    pre_imputation_projet       text          -- PROJET= / CENTRE_COUT= / ORDRE= / COMPTE=
+    pre_imputation_projet       text,         -- PROJET= / CENTRE_COUT= / ORDRE= / COMPTE=
+    element_otp                 varchar(24),  -- prps.posid de l'imputation EKKN (ps_psp_pnr)
+    numero_projet               text          -- raw_data.sharepoint_projets.project_number de l'OTP
 );
 
 CREATE INDEX idx_commande_achat_ifs_ebeln
