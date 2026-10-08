@@ -151,8 +151,9 @@ def operation_choices():
 # Detail d'un ordre (ecran type IW33) : un bloc par onglet. Lecture seule.
 _ENTETE = """
     SELECT LTRIM(k.aufnr, '0') AS ordre, a.auart AS type_ordre, a.ktext AS texte_ordre,
-           -- Texte long d'en-tete (STXH AUFK/KOPF), meme lecture que l'ETL jt_task.
-           clean_data.texte_long_sap('AUFK', 'KOPF', k.mandt || k.aufnr, ARRAY['F', 'E', 'D']) AS texte_long_ordre,
+           -- Texte long d'en-tete (STXH AUFK/KOPF), meme lecture que l'ETL jt_task ; sans texte
+           -- long, IW33 affiche la description courte dans le cadre : meme repli ici.
+           COALESCE(clean_data.texte_long_sap('AUFK', 'KOPF', k.mandt || k.aufnr, ARRAY['F', 'E', 'D']), a.ktext) AS texte_long_ordre,
            -- 99 ordres (<= 2013) sont dans AFKO/AFIH mais absents d'AUFK : objet de statut par convention.
            COALESCE(a.objnr, 'OR' || k.aufnr) AS objnr, h.obknr,
            -- Donn.en-t.
