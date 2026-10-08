@@ -662,6 +662,23 @@ BEGIN
       AND m.updated_by IS NULL
       AND m.parent_id IS DISTINCT FROM p.id;
 
+    -- Equipement superieur (hequi) absent de clean_data : repli sur le poste
+    -- technique porteur, comme la passe 3b du mode FULL.
+    UPDATE clean_data.maintenance_object m
+    SET parent_id = fl.id
+    FROM mo_stg s
+    JOIN clean_data.maintenance_object fl
+        ON fl.object_type = 'FUNC_LOC' AND fl.sap_key = s.attributes->>'tplnr_sap'
+    WHERE m.object_type = 'EQUIPMENT'
+      AND s.object_type = 'EQUIPMENT'
+      AND m.sap_key = s.sap_key
+      AND s.parent_type = 'EQUIPMENT'
+      AND NOT EXISTS (SELECT 1 FROM clean_data.maintenance_object h
+                      WHERE h.object_type = 'EQUIPMENT' AND h.sap_key = s.parent_sap_key)
+      AND m.source = 'SAP'
+      AND m.updated_by IS NULL
+      AND m.parent_id IS DISTINCT FROM fl.id;
+
     -- -------------------------------------------------------------
     -- 3. ARTICLE
     -- -------------------------------------------------------------
