@@ -658,25 +658,83 @@ def export_commandes_achat_excel():
 
     vue = request.args.get('vue') or ''
     if vue in CA_IFS_TABLES:
-        source, order, params = _ca_ifs_requete(vue)
-        result = db.session.execute(text(f'SELECT * {source} ORDER BY {order}'), params)
-        colonnes, rows = list(result.keys()), result.all()
+        colonnes, rows = _ca_lignes_ifs(vue)
         db.session.commit()
         wb = Workbook()
         # En-tetes = noms de colonnes IFS en majuscules, comme les fichiers modeles Lot11
         _feuille_tableau(wb.active, vue, [(c, c.upper()) for c in colonnes], rows, set())
         return _envoyer(wb, vue)
 
+    rows = _ca_lignes_commandes()
+    db.session.commit()  # liberer la transaction de lecture avant la generation
+    wb = Workbook()
+    _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES, rows, _CA_MONTANTS | _CA_QUANTITES)
+    return _envoyer(wb, 'commandes_achat')
+
+
+def _ca_lignes_commandes():
+    """Lignes filtrees de commande_achat_ifs, dates texte converties pour Excel."""
     clause, params = _ca_filtres()
     rows = db.session.execute(text(
         f'SELECT {", ".join(CA_COLONNES)} FROM clean_data.commande_achat_ifs {clause} '
         'ORDER BY num_commande_sap, num_ligne_sap'), params).all()
     dates = [i for i, c in enumerate(CA_COLONNES) if c in _CA_DATES]
-    rows = [[_ca_date(v) if i in dates else v for i, v in enumerate(r)] for r in rows]
-    db.session.commit()  # liberer la transaction de lecture avant la generation
+    return [[_ca_date(v) if i in dates else v for i, v in enumerate(r)] for r in rows]
+
+
+def _ca_lignes_ifs(table):
+    """(colonnes, lignes) filtrees d'un objet IFS, toutes les colonnes."""
+    source, order, params = _ca_ifs_requete(table)
+    result = db.session.execute(text(f'SELECT * {source} ORDER BY {order}'), params)
+    return list(result.keys()), result.all()
+
+
+def _csv_ifs(v):
+    """Cellule au format des fichiers modeles Lot11 : dates JJ/MM/AAAA, virgule decimale."""
+    if v is None:
+        return ''
+    if isinstance(v, (date, datetime)):
+        return v.strftime('%d/%m/%Y')
+    if isinstance(v, Decimal):
+        return format(v.normalize(), 'f').replace('.', ',')
+    if isinstance(v, float):
+        return repr(v).replace('.', ',')
+    return str(v)
+
+
+@finance_blueprint.route('/commandes-achat/export.zip', methods=['GET'])
+@jwt_required()
+def export_commandes_achat_zip():
+    """ZIP : classeur Excel des 4 onglets + les 3 CSV de reprise IFS (format Lot11_*_V2.csv :
+    UTF-8 avec BOM, ';', en-tetes IFS en majuscules, fins de ligne CRLF). Filtres de l'ecran appliques."""
+    import csv
+    import zipfile
+    from openpyxl import Workbook
+
+    commandes = _ca_lignes_commandes()
+    ifs = {t: _ca_lignes_ifs(t) for t in CA_IFS_TABLES}
+    db.session.commit()
+
     wb = Workbook()
-    _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES, rows, _CA_MONTANTS | _CA_QUANTITES)
-    return _envoyer(wb, 'commandes_achat')
+    _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES, commandes, _CA_MONTANTS | _CA_QUANTITES)
+    for t, (colonnes, rows) in ifs.items():
+        _feuille_tableau(wb.create_sheet(), t, [(c, c.upper()) for c in colonnes], rows, set())
+    classeur = io.BytesIO()
+    wb.save(classeur)
+
+    horodatage = f'{datetime.now():%Y%m%d_%H%M}'
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.writestr(f'commandes_achat_{horodatage}.xlsx', classeur.getvalue())
+        for t, (colonnes, rows) in ifs.items():
+            texte = io.StringIO()
+            w = csv.writer(texte, delimiter=';', lineterminator='\r\n')
+            w.writerow([c.upper() for c in colonnes])
+            w.writerows([[_csv_ifs(v) for v in r] for r in rows])
+            z.writestr(f'{t.upper()}.csv', texte.getvalue().encode('utf-8-sig'))
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, mimetype='application/zip',
+                     download_name=f'commandes_achat_{horodatage}.zip')
 
 
 @finance_blueprint.route('/commandes-achat/sync', methods=['GET'])

@@ -1,6 +1,7 @@
 import {
     Cached as RecalculIcon,
     FileDownload as ExcelIcon,
+    FolderZip as ZipIcon,
     Search as SearchIcon,
     ShoppingCart as CommandeAchatIcon,
     Sync as SyncIcon,
@@ -238,20 +239,21 @@ const FinanceCommandesAchat: React.FC = () => {
     }
   };
 
-  // Export Excel des lignes filtrées (toutes les pages, toutes les colonnes)
-  const handleExportExcel = async () => {
+  // Export des lignes filtrées (toutes les pages, toutes les colonnes) : Excel de l'onglet
+  // affiché, ou ZIP complet (classeur des 4 onglets + 3 CSV de reprise IFS)
+  const handleExport = async (zip: boolean) => {
     try {
       setExporting(true);
       setError(null);
-      const res = await api.get('/finance/commandes-achat/export.xlsx', {
-        params: { search, site, vue: vue === 'commandes' ? undefined : vue },
+      const res = await api.get(`/finance/commandes-achat/export.${zip ? 'zip' : 'xlsx'}`, {
+        params: { search, site, vue: zip || vue === 'commandes' ? undefined : vue },
         responseType: 'blob',
       });
       const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
       const url = window.URL.createObjectURL(res.data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = match?.[1] ?? 'commandes_achat.xlsx';
+      link.download = match?.[1] ?? `commandes_achat.${zip ? 'zip' : 'xlsx'}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -287,10 +289,17 @@ const FinanceCommandesAchat: React.FC = () => {
                 variant="outlined"
                 color="success"
                 startIcon={<ExcelIcon />}
-                onClick={handleExportExcel}
+                onClick={() => handleExport(false)}
                 disabled={exporting || !total}
               >
                 {exporting ? 'Export…' : 'Exporter Excel'}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="ZIP : classeur Excel des 4 onglets + PURCHASE_ORDER.csv, PURCHASE_ORDER_LINE_PART.csv, PURCHASE_ORDER_LINE_NOPART.csv au format des fichiers de reprise IFS (filtres de l'écran appliqués)">
+            <span>
+              <Button variant="outlined" color="success" startIcon={<ZipIcon />} onClick={() => handleExport(true)} disabled={exporting}>
+                Exporter tout (ZIP)
               </Button>
             </span>
           </Tooltip>
