@@ -45,6 +45,7 @@ from .hermes import hermes_blueprint
 from .interface_contracts import interface_contracts_blueprint
 from .finance import finance_blueprint
 from .sap_articles import sap_articles_blueprint
+from .equipment_browser import equipment_browser_blueprint
 
 def register_blueprints(app):
     """Enregistrement des blueprints d'API dans l'application"""
@@ -111,6 +112,7 @@ def register_blueprints(app):
     # Menu Finance : immobilisations (liste + synchronisation SAP)
     app.register_blueprint(finance_blueprint, url_prefix=f'{API_PREFIX}/finance')
     app.register_blueprint(sap_articles_blueprint, url_prefix=f'{API_PREFIX}/sap-data/articles')
+    app.register_blueprint(equipment_browser_blueprint, url_prefix=f'{API_PREFIX}/maintenance/equipment-browser')
 
     # Enregistrement des blueprints SAP
     register_sap_blueprints(app, API_PREFIX)
