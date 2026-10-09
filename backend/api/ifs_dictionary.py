@@ -156,7 +156,7 @@ ETIQUETTES = {
     # Fichier sans colonne Text : seul Text Vc (4000 car.) est disponible
     'tronque': ('SQL tronqué dans le fichier',
                 "CASE WHEN metadata->>'Text Length' ~ '^[0-9]+$' "
-                "THEN (metadata->>'Text Length')::bigint > length(view_text) END"),
+                "THEN (metadata->>'Text Length')::bigint > 4000 AND length(view_text) <= 4000 END"),
 }
 VIEW_TRIS = {'view_name': 'view_name', 'owner': 'owner', 'nature': 'nature', 'text_length': 'length(view_text)'}
 
