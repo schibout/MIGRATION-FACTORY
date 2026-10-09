@@ -70,16 +70,33 @@ BEGIN
         langue
     )
     -- =====================================================================
-    -- PERIMETRE : articles de la societe STJN = articles SAP de raw_data.mara
-    -- (mandt 700, lvorm vide) ouverts (marc.lvorm vide) dans une division
-    -- STJN : 9200 (St Jean) ou 9000 (Castelsarrasin). Les divisions 2200/2000
-    -- appartiennent a l'ancienne societe APSJ. Les agregats (centres,
-    -- evaluation, stocks) sont restreints aux memes divisions.
+    -- PERIMETRE : articles SAP de raw_data.mara (mandt 700, lvorm vide) qui sont
+    --   - soit ouverts (marc.lvorm vide) dans une division de la societe STJN :
+    --     9200 (St Jean) ou 9000 (Castelsarrasin) ; 2200/2000 = ancienne APSJ ;
+    --   - soit des articles de maintenance actifs (clean_data.maintenance_object,
+    --     object_type ARTICLE) : IBAU de la structure (sans aucune ligne marc)
+    --     et pieces des nomenclatures IH02, pour qu'aucun article d'une
+    --     nomenclature exportee ne manque dans part_catalog.
+    -- ~35 700 articles. Les agregats (centres, evaluation, stocks) sont
+    -- restreints aux divisions STJN.
     -- L'ancienne table pilote raw_data.export_article_qlikview n'est plus
     -- utilisee : elle restreignait le chargement a ~18 700 articles sur les
     -- ~85 200 actifs de mara. raw_data.article_definitif ne l'est pas non plus.
     -- =====================================================================
-    WITH article_base AS (
+    WITH perimetre AS MATERIALIZED (
+         SELECT c.matnr::text AS matnr
+           FROM raw_data.marc c
+          WHERE c.mandt::text = '700'::text AND c.werks::text IN ('9200', '9000')
+            AND (c.lvorm IS NULL OR c.lvorm::text = ''::text)
+         UNION
+         SELECT mr.matnr::text
+           FROM raw_data.mara mr
+           JOIN (SELECT DISTINCT ltrim(o.sap_key, '0') AS k
+                   FROM clean_data.maintenance_object o
+                  WHERE o.object_type = 'ARTICLE' AND o.is_active) mo
+             ON mo.k = ltrim(mr.matnr::text, '0')
+          WHERE mr.mandt::text = '700'::text
+        ), article_base AS (
          SELECT DISTINCT ON (m_1.matnr)
             m_1.matnr::text AS matnr,
             m_1.mandt,
@@ -97,12 +114,9 @@ BEGIN
             m_1.aenam,
             mk.spras
            FROM raw_data.mara m_1
+             JOIN perimetre p ON p.matnr = m_1.matnr::text
              LEFT JOIN raw_data.makt mk ON m_1.matnr::text = mk.matnr::text AND mk.mandt::text = '700'::text AND (mk.spras::text = ANY (ARRAY['F'::character varying, 'E'::character varying, 'D'::character varying]::text[]))
           WHERE m_1.mandt::text = '700'::text AND (m_1.lvorm IS NULL OR m_1.lvorm::text = ''::text)
-            AND EXISTS (SELECT 1 FROM raw_data.marc c
-                         WHERE c.mandt::text = '700'::text AND c.matnr::text = m_1.matnr::text
-                           AND c.werks::text IN ('9200', '9000')
-                           AND (c.lvorm IS NULL OR c.lvorm::text = ''::text))
           ORDER BY m_1.matnr, (
                 CASE mk.spras
                     WHEN 'F'::text THEN 1
