@@ -38,10 +38,12 @@ WITH z AS MATERIALIZED (
       FROM raw_data.eqkt WHERE mandt = '700'
      ORDER BY equnr, CASE spras WHEN 'F' THEN 1 WHEN 'N' THEN 2 ELSE 3 END
 ), st AS MATERIALIZED (
-    SELECT objnr, array_agg(stat ORDER BY stat) AS statuts
-      FROM raw_data.jest
-     WHERE mandt = '700' AND stat LIKE 'I%' AND (inact IS NULL OR inact = '')
-     GROUP BY objnr
+    -- jest porte les statuts de TOUS les objets SAP (4,1 M lignes) : partir des equipements
+    SELECT q.objnr, array_agg(j.stat ORDER BY j.stat) AS statuts
+      FROM raw_data.equi q
+      JOIN raw_data.jest j ON j.mandt = q.mandt AND j.objnr = q.objnr
+     WHERE q.mandt = '700' AND j.stat LIKE 'I%' AND (j.inact IS NULL OR j.inact = '')
+     GROUP BY q.objnr
 ), mo AS MATERIALIZED (
     SELECT e.sap_key, e.id AS mo_id, p.object_type AS parent_type, p.code AS parent_code,
            p.designation AS parent_designation
