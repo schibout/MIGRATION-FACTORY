@@ -772,6 +772,7 @@ def start_ca_sync():
 
 def _feuille_tableau(ws, title, libelles, rows, numeriques):
     """Feuille tableau : en-tetes metier, dates et nombres types, en-tete fige + filtres."""
+    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
     from openpyxl.styles import Alignment, Font, PatternFill
 
     colonnes = [c for c, _ in libelles]
@@ -785,8 +786,11 @@ def _feuille_tableau(ws, title, libelles, rows, numeriques):
     # ws.max_row / ws[n] parcourent toutes les cellules : indices tenus a la main,
     # sinon l'export est quadratique (7 748 x 60 cellules -> ne se termine pas).
     for i, r in enumerate(rows, 2):
+        # Caracteres de controle (presents dans les textes longs SAP) refuses par
+        # Excel : openpyxl leve IllegalCharacterError -> on les retire.
         ws.append([float(v) if isinstance(v, Decimal)
-                   else ('Oui' if v else 'Non') if isinstance(v, bool) else v
+                   else ('Oui' if v else 'Non') if isinstance(v, bool)
+                   else ILLEGAL_CHARACTERS_RE.sub('', v) if isinstance(v, str) else v
                    for v in r])
         for j in range(1, len(colonnes) + 1):
             cell = ws.cell(i, j)
