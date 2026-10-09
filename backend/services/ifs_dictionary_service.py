@@ -360,7 +360,9 @@ def _upsert(engine, query, rows):
 def import_view_comments(engine, content):
     """FND_TAB_COMMENTS : LU, PROMPT, MODULE, TABLE... de chaque vue IFS."""
     comments = {}
-    for row in _rows(content, ['Table Name', 'Comments'], 'Commentaires'):
+    for row in _rows(content, ['Table Name'], 'Commentaires'):
+        if not row.get('Comments'):      # vue sans commentaire IFS : rien à rattacher
+            continue
         attributes = parse_fnd_comment(row['Comments'])
         comments[row['Table Name'].upper()] = dict(
             view_name=row['Table Name'].upper(), lu_name=attributes.get('LU'), prompt=attributes.get('PROMPT'),
@@ -381,7 +383,9 @@ def import_view_columns(engine, content):
     """FND_TAB_VIEW_COLUMNS : colonnes de chaque vue IFS, dans l'ordre du fichier.
     Les vues du fichier sont remplacées en entier (colonnes disparues retirées)."""
     columns = {}
-    for position, row in enumerate(_rows(content, ['View Name', 'View Column Name'], 'Colonnes des vues'), start=1):
+    for position, row in enumerate(_rows(content, ['View Name'], 'Colonnes des vues'), start=1):
+        if not row.get('View Column Name'):
+            continue
         key = (row['View Name'].upper(), row['View Column Name'].upper())
         columns[key] = dict(view_name=key[0], view_column_name=key[1],
                             column_name=(row.get('Column Name') or '').upper() or None,
