@@ -34,7 +34,9 @@ BEGIN
         "Type approvisionnement", "Type approvisionnement Description",
         "Type de planification", "Point de commande", "Ancien numéro article",
         -- migration 108
-        "Note interne", "Texte de base"
+        "Note interne", "Texte de base",
+        -- migration 110
+        "Créé par", "Dernière modification par"
     )
     -- Une ligne par article : 9200 (SJ) s'il y est ouvert, sinon 9000 (CS),
     -- sinon SJ par defaut (max('9200','9000') = '9200').
@@ -89,7 +91,9 @@ BEGIN
         -- textes longs STXH/STXL, lus par RFC_READ_TEXT dans raw_data.sap_long_text
         -- (ecran Extraction > Textes longs SAP, MATERIAL / IVER et GRUN / F)
         clean_data.texte_long_sap('MATERIAL', 'IVER', m.matnr, ARRAY['F']),  -- note interne
-        clean_data.texte_long_sap('MATERIAL', 'GRUN', m.matnr, ARRAY['F'])   -- texte de base
+        clean_data.texte_long_sap('MATERIAL', 'GRUN', m.matnr, ARRAY['F']),  -- texte de base
+        NULLIF(TRIM(m.ernam), ''),                                 -- cree par
+        NULLIF(TRIM(m.aenam), '')                                  -- derniere modification par
     FROM sites s
     JOIN raw_data.mara m ON m.mandt::text = '700' AND m.matnr::text = s.matnr
     LEFT JOIN raw_data.makt k
