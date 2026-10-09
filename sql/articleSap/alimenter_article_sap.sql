@@ -9,7 +9,7 @@
 --
 -- Colonnes : uniquement des informations venant de SAP, telles quelles (pas de
 -- valeur par defaut IFS ni de transcodification) ; la table ne garde que ces
--- 21 colonnes depuis la migration 106.
+-- colonnes depuis la migration 106 (+10 par la 107).
 CREATE OR REPLACE FUNCTION clean_data.alimenter_article_sap()
  RETURNS integer
  LANGUAGE plpgsql
@@ -27,7 +27,12 @@ BEGIN
         "Statut article", "Classe ABC",
         "Groupe comptable", "Groupe comptable Description",
         "EMPLACEMENT", "Désignation du type", "Qté en stock",
-        "Créé", "Modifié", "Notes", "Délai d'achat"
+        "Créé", "Modifié", "Notes", "Délai d'achat",
+        -- migration 107
+        "U/M Stock Description", "Groupe d'achat", "Groupe d'achat Description",
+        "Hiérarchie produit", "Hiérarchie produit Description",
+        "Type approvisionnement", "Type approvisionnement Description",
+        "Type de planification", "Point de commande", "Ancien numéro article"
     )
     -- Une ligne par article : 9200 (SJ) s'il y est ouvert, sinon 9000 (CS),
     -- sinon SJ par defaut (max('9200','9000') = '9200').
@@ -67,7 +72,18 @@ BEGIN
         CASE WHEN m.ersda::text ~ '^\d{8}$' THEN to_char(to_date(m.ersda::text, 'YYYYMMDD'), 'DD/MM/YYYY') ELSE m.ersda::text END,
         CASE WHEN m.laeda::text ~ '^\d{8}$' THEN to_char(to_date(m.laeda::text, 'YYYYMMDD'), 'DD/MM/YYYY') ELSE m.laeda::text END,
         clean_data.texte_long_sap('MATERIAL', 'BEST', m.matnr, ARRAY['F']),  -- texte de commande
-        NULLIF(c.plifz::numeric, 0)::int::text                     -- delai de livraison prevu
+        NULLIF(c.plifz::numeric, 0)::int::text,                    -- delai de livraison prevu
+        t006.msehl,                                                -- libelle unite (F)
+        NULLIF(TRIM(c.ekgrp), ''), t024.eknam,                     -- groupe d'achat
+        NULLIF(TRIM(m.prdha), ''), t179.vtext,                     -- hierarchie produit
+        NULLIF(TRIM(c.beskz), ''),
+        CASE c.beskz::text                                         -- valeurs fixes du domaine SAP BESKZ
+            WHEN 'E' THEN 'Fabrication interne'
+            WHEN 'F' THEN 'Approvisionnement externe'
+            WHEN 'X' THEN 'Les deux types d''approvisionnement' END,
+        NULLIF(TRIM(c.dismm), ''),                                 -- type de planification (MRP)
+        NULLIF(c.minbe::numeric, 0)::text,                         -- point de commande
+        NULLIF(TRIM(m.bismt), '')                                  -- ancien numero
     FROM sites s
     JOIN raw_data.mara m ON m.mandt::text = '700' AND m.matnr::text = s.matnr
     LEFT JOIN raw_data.makt k
@@ -84,6 +100,11 @@ BEGIN
      AND (ev.lvorm IS NULL OR ev.lvorm::text = '')
     LEFT JOIN raw_data.t025t t025
       ON t025.mandt::text = '700' AND t025.bklas = ev.bklas AND t025.spras::text = 'F'
+    LEFT JOIN raw_data.t006a t006
+      ON t006.mandt::text = '700' AND t006.msehi = m.meins AND t006.spras::text = 'F'
+    LEFT JOIN raw_data.t024 t024 ON t024.mandt::text = '700' AND t024.ekgrp = c.ekgrp
+    LEFT JOIN raw_data.t179t t179
+      ON t179.mandt::text = '700' AND t179.prodh = m.prdha AND t179.spras::text = 'F'
     LEFT JOIN stock st ON st.matnr = s.matnr AND st.werks = s.werks
     ORDER BY 1;
     GET DIAGNOSTICS v_count = ROW_COUNT;
