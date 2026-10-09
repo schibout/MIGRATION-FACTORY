@@ -73,9 +73,9 @@ errors=0
 
 # Liste des fichiers dans l'ordre d'exécution (= ordre de dépendance du module)
 #   1. clean_data.alimenter_ifs_article()            -> clean_data.ifs_article_maitre
-#      (périmètre = raw_data.mara, mandt 700, lvorm vide)
+#      (périmètre = STJN 9200/9000 + articles de maintenance)
 #   2. clean_data.alimenter_part_catalog()           -> clean_data.part_catalog (table de base)
-#      (perimetre societe STJN : EXISTS marc sur werks 9200 / 9000)
+#      (perimetre = ifs_article_maitre tel quel)
 #   3. clean_data.alimenter_inventory_part()         -> clean_data.inventory_part      (EXISTS part_catalog)
 #   4. clean_data.alimenter_inventory_part_planning()-> clean_data.invent_part_plan    (EXISTS inventory_part)
 #   5. clean_data.alimenter_purchase_part()          -> clean_data.purchase_part       (EXISTS part_catalog,

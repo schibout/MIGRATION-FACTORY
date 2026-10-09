@@ -1,14 +1,12 @@
 -- Le type de retour a change (void -> integer) : CREATE OR REPLACE le refuse.
 DROP FUNCTION IF EXISTS clean_data.alimenter_part_catalog_sap();
 
--- Alimente clean_data.part_catalog pour les articles du fichier
--- raw_data.article_sap (perimetre seul), toutes les infos etant lues dans SAP
--- (mara / makt / marc / texte long). Inspiree de
--- clean_data.alimenter_part_catalog() (sql/inventory/).
---
--- Perimetre : les lignes du fichier dont le N° article est un MATNR SAP
--- (mandt 700). Les autres lignes du fichier (articles fabriques PHL, site CS,
--- lingots/dechets) sont chargees par les modules articlePhl / ArticleComposant.
+-- Alimente clean_data.part_catalog pour les articles du perimetre
+-- clean_data.ifs_article_maitre (STJN + articles de maintenance, le meme que
+-- article_sap), toutes les infos etant lues dans SAP (mara / makt / marc /
+-- texte long). Inspiree de clean_data.alimenter_part_catalog() (sql/inventory/).
+-- Les articles fabriques PHL / composants sont charges par les modules
+-- articlePhl / ArticleComposant.
 --
 -- TRUNCATE de part_catalog au debut (demande explicite) : la table est
 -- partagee avec articlePhl / ArticleComposant, ce module doit donc tourner
@@ -26,20 +24,18 @@ BEGIN
     v_start_time := CURRENT_TIMESTAMP;
     RAISE NOTICE 'Debut de l''alimentation PART_CATALOG (article_sap) - %', v_start_time;
 
-    -- article_sap ne fixe QUE le perimetre ; toutes les infos viennent de SAP.
+    -- Perimetre = clean_data.ifs_article_maitre (STJN + articles de maintenance),
+    -- le meme que article_sap et part_catalog ; toutes les infos viennent de SAP.
     DROP TABLE IF EXISTS tmp_article_sap;
     CREATE TEMP TABLE tmp_article_sap ON COMMIT DROP AS
-    SELECT DISTINCT ON (TRIM(a."N° article"))
-        SUBSTRING(TRIM(a."N° article"), 1, 25) AS part_no,
+    SELECT DISTINCT ON (LTRIM(a.numero_article, '0'))
+        SUBSTRING(LTRIM(a.numero_article, '0'), 1, 25) AS part_no,
         m.matnr,
         m.meins
-    FROM raw_data.article_sap a
-    -- MATNR numerique = complete a 18 zeros dans SAP, alphanumerique = tel quel
+    FROM clean_data.ifs_article_maitre a
     JOIN raw_data.mara m
-      ON m.mandt::text = '700'
-     AND m.matnr::text IN (TRIM(a."N° article"), LPAD(TRIM(a."N° article"), 18, '0'))
-    WHERE TRIM(COALESCE(a."N° article", '')) <> ''
-    ORDER BY TRIM(a."N° article");
+      ON m.mandt::text = '700' AND m.matnr::text = a.numero_article
+    ORDER BY LTRIM(a.numero_article, '0');
 
     TRUNCATE TABLE clean_data.part_catalog RESTART IDENTITY;
     RAISE NOTICE 'Table part_catalog videe';
