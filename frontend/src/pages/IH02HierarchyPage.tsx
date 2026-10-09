@@ -382,7 +382,8 @@ const IH02HierarchyPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingNodes, setLoadingNodes] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  // ?search=<n° article> : ouverture depuis la fiche article (Données SAP > Articles)
+  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get('search') ?? '');
   const [searchResults, setSearchResults] = useState<{ locations: LocationNode[]; equipment: EquipmentNode[]; articles: ArticleResult[] } | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
