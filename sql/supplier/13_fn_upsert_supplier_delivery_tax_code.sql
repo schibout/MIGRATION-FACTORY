@@ -50,6 +50,7 @@ BEGIN
     LEFT JOIN clean_data.supplier_info_address sia 
         ON f.numero_compte_ifs = sia.supplier_id
         AND sia.is_deleted = FALSE
+        AND sia.fonction_partenaire IS NULL  -- adresse propre (pas les partenaires wyt3)
     WHERE f.numero_compte_ifs IS NOT NULL
     AND (
         (f.tva IS NOT NULL AND f.tva != '')

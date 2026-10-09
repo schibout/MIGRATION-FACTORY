@@ -64,7 +64,8 @@ BEGIN
     -- fichier (script 04) : la jointure suit, sinon plus aucune ligne ne
     -- retrouve sa TVA et vat_no retombe sur 'NO_VAT_...'.
     LEFT JOIN clean_data.ifs_fournisseurs ifs ON sia.supplier_id = ifs.numero_compte_ifs
-    WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
+    WHERE COALESCE(sia.is_deleted, FALSE) = FALSE
+      AND sia.fonction_partenaire IS NULL;  -- adresse propre (pas les partenaires wyt3)
     
     GET DIAGNOSTICS inserted_count = ROW_COUNT;
     

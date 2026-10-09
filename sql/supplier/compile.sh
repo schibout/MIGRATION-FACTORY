@@ -85,6 +85,7 @@ files=(
     "../functions/get_vendor_no_ifs.sql"
     "02_alimenter_supplier_info_general.sql"
     "03_alimenter_supplier_info_our_id.sql"
+    "../../migrations/115_supplier_info_address_fonction_partenaire.sql"
     "04_alimenter_supplier_info_address.sql"
     "05_insert_supplier_address_types.sql"
     "06_alimenter_comm_method.sql"

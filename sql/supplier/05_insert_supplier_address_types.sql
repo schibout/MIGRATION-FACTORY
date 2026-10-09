@@ -24,194 +24,47 @@ BEGIN
     RAISE NOTICE 'Nombre d''adresses sources (supplier_info_address): %', 
                  (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE COALESCE(is_deleted, FALSE) = FALSE);
     
-    -- =====================================
-    -- TYPE 1: DELIVERY 
-    -- =====================================
-    RAISE NOTICE '';
-    RAISE NOTICE '--- Insertion TYPE 1: DELIVERY ---';
-    
+    -- Adresse propre du fournisseur (fonction_partenaire NULL) : les 4 types,
+    -- adresse par defaut. Adresse partenaire SAP (script 04, wyt3) : le seul
+    -- type de sa fonction, jamais par defaut (IFS n'admet qu'une adresse par
+    -- defaut par type) :
+    --   RS auteur facture -> INVOICE + PAY ; BA adresse commande -> INVOICE
+    --   VA adresse contrat -> VISIT        ; SP transporteur     -> DELIVERY
     INSERT INTO clean_data.supplier_info_address_type (
-        supplier_id,
-        address_id,
-        address_type_code,
-        address_type_code_db,
-        party,
-        def_address,
-        default_domain,
-        address_type_id,
-        created_timestamp,
-        updated_timestamp,
-        created_by,
-        updated_by,
-        is_deleted,
-        invoice,
-        visit,
-        pay
+        supplier_id, address_id, address_type_code, address_type_code_db,
+        party, def_address, default_domain, address_type_id,
+        created_timestamp, updated_timestamp, created_by, updated_by,
+        is_deleted, invoice, visit, pay
     )
-    SELECT 
+    SELECT
         sia.supplier_id,
         sia.address_id,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'DELIVERY') as address_type_code,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'DELIVERY') as address_type_code_db,
-        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'DELIVERY') as party,
-        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'DELIVERY') as def_address,
-        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'DELIVERY') as default_domain,
-        sia.supplier_id || '_' || sia.address_id || '_D' as address_type_id,
-        NOW() as created_timestamp,
-        NOW() as updated_timestamp,
-        'etl_supplier_base' as created_by,
-        'etl_supplier_base' as updated_by,
-        FALSE as is_deleted,
-        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'DELIVERY') as invoice,
-        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'DELIVERY') as visit,
-        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'DELIVERY') as pay
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', t.type_adresse),
+        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', t.type_adresse),
+        public.get_default_value('clean_data.supplier_info_address_type', 'party', t.type_adresse),
+        CASE WHEN sia.fonction_partenaire IS NULL
+             THEN public.get_default_value('clean_data.supplier_info_address_type', 'def_address', t.type_adresse)
+             ELSE 'FALSE' END,
+        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', t.type_adresse),
+        sia.supplier_id || '_' || sia.address_id || '_' || LEFT(t.type_adresse, 1),
+        NOW(), NOW(), 'etl_supplier_base', 'etl_supplier_base', FALSE,
+        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', t.type_adresse),
+        public.get_default_value('clean_data.supplier_info_address_type', 'visit', t.type_adresse),
+        public.get_default_value('clean_data.supplier_info_address_type', 'pay', t.type_adresse)
     FROM clean_data.supplier_info_address sia
+    JOIN (VALUES (NULL, 'DELIVERY'), (NULL, 'INVOICE'), (NULL, 'VISIT'), (NULL, 'PAY'),
+                 ('RS', 'INVOICE'), ('RS', 'PAY'), ('BA', 'INVOICE'),
+                 ('VA', 'VISIT'), ('SP', 'DELIVERY')) t(fonction, type_adresse)
+      ON t.fonction IS NOT DISTINCT FROM sia.fonction_partenaire
     WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
-    
-    GET DIAGNOSTICS count_delivery = ROW_COUNT;
-    RAISE NOTICE 'TYPE DELIVERY: % enregistrements insérés', count_delivery;
-    
-    -- =====================================
-    -- TYPE 2: INVOICE (Document)
-    -- =====================================
-    RAISE NOTICE '';
-    RAISE NOTICE '--- Insertion TYPE 2: INVOICE (Document) ---';
-    
-    INSERT INTO clean_data.supplier_info_address_type (
-        supplier_id,
-        address_id,
-        address_type_code,
-        address_type_code_db,
-        party,
-        def_address,
-        default_domain,
-        address_type_id,
-        created_timestamp,
-        updated_timestamp,
-        created_by,
-        updated_by,
-        is_deleted,
-        invoice,
-        visit,
-        pay
-    )
-    SELECT 
-        sia.supplier_id,
-        sia.address_id,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'INVOICE') as address_type_code,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'INVOICE') as address_type_code_db,
-        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'INVOICE') as party,
-        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'INVOICE') as def_address,
-        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'INVOICE') as default_domain,
-        sia.supplier_id || '_' || sia.address_id || '_I' as address_type_id,
-        NOW() as created_timestamp,
-        NOW() as updated_timestamp,
-        'etl_supplier_base' as created_by,
-        'etl_supplier_base' as updated_by,
-        FALSE as is_deleted,
-        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'INVOICE') as invoice,
-        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'INVOICE') as visit,
-        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'INVOICE') as pay
-    FROM clean_data.supplier_info_address sia
-    WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
-    
-    GET DIAGNOSTICS count_invoice = ROW_COUNT;
-    RAISE NOTICE 'TYPE INVOICE: % enregistrements insérés', count_invoice;
-    
-    -- =====================================
-    -- TYPE 3: VISIT
-    -- =====================================
-    RAISE NOTICE '';
-    RAISE NOTICE '--- Insertion TYPE 3: VISIT ---';
-    
-    INSERT INTO clean_data.supplier_info_address_type (
-        supplier_id,
-        address_id,
-        address_type_code,
-        address_type_code_db,
-        party,
-        def_address,
-        default_domain,
-        address_type_id,
-        created_timestamp,
-        updated_timestamp,
-        created_by,
-        updated_by,
-        is_deleted,
-        invoice,
-        visit,
-        pay
-    )
-    SELECT 
-        sia.supplier_id,
-        sia.address_id,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'VISIT') as address_type_code,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'VISIT') as address_type_code_db,
-        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'VISIT') as party,
-        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'VISIT') as def_address,
-        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'VISIT') as default_domain,
-        sia.supplier_id || '_' || sia.address_id || '_V' as address_type_id,
-        NOW() as created_timestamp,
-        NOW() as updated_timestamp,
-        'etl_supplier_base' as created_by,
-        'etl_supplier_base' as updated_by,
-        FALSE as is_deleted,
-        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'VISIT') as invoice,
-        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'VISIT') as visit,
-        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'VISIT') as pay
-    FROM clean_data.supplier_info_address sia
-    WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
-    
-    GET DIAGNOSTICS count_visit = ROW_COUNT;
-    RAISE NOTICE 'TYPE VISIT: % enregistrements insérés', count_visit;
-    
-    -- =====================================
-    -- TYPE 4: PAY
-    -- =====================================
-    RAISE NOTICE '';
-    RAISE NOTICE '--- Insertion TYPE 4: PAY ---';
-    
-    INSERT INTO clean_data.supplier_info_address_type (
-        supplier_id,
-        address_id,
-        address_type_code,
-        address_type_code_db,
-        party,
-        def_address,
-        default_domain,
-        address_type_id,
-        created_timestamp,
-        updated_timestamp,
-        created_by,
-        updated_by,
-        is_deleted,
-        invoice,
-        visit,
-        pay
-    )
-    SELECT 
-        sia.supplier_id,
-        sia.address_id,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code', 'PAY') as address_type_code,
-        public.get_default_value('clean_data.supplier_info_address_type', 'address_type_code_db', 'PAY') as address_type_code_db,
-        public.get_default_value('clean_data.supplier_info_address_type', 'party', 'PAY') as party,
-        public.get_default_value('clean_data.supplier_info_address_type', 'def_address', 'PAY') as def_address,
-        public.get_default_value('clean_data.supplier_info_address_type', 'default_domain', 'PAY') as default_domain,
-        sia.supplier_id || '_' || sia.address_id || '_P' as address_type_id,
-        NOW() as created_timestamp,
-        NOW() as updated_timestamp,
-        'etl_supplier_base' as created_by,
-        'etl_supplier_base' as updated_by,
-        FALSE as is_deleted,
-        public.get_default_value('clean_data.supplier_info_address_type', 'invoice', 'PAY') as invoice,
-        public.get_default_value('clean_data.supplier_info_address_type', 'visit', 'PAY') as visit,
-        public.get_default_value('clean_data.supplier_info_address_type', 'pay', 'PAY') as pay
-    FROM clean_data.supplier_info_address sia
-    WHERE COALESCE(sia.is_deleted, FALSE) = FALSE;
-    
-    GET DIAGNOSTICS count_pay = ROW_COUNT;
-    RAISE NOTICE 'TYPE PAY: % enregistrements insérés', count_pay;
-    
+
+    SELECT COUNT(*) FILTER (WHERE address_type_code_db = 'DELIVERY'),
+           COUNT(*) FILTER (WHERE address_type_code_db = 'INVOICE'),
+           COUNT(*) FILTER (WHERE address_type_code_db = 'VISIT'),
+           COUNT(*) FILTER (WHERE address_type_code_db = 'PAY')
+      INTO count_delivery, count_invoice, count_visit, count_pay
+      FROM clean_data.supplier_info_address_type;
+
     end_time := clock_timestamp();
     total_count := count_delivery + count_invoice + count_visit + count_pay;
     

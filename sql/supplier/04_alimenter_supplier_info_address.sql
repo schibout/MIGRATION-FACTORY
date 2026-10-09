@@ -20,50 +20,77 @@ BEGIN
         address3, address4, address5, address6, zip_code,
         city, county, state, comm_id, output_media,
         output_media_db, supplier_branch, created_timestamp, 
-        updated_timestamp, created_by, updated_by, is_deleted
+        updated_timestamp, created_by, updated_by, is_deleted,
+        fonction_partenaire
+    )
+    -- Une ligne par adresse : l'adresse propre du fournisseur (lfa1.adrnr,
+    -- fichier en repli) + les adresses de ses partenaires SAP (wyt3 -> lfa1
+    -- du partenaire, sans repli fichier : le fichier ne decrit que le
+    -- fournisseur lui-meme). Le script 05 derive les types IFS de
+    -- fonction_partenaire (migration 115).
+    WITH src AS (
+        SELECT f.numero_compte_ifs, f.address_id, f.nom_1, f.rue, f.localite,
+               f.code_postal, f.cle_pays, l.adrnr, l.mandt,
+               NULL::varchar AS fonction_partenaire
+        FROM clean_data.ifs_fournisseurs f
+        LEFT JOIN raw_data.lfa1 l ON f.numero_compte_fournisseur = l.lifnr AND COALESCE(l.loevm, '') != 'X'
+        UNION ALL
+        -- ponytail: une fonction par (fournisseur, adresse) ; vrai le 2026-10-09
+        -- (241 paires), sinon la priorite RS > BA > VA > SP l'emporte
+        (SELECT DISTINCT ON (f.numero_compte_ifs, l2.adrnr)
+               f.numero_compte_ifs, l2.adrnr, NULL, NULL, NULL, NULL, NULL,
+               l2.adrnr, l2.mandt, w.parvw
+        FROM clean_data.ifs_fournisseurs f
+        JOIN raw_data.lfa1 l ON f.numero_compte_fournisseur = l.lifnr AND COALESCE(l.loevm, '') != 'X'
+        JOIN raw_data.wyt3 w ON w.lifnr = l.lifnr AND w.parvw IN ('RS', 'BA', 'VA', 'SP')
+        JOIN raw_data.lfa1 l2 ON l2.lifnr = w.lifn2 AND COALESCE(l2.loevm, '') != 'X'
+        WHERE NULLIF(l2.adrnr, '') IS NOT NULL
+          AND l2.adrnr IS DISTINCT FROM l.adrnr
+        ORDER BY f.numero_compte_ifs, l2.adrnr,
+                 array_position(ARRAY['RS', 'BA', 'VA', 'SP'], w.parvw::text))
     )
     SELECT 
         -- SUPPLIER_ID : numéro IFS du fichier de sélection (voir script 02).
         -- La jointure vers raw_data.lfa1 reste sur le LIFNR SAP.
-        SUBSTRING(f.numero_compte_ifs, 1, 20) as supplier_id,
+        SUBSTRING(s.numero_compte_ifs, 1, 20) as supplier_id,
         -- Numéro d'adresse SAP, résolu une seule fois dans ifs_fournisseurs
         -- (lfa1.adrnr, repli sur la constante paramétrable). Les scripts 05, 07,
         -- 08, 13 et 14 dérivent de cette colonne : la garder alignée sur
         -- ifs_fournisseurs évite qu'ils pointent vers un identifiant absent.
-        SUBSTRING(f.address_id, 1, 50) as address_id,
-        SUBSTRING(COALESCE(a.name1, f.nom_1), 1, 100) as name,
+        SUBSTRING(s.address_id, 1, 50) as address_id,
+        SUBSTRING(COALESCE(a.name1, s.nom_1), 1, 100) as name,
         SUBSTRING(
-            TRIM(COALESCE(a.street, f.rue) || ' ' || 
+            TRIM(COALESCE(a.street, s.rue) || ' ' || 
                  COALESCE(a.house_num1, '') || ' ' || 
-                 COALESCE(a.city1, f.localite) || ' ' || 
-                 COALESCE(a.post_code1, f.code_postal)), 
+                 COALESCE(a.city1, s.localite) || ' ' || 
+                 COALESCE(a.post_code1, s.code_postal)), 
             1, 35
         ) as address,
         SUBSTRING(COALESCE(a.location, ''), 1, 100) as ean_location,
         CASE 
-            WHEN a.date_from IS NOT NULL AND a.date_from != '' 
+            WHEN a.date_from > '19000101'  -- 00010101 = date initiale SAP
                  THEN a.date_from::DATE
             ELSE CURRENT_DATE
         END as valid_from,
         CASE 
-            WHEN a.date_to IS NOT NULL AND a.date_to != '' 
+            WHEN a.date_to > '19000101' AND a.date_to < '99991231'
                  THEN a.date_to::DATE
             ELSE NULL
         END as valid_to,
         SUBSTRING(COALESCE(a.name_co, ''), 1, 20) as party,
         public.get_default_value('clean_data.supplier_info_address', 'default_domain') as default_domain,
-        SUBSTRING(COALESCE(a.country, f.cle_pays), 1, 4000) as country,
-        SUBSTRING(COALESCE(a.country, f.cle_pays), 1, 2) as country_db,
+        SUBSTRING(COALESCE(a.country, s.cle_pays), 1, 4000) as country,
+        SUBSTRING(COALESCE(a.country, s.cle_pays), 1, 2) as country_db,
         public.get_default_value('clean_data.supplier_info_address', 'party_type') as party_type,
         public.get_default_value('clean_data.supplier_info_address', 'party_type_db') as party_type_db,
-        SUBSTRING(COALESCE(a.street, f.rue), 1, 35) as address1,
+        SUBSTRING(COALESCE(a.street, s.rue), 1, 35) as address1,
         SUBSTRING(COALESCE(a.str_suppl1, ''), 1, 35) as address2,
         SUBSTRING(COALESCE(a.str_suppl2, ''), 1, 35) as address3,
         SUBSTRING(COALESCE(a.building, ''), 1, 35) as address4,
         SUBSTRING(COALESCE(a.floor, ''), 1, 35) as address5,
         SUBSTRING(COALESCE(a.roomnumber, ''), 1, 35) as address6,
-        SUBSTRING(COALESCE(a.post_code1, f.code_postal), 1, 35) as zip_code,
-        SUBSTRING(COALESCE(a.city1, f.localite), 1, 35) as city,
+        SUBSTRING(COALESCE(a.post_code1, s.code_postal), 1, 35) as zip_code,
+        SUBSTRING(COALESCE(a.city1, s.localite), 1, 35) as city,
         SUBSTRING(COALESCE(a.city2, ''), 1, 35) as county,
         SUBSTRING(COALESCE(a.region, ''), 1, 35) as state,
         public.get_default_value('clean_data.supplier_info_address', 'comm_id') as comm_id,
@@ -74,10 +101,13 @@ BEGIN
         CURRENT_TIMESTAMP as updated_timestamp,
         'etl_supplier_base' as created_by,
         'etl_supplier_base' as updated_by,
-        FALSE as is_deleted
-    FROM clean_data.ifs_fournisseurs f
-    LEFT JOIN raw_data.lfa1 l ON f.numero_compte_fournisseur = l.lifnr AND COALESCE(l.loevm, '') != 'X'
-    LEFT JOIN raw_data.adrc a ON l.adrnr = a.addrnumber AND a.client = '100';
+        FALSE as is_deleted,
+        s.fonction_partenaire
+    FROM src s
+    -- Mandant lu sur lfa1 (700) : l'ancienne constante '100' ne joignait
+    -- aucune adresse, tout retombait sur le fichier.
+    LEFT JOIN raw_data.adrc a ON s.adrnr = a.addrnumber AND a.client = s.mandt
+    WHERE s.fonction_partenaire IS NULL OR a.addrnumber IS NOT NULL;
     
     GET DIAGNOSTICS v_records_inserted = ROW_COUNT;
     
@@ -91,6 +121,8 @@ BEGIN
                  (SELECT COUNT(DISTINCT supplier_id) FROM clean_data.supplier_info_address);
     RAISE NOTICE 'Adresses avec un numéro SAP (adrnr): %',
                  (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE address_id ~ '^[0-9]{10}$');
+    RAISE NOTICE 'Adresses partenaires (wyt3): %',
+                 (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE fonction_partenaire IS NOT NULL);
     RAISE NOTICE 'Adresses retombées sur la valeur par défaut: %',
                  (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE address_id !~ '^[0-9]{10}$');
     

@@ -88,6 +88,7 @@ BEGIN
     FROM clean_data.supplier_info_address sia
     WHERE sia.supplier_id IS NOT NULL
       AND sia.is_deleted = FALSE
+      AND sia.fonction_partenaire IS NULL  -- adresse propre (pas les partenaires wyt3)
     ORDER BY sia.supplier_id, sia.address_id;
     
     GET DIAGNOSTICS default_count = ROW_COUNT;

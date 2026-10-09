@@ -112,6 +112,7 @@ BEGIN
     adresse_fournisseur AS (
         SELECT DISTINCT ON (supplier_id) supplier_id, address_id
         FROM clean_data.supplier_info_address
+        WHERE fonction_partenaire IS NULL  -- adresse propre (pas les partenaires wyt3)
         ORDER BY supplier_id, address_id
     ),
     livraison_fournisseur AS (
