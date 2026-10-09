@@ -36,7 +36,9 @@ BEGIN
         -- migration 108
         "Note interne", "Texte de base",
         -- migration 110
-        "Créé par", "Dernière modification par"
+        "Créé par", "Dernière modification par",
+        -- migration 111
+        "Créé par Nom", "Dernière modification par Nom"
     )
     -- Une ligne par article : 9200 (SJ) s'il y est ouvert, sinon 9000 (CS),
     -- sinon SJ par defaut (max('9200','9000') = '9200').
@@ -57,6 +59,15 @@ BEGIN
          WHERE d.mandt::text = '700' AND d.werks::text IN ('9200', '9000')
            AND (d.lvorm IS NULL OR d.lvorm::text = '')
          GROUP BY 1, 2
+    ), utilisateur AS (
+        -- nom complet SAP : usr21 -> adrp (version d'adresse la plus recente)
+        SELECT DISTINCT ON (u.bname) u.bname::text AS bname,
+               COALESCE(NULLIF(TRIM(a.name_text), ''),
+                        NULLIF(TRIM(concat_ws(' ', a.name_first, a.name_last)), '')) AS nom
+          FROM raw_data.usr21 u
+          JOIN raw_data.adrp a ON a.client = u.mandt AND a.persnumber = u.persnumber
+         WHERE u.mandt::text = '700'
+         ORDER BY u.bname, a.date_from DESC
     )
     SELECT
         SUBSTRING(LTRIM(s.matnr, '0'), 1, 25),
@@ -93,7 +104,8 @@ BEGIN
         clean_data.texte_long_sap('MATERIAL', 'IVER', m.matnr, ARRAY['F']),  -- note interne
         clean_data.texte_long_sap('MATERIAL', 'GRUN', m.matnr, ARRAY['F']),  -- texte de base
         NULLIF(TRIM(m.ernam), ''),                                 -- cree par
-        NULLIF(TRIM(m.aenam), '')                                  -- derniere modification par
+        NULLIF(TRIM(m.aenam), ''),                                 -- derniere modification par
+        uc.nom, um.nom                                             -- noms complets (usr21/adrp)
     FROM sites s
     JOIN raw_data.mara m ON m.mandt::text = '700' AND m.matnr::text = s.matnr
     LEFT JOIN raw_data.makt k
@@ -116,6 +128,8 @@ BEGIN
     LEFT JOIN raw_data.t179t t179
       ON t179.mandt::text = '700' AND t179.prodh = m.prdha AND t179.spras::text = 'F'
     LEFT JOIN stock st ON st.matnr = s.matnr AND st.werks = s.werks
+    LEFT JOIN utilisateur uc ON uc.bname = TRIM(m.ernam)
+    LEFT JOIN utilisateur um ON um.bname = TRIM(m.aenam)
     ORDER BY 1;
     GET DIAGNOSTICS v_count = ROW_COUNT;
 
