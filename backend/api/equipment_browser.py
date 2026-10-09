@@ -23,6 +23,13 @@ from models import db
 
 equipment_browser_blueprint = Blueprint('equipment_browser', __name__)
 
+
+@equipment_browser_blueprint.before_request
+def _sans_jit():
+    # La jointure sur ltrim(mara.matnr) gonfle le cout estime (~150 M) : PostgreSQL
+    # declenche alors la compilation JIT, 4,5 s par requete pour 1 s d'execution.
+    db.session.execute(text('SET LOCAL jit = off'))
+
 VIDE = '__vide__'
 
 # MATERIALIZED : sans lui PostgreSQL deplie les CTE dans la requete et choisit des
