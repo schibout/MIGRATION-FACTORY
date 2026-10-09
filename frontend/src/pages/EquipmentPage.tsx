@@ -1,913 +1,593 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import MaintenanceActions from '../components/maintenance/MaintenanceActions';
-import MaintenanceJobBanner from '../components/maintenance/MaintenanceJobBanner';
 import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  InputAdornment,
-  CircularProgress,
+  AccountTree as StructureIcon,
+  Build as EquipmentIcon,
+  Close as CloseIcon,
+  FileDownload as ExcelIcon,
+  Inventory2 as ArticleIcon,
+  OpenInNew as OpenIcon,
+  Search as SearchIcon,
+  SubdirectoryArrowRight as FilsIcon,
+  ViewColumn as ColumnsIcon,
+  WarningAmber as WarningIcon,
+} from '@mui/icons-material';
+import {
   Alert,
+  Badge,
+  Box,
+  Button,
+  Checkbox,
   Chip,
   Divider,
-  useTheme,
-  alpha,
-  Button,
-  Grid,
-  Snackbar,
-  Tabs,
-  Tab,
+  Drawer,
+  IconButton,
+  InputAdornment,
+  LinearProgress,
+  Link,
+  ListItemText,
+  ListSubheader,
+  Menu,
+  MenuItem,
+  Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
   TablePagination,
+  TableRow,
   TableSortLabel,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Card,
-  CardContent,
-  LinearProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  TextField,
+  Tooltip,
+  Typography,
 } from '@mui/material';
-import {
-  Search as SearchIcon,
-  Build as EquipmentIcon,
-  Edit as EditIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
-  Info as InfoIcon,
-  Business as BusinessIcon,
-  CalendarToday as CalendarIcon,
-  Clear as ClearIcon,
-  LocationOn as LocationIcon,
-  Factory as FactoryIcon,
-  Inventory as InventoryIcon,
-  Add as AddIcon,
-  Delete as DeleteIcon,
-} from '@mui/icons-material';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { couleur, FacetteAuto, FacetValue, nb, RepartitionBar, telecharger } from '../components/data/facettes';
 import api from '../services/api';
 
-interface Equipment {
-  id: string;
-  description: string;
-  type: string;
-  category?: string;
-  manufacturer?: string;
-  model?: string;
-  serial_number?: string;
-  inventory_number?: string;
-  functional_location?: string;
-  maintenance_plant?: string;
-  planner_group?: string;
-  start_date?: string;
-  construction_year?: string;
-  construction_month?: string;
-  created_date?: string;
-  created_by?: string;
-  modified_date?: string;
-  modified_by?: string;
-  deletion_flag?: string;
-  [key: string]: any;
+// Écran Maintenance > Équipements : consultation seule (demande du 2026-10-09), sur le
+// modèle de Données SAP > Articles. API backend/api/equipment_browser.py ; la fiche
+// complète vient aussi de /maintenance/equipment/<id>/details (api/maintenance_hierarchy.py).
+
+type Row = Record<string, any>;
+type FacetKey = 'position' | 'categorie' | 'division' | 'poste_travail' | 'statut' | 'type_objet' | 'lien_article';
+type Filters = Partial<Record<FacetKey, string[]>>;
+interface Statut { code: string; libelle: string }
+interface FacetsResponse {
+  facettes: Record<FacetKey, { titre: string; valeurs: FacetValue[] }>;
+  total: number;
+  anomalies: { cle: string; libelle: string; nb: number }[];
+  anomalies_total: number;
 }
 
-// Field component for details
-const FIELD_MAX_LENGTHS: Record<string, number> = {
-  description: 40,
-  type: 10,
-  category: 1,
-  manufacturer: 30,
-  manufacturer_country: 3,
-  model: 20,
-  serial_number: 18,
-  inventory_number: 25,
-  material_number: 18,
-  maintenance_plant: 4,
-  planner_group: 3,
-  construction_year: 4,
-  construction_month: 2,
-  size: 18,
-  weight_unit: 3,
-  currency: 5,
-  supplier: 10,
-  warranty_period: 10,
+interface Field { col: string; lib?: string; label: string; theme: string; long?: boolean; mono?: boolean; tri?: boolean }
+const FIELDS: Field[] = [
+  { col: 'numero', label: 'N° équipement', theme: 'Identification', mono: true, tri: true },
+  { col: 'description', label: 'Description', theme: 'Identification', long: true, tri: true },
+  { col: 'categorie', label: 'Catégorie', theme: 'Identification', tri: true },
+  { col: 'type_objet', label: "Type d'objet", theme: 'Identification', tri: true },
+  { col: 'statuts', label: 'Statuts SAP', theme: 'Identification' },
+  { col: 'article', lib: 'article_description', label: 'N° article', theme: 'Article', mono: true, tri: true },
+  { col: 'construction', lib: 'construction_description', label: 'Type de construction', theme: 'Article', mono: true, tri: true },
+  { col: 'position', label: 'Position', theme: 'Structure', tri: true },
+  { col: 'parent_code', lib: 'parent_designation', label: 'Parent', theme: 'Structure', mono: true, tri: true },
+  { col: 'division', lib: 'division_description', label: 'Division', theme: 'Organisation', tri: true },
+  { col: 'poste_travail', lib: 'poste_travail_description', label: 'Poste de travail', theme: 'Organisation', tri: true },
+  { col: 'fabricant', label: 'Fabricant', theme: 'Technique', tri: true },
+  { col: 'modele', label: 'Modèle', theme: 'Technique', tri: true },
+  { col: 'numero_serie', label: 'N° de série', theme: 'Technique', mono: true, tri: true },
+  { col: 'numero_inventaire', label: "N° d'inventaire", theme: 'Technique', mono: true, tri: true },
+];
+const THEMES = Array.from(new Set(FIELDS.map((f) => f.theme)));
+
+const PRESETS: Record<string, string[]> = {
+  Essentiel: ['numero', 'description', 'article', 'construction', 'position', 'parent_code', 'poste_travail', 'statuts'],
+  Structure: ['numero', 'description', 'position', 'parent_code', 'division', 'poste_travail'],
+  Technique: ['numero', 'description', 'categorie', 'fabricant', 'modele', 'numero_serie', 'numero_inventaire'],
+  Tout: FIELDS.map((f) => f.col),
 };
 
-const DetailField: React.FC<{
-  label: string;
-  value: string | undefined | null;
-  isEditing: boolean;
-  fieldName: string;
-  editedData: Record<string, string>;
-  onFieldChange: (field: string, value: string) => void;
-  monospace?: boolean;
-  editable?: boolean;
-  fullWidth?: boolean;
-}> = ({ label, value, isEditing, fieldName, editedData, onFieldChange, monospace = false, editable = true, fullWidth = false }) => {
-  if (!value && !isEditing) return null;
-  
-  const maxLen = FIELD_MAX_LENGTHS[fieldName];
-  const currentVal = editedData[fieldName] ?? value ?? '';
-  const isOverLimit = maxLen && currentVal.length > maxLen;
+const POSITION_COULEURS: Record<string, string> = {
+  FUNC_LOC: '#1976d2', EQUIPMENT: '#00897b', SANS_PARENT: '#ef6c00', HORS_STRUCTURE: '#c62828',
+};
+const CATEGORIE_COULEURS: Record<string, string> = {
+  M: '#5c6bc0', Q: '#26a69a', Z: '#8d6e63', R: '#ab47bc', Y: '#ffa726', P: '#78909c',
+};
+const POSITION_ICONE: Record<string, string> = { FUNC_LOC: 'Poste technique', EQUIPMENT: 'Équipement' };
+
+const COLS_KEY = 'equipements.colonnes';
+const lireColonnes = (): string[] => {
+  try {
+    const v = JSON.parse(localStorage.getItem(COLS_KEY) || 'null');
+    if (Array.isArray(v) && v.length) return v;
+  } catch { /* stockage indisponible */ }
+  return PRESETS.Essentiel;
+};
+
+const Statuts: React.FC<{ statuts: Statut[] }> = ({ statuts }) => (
+  <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+    {statuts.map((s) => (
+      <Tooltip key={s.code} title={`${s.code} · ${s.libelle}`}>
+        <Chip size="small" variant="outlined" label={s.libelle.split(' — ')[0]}
+          color={s.code === 'I0320' || s.code === 'I0076' ? 'error' : 'default'} sx={{ height: 20, fontSize: '0.7rem' }} />
+      </Tooltip>
+    ))}
+  </Stack>
+);
+
+// ---------------------------------------------------------------------------
+// Cellule
+// ---------------------------------------------------------------------------
+const Cellule: React.FC<{ field: Field; row: Row; positions: Record<string, string> }> = ({ field, row, positions }) => {
+  const v = row[field.col];
+  if (field.col === 'statuts') return <Statuts statuts={v ?? []} />;
+  if (field.col === 'position') {
+    return <Chip size="small" label={positions[v] ?? v}
+      sx={{ bgcolor: couleur(POSITION_COULEURS, v), color: '#fff', fontWeight: 500 }} />;
+  }
+  if (v === null || v === undefined || v === '') return <Typography variant="body2" color="text.disabled">—</Typography>;
+  if (field.lib) {
+    const lib = row[field.lib];
+    return (
+      <Box sx={{ lineHeight: 1.2 }}>
+        <Typography variant="body2" sx={{ fontFamily: field.mono ? 'monospace' : undefined, fontWeight: 600 }}>{v}</Typography>
+        {lib
+          ? <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 230 }}>{lib}</Typography>
+          : (field.col === 'article' || field.col === 'construction')
+            ? <Typography variant="caption" color="warning.main">absent du catalogue</Typography> : null}
+      </Box>
+    );
+  }
+  if (field.long) return <Typography variant="body2" noWrap sx={{ maxWidth: 340 }}>{v}</Typography>;
+  return <Typography variant="body2" sx={{ fontFamily: field.mono ? 'monospace' : undefined }}>{v}</Typography>;
+};
+
+// ---------------------------------------------------------------------------
+// Fiche équipement (tiroir)
+// ---------------------------------------------------------------------------
+const Info: React.FC<{ label: string; value: any; mono?: boolean }> = ({ label, value, mono }) => (
+  <>
+    <Typography variant="body2" color="text.secondary">{label}</Typography>
+    <Typography variant="body2" sx={{ fontFamily: mono ? 'monospace' : undefined }}>
+      {value === null || value === undefined || String(value).trim() === '' ? <span style={{ color: '#aaa' }}>—</span> : value}
+    </Typography>
+  </>
+);
+
+const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void }> = ({ numero, onClose }) => {
+  const navigate = useNavigate();
+  const [data, setData] = useState<any>(null);
+  const [details, setDetails] = useState<Row | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!numero) return;
+    setData(null);
+    setDetails(null);
+    setErreur(null);
+    api.get(`/maintenance/equipment-browser/${encodeURIComponent(numero)}/structure`)
+      .then((res) => setData(res.data))
+      .catch(() => setErreur("Impossible de charger la fiche de l'équipement."));
+    api.get(`/maintenance/equipment/${encodeURIComponent(numero.padStart(18, '0'))}/details`)
+      .then((res) => setDetails(res.data?.data ?? null))
+      .catch(() => setDetails(null));
+  }, [numero]);
+
+  const e = data?.equipement;
+  const versArticle = (n: string) => navigate(`/sap-data/articles?search=${encodeURIComponent(n)}`);
+  const lienArticle = (n: string | null, lib: string | null, cat: string | null) => (n ? (
+    <Box>
+      <Link component="button" variant="body2" onClick={() => versArticle(n)} sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+        {n}
+      </Link>
+      <Typography variant="caption" color={lib ? 'text.secondary' : 'warning.main'} sx={{ display: 'block' }}>
+        {lib ? `${lib}${cat ? ` · ${cat}` : ''}` : 'Absent du catalogue des articles'}
+      </Typography>
+    </Box>
+  ) : <span style={{ color: '#aaa' }}>—</span>);
 
   return (
-    <Grid item xs={fullWidth ? 12 : 6} md={fullWidth ? 12 : 4}>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-        {label}
-        {isEditing && editable && maxLen && (
-          <Typography component="span" variant="caption" sx={{ ml: 1, color: isOverLimit ? 'error.main' : 'text.disabled', fontWeight: isOverLimit ? 600 : 400 }}>
-            ({currentVal.length}/{maxLen})
-          </Typography>
-        )}
-      </Typography>
-      {isEditing && editable ? (
-        <TextField
-          size="small"
-          fullWidth
-          value={currentVal}
-          onChange={(e) => onFieldChange(fieldName, e.target.value)}
-          inputProps={{ maxLength: maxLen || undefined }}
-          error={!!isOverLimit}
-          helperText={isOverLimit ? `Max ${maxLen} caractères` : undefined}
-          sx={{ 
-            '& input': { 
-              fontFamily: monospace ? 'monospace' : 'inherit',
-              fontSize: '0.875rem',
-            } 
-          }}
-        />
-      ) : (
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            fontFamily: monospace ? 'monospace' : 'inherit',
-            fontWeight: 500,
-          }}
-        >
-          {value || '-'}
-        </Typography>
+    <Drawer anchor="right" open={!!numero} onClose={onClose} PaperProps={{ sx: { width: { xs: '100%', sm: 580 } } }}>
+      {!e && !erreur && <LinearProgress />}
+      {erreur && <Alert severity="error" sx={{ m: 2 }}>{erreur}</Alert>}
+      {e && (
+        <Box>
+          <Box sx={{ p: 2.5, color: '#fff', background: `linear-gradient(135deg, ${couleur(POSITION_COULEURS, e.position)} 0%, #263238 100%)` }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Typography variant="overline" sx={{ opacity: 0.85 }}>
+                  Équipement · catégorie {e.categorie ?? '—'}{e.type_objet ? ` · ${e.type_objet}` : ''}
+                </Typography>
+                <Typography variant="h5" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{e.numero}</Typography>
+                <Typography variant="body1">{e.description}</Typography>
+              </Box>
+              <IconButton onClick={onClose} sx={{ color: '#fff' }}><CloseIcon /></IconButton>
+            </Stack>
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap', rowGap: 1 }}>
+              <Chip size="small" icon={<StructureIcon sx={{ color: '#fff !important' }} />}
+                label={data.positions[e.position] ?? e.position} sx={{ bgcolor: 'rgba(255,255,255,.25)', color: '#fff' }} />
+              {e.statuts.map((s: Statut) => (
+                <Chip key={s.code} size="small" label={s.libelle} sx={{ bgcolor: 'rgba(0,0,0,.25)', color: '#fff' }} />
+              ))}
+            </Stack>
+          </Box>
+
+          <Box sx={{ p: 2.5 }}>
+            {e.anomalies.length > 0 && (
+              <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 2 }}>
+                {e.anomalies.map((k: string) => data.anomalies_libelles[k]).join(' · ')}
+              </Alert>
+            )}
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="overline" color="primary">Place dans la structure</Typography>
+              {e.position !== 'HORS_STRUCTURE' && (
+                <Button size="small" endIcon={<OpenIcon />}
+                  onClick={() => navigate(`/maintenance/ih02?search=${encodeURIComponent(e.numero)}`)}>
+                  Ouvrir dans IH02
+                </Button>
+              )}
+            </Stack>
+            {data.chemin.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">Équipement absent de la structure IH02.</Typography>
+            ) : (
+              <Box sx={{ mb: 1 }}>
+                {data.chemin.map((c: Row, i: number) => {
+                  const dernier = i === data.chemin.length - 1;
+                  return (
+                    <Box key={`${c.object_type}-${c.code}-${i}`} sx={{ display: 'flex', alignItems: 'center', pl: i * 1.5, py: 0.25 }}>
+                      {i > 0 && <FilsIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 0.5 }} />}
+                      <Tooltip title={POSITION_ICONE[c.object_type] ?? c.object_type}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', mr: 1, flexShrink: 0,
+                          bgcolor: c.object_type === 'FUNC_LOC' ? '#1976d2' : '#00897b' }} />
+                      </Tooltip>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: dernier ? 700 : 500, mr: 1 }}>{c.code}</Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap>{c.designation}</Typography>
+                    </Box>
+                  );
+                })}
+                {e.position === 'SANS_PARENT' && (
+                  <Typography variant="caption" color="warning.main">Aucun parent : l'équipement est à la racine de la structure.</Typography>
+                )}
+              </Box>
+            )}
+            <Divider sx={{ my: 1.5 }} />
+
+            <Typography variant="overline" color="primary">Article</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '170px 1fr', rowGap: 1, columnGap: 2, mb: 1.5 }}>
+              <Typography variant="body2" color="text.secondary">N° article</Typography>
+              {lienArticle(e.article, e.article_description, e.article_categorie)}
+              <Typography variant="body2" color="text.secondary">Type de construction</Typography>
+              {lienArticle(e.construction, e.construction_description, e.construction_categorie)}
+            </Box>
+            <Divider sx={{ my: 1.5 }} />
+
+            <Typography variant="overline" color="primary">Organisation</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '170px 1fr', rowGap: 0.75, columnGap: 2, mb: 1.5 }}>
+              <Info label="Division" value={e.division ? `${e.division}${e.division_description ? ` — ${e.division_description}` : ''}` : null} />
+              <Info label="Poste de travail" value={e.poste_travail ? `${e.poste_travail}${e.poste_travail_description ? ` — ${e.poste_travail_description}` : ''}` : null} />
+              <Info label="Groupe de planification" value={details?.planner_group} />
+              <Info label="Centre de coûts" value={details?.cost_center} mono />
+              <Info label="Société" value={details?.company_code} />
+              <Info label="Emplacement" value={details?.location} />
+            </Box>
+            <Divider sx={{ my: 1.5 }} />
+
+            <Typography variant="overline" color="primary">Caractéristiques techniques</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '170px 1fr', rowGap: 0.75, columnGap: 2, mb: 1.5 }}>
+              <Info label="Fabricant" value={e.fabricant} />
+              <Info label="Pays fabricant" value={details?.manufacturer_country} />
+              <Info label="Modèle" value={e.modele} />
+              <Info label="N° de série" value={e.numero_serie} mono />
+              <Info label="N° d'inventaire" value={e.numero_inventaire} mono />
+              <Info label="Année / mois de construction" value={[details?.construction_year, details?.construction_month].filter((x) => x && String(x).trim()).join(' / ')} />
+              <Info label="Mise en service" value={details?.start_date} />
+              <Info label="Valeur d'acquisition" value={details?.acquisition_value ? `${details.acquisition_value} ${details.currency ?? ''}` : null} />
+            </Box>
+            <Divider sx={{ my: 1.5 }} />
+
+            <Typography variant="overline" color="primary">Traçabilité SAP</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '170px 1fr', rowGap: 0.75, columnGap: 2, mb: 1.5 }}>
+              <Info label="Créé le / par" value={details ? [details.created_date, details.created_by].filter(Boolean).join(' · ') : null} />
+              <Info label="Modifié le / par" value={details ? [details.modified_date, details.modified_by].filter(Boolean).join(' · ') : null} />
+            </Box>
+            <Divider sx={{ my: 1.5 }} />
+
+            <Typography variant="overline" color="primary">Éléments rattachés ({data.fils.length})</Typography>
+            {data.fils.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">Aucun élément sous cet équipement.</Typography>
+            ) : (
+              <Table size="small">
+                <TableHead>
+                  <TableRow><TableCell>Type</TableCell><TableCell>Code</TableCell><TableCell>Désignation</TableCell><TableCell align="right">Qté</TableCell></TableRow>
+                </TableHead>
+                <TableBody>
+                  {data.fils.map((f: Row, i: number) => (
+                    <TableRow key={`${f.object_type}-${f.code}-${i}`}>
+                      <TableCell>{f.object_type === 'EQUIPMENT' ? 'Équipement' : f.object_type === 'BOM_ITEM' ? 'Nomenclature' : f.object_type}</TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace' }}>{f.code}</TableCell>
+                      <TableCell>{f.designation}</TableCell>
+                      <TableCell align="right">{f.quantity ?? ''}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Box>
+        </Box>
       )}
-    </Grid>
+    </Drawer>
   );
+};
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+const POSITIONS_PAR_DEFAUT: Record<string, string> = {
+  FUNC_LOC: 'Sous un poste technique', EQUIPMENT: 'Sous un équipement',
+  SANS_PARENT: 'Sans parent', HORS_STRUCTURE: 'Hors structure IH02',
 };
 
 const EquipmentPage: React.FC = () => {
-  const theme = useTheme();
-  
-  // List state
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [loading, setLoading] = useState(true);
-  // Restauration / rechargement SAP : raw_data.equi/eqkt/equz sont reecrites par
-  // l'operation, et le backend refuse les editions pendant (409).
-  const [trackedJobId, setTrackedJobId] = useState<number | null>(null);
-  const [jobActive, setJobActive] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+  const [filters, setFilters] = useState<Filters>({});
+  const [anomalie, setAnomalie] = useState('');
+  const [facets, setFacets] = useState<FacetsResponse | null>(null);
+  const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
-  const [orderBy, setOrderBy] = useState<string>('id');
-  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
-  
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [filterPlant, setFilterPlant] = useState('');
-  const [types, setTypes] = useState<string[]>([]);
-  const [plants, setPlants] = useState<string[]>([]);
-  
-  // Details state
-  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedData, setEditedData] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [sort, setSort] = useState('numero');
+  const [dir, setDir] = useState<'asc' | 'desc'>('asc');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [colonnes, setColonnes] = useState<string[]>(lireColonnes);
+  const [colsAnchor, setColsAnchor] = useState<HTMLElement | null>(null);
+  const [fiche, setFiche] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
-  // Create dialog state
-  const [createOpen, setCreateOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [newEq, setNewEq] = useState<Record<string, string>>({
-    description: '',
-    type: '',
-    manufacturer: '',
-    model: '',
-    serial_number: '',
-    inventory_number: '',
-    maintenance_plant: '',
-    planner_group: '',
-    functional_location: '',
-  });
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  // Delete dialog state
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(COLS_KEY, JSON.stringify(colonnes)); } catch { /* ignoré */ }
+  }, [colonnes]);
 
-  // Load equipment list
-  const loadEquipment = useCallback(async () => {
+  const params = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (searchDebounced) p.search = searchDebounced;
+    (Object.keys(filters) as FacetKey[]).forEach((k) => {
+      if (filters[k]?.length) p[k] = filters[k]!.join(',');
+    });
+    if (anomalie) p.anomalie = anomalie;
+    return p;
+  }, [searchDebounced, filters, anomalie]);
+
+  useEffect(() => { setPage(0); }, [params]);
+
+  useEffect(() => {
+    api.get('/maintenance/equipment-browser/facettes', { params })
+      .then((res) => setFacets(res.data))
+      .catch(() => setError('Impossible de charger les compteurs.'));
+  }, [params]);
+
+  const charger = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
-      const params = new URLSearchParams({
-        page: String(page + 1),
-        per_page: String(rowsPerPage),
-        order_by: orderBy,
-        order: order,
+      const res = await api.get('/maintenance/equipment-browser', {
+        params: { ...params, page: page + 1, page_size: pageSize, sort, dir },
       });
-      
-      if (debouncedSearch) params.append('search', debouncedSearch);
-      if (filterType) params.append('type', filterType);
-      if (filterPlant) params.append('plant', filterPlant);
-      
-      const response = await api.get(`/maintenance/equipment?${params}`);
-      
-      if (response.data.success) {
-        setEquipment(response.data.data);
-        setTotal(response.data.total);
-        
-        if (response.data.filter_options) {
-          setTypes(response.data.filter_options.types || []);
-          setPlants(response.data.filter_options.plants || []);
-        }
-      }
-    } catch (err: any) {
-      console.error('Erreur chargement équipements:', err);
-      setError('Erreur lors du chargement des données');
+      setRows(res.data.rows);
+      setTotal(res.data.total);
+    } catch {
+      setError('Impossible de charger les équipements.');
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, orderBy, order, debouncedSearch, filterType, filterPlant]);
+  }, [params, page, pageSize, sort, dir]);
 
-  useEffect(() => {
-    loadEquipment();
-  }, [loadEquipment]);
+  useEffect(() => { charger(); }, [charger]);
 
-  // Load equipment details
-  const loadEquipmentDetails = async (equnr: string) => {
-    try {
-      setDetailsLoading(true);
-      const response = await api.get(`/maintenance/equipment/${encodeURIComponent(equnr)}/details`);
-      if (response.data.success) {
-        setSelectedEquipment(response.data.data);
-      }
-    } catch (err) {
-      console.error('Erreur chargement détails:', err);
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  // Handle row selection
-  const handleRowClick = (eq: Equipment) => {
-    setIsEditing(false);
-    setEditedData({});
-    setActiveTab(0);
-    loadEquipmentDetails(eq.id);
-  };
-
-  // Handle sort
-  const handleSort = (property: string) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-      setPage(0);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Edit functions
-  const startEditing = () => {
-    setIsEditing(true);
-    setEditedData({});
-  };
-
-  const cancelEditing = () => {
-    setIsEditing(false);
-    setEditedData({});
-  };
-
-  const handleFieldChange = (field: string, value: string) => {
-    if (!selectedEquipment) return;
-    const original = String(selectedEquipment[field] ?? '');
-    if (value === original) {
-      setEditedData((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    } else {
-      setEditedData((prev) => ({ ...prev, [field]: value }));
-    }
-  };
-
-  const saveChanges = async () => {
-    if (!selectedEquipment) return;
-
-    for (const [field, val] of Object.entries(editedData)) {
-      const maxLen = FIELD_MAX_LENGTHS[field];
-      if (maxLen && typeof val === 'string' && val.length > maxLen) {
-        setSnackbar({ open: true, message: `Le champ "${field}" dépasse ${maxLen} caractères`, severity: 'error' });
-        return;
-      }
-    }
-
-    try {
-      setSaving(true);
-      const response = await api.put(`/maintenance/equipment/${encodeURIComponent(selectedEquipment.id)}`, editedData);
-      
-      if (response.data.success) {
-        setSnackbar({
-          open: true,
-          message: 'Modifications enregistrées',
-          severity: 'success',
-        });
-        setIsEditing(false);
-        loadEquipmentDetails(selectedEquipment.id);
-        loadEquipment();
-      }
-    } catch (err: any) {
-      const serverMsg = err?.response?.data?.error || err?.response?.data?.message || 'Erreur lors de la sauvegarde';
-      setSnackbar({
-        open: true,
-        message: serverMsg,
-        severity: 'error',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Clear filters
-  const clearFilters = () => {
-    setSearchQuery('');
-    setDebouncedSearch('');
-    setFilterType('');
-    setFilterPlant('');
-    setPage(0);
-  };
-
-  // Create equipment
-  const openCreateDialog = () => {
-    setNewEq({
-      description: '',
-      type: '',
-      manufacturer: '',
-      model: '',
-      serial_number: '',
-      inventory_number: '',
-      maintenance_plant: '',
-      planner_group: '',
-      functional_location: '',
+  const toggleFiltre = (k: FacetKey, code: string) =>
+    setFilters((f) => {
+      const cur = f[k] ?? [];
+      return { ...f, [k]: cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code] };
     });
-    setCreateOpen(true);
-  };
 
-  const handleCreate = async () => {
-    if (!newEq.description.trim()) {
-      setSnackbar({ open: true, message: 'La description est requise', severity: 'error' });
-      return;
-    }
-    for (const [field, val] of Object.entries(newEq)) {
-      const maxLen = FIELD_MAX_LENGTHS[field];
-      if (maxLen && val.length > maxLen) {
-        setSnackbar({ open: true, message: `Le champ "${field}" dépasse ${maxLen} caractères`, severity: 'error' });
-        return;
-      }
-    }
+  const effacer = () => { setFilters({}); setSearch(''); setAnomalie(''); };
+  const nbFiltres = Object.values(filters).reduce((s, v) => s + (v?.length ?? 0), 0)
+    + (searchDebounced ? 1 : 0) + (anomalie ? 1 : 0);
+
+  const exporter = async () => {
     try {
-      setCreating(true);
-      const response = await api.post('/maintenance/equipment', newEq);
-      if (response.data.success) {
-        setSnackbar({ open: true, message: 'Équipement créé', severity: 'success' });
-        setCreateOpen(false);
-        loadEquipment();
-      }
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Erreur lors de la création';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
+      setExporting(true);
+      await telecharger('/maintenance/equipment-browser/export.xlsx', params, 'equipements.xlsx');
+    } catch {
+      setError("L'export Excel a échoué.");
     } finally {
-      setCreating(false);
+      setExporting(false);
     }
   };
 
-  // Delete equipment
-  const handleDelete = async () => {
-    if (!selectedEquipment) return;
-    try {
-      setDeleting(true);
-      const response = await api.delete(`/maintenance/equipment/${encodeURIComponent(selectedEquipment.id)}`);
-      if (response.data.success) {
-        setSnackbar({ open: true, message: response.data.message || 'Équipement supprimé', severity: 'success' });
-        setDeleteOpen(false);
-        setSelectedEquipment(null);
-        loadEquipment();
-      }
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Erreur lors de la suppression';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
-    } finally {
-      setDeleting(false);
-    }
-  };
+  const champs = FIELDS.filter((f) => colonnes.includes(f.col));
+  const facette = (k: FacetKey) => facets?.facettes[k];
+  const positions = useMemo(() => {
+    const m = { ...POSITIONS_PAR_DEFAUT };
+    facette('position')?.valeurs.forEach((v) => { if (v.libelle) m[v.code] = v.libelle; });
+    return m;
+  }, [facets]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stats cards
-  const renderStats = () => (
-    <Grid container spacing={2} sx={{ mb: 3 }}>
-      <Grid item xs={12} sm={6} md={3}>
-        <Card sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.1) }}>
-          <CardContent sx={{ py: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <EquipmentIcon sx={{ fontSize: 40, color: theme.palette.primary.main, mr: 2 }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 600 }}>{total.toLocaleString()}</Typography>
-                <Typography variant="body2" color="text.secondary">Équipements</Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <Card sx={{ backgroundColor: alpha(theme.palette.success.main, 0.1) }}>
-          <CardContent sx={{ py: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <FactoryIcon sx={{ fontSize: 40, color: theme.palette.success.main, mr: 2 }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 600 }}>{plants.length}</Typography>
-                <Typography variant="body2" color="text.secondary">Divisions</Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <Card sx={{ backgroundColor: alpha(theme.palette.warning.main, 0.1) }}>
-          <CardContent sx={{ py: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <InventoryIcon sx={{ fontSize: 40, color: theme.palette.warning.main, mr: 2 }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 600 }}>{types.length}</Typography>
-                <Typography variant="body2" color="text.secondary">Types</Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <Card sx={{ backgroundColor: alpha(theme.palette.info.main, 0.1) }}>
-          <CardContent sx={{ py: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <LocationIcon sx={{ fontSize: 40, color: theme.palette.info.main, mr: 2 }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 600 }}>-</Typography>
-                <Typography variant="body2" color="text.secondary">Postes techniques</Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      </Grid>
-    </Grid>
+  const filtreAuto = (k: FacetKey, largeur = 200) => (
+    <FacetteAuto key={k} titre={facette(k)?.titre ?? k} valeurs={facette(k)?.valeurs ?? []} largeur={largeur}
+      selection={filters[k] ?? []} onChange={(codes) => setFilters((cur) => ({ ...cur, [k]: codes }))} />
   );
 
-  // Details panel
-  const renderDetailsPanel = () => {
-    if (!selectedEquipment) {
-      return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
-          <EquipmentIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
-          <Typography variant="body1">Sélectionnez un équipement</Typography>
-        </Box>
-      );
-    }
-
-    if (detailsLoading) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-          <CircularProgress />
-        </Box>
-      );
-    }
-
-    const eq = selectedEquipment;
-
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Header */}
-        <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <EquipmentIcon sx={{ fontSize: 32, color: theme.palette.warning.main, mr: 2 }} />
-              <Box>
-                <Typography variant="h6" sx={{ fontFamily: 'monospace' }}>
-                  {eq.id.replace(/^0+/, '')}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  {eq.description}
-                </Typography>
-              </Box>
-            </Box>
-            
-            <Box>
-              {isEditing ? (
-                <>
-                  <Button size="small" variant="outlined" startIcon={<CancelIcon />} onClick={cancelEditing} sx={{ mr: 1 }}>
-                    Annuler
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-                    onClick={saveChanges}
-                    disabled={saving || Object.keys(editedData).length === 0}
-                  >
-                    Enregistrer
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={startEditing} sx={{ mr: 1 }}>
-                    Modifier
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteIcon />}
-                    onClick={() => setDeleteOpen(true)}
-                  >
-                    Supprimer
-                  </Button>
-                </>
-              )}
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ borderBottom: `1px solid ${theme.palette.divider}`, px: 2 }}>
-          <Tab icon={<InfoIcon />} iconPosition="start" label="Général" />
-          <Tab icon={<BusinessIcon />} iconPosition="start" label="Organisation" />
-          <Tab icon={<CalendarIcon />} iconPosition="start" label="Historique" />
-        </Tabs>
-
-        {/* Content */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-          {activeTab === 0 && (
-            <Grid container spacing={2}>
-              <DetailField label="Description" value={eq.description} isEditing={isEditing} fieldName="description" editedData={editedData} onFieldChange={handleFieldChange} fullWidth />
-              <DetailField label="Type" value={eq.type} isEditing={isEditing} fieldName="type" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Catégorie" value={eq.category} isEditing={isEditing} fieldName="category" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Fabricant" value={eq.manufacturer} isEditing={isEditing} fieldName="manufacturer" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Pays fabricant" value={eq.manufacturer_country} isEditing={isEditing} fieldName="manufacturer_country" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Modèle" value={eq.model} isEditing={isEditing} fieldName="model" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="N° Série" value={eq.serial_number} isEditing={isEditing} fieldName="serial_number" editedData={editedData} onFieldChange={handleFieldChange} monospace />
-              <DetailField label="N° Inventaire" value={eq.inventory_number} isEditing={isEditing} fieldName="inventory_number" editedData={editedData} onFieldChange={handleFieldChange} monospace />
-              <DetailField label="N° Article" value={eq.material_number} isEditing={isEditing} fieldName="material_number" editedData={editedData} onFieldChange={handleFieldChange} monospace />
-              <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-              <DetailField label="Poste technique" value={eq.parent_id} isEditing={isEditing} fieldName="parent_id" editedData={editedData} onFieldChange={handleFieldChange} monospace editable={false} />
-              <DetailField label="Division maintenance" value={eq.maintenance_plant} isEditing={isEditing} fieldName="maintenance_plant" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Groupe planification" value={eq.planner_group} isEditing={isEditing} fieldName="planner_group" editedData={editedData} onFieldChange={handleFieldChange} />
-              <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-              <DetailField label="Date mise en service" value={eq.start_date} isEditing={isEditing} fieldName="start_date" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Année construction" value={eq.construction_year} isEditing={isEditing} fieldName="construction_year" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Mois construction" value={eq.construction_month} isEditing={isEditing} fieldName="construction_month" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Garantie (fin)" value={eq.warranty_end_date} isEditing={isEditing} fieldName="warranty_end_date" editedData={editedData} onFieldChange={handleFieldChange} />
-            </Grid>
-          )}
-
-          {activeTab === 1 && (
-            <Grid container spacing={2}>
-              <DetailField label="Centre de coûts" value={eq.cost_center} isEditing={isEditing} fieldName="cost_center" editedData={editedData} onFieldChange={handleFieldChange} monospace editable={false} />
-              <DetailField label="Société" value={eq.company_code} isEditing={isEditing} fieldName="company_code" editedData={editedData} onFieldChange={handleFieldChange} editable={false} />
-              <DetailField label="Division" value={eq.plant} isEditing={isEditing} fieldName="plant" editedData={editedData} onFieldChange={handleFieldChange} editable={false} />
-              <DetailField label="Fournisseur" value={eq.supplier} isEditing={isEditing} fieldName="supplier" editedData={editedData} onFieldChange={handleFieldChange} />
-              <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-              <DetailField label="Valeur acquisition" value={eq.acquisition_value} isEditing={isEditing} fieldName="acquisition_value" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Devise" value={eq.currency} isEditing={isEditing} fieldName="currency" editedData={editedData} onFieldChange={handleFieldChange} />
-              <DetailField label="Date acquisition" value={eq.acquisition_date} isEditing={isEditing} fieldName="acquisition_date" editedData={editedData} onFieldChange={handleFieldChange} />
-            </Grid>
-          )}
-
-          {activeTab === 2 && (
-            <Grid container spacing={2}>
-              <DetailField label="Date création" value={eq.created_date} isEditing={false} fieldName="created_date" editedData={editedData} onFieldChange={handleFieldChange} editable={false} />
-              <DetailField label="Créé par" value={eq.created_by} isEditing={false} fieldName="created_by" editedData={editedData} onFieldChange={handleFieldChange} editable={false} />
-              <DetailField label="Date modification" value={eq.modified_date} isEditing={false} fieldName="modified_date" editedData={editedData} onFieldChange={handleFieldChange} editable={false} />
-              <DetailField label="Modifié par" value={eq.modified_by} isEditing={false} fieldName="modified_by" editedData={editedData} onFieldChange={handleFieldChange} editable={false} />
-              <DetailField label="Indicateur suppression" value={eq.deletion_flag === 'X' ? 'Oui' : 'Non'} isEditing={false} fieldName="deletion_flag" editedData={editedData} onFieldChange={handleFieldChange} editable={false} />
-            </Grid>
-          )}
-        </Box>
-      </Box>
-    );
-  };
-
   return (
-    <Box sx={{ p: 3, height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <EquipmentIcon sx={{ fontSize: 32, mr: 2, color: theme.palette.warning.main }} />
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-          Équipements
-        </Typography>
-        <Box sx={{ flex: 1 }} />
-        <MaintenanceActions
-          onRefresh={loadEquipment}
-          onJobStarted={(job) => setTrackedJobId(job.id)}
-          jobActive={jobActive}
-          loading={loading}
-        />
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={openCreateDialog}
-          disabled={jobActive}
-          sx={{ ml: 1 }}
-        >
-          Nouveau
-        </Button>
-      </Box>
-
-      {/* Restauration / rechargement SAP : ces donnees sont reecrites pendant l'operation */}
-      <MaintenanceJobBanner
-        jobId={trackedJobId}
-        onActiveChange={setJobActive}
-        onFinished={() => {
-          setTrackedJobId(null);
-          loadEquipment();
-        }}
-      />
-
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-      {/* Stats */}
-      {renderStats()}
-
-      {/* Main content */}
-      <Box sx={{ display: 'flex', gap: 3, flex: 1, minHeight: 0 }}>
-        {/* List panel */}
-        <Paper elevation={0} sx={{ flex: 2, display: 'flex', flexDirection: 'column', border: `1px solid ${theme.palette.divider}`, borderRadius: 2, overflow: 'hidden' }}>
-          {/* Filters */}
-          <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Rechercher..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
-                  }}
-                />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Type</InputLabel>
-                  <Select value={filterType} onChange={(e) => { setFilterType(e.target.value); setPage(0); }} label="Type">
-                    <MenuItem value="">Tous</MenuItem>
-                    {types.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Division</InputLabel>
-                  <Select value={filterPlant} onChange={(e) => { setFilterPlant(e.target.value); setPage(0); }} label="Division">
-                    <MenuItem value="">Toutes</MenuItem>
-                    {plants.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <Button fullWidth variant="outlined" startIcon={<ClearIcon />} onClick={clearFilters} disabled={!searchQuery && !filterType && !filterPlant}>
-                  Effacer
-                </Button>
-              </Grid>
-            </Grid>
+    <Box sx={{ p: { xs: 1.5, md: 3 } }}>
+      {/* En-tête */}
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box sx={{ p: 1.2, borderRadius: 2, bgcolor: '#fff3e0', display: 'flex' }}>
+            <EquipmentIcon sx={{ color: '#ef6c00', fontSize: 32 }} />
           </Box>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700 }}>Équipements</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Équipements SAP et leur place dans la structure de maintenance · {facets ? nb(facets.total) : '…'} équipements
+              {nbFiltres > 0 ? ' (sélection)' : ''}
+            </Typography>
+          </Box>
+        </Stack>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<StructureIcon />} onClick={() => navigate('/maintenance/ih02')}>Structure IH02</Button>
+          <Button variant="contained" startIcon={<ExcelIcon />} onClick={exporter} disabled={exporting}>
+            {exporting ? 'Export…' : 'Excel'}
+          </Button>
+        </Stack>
+      </Stack>
 
-          {/* Loading bar */}
-          {loading && <LinearProgress />}
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
-          {/* Table */}
-          <TableContainer sx={{ flex: 1 }}>
-            <Table stickyHeader size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>
-                    <TableSortLabel active={orderBy === 'id'} direction={orderBy === 'id' ? order : 'asc'} onClick={() => handleSort('id')}>
-                      N° Équipement
-                    </TableSortLabel>
+      {/* Répartition */}
+      {facets && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3}>
+            <RepartitionBar titre="Position dans la structure IH02" valeurs={facets.facettes.position.valeurs}
+              actifs={filters.position ?? []} palette={POSITION_COULEURS} onToggle={(c) => toggleFiltre('position', c)} />
+            <Box sx={{ flex: 0.7, minWidth: 260 }}>
+              <RepartitionBar titre="Catégorie d'équipement" valeurs={facets.facettes.categorie.valeurs}
+                actifs={filters.categorie ?? []} palette={CATEGORIE_COULEURS} onToggle={(c) => toggleFiltre('categorie', c)}
+                legende={(v) => v.code} />
+            </Box>
+            <Box sx={{ flex: 0.6, minWidth: 240 }}>
+              <RepartitionBar titre="Lien article" valeurs={facets.facettes.lien_article.valeurs}
+                actifs={filters.lien_article ?? []}
+                palette={{ ARTICLE: '#d81b60', CONSTRUCTION: '#f48fb1', AUCUN: '#cfd8dc' }}
+                onToggle={(c) => toggleFiltre('lien_article', c)} />
+            </Box>
+          </Stack>
+        </Paper>
+      )}
+
+      {/* Qualité */}
+      {facets && (
+        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', rowGap: 1 }} alignItems="center">
+          <Typography variant="overline" color="text.secondary" sx={{ mr: 1 }}>Qualité des données</Typography>
+          <Chip icon={<WarningIcon />} clickable
+            color={anomalie === 'toutes' ? 'warning' : 'default'} variant={anomalie === 'toutes' ? 'filled' : 'outlined'}
+            onClick={() => setAnomalie(anomalie === 'toutes' ? '' : 'toutes')}
+            label={`Au moins une anomalie · ${nb(facets.anomalies_total)}`} />
+          {facets.anomalies.map((a) => (
+            <Chip key={a.cle} clickable size="small"
+              color={anomalie === a.cle ? 'warning' : 'default'} variant={anomalie === a.cle ? 'filled' : 'outlined'}
+              onClick={() => setAnomalie(anomalie === a.cle ? '' : a.cle)}
+              label={`${a.libelle} · ${nb(a.nb)}`} />
+          ))}
+        </Stack>
+      )}
+
+      {/* Filtres */}
+      <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
+        <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', rowGap: 1.5 }} alignItems="center">
+          <TextField size="small" placeholder="N° équipement, description, article, série, parent…" value={search}
+            onChange={(e) => setSearch(e.target.value)} sx={{ width: 320 }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />
+          {filtreAuto('poste_travail', 260)}
+          {filtreAuto('statut', 240)}
+          {filtreAuto('division', 220)}
+          {filtreAuto('type_objet', 160)}
+          <Box sx={{ flexGrow: 1 }} />
+          {nbFiltres > 0 && <Button size="small" onClick={effacer}>Effacer les filtres ({nbFiltres})</Button>}
+          <Badge badgeContent={colonnes.length} color="primary">
+            <Button size="small" variant="outlined" startIcon={<ColumnsIcon />} onClick={(ev) => setColsAnchor(ev.currentTarget)}>
+              Colonnes
+            </Button>
+          </Badge>
+        </Stack>
+      </Paper>
+
+      <Menu anchorEl={colsAnchor} open={!!colsAnchor} onClose={() => setColsAnchor(null)}
+        PaperProps={{ sx: { maxHeight: 520, width: 300 } }}>
+        <Box sx={{ px: 2, py: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+          {Object.keys(PRESETS).map((p) => (
+            <Chip key={p} size="small" label={p} clickable onClick={() => setColonnes(PRESETS[p])} />
+          ))}
+        </Box>
+        <Divider />
+        {THEMES.map((t) => [
+          <ListSubheader key={`h-${t}`} sx={{ lineHeight: '32px' }}>{t}</ListSubheader>,
+          ...FIELDS.filter((f) => f.theme === t).map((f) => (
+            <MenuItem key={f.col} dense disabled={f.col === 'numero'}
+              onClick={() => setColonnes((c) => (c.includes(f.col) ? c.filter((x) => x !== f.col) : [...c, f.col]))}>
+              <Checkbox size="small" checked={colonnes.includes(f.col)} sx={{ py: 0 }} />
+              <ListItemText primary={f.label} secondary={f.lib ? '+ libellé' : undefined} />
+            </MenuItem>
+          )),
+        ])}
+      </Menu>
+
+      {loading && <LinearProgress sx={{ mb: 0.5 }} />}
+
+      <Paper variant="outlined">
+        <TableContainer sx={{ maxHeight: 'calc(100vh - 430px)', minHeight: 300 }}>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ width: 64 }} />
+                {champs.map((f) => (
+                  <TableCell key={f.col} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {f.tri ? (
+                      <TableSortLabel active={sort === f.col} direction={sort === f.col ? dir : 'asc'}
+                        onClick={() => { if (sort === f.col) setDir(dir === 'asc' ? 'desc' : 'asc'); else { setSort(f.col); setDir('asc'); } }}>
+                        {f.label}
+                      </TableSortLabel>
+                    ) : f.label}
                   </TableCell>
-                  <TableCell>
-                    <TableSortLabel active={orderBy === 'description'} direction={orderBy === 'description' ? order : 'asc'} onClick={() => handleSort('description')}>
-                      Description
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Fabricant</TableCell>
-                  <TableCell>Division</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {equipment.map((eq) => (
-                  <TableRow
-                    key={eq.id}
-                    hover
-                    selected={selectedEquipment?.id === eq.id}
-                    onClick={() => handleRowClick(eq)}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, color: theme.palette.warning.dark }}>
-                      {eq.id.replace(/^0+/, '')}
-                    </TableCell>
-                    <TableCell sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {eq.description}
-                    </TableCell>
-                    <TableCell>
-                      {eq.type && <Chip size="small" label={eq.type} sx={{ height: 20, fontSize: '0.7rem' }} />}
-                    </TableCell>
-                    <TableCell>{eq.manufacturer}</TableCell>
-                    <TableCell>{eq.maintenance_plant}</TableCell>
-                  </TableRow>
                 ))}
-                {!loading && equipment.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                      <Typography color="text.secondary">Aucun équipement trouvé</Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id} hover sx={{ cursor: 'pointer' }} onClick={() => setFiche(r.numero)}>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    <Tooltip title={positions[r.position] ?? r.position}>
+                      <StructureIcon fontSize="small" sx={{ color: couleur(POSITION_COULEURS, r.position) }} />
+                    </Tooltip>
+                    <Tooltip title={r.article ? `Article ${r.article}` : r.construction ? `Type de construction ${r.construction}` : 'Sans article'}>
+                      <ArticleIcon fontSize="small" sx={{ ml: 0.5, color: r.article ? '#d81b60' : r.construction ? '#f48fb1' : 'action.disabled' }} />
+                    </Tooltip>
+                    {r.anomalies.length > 0 && (
+                      <Tooltip title={r.anomalies.map((k: string) => facets?.anomalies.find((a) => a.cle === k)?.libelle ?? k).join(' · ')}>
+                        <WarningIcon fontSize="small" sx={{ color: 'warning.main', ml: 0.5 }} />
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                  {champs.map((f) => (
+                    <TableCell key={f.col}><Cellule field={f} row={r} positions={positions} /></TableCell>
+                  ))}
+                </TableRow>
+              ))}
+              {!loading && rows.length === 0 && (
+                <TableRow><TableCell colSpan={champs.length + 1} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                  Aucun équipement ne correspond aux filtres.
+                </TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination component="div" count={total} page={page} rowsPerPage={pageSize}
+          rowsPerPageOptions={[25, 50, 100, 200]} labelRowsPerPage="Lignes par page"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} sur ${nb(count)}`}
+          onPageChange={(_, p) => setPage(p)} onRowsPerPageChange={(ev) => { setPageSize(Number(ev.target.value)); setPage(0); }} />
+      </Paper>
 
-          {/* Pagination */}
-          <TablePagination
-            component="div"
-            count={total}
-            page={page}
-            onPageChange={(_, p) => setPage(p)}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            labelRowsPerPage="Lignes par page:"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} sur ${count}`}
-          />
-        </Paper>
-
-        {/* Details panel */}
-        <Paper elevation={0} sx={{ flex: 1, minWidth: 400, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {renderDetailsPanel()}
-        </Paper>
-      </Box>
-
-      {/* Create dialog */}
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Nouvel équipement</DialogTitle>
-        <DialogContent dividers>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                size="small"
-                required
-                label="Description"
-                value={newEq.description}
-                onChange={(e) => setNewEq({ ...newEq, description: e.target.value })}
-                inputProps={{ maxLength: 40 }}
-                helperText={`${newEq.description.length}/40`}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth size="small" label="Type"
-                value={newEq.type}
-                onChange={(e) => setNewEq({ ...newEq, type: e.target.value })}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth size="small" label="Poste technique (optionnel)"
-                value={newEq.functional_location}
-                onChange={(e) => setNewEq({ ...newEq, functional_location: e.target.value })}
-                placeholder="Ex: 9200-A1"
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth size="small" label="Fabricant"
-                value={newEq.manufacturer}
-                onChange={(e) => setNewEq({ ...newEq, manufacturer: e.target.value })}
-                inputProps={{ maxLength: 30 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth size="small" label="Modèle"
-                value={newEq.model}
-                onChange={(e) => setNewEq({ ...newEq, model: e.target.value })}
-                inputProps={{ maxLength: 20 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth size="small" label="N° Série"
-                value={newEq.serial_number}
-                onChange={(e) => setNewEq({ ...newEq, serial_number: e.target.value })}
-                inputProps={{ maxLength: 18 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth size="small" label="N° Inventaire"
-                value={newEq.inventory_number}
-                onChange={(e) => setNewEq({ ...newEq, inventory_number: e.target.value })}
-                inputProps={{ maxLength: 25 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth size="small" label="Division maintenance"
-                value={newEq.maintenance_plant}
-                onChange={(e) => setNewEq({ ...newEq, maintenance_plant: e.target.value })}
-                inputProps={{ maxLength: 4 }}
-                placeholder="Ex: 9200"
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth size="small" label="Groupe planification"
-                value={newEq.planner_group}
-                onChange={(e) => setNewEq({ ...newEq, planner_group: e.target.value })}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateOpen(false)} disabled={creating}>Annuler</Button>
-          <Button
-            variant="contained"
-            onClick={handleCreate}
-            disabled={creating || !newEq.description.trim()}
-            startIcon={creating ? <CircularProgress size={16} /> : <SaveIcon />}
-          >
-            Créer
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete confirmation */}
-      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
-        <DialogTitle>Supprimer l'équipement ?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Cette action supprimera l'équipement <strong>{selectedEquipment?.id.replace(/^0+/, '')}</strong>
-            {selectedEquipment?.description ? ` — ${selectedEquipment.description}` : ''} ainsi que tous ses sous-équipements.
-            Cette action est irréversible.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteOpen(false)} disabled={deleting}>Annuler</Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={handleDelete}
-            disabled={deleting}
-            startIcon={deleting ? <CircularProgress size={16} /> : <DeleteIcon />}
-          >
-            Supprimer
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar */}
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}>
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}>{snackbar.message}</Alert>
-      </Snackbar>
+      <FicheEquipement numero={fiche} onClose={() => setFiche(null)} />
     </Box>
   );
 };

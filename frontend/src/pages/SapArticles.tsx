@@ -11,7 +11,6 @@ import {
 } from '@mui/icons-material';
 import {
   Alert,
-  Autocomplete,
   Badge,
   Box,
   Button,
@@ -44,6 +43,7 @@ import {
 } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { couleur, FacetteAuto, FacetValue, RepartitionBar, telecharger, VIDE } from '../components/data/facettes';
 import api from '../services/api';
 
 // Écran Données SAP > Articles : clean_data.v_article_sap (périmètre STJN + maintenance),
@@ -54,7 +54,6 @@ type FacetKey = 'site' | 'classe' | 'categorie' | 'groupe_achat' | 'statut' | 'p
 type Filters = Partial<Record<FacetKey, string[]>>;
 type Mode = 'liste' | 'gestionnaire' | 'groupe_achat';
 
-interface FacetValue { code: string; libelle: string | null; nb: number }
 interface FacetsResponse {
   facettes: Record<FacetKey, { titre: string; valeurs: FacetValue[] }>;
   total: number;
@@ -63,8 +62,6 @@ interface FacetsResponse {
   anomalies: { cle: string; libelle: string; nb: number }[];
   anomalies_total: number;
 }
-
-const VIDE = '__vide__';
 
 // Colonnes affichables : code + libellé fusionnés dans une même cellule.
 interface Field { col: string; lib?: string; label?: string; theme: string; long?: boolean; numeric?: boolean }
@@ -116,7 +113,6 @@ const CLASSE_COULEURS: Record<string, string> = {
   MAINTENANCE: '#1976d2', MAGASIN: '#2e7d32', SERVICE: '#ed6c02', PRODUCTION: '#9c27b0', NON_STOCKE: '#78909c',
 };
 const SITE_COULEURS: Record<string, string> = { SJ: '#00897b', CS: '#5c6bc0' };
-const couleur = (palette: Record<string, string>, code: string) => palette[code] ?? '#bdbdbd';
 
 const COLS_KEY = 'sapArticles.colonnes';
 const lireColonnes = (): string[] => {
@@ -131,54 +127,6 @@ const fmtNombre = (v: any) => {
   if (v === null || v === undefined || v === '') return '';
   const n = Number(v);
   return Number.isNaN(n) ? String(v) : n.toLocaleString('fr-FR', { maximumFractionDigits: 3 });
-};
-
-const libelleValeur = (v: FacetValue) =>
-  v.code === VIDE ? '(non renseigné)' : v.libelle ? `${v.code} — ${v.libelle}` : v.code;
-
-// ---------------------------------------------------------------------------
-// Barre de répartition cliquable (classe d'actifs, site)
-// ---------------------------------------------------------------------------
-const RepartitionBar: React.FC<{
-  titre: string; valeurs: FacetValue[]; actifs: string[]; palette: Record<string, string>;
-  onToggle: (code: string) => void;
-}> = ({ titre, valeurs, actifs, palette, onToggle }) => {
-  const total = valeurs.reduce((s, v) => s + v.nb, 0) || 1;
-  return (
-    <Box sx={{ flex: 1, minWidth: 280 }}>
-      <Typography variant="overline" color="text.secondary">{titre}</Typography>
-      <Box sx={{ display: 'flex', height: 30, borderRadius: 1, overflow: 'hidden', bgcolor: 'action.hover' }}>
-        {valeurs.map((v) => {
-          const actif = actifs.length === 0 || actifs.includes(v.code);
-          return (
-            <Tooltip key={v.code} title={`${libelleValeur(v)} : ${v.nb.toLocaleString('fr-FR')} articles`}>
-              <Box
-                onClick={() => onToggle(v.code)}
-                sx={{
-                  width: `${(v.nb / total) * 100}%`, minWidth: 4, bgcolor: couleur(palette, v.code),
-                  opacity: actif ? 1 : 0.25, cursor: 'pointer', transition: 'opacity .2s',
-                  borderRight: '2px solid', borderColor: 'background.paper',
-                  '&:hover': { opacity: 0.85 },
-                }}
-              />
-            </Tooltip>
-          );
-        })}
-      </Box>
-      <Stack direction="row" spacing={1.5} sx={{ mt: 0.75, flexWrap: 'wrap', rowGap: 0.5 }}>
-        {valeurs.map((v) => (
-          <Box key={v.code} onClick={() => onToggle(v.code)}
-            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer',
-              opacity: actifs.length === 0 || actifs.includes(v.code) ? 1 : 0.45 }}>
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: couleur(palette, v.code) }} />
-            <Typography variant="caption">
-              {v.code === VIDE ? '(vide)' : v.libelle ?? v.code} <b>{v.nb.toLocaleString('fr-FR')}</b>
-            </Typography>
-          </Box>
-        ))}
-      </Stack>
-    </Box>
-  );
 };
 
 // ---------------------------------------------------------------------------
@@ -338,8 +286,9 @@ const FicheArticle: React.FC<{ numero: string | null; onClose: () => void }> = (
 // ---------------------------------------------------------------------------
 const SapArticles: React.FC = () => {
   const [mode, setMode] = useState<Mode>('liste');
-  const [search, setSearch] = useState('');
-  const [searchDebounced, setSearchDebounced] = useState('');
+  // ?search=<n° article> : ouverture depuis un autre écran (Équipements)
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('search') ?? '');
+  const [searchDebounced, setSearchDebounced] = useState(search);
   const [filters, setFilters] = useState<Filters>({});
   const [anomalie, setAnomalie] = useState<string>('');
   const [structure, setStructure] = useState<string>('');
@@ -423,16 +372,7 @@ const SapArticles: React.FC = () => {
   const exporter = async () => {
     try {
       setExporting(true);
-      const res = await api.get('/sap-data/articles/export.xlsx', { params, responseType: 'blob' });
-      const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
-      const url = window.URL.createObjectURL(res.data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = match?.[1] ?? 'articles_sap.xlsx';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      await telecharger('/sap-data/articles/export.xlsx', params, 'articles_sap.xlsx');
     } catch {
       setError("L'export Excel a échoué.");
     } finally {
@@ -443,34 +383,10 @@ const SapArticles: React.FC = () => {
   const champs = FIELDS.filter((f) => colonnes.includes(f.col));
   const facette = (k: FacetKey) => facets?.facettes[k];
 
-  const filtreAuto = (k: FacetKey, largeur = 220) => {
-    const f = facette(k);
-    const options = f?.valeurs ?? [];
-    const valeur = options.filter((o) => filters[k]?.includes(o.code));
-    return (
-      <Autocomplete
-        key={k}
-        multiple
-        size="small"
-        limitTags={1}
-        options={options}
-        value={valeur}
-        isOptionEqualToValue={(o, v) => o.code === v.code}
-        getOptionLabel={libelleValeur}
-        onChange={(_, vals) => setFilters((cur) => ({ ...cur, [k]: vals.map((v) => v.code) }))}
-        renderOption={(props, o) => (
-          <li {...props} key={o.code}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 1 }}>
-              <span>{libelleValeur(o)}</span>
-              <Typography variant="caption" color="text.secondary">{o.nb.toLocaleString('fr-FR')}</Typography>
-            </Box>
-          </li>
-        )}
-        renderInput={(p) => <TextField {...p} label={f?.titre ?? k} />}
-        sx={{ width: largeur }}
-      />
-    );
-  };
+  const filtreAuto = (k: FacetKey, largeur = 220) => (
+    <FacetteAuto key={k} titre={facette(k)?.titre ?? k} valeurs={facette(k)?.valeurs ?? []} largeur={largeur}
+      selection={filters[k] ?? []} onChange={(codes) => setFilters((cur) => ({ ...cur, [k]: codes }))} />
+  );
 
   return (
     <Box sx={{ p: { xs: 1.5, md: 3 } }}>

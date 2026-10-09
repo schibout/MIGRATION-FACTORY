@@ -212,15 +212,17 @@ def liste():
 @jwt_required()
 def facettes():
     libelles = _statut_libelles()
+    # 8 requetes sur la meme base : calculee une fois (table temporaire de la transaction)
+    db.session.execute(text(f'CREATE TEMP TABLE base_tmp ON COMMIT DROP AS {BASE} SELECT * FROM base'))
     resultat = {}
     for cle, (col, lib, titre) in FACETTES.items():
         clause, params = _filtres(sauf=cle)
         if cle == 'statut':
-            sql = (f'{BASE} SELECT s AS code, count(*) AS nb FROM base '
+            sql = ('SELECT s AS code, count(*) AS nb FROM base_tmp '
                    f'LEFT JOIN LATERAL unnest(statuts) s ON TRUE {clause} GROUP BY 1 ORDER BY 2 DESC')
         else:
-            sql = (f'{BASE} SELECT {col} AS code, {f"max({lib})" if lib else "NULL"} AS libelle, '
-                   f'count(*) AS nb FROM base {clause} GROUP BY 1 ORDER BY 3 DESC')
+            sql = (f'SELECT {col} AS code, {f"max({lib})" if lib else "NULL"} AS libelle, '
+                   f'count(*) AS nb FROM base_tmp {clause} GROUP BY 1 ORDER BY 3 DESC')
         valeurs = []
         for r in db.session.execute(text(sql), params).mappings():
             code = r['code']
@@ -232,10 +234,11 @@ def facettes():
         resultat[cle] = {'titre': titre, 'valeurs': valeurs}
     clause, params = _filtres()
     compteurs = db.session.execute(text(
-        f'{BASE} SELECT count(*) AS total, '
+        'SELECT count(*) AS total, '
         + ', '.join(f'count(*) FILTER (WHERE {sql}) AS {k}' for k, (_, sql) in ANOMALIES.items())
         + ', count(*) FILTER (WHERE ' + ' OR '.join(f'({s})' for _, s in ANOMALIES.values()) + ') AS toutes '
-        f'FROM base {clause}'), params).mappings().one()
+        f'FROM base_tmp {clause}'), params).mappings().one()
+    db.session.commit()
     return jsonify({
         'facettes': resultat,
         'total': compteurs['total'],
