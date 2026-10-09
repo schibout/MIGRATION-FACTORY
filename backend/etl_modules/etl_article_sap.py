@@ -7,7 +7,9 @@ Perimetre : articles de raw_data.article_sap existant dans SAP (mara, mandt 700)
 Infos     : SAP uniquement (mara, makt, marc, texte long de commande).
 Cible     : clean_data.part_catalog.
 
-Appelle la fonction stockee clean_data.alimenter_part_catalog_sap()
+Alimente d'abord clean_data.article_sap (clean_data.alimenter_article_sap(),
+1 ligne par article de ifs_article_maitre), puis
+appelle la fonction stockee clean_data.alimenter_part_catalog_sap()
 (voir sql/articleSap/alimenter_part_catalog_sap.sql) : TRUNCATE + INSERT (idempotent).
 A executer AVANT les modules articles PHL / Composants, qui completent part_catalog.
 """
@@ -119,6 +121,14 @@ class ArticleSapETL:
 
             with conn_psycopg2:
                 with conn_psycopg2.cursor() as cursor:
+                    # Fichier article IFS (1 ligne par article du perimetre
+                    # ifs_article_maitre, recharge par le module Articles, order 8)
+                    self._add_log_message("Alimentation de article_sap...", "info")
+                    cursor.execute("SELECT clean_data.alimenter_article_sap()")
+                    self._add_log_message(
+                        f"✅ article_sap alimentee : {cursor.fetchone()[0] or 0} articles", "success"
+                    )
+
                     sql = "SELECT clean_data.alimenter_part_catalog_sap()"
                     logger.info(f"Appel de la fonction Article SAP: {sql}")
                     self._add_log_message("Alimentation de part_catalog (Article SAP)...", "info")
