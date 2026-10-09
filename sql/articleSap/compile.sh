@@ -19,7 +19,7 @@ fi
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 
 # texte_long_sap : texte de commande SAP (info_text)
-for file in ../functions/texte_long_sap.sql alimenter_part_catalog_sap.sql alimenter_article_sap.sql; do
+for file in ../functions/texte_long_sap.sql alimenter_part_catalog_sap.sql alimenter_article_sap.sql v_article_sap.sql; do
     echo "[INFO] Compilation de $file..."
     psql -h "${DB_HOST:-10.190.100.58}" -p "${DB_PORT:-5432}" -U "${DB_USER:-postgres}" \
          -d "${DB_NAME:-sap_migration_db}" -v ON_ERROR_STOP=1 -q -f "$file" || exit 1
