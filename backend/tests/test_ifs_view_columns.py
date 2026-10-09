@@ -21,3 +21,9 @@ def test_view_tables_et_rapport():
     cols = [{'column_name': c, 'column_id': i + 1} for i, c in enumerate(view_columns(SQL))]
     sql = build_report({'owner': 'IFSAPP', 'table_name': 'V'}, cols, ['PART_NO', 'OBJID'], True)
     assert 'FROM IFSAPP.V' in sql and '"PART_NO"' in sql and 'OBJVERSION' not in sql
+
+
+def test_parse_fnd_comment():
+    from services.ifs_dictionary_service import parse_fnd_comment
+    assert parse_fnd_comment('LU=FndUser^PROMPT=Fnd User^MODULE=FNDBAS^\n   ^LAYOUTS=A.QRP=Portrait^TEXTS=^') == {
+        'LU': 'FndUser', 'PROMPT': 'Fnd User', 'MODULE': 'FNDBAS', 'LAYOUTS': 'A.QRP=Portrait', 'TEXTS': ''}

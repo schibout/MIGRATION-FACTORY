@@ -7,8 +7,8 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from models import db
-from services.ifs_dictionary_service import (MAX_FILE_BYTES, build_report, import_catalog, import_views,
-                                           view_columns, view_tables)
+from services.ifs_dictionary_service import (MAX_FILE_BYTES, build_report, import_catalog, import_view_columns,
+                                           import_view_comments, import_views, view_columns, view_tables)
 from utils.auth_decorators import admin_required
 
 ifs_dictionary_blueprint = Blueprint('ifs_dictionary', __name__)
@@ -125,7 +125,7 @@ def generate_report(table_id):
 
 
 # ---------------------------------------------------------------------------
-# Vues IFS (public.ifs_view_catalog, migrations 116/117) : écran sur le modèle de
+# Vues IFS (public.ifs_view_catalog + dictionnaire IFS, migrations 116 à 118) : écran sur le modèle de
 # Maintenance > Équipements (facettes, étiquettes, export Excel) + rapport SQL.
 # ---------------------------------------------------------------------------
 VIDE = '__vide__'
@@ -144,6 +144,7 @@ VIEW_FACETTES = {
     'owner': ('owner', 'Propriétaire'),
     'lecture': ('read_only::text', 'Accès'),
     'taille': ('taille', 'Taille du SQL'),
+    'module': ('module', 'Module IFS'),
 }
 VIEW_LIBELLES = {'nature': NATURES, 'taille': TAILLES, 'lecture': LECTURE}
 # Étiquettes (équivalent des anomalies des équipements) : clé -> (libellé, condition)
@@ -157,8 +158,11 @@ ETIQUETTES = {
     'tronque': ('SQL tronqué dans le fichier',
                 "CASE WHEN metadata->>'Text Length' ~ '^[0-9]+$' "
                 "THEN (metadata->>'Text Length')::bigint > 4000 AND length(view_text) <= 4000 END"),
+    'rls': ('Sécurité par ligne (RLS)', "fnd_attributes ? 'ROW_LEVEL_SECURITY'"),
+    'non_documentee': ('Absente du dictionnaire IFS', 'fnd_attributes IS NULL'),
 }
-VIEW_TRIS = {'view_name': 'view_name', 'owner': 'owner', 'nature': 'nature', 'text_length': 'length(view_text)'}
+VIEW_TRIS = {'view_name': 'view_name', 'owner': 'owner', 'nature': 'nature', 'text_length': 'length(view_text)',
+             'module': 'module', 'prompt': 'prompt', 'nb_colonnes_fnd': 'nb_colonnes_fnd'}
 
 
 def _view_filters(sauf=None):
@@ -168,7 +172,7 @@ def _view_filters(sauf=None):
         escaped = search.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
         params['q'] = f'%{escaped}%'
         sql = ' OR view_text ILIKE :q' if request.args.get('in_sql') == '1' else ''
-        where.append(f'(view_name ILIKE :q OR owner ILIKE :q{sql})')
+        where.append(f'(view_name ILIKE :q OR owner ILIKE :q OR prompt ILIKE :q OR lu_name ILIKE :q{sql})')
     for cle, (expr, _) in VIEW_FACETTES.items():
         brut = request.args.get(cle, '')
         if cle == sauf or not brut:
@@ -213,8 +217,8 @@ def list_views():
     with db.engine.connect() as connection:
         rows = connection.execute(text(f'''
             SELECT view_id, owner, view_name, nature, taille, read_only, length(view_text) AS text_length,
-                   imported_at, {_view_tags()}, count(*) OVER () AS total_lignes
-            FROM public.ifs_view_catalog {clause}
+                   imported_at, lu_name, prompt, module, nb_colonnes_fnd, {_view_tags()}, count(*) OVER () AS total_lignes
+            FROM public.v_ifs_view_catalog {clause}
             ORDER BY {tri} {sens} NULLS LAST, owner, view_name LIMIT :limit OFFSET :offset'''),
             {**params, 'limit': size, 'offset': page * size}).mappings().all()
     total = rows[0]['total_lignes'] if rows else 0
@@ -239,16 +243,19 @@ def view_facettes():
             valeurs = [{'code': r.code if r.code is not None else VIDE,
                         'libelle': libelles.get(r.code), 'nb': r.nb}
                        for r in connection.execute(text(
-                           f'SELECT {expr} AS code, count(*) AS nb FROM public.ifs_view_catalog {clause} '
+                           f'SELECT {expr} AS code, count(*) AS nb FROM public.v_ifs_view_catalog {clause} '
                            'GROUP BY 1 ORDER BY 2 DESC'), params)]
             resultat[cle] = {'titre': titre, 'valeurs': valeurs}
         clause, params = _view_filters()
         compteurs = connection.execute(text(
             'SELECT count(*) AS total, '
             + ', '.join(f'count(*) FILTER (WHERE {sql}) AS {k}' for k, (_, sql) in ETIQUETTES.items())
-            + f' FROM public.ifs_view_catalog {clause}'), params).mappings().one()
+            + f' FROM public.v_ifs_view_catalog {clause}'), params).mappings().one()
         catalogue = connection.execute(text(
-            'SELECT count(*) AS views, max(imported_at) AS imported_at FROM public.ifs_view_catalog')).mappings().one()
+            'SELECT count(*) AS views, max(imported_at) AS imported_at, '
+            '(SELECT count(*) FROM public.ifs_view_comment) AS comments, '
+            '(SELECT count(*) FROM public.ifs_view_column) AS columns '
+            'FROM public.ifs_view_catalog')).mappings().one()
     return jsonify(facettes=resultat, total=compteurs['total'], catalogue=dict(catalogue),
                    etiquettes=[{'cle': k, 'libelle': lib, 'nb': compteurs[k]} for k, (lib, _) in ETIQUETTES.items()])
 
@@ -264,14 +271,18 @@ def export_views():
     clause, params = _view_filters()
     with db.engine.connect() as connection:
         rows = connection.execute(text(
-            f'SELECT owner, view_name, nature, read_only, length(view_text) AS text_length, {_view_tags()} '
-            f'FROM public.ifs_view_catalog {clause} ORDER BY owner, view_name'), params).mappings().all()
-    entetes = [('owner', 'Propriétaire'), ('view_name', 'Vue'), ('nature', 'Nature'),
+            f'SELECT owner, view_name, prompt, module, lu_name, base_table, nb_colonnes_fnd, nature, read_only, '
+            f'length(view_text) AS text_length, {_view_tags()} '
+            f'FROM public.v_ifs_view_catalog {clause} ORDER BY owner, view_name'), params).mappings().all()
+    entetes = [('owner', 'Propriétaire'), ('view_name', 'Vue'), ('prompt', 'Prompt'), ('module', 'Module'),
+               ('lu_name', 'Entité (LU)'), ('base_table', 'Table de base'), ('nb_colonnes_fnd', 'Colonnes'),
+               ('nature', 'Nature'),
                ('read_only', 'Accès'), ('text_length', 'Taille du SQL'), ('etiquettes', 'Étiquettes')]
     lignes = []
     for r in rows:
         d = _view_row(r)
-        lignes.append([d['owner'], d['view_name'], NATURES.get(d['nature'], d['nature']),
+        lignes.append([d['owner'], d['view_name'], d['prompt'], d['module'], d['lu_name'], d['base_table'],
+                       d['nb_colonnes_fnd'], NATURES.get(d['nature'], d['nature']),
                        LECTURE.get(str(d['read_only']).lower(), ''), d['text_length'],
                        ', '.join(ETIQUETTES[k][0] for k in d['etiquettes'])])
     wb = Workbook()
@@ -279,8 +290,14 @@ def export_views():
     return _envoyer(wb, 'vues_ifs')
 
 
+def _fnd_columns(connection, view_name):
+    return [dict(r) for r in connection.execute(text(
+        'SELECT view_column_name, column_name FROM public.ifs_view_column '
+        'WHERE view_name = :v ORDER BY position'), {'v': view_name}).mappings()]
+
+
 def _view(connection, view_id):
-    row = connection.execute(text(f'SELECT *, {_view_tags()} FROM public.ifs_view_catalog WHERE view_id = :id'),
+    row = connection.execute(text(f'SELECT *, {_view_tags()} FROM public.v_ifs_view_catalog WHERE view_id = :id'),
                              {'id': view_id}).mappings().first()
     return _view_row(row) if row else None
 
@@ -293,12 +310,16 @@ def view_detail(view_id):
         view = _view(connection, view_id)
         if view is None:
             return jsonify(error='Vue introuvable dans le catalogue.'), 404
+        fnd = _fnd_columns(connection, view['view_name'])
         tables = view_tables(view['view_text'])
         # Objets lus présents dans le catalogue des tables
         connues = {r.table_name: r.table_id for r in connection.execute(text(
             'SELECT table_name, table_id FROM public.ifs_table_catalog WHERE table_name = ANY(:t)'),
             {'t': [t.split('.')[-1] for t in tables]})}
-    return jsonify(view=view, columns=view_columns(view['view_text']),
+    # Colonnes : dictionnaire IFS (FND_TAB_VIEW_COLUMNS) s'il connaît la vue, sinon SQL de la vue
+    return jsonify(view=view, columns=[c['view_column_name'] for c in fnd] or view_columns(view['view_text']),
+                   columns_source='fnd' if fnd else 'sql',
+                   column_origins={c['view_column_name']: c['column_name'] for c in fnd},
                    tables=[{'name': t, 'table_id': connues.get(t.split('.')[-1])} for t in tables],
                    natures=NATURES, etiquettes={k: lib for k, (lib, _) in ETIQUETTES.items()})
 
@@ -315,9 +336,11 @@ def view_report(view_id):
         raise ValueError('include_owner doit être un booléen.')
     with db.engine.connect() as connection:
         view = _view(connection, view_id)
-    if view is None:
-        return jsonify(error='Vue introuvable dans le catalogue.'), 404
-    columns = [{'column_name': c, 'column_id': i + 1} for i, c in enumerate(view_columns(view['view_text']))]
+        if view is None:
+            return jsonify(error='Vue introuvable dans le catalogue.'), 404
+        names = [c['view_column_name'] for c in _fnd_columns(connection, view['view_name'])]
+    columns = [{'column_name': c, 'column_id': i + 1}
+               for i, c in enumerate(names or view_columns(view['view_text']))]
     if not columns:
         raise ValueError('Colonnes de la vue non identifiées dans son SQL : rapport impossible.')
     sql = build_report({'owner': view['owner'], 'table_name': view['view_name']},
@@ -329,8 +352,16 @@ def view_report(view_id):
 @admin_required
 @catalog_errors
 def upload_views():
-    file = request.files.get('file')
-    if not file:
-        raise ValueError('Fournissez le fichier des vues (export ALL_VIEWS).')
-    result = import_views(db.engine, file.read(MAX_FILE_BYTES + 1))
-    return jsonify(**result, message='Import terminé. Les vues absentes du fichier ont été conservées.')
+    """Trois fichiers facultatifs et indépendants : ALL_VIEWS, FND_TAB_COMMENTS, FND_TAB_VIEW_COLUMNS."""
+    fichiers = {cle: request.files.get(cle) for cle in ('file', 'comments_file', 'columns_file')}
+    if not any(fichiers.values()):
+        raise ValueError('Fournissez au moins un fichier : vues, commentaires IFS ou colonnes IFS.')
+    lire = lambda f: f.read(MAX_FILE_BYTES + 1)  # noqa: E731
+    result = {}
+    if fichiers['file']:
+        result.update(import_views(db.engine, lire(fichiers['file'])))
+    if fichiers['comments_file']:
+        result.update(import_view_comments(db.engine, lire(fichiers['comments_file'])))
+    if fichiers['columns_file']:
+        result.update(import_view_columns(db.engine, lire(fichiers['columns_file'])))
+    return jsonify(**result, message='Import terminé. Les entrées absentes des fichiers ont été conservées.')

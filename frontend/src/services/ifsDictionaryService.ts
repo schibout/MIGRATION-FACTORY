@@ -66,6 +66,12 @@ export interface IfsView {
   text_length: number | null;
   imported_at: string;
   etiquettes: string[];
+  lu_name: string | null;
+  prompt: string | null;
+  module: string | null;
+  nb_colonnes_fnd: number;
+  base_table?: string | null;
+  fnd_attributes?: Record<string, string> | null;
   view_text?: string | null;
   metadata?: Record<string, string>;
 }
@@ -73,15 +79,17 @@ export interface IfsView {
 export interface IfsViewDetail {
   view: IfsView;
   columns: string[];
+  columns_source: 'fnd' | 'sql';
+  column_origins: Record<string, string | null>;
   tables: { name: string; table_id: number | null }[];
   natures: Record<string, string>;
   etiquettes: Record<string, string>;
 }
 
 export interface IfsViewFacets {
-  facettes: Record<'nature' | 'owner' | 'lecture' | 'taille', { titre: string; valeurs: FacetValue[] }>;
+  facettes: Record<'nature' | 'owner' | 'lecture' | 'taille' | 'module', { titre: string; valeurs: FacetValue[] }>;
   total: number;
-  catalogue: { views: number; imported_at: string | null };
+  catalogue: { views: number; imported_at: string | null; comments: number; columns: number };
   etiquettes: { cle: string; libelle: string; nb: number }[];
 }
 
@@ -101,10 +109,14 @@ export const ifsViewService = {
     })).data;
   },
   exportUrl: `${base}/views/export.xlsx`,
-  async importFile(file: File) {
+  async importFiles(views: File | null, comments: File | null, columns: File | null) {
+    // Trois fichiers facultatifs : ALL_VIEWS, FND_TAB_COMMENTS, FND_TAB_VIEW_COLUMNS
     const data = new FormData();
-    data.append('file', file);
-    return (await api.post<{ views_imported: number; message: string }>(
+    if (views) data.append('file', views);
+    if (comments) data.append('comments_file', comments);
+    if (columns) data.append('columns_file', columns);
+    return (await api.post<{ views_imported?: number; comments_imported?: number; columns_imported?: number;
+      views_with_columns?: number; message: string }>(
       `${base}/views/import`, data, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
   },
 };

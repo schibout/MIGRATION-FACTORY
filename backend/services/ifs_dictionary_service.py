@@ -338,3 +338,62 @@ def view_tables(sql):
         if name not in found and name not in ('DUAL', 'TABLE', 'SELECT'):
             found.append(name)
     return found
+
+
+def parse_fnd_comment(comment):
+    """'LU=FndUser^PROMPT=Fnd User^MODULE=FNDBAS^' -> dict (la valeur peut contenir '=')."""
+    attributes = {}
+    for part in (comment or '').split('^'):
+        key, sep, value = part.strip().partition('=')
+        if sep and key.strip():
+            attributes[key.strip().upper()] = value.strip()
+    return attributes
+
+
+def _upsert(engine, query, rows):
+    with engine.begin() as connection:
+        connection.execute(text('SELECT pg_advisory_xact_lock(778813)'))
+        for start in range(0, len(rows), 1000):
+            connection.execute(text(query), rows[start:start + 1000])
+
+
+def import_view_comments(engine, content):
+    """FND_TAB_COMMENTS : LU, PROMPT, MODULE, TABLE... de chaque vue IFS."""
+    comments = {}
+    for row in _rows(content, ['Table Name', 'Comments'], 'Commentaires'):
+        attributes = parse_fnd_comment(row['Comments'])
+        comments[row['Table Name'].upper()] = dict(
+            view_name=row['Table Name'].upper(), lu_name=attributes.get('LU'), prompt=attributes.get('PROMPT'),
+            module=attributes.get('MODULE'), base_table=attributes.get('TABLE'),
+            attributes=json.dumps(attributes, ensure_ascii=False), comments=row['Comments'])
+    _upsert(engine, '''
+        INSERT INTO public.ifs_view_comment (view_name, lu_name, prompt, module, base_table, attributes, comments)
+        VALUES (:view_name, :lu_name, :prompt, :module, :base_table, CAST(:attributes AS jsonb), :comments)
+        ON CONFLICT (view_name) DO UPDATE SET
+            lu_name = EXCLUDED.lu_name, prompt = EXCLUDED.prompt, module = EXCLUDED.module,
+            base_table = EXCLUDED.base_table, attributes = EXCLUDED.attributes,
+            comments = EXCLUDED.comments, imported_at = now()
+    ''', list(comments.values()))
+    return {'comments_imported': len(comments)}
+
+
+def import_view_columns(engine, content):
+    """FND_TAB_VIEW_COLUMNS : colonnes de chaque vue IFS, dans l'ordre du fichier.
+    Les vues du fichier sont remplacées en entier (colonnes disparues retirées)."""
+    columns = {}
+    for position, row in enumerate(_rows(content, ['View Name', 'View Column Name'], 'Colonnes des vues'), start=1):
+        key = (row['View Name'].upper(), row['View Column Name'].upper())
+        columns[key] = dict(view_name=key[0], view_column_name=key[1],
+                            column_name=(row.get('Column Name') or '').upper() or None,
+                            lu_name=row.get('Lu Name') or None, position=position)
+    rows = list(columns.values())
+    views = sorted({c['view_name'] for c in rows})
+    with engine.begin() as connection:
+        connection.execute(text('SELECT pg_advisory_xact_lock(778813)'))
+        connection.execute(text('DELETE FROM public.ifs_view_column WHERE view_name = ANY(:v)'), {'v': views})
+        query = text('''
+            INSERT INTO public.ifs_view_column (view_name, view_column_name, column_name, lu_name, position)
+            VALUES (:view_name, :view_column_name, :column_name, :lu_name, :position)''')
+        for start in range(0, len(rows), 1000):
+            connection.execute(query, rows[start:start + 1000])
+    return {'columns_imported': len(rows), 'views_with_columns': len(views)}

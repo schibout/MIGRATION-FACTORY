@@ -22,7 +22,7 @@ import {
 // Maintenance > Équipements (barres de répartition, étiquettes, facettes, export Excel)
 // et rapport SQL comme le Catalogue des tables IFS. API : api/ifs_dictionary.py.
 
-type FacetKey = 'nature' | 'owner' | 'lecture' | 'taille';
+type FacetKey = 'nature' | 'owner' | 'lecture' | 'taille' | 'module';
 type Filters = Partial<Record<FacetKey, string[]>>;
 
 const NATURE_COULEURS: Record<string, string> = {
@@ -37,6 +37,7 @@ const OWNER_COULEURS: Record<string, string> = {
 const LECTURE_COULEURS: Record<string, string> = { true: '#546e7a', false: '#ef6c00' };
 const ETIQUETTE_COULEURS: Record<string, 'default' | 'primary' | 'secondary' | 'warning' | 'info' | 'error'> = {
   union: 'info', api: 'secondary', cf: 'primary', modifiable: 'warning', volumineux: 'error', tronque: 'error',
+  rls: 'secondary', non_documentee: 'default',
 };
 
 function errorMessage(error: unknown): string {
@@ -103,6 +104,7 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
           {view && <NatureChip code={view.nature} libelle={data?.natures[view.nature]} />}
           <span>{report ? 'Rapport SQL — ' : ''}{view?.owner}.{view?.view_name}</span>
         </Stack>
+        {view?.prompt && <Typography variant="body2" color="text.secondary">{view.prompt}{view.module ? ` · module ${view.module}` : ''}{view.lu_name ? ` · entité ${view.lu_name}` : ''}</Typography>}
       </DialogTitle>
       <DialogContent>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -122,17 +124,35 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
               ))}
             </Stack>
             <Tabs value={onglet} onChange={(_, o) => setOnglet(o)} sx={{ mb: 1.5 }}>
+              <Tab label="Informations IFS" />
               <Tab label="SQL" />
               <Tab label={`Colonnes (${data!.columns.length})`} />
               <Tab label={`Objets lus (${data!.tables.length})`} />
               <Tab label="Métadonnées" />
             </Tabs>
-            {onglet === 0 && (
+            {onglet === 0 && (v.fnd_attributes ? (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 3fr', gap: 1 }}>
+                {[['Prompt', v.prompt], ['Module', v.module], ['Entité (LU)', v.lu_name], ['Table de base', v.base_table],
+                  ['Colonnes (dictionnaire IFS)', v.nb_colonnes_fnd ? String(v.nb_colonnes_fnd) : null]].map(([k, val]) => (
+                  <React.Fragment key={k}>
+                    <Typography variant="body2" color="text.secondary">{k}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: k === 'Table de base' ? 'monospace' : undefined }}>{val || '—'}</Typography>
+                  </React.Fragment>
+                ))}
+                {Object.entries(v.fnd_attributes).filter(([k]) => !['PROMPT', 'MODULE', 'LU', 'TABLE'].includes(k)).map(([k, val]) => (
+                  <React.Fragment key={k}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>{k}</Typography>
+                    <Typography variant="body2" sx={{ overflowWrap: 'anywhere', fontFamily: 'monospace' }}>{val || '—'}</Typography>
+                  </React.Fragment>
+                ))}
+              </Box>
+            ) : <Alert severity="info">Vue absente du dictionnaire IFS (FND_TAB_COMMENTS) : aucune information complémentaire.</Alert>)}
+            {onglet === 1 && (
               <Box component="pre" tabIndex={0} sx={{ m: 0, p: 2, bgcolor: 'action.hover', overflow: 'auto', maxHeight: '60vh', fontSize: 13 }}>
                 {v.view_text || 'Aucun texte SQL dans le fichier importé.'}
               </Box>
             )}
-            {onglet === 1 && (data!.columns.length === 0 ? (
+            {onglet === 2 && (data!.columns.length === 0 ? (
               <Alert severity="warning">Colonnes non identifiées dans le SQL de la vue : rapport impossible.</Alert>
             ) : (
               <>
@@ -147,12 +167,15 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
                   <Alert severity="warning" sx={{ mb: 1 }}>SQL tronqué dans le fichier importé : seules les colonnes lisibles avant la coupure sont listées.</Alert>
                 )}
                 <Typography variant="caption" color="text.secondary">
-                  Colonnes lues dans la liste du SELECT de la vue (alias), dans leur ordre. Le filtre ne change pas la sélection du rapport.
+                  {data!.columns_source === 'fnd'
+                    ? 'Colonnes du dictionnaire IFS (FND_TAB_VIEW_COLUMNS), dans leur ordre.'
+                    : 'Colonnes lues dans la liste du SELECT de la vue (alias) : vue absente du dictionnaire des colonnes IFS.'} Le filtre ne change pas la sélection du rapport.
                 </Typography>
                 <TableContainer sx={{ maxHeight: '45vh' }}>
                   <Table size="small" stickyHeader aria-label="Colonnes de la vue IFS">
                     <TableHead><TableRow>
                       <TableCell>Rapport</TableCell><TableCell>Ordre</TableCell><TableCell>Colonne</TableCell>
+                      {data!.columns_source === 'fnd' && <TableCell>Colonne d'origine (entité)</TableCell>}
                     </TableRow></TableHead>
                     <TableBody>
                       {visibles.map((c) => (
@@ -162,6 +185,11 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
                             onChange={(_, checked) => setSelected((p) => checked ? data!.columns.filter((x) => x === c || p.includes(x)) : p.filter((x) => x !== c))} /></TableCell>
                           <TableCell>{data!.columns.indexOf(c) + 1}</TableCell>
                           <TableCell sx={{ fontFamily: 'monospace' }}>{c}</TableCell>
+                          {data!.columns_source === 'fnd' && (
+                            <TableCell sx={{ fontFamily: 'monospace', color: data!.column_origins[c] === c ? 'text.secondary' : undefined }}>
+                              {data!.column_origins[c] ?? '—'}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -171,7 +199,7 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
                   label="Préfixer la vue par son propriétaire dans le SQL" />
               </>
             ))}
-            {onglet === 2 && (
+            {onglet === 3 && (
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                 {data!.tables.map((t) => t.table_id ? (
                   <Tooltip key={t.name} title="Table présente dans le catalogue des tables IFS">
@@ -182,7 +210,7 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
                 {data!.tables.length === 0 && <Typography color="text.secondary">Aucun objet identifié après FROM / JOIN.</Typography>}
               </Stack>
             )}
-            {onglet === 3 && (
+            {onglet === 4 && (
               <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(160px, 1fr) 2fr', gap: 1 }}>
                 {Object.entries(v.metadata ?? {}).map(([k, val]) => (
                   <React.Fragment key={k}>
@@ -196,7 +224,7 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
         )}
       </DialogContent>
       <DialogActions>
-        {!report && v && onglet === 0 && (
+        {!report && v && onglet === 1 && (
           <Button startIcon={<ContentCopy />} disabled={!v.view_text}
             onClick={() => navigator.clipboard?.writeText(v.view_text || '')}>Copier le SQL</Button>
         )}
@@ -241,6 +269,8 @@ const IfsViewCatalog: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [commentsFile, setCommentsFile] = useState<File | null>(null);
+  const [columnsFile, setColumnsFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [active, setActive] = useState<IfsView | null>(null);
@@ -301,12 +331,17 @@ const IfsViewCatalog: React.FC = () => {
   };
 
   const importFile = async () => {
-    if (!file) return;
+    if (!file && !commentsFile && !columnsFile) return;
     setImporting(true); setImportError(''); setNotice('');
     try {
-      const result = await service.importFile(file);
-      setNotice(`${result.views_imported.toLocaleString('fr-FR')} vues importées. ${result.message}`);
-      setImportOpen(false); setFile(null); setRevision((r) => r + 1);
+      const r = await service.importFiles(file, commentsFile, columnsFile);
+      const parts = [
+        r.views_imported !== undefined && `${nb(r.views_imported)} vues`,
+        r.comments_imported !== undefined && `${nb(r.comments_imported)} descriptions IFS`,
+        r.columns_imported !== undefined && `${nb(r.columns_imported)} colonnes sur ${nb(r.views_with_columns)} vues`,
+      ].filter(Boolean);
+      setNotice(`Importé : ${parts.join(', ')}. ${r.message}`);
+      setImportOpen(false); setFile(null); setCommentsFile(null); setColumnsFile(null); setRevision((x) => x + 1);
     } catch (err) { setImportError(errorMessage(err)); }
     finally { setImporting(false); }
   };
@@ -331,13 +366,14 @@ const IfsViewCatalog: React.FC = () => {
             <Typography variant="h4" sx={{ fontWeight: 700 }}>Vues IFS</Typography>
             <Typography variant="body2" color="text.secondary">
               Vues Oracle/IFS (ALL_VIEWS) · {facets ? nb(facets.total) : '…'} vues{nbFiltres > 0 ? ' (sélection)' : ''}
+              {facets ? ` · ${nb(facets.catalogue.comments)} descriptions et ${nb(facets.catalogue.columns)} colonnes IFS` : ''}
               {facets?.catalogue.imported_at ? ` · import du ${new Date(facets.catalogue.imported_at).toLocaleString('fr-FR')}` : ''}
             </Typography>
           </Box>
         </Stack>
         <Stack direction="row" spacing={1}>
           {user?.role === 'admin' && (
-            <Button variant="outlined" startIcon={<UploadFile />} onClick={() => { setImportError(''); setFile(null); setImportOpen(true); }}>
+            <Button variant="outlined" startIcon={<UploadFile />} onClick={() => { setImportError(''); setFile(null); setCommentsFile(null); setColumnsFile(null); setImportOpen(true); }}>
               Importer les vues
             </Button>
           )}
@@ -389,11 +425,12 @@ const IfsViewCatalog: React.FC = () => {
       {/* Filtres */}
       <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
         <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', rowGap: 1.5 }} alignItems="center">
-          <TextField size="small" placeholder="Nom de vue, propriétaire…" value={search}
+          <TextField size="small" placeholder="Vue, prompt, entité (LU), propriétaire…" value={search}
             onChange={(e) => setSearch(e.target.value)} sx={{ width: 300 }}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />
           <FormControlLabel label="Chercher aussi dans le SQL"
             control={<Checkbox size="small" checked={inSql} onChange={(_, val) => setInSql(val)} />} />
+          {filtreAuto('module', 200)}
           {filtreAuto('nature', 240)}
           {filtreAuto('owner', 200)}
           {filtreAuto('taille', 200)}
@@ -412,7 +449,9 @@ const IfsViewCatalog: React.FC = () => {
                 <TableCell sx={{ width: 40 }} />
                 <TableCell sx={{ fontWeight: 600 }}>{triable('owner', 'Propriétaire')}</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>{triable('view_name', 'Vue')}</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>{triable('module', 'Module')}</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>{triable('nature', 'Nature')}</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">{triable('nb_colonnes_fnd', 'Colonnes')}</TableCell>
                 <TableCell sx={{ fontWeight: 600 }} align="right">{triable('text_length', 'Taille du SQL')}</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Étiquettes</TableCell>
               </TableRow>
@@ -428,8 +467,17 @@ const IfsViewCatalog: React.FC = () => {
                     </Tooltip>
                   </TableCell>
                   <TableCell>{r.owner}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{r.view_name}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{r.view_name}</Typography>
+                    {(r.prompt || r.lu_name) && (
+                      <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 420 }}>
+                        {r.prompt}{r.lu_name ? ` · ${r.lu_name}` : ''}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>{r.module ? <Chip size="small" variant="outlined" label={r.module} sx={{ height: 20 }} /> : '—'}</TableCell>
                   <TableCell><NatureChip code={r.nature} libelle={natures[r.nature]} /></TableCell>
+                  <TableCell align="right">{r.nb_colonnes_fnd ? nb(r.nb_colonnes_fnd) : '—'}</TableCell>
                   <TableCell align="right">{r.text_length === null ? '—' : nb(r.text_length)}</TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
@@ -442,7 +490,7 @@ const IfsViewCatalog: React.FC = () => {
                 </TableRow>
               ))}
               {!loading && rows.length === 0 && (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6, color: 'text.secondary' }}>
                   Aucune vue ne correspond aux filtres.
                 </TableCell></TableRow>
               )}
@@ -459,17 +507,26 @@ const IfsViewCatalog: React.FC = () => {
         <DialogTitle>Importer les vues IFS</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <Alert severity="info">Classeur .xlsx (premier onglet) ou CSV point-virgule, 32 Mo maximum, export Oracle ALL_VIEWS :
-              colonnes « Owner » et « View Name » obligatoires, « Text » (ou à défaut « Text Vc ») pour le SQL.
-              Les vues existantes sont mises à jour, les vues absentes du fichier sont conservées.</Alert>
-            <Box component="input" type="file" accept=".csv,.xlsx,.xlsm" disabled={importing} sx={{ maxWidth: '100%' }}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => setFile(event.target.files?.[0] || null)} />
+            <Alert severity="info">Trois fichiers facultatifs et indépendants, classeur .xlsx (premier onglet) ou CSV point-virgule,
+              32 Mo maximum chacun. Les entrées existantes sont mises à jour, les absentes sont conservées
+              (sauf les colonnes d'une vue présente dans le fichier des colonnes, remplacées en entier).</Alert>
+            {([
+              ['Vues — export Oracle ALL_VIEWS (Owner, View Name, Text)', setFile],
+              ['Descriptions IFS — FND_TAB_COMMENTS (Table Name, Comments : LU, PROMPT, MODULE…)', setCommentsFile],
+              ['Colonnes IFS — FND_TAB_VIEW_COLUMNS (View Name, View Column Name, Column Name)', setColumnsFile],
+            ] as [string, (f: File | null) => void][]).map(([label, set]) => (
+              <Typography key={label} component="label" variant="body2">
+                {label}
+                <Box component="input" type="file" accept=".csv,.xlsx,.xlsm" disabled={importing} sx={{ display: 'block', mt: 1, maxWidth: '100%' }}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => set(event.target.files?.[0] || null)} />
+              </Typography>
+            ))}
             {importError && <Alert severity="error">{importError}</Alert>}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button disabled={importing} onClick={() => setImportOpen(false)}>Annuler</Button>
-          <Button variant="contained" disabled={importing || !file} onClick={importFile}>
+          <Button variant="contained" disabled={importing || (!file && !commentsFile && !columnsFile)} onClick={importFile}>
             {importing ? 'Import en cours…' : 'Importer'}
           </Button>
         </DialogActions>
