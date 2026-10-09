@@ -74,7 +74,8 @@ WITH z AS MATERIALIZED (
                 ELSE 'HORS_PERIMETRE' END AS statut
       FROM refs r
       LEFT JOIN clean_data.article_sap a ON a."N° article" = r.k
-      LEFT JOIN raw_data.mara m ON m.mandt = '700' AND m.matnr IN (r.k, lpad(r.k, 18, '0'))
+      -- egalite simple (jointure par hachage) : un IN (k, lpad(k)) faisait 10 s
+      LEFT JOIN raw_data.mara m ON m.mandt = '700' AND ltrim(m.matnr, '0') = r.k
       LEFT JOIN raw_data.makt mk ON mk.mandt = '700' AND mk.matnr = m.matnr AND mk.spras = 'F'
      ORDER BY r.k, mk.maktx NULLS LAST
 ), base AS MATERIALIZED (
