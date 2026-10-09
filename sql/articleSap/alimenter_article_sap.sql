@@ -23,16 +23,18 @@ BEGIN
         "N° article", "Description article", "Site", "Site Description",
         "Gestionnaire", "U/M Stock",
         "Groupe produit 1", "Groupe produit 1 Description",
-        "Groupe produit 2", "Groupe produit 2 Description",
+        "Catégorie article", "Catégorie article Description",
         "Statut article", "Classe ABC",
         "Groupe comptable", "Groupe comptable Description",
         "EMPLACEMENT", "Désignation du type", "Qté en stock",
-        "Créé", "Modifié", "Notes", "Délai d'achat",
+        "Créé", "Modifié", "Texte de commande", "Délai d'achat",
         -- migration 107
         "U/M Stock Description", "Groupe d'achat", "Groupe d'achat Description",
         "Hiérarchie produit", "Hiérarchie produit Description",
         "Type approvisionnement", "Type approvisionnement Description",
-        "Type de planification", "Point de commande", "Ancien numéro article"
+        "Type de planification", "Point de commande", "Ancien numéro article",
+        -- migration 108
+        "Note interne", "Texte de base"
     )
     -- Une ligne par article : 9200 (SJ) s'il y est ouvert, sinon 9000 (CS),
     -- sinon SJ par defaut (max('9200','9000') = '9200').
@@ -62,7 +64,7 @@ BEGIN
         NULLIF(TRIM(c.dispo), ''),                                 -- gestionnaire MRP
         NULLIF(TRIM(m.meins), ''),                                 -- unite de base SAP
         m.matkl, t023.wgbez,                                       -- groupe marchandises
-        m.mtart, t134.mtbez,                                       -- type d'article
+        m.mtart, t134.mtbez,                                       -- categorie (IBAU, ERSA...)
         NULLIF(TRIM(c.mmsta), ''),                                 -- statut division
         NULLIF(TRIM(c.maabc), ''),
         ev.bklas, t025.bkbez,                                      -- classe de valorisation
@@ -83,7 +85,11 @@ BEGIN
             WHEN 'X' THEN 'Les deux types d''approvisionnement' END,
         NULLIF(TRIM(c.dismm), ''),                                 -- type de planification (MRP)
         NULLIF(c.minbe::numeric, 0)::text,                         -- point de commande
-        NULLIF(TRIM(m.bismt), '')                                  -- ancien numero
+        NULLIF(TRIM(m.bismt), ''),                                 -- ancien numero
+        -- textes longs STXH/STXL, lus par RFC_READ_TEXT dans raw_data.sap_long_text
+        -- (ecran Extraction > Textes longs SAP, MATERIAL / IVER et GRUN / F)
+        clean_data.texte_long_sap('MATERIAL', 'IVER', m.matnr, ARRAY['F']),  -- note interne
+        clean_data.texte_long_sap('MATERIAL', 'GRUN', m.matnr, ARRAY['F'])   -- texte de base
     FROM sites s
     JOIN raw_data.mara m ON m.mandt::text = '700' AND m.matnr::text = s.matnr
     LEFT JOIN raw_data.makt k
