@@ -27,7 +27,7 @@ BEGIN
         "Statut article", "Classe ABC",
         "Groupe comptable", "Groupe comptable Description",
         "EMPLACEMENT", "Désignation du type", "Qté en stock",
-        "Créé", "Modifié", "Texte de commande", "Délai d'achat",
+        "Date de création", "Date de dernière modification", "Texte de commande", "Délai d'achat",
         -- migration 107
         "U/M Stock Description", "Groupe d'achat", "Groupe d'achat Description",
         "Hiérarchie produit", "Hiérarchie produit Description",
