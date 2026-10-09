@@ -118,7 +118,7 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
               <Chip size="small" icon={v.read_only ? <LockIcon /> : <LockOpenIcon />}
                 label={v.read_only ? 'Lecture seule' : v.read_only === false ? 'Modifiable' : 'Accès inconnu'} />
-              <Chip size="small" label={`${nb(v.text_length)} caractères`} />
+              <Chip size="small" label={`${nb(v.view_text?.length)} caractères`} />
               {v.etiquettes.map((k) => (
                 <Chip key={k} size="small" icon={<TagIcon />} color={ETIQUETTE_COULEURS[k] ?? 'default'} variant="outlined" label={etiquettes[k] ?? k} />
               ))}
