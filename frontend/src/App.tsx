@@ -38,6 +38,7 @@ import TextesExtraction from './pages/TextesExtraction';
 import FieldMappingManagement from './pages/FieldMappingManagement';
 import IfsCatalog from './pages/IfsCatalog';
 import IfsTableCatalog from './pages/IfsTableCatalog';
+import IfsViewCatalog from './pages/IfsViewCatalog';
 import IfsData from './pages/IfsData';
 import IfsDataArticles from './pages/IfsDataArticles';
 import IfsDataClients from './pages/IfsDataClients';
@@ -183,6 +184,7 @@ function App() {
           <Route path="ifs-data" element={<IfsData />} />
           <Route path="ifs-data/catalog" element={<IfsCatalog />} />
           <Route path="ifs-data/table-catalog" element={<IfsTableCatalog />} />
+          <Route path="ifs-data/views" element={<IfsViewCatalog />} />
           <Route path="ifs-data/clients" element={<IfsDataClients />} />
           <Route path="ifs-data/fournisseurs" element={<IfsDataFournisseurs />} />
           <Route path="ifs-data/articles" element={<IfsDataArticles />} />

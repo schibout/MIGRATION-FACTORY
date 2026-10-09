@@ -54,3 +54,36 @@ export const ifsDictionaryService = {
     })).data;
   },
 };
+
+export interface IfsView {
+  view_id: number;
+  owner: string;
+  view_name: string;
+  read_only: boolean | null;
+  text_length: number | null;
+  imported_at: string;
+  view_text?: string | null;
+  metadata?: Record<string, string>;
+}
+
+export interface IfsViewList {
+  items: IfsView[];
+  total: number;
+  owners: string[];
+  stats: { views: number; imported_at: string | null };
+}
+
+export const ifsViewService = {
+  async list(params: { q: string; owner: string; in_sql: string; page: number; page_size: number }, signal?: AbortSignal) {
+    return (await api.get<IfsViewList>(`${base}/views`, { params, signal })).data;
+  },
+  async detail(id: number, signal?: AbortSignal) {
+    return (await api.get<{ view: IfsView }>(`${base}/views/${id}`, { signal })).data.view;
+  },
+  async importFile(file: File) {
+    const data = new FormData();
+    data.append('file', file);
+    return (await api.post<{ views_imported: number; message: string }>(
+      `${base}/views/import`, data, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
+  },
+};

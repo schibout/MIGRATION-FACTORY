@@ -235,3 +235,28 @@ def build_report(table, columns, selected=None, include_owner=False):
     if include_owner:
         source = identifier(table['owner']) + '.' + source
     return f'SELECT\n{outer}\nFROM (\n    SELECT\n{inner}\n    FROM {source});\n'
+
+
+def import_views(engine, content):
+    """Vues Oracle (export ALL_VIEWS) : upsert par (Owner, View Name), absentes conservées."""
+    views = {}
+    for row in _rows(content, ['Owner', 'View Name'], 'Vues'):
+        sql = row.get('Text') or row.get('Text Vc') or None
+        read_only = {'Y': True, 'N': False}.get(row.get('Read Only', ''))
+        metadata = {k: v for k, v in row.items() if k not in ('Text', 'Text Vc') and v}
+        views[(row['Owner'], row['View Name'])] = dict(
+            owner=row['Owner'], view_name=row['View Name'], view_text=sql, read_only=read_only,
+            metadata=json.dumps(metadata, ensure_ascii=False))
+    query = text('''
+        INSERT INTO public.ifs_view_catalog (owner, view_name, view_text, read_only, metadata)
+        VALUES (:owner, :view_name, :view_text, :read_only, CAST(:metadata AS jsonb))
+        ON CONFLICT (owner, view_name) DO UPDATE SET
+            view_text = EXCLUDED.view_text, read_only = EXCLUDED.read_only,
+            metadata = EXCLUDED.metadata, imported_at = now()
+    ''')
+    rows = list(views.values())
+    with engine.begin() as connection:
+        connection.execute(text('SELECT pg_advisory_xact_lock(778813)'))
+        for start in range(0, len(rows), 1000):
+            connection.execute(query, rows[start:start + 1000])
+    return {'views_imported': len(rows)}

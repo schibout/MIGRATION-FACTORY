@@ -18,7 +18,8 @@ import {
     Business as FournisseurIcon,
     Handyman as MaintenanceIcon,
     Assignment as ProjetIcon,
-    AccountTree as StructureIcon
+    AccountTree as StructureIcon,
+    Visibility as ViewIcon
 } from '@mui/icons-material';
 
 // Type pour les éléments du menu de données IFS
@@ -45,6 +46,14 @@ const IfsData = () => {
       path: '/ifs-data/table-catalog',
       icon: <CatalogIcon sx={{ fontSize: 36 }} />,
       color: '#00796b'
+    },
+    {
+      id: 'views',
+      title: 'Vues IFS',
+      description: 'Vues Oracle/IFS (ALL_VIEWS) : recherche, texte SQL et import du classeur',
+      path: '/ifs-data/views',
+      icon: <ViewIcon sx={{ fontSize: 36 }} />,
+      color: '#00838f'
     },
     {
       id: 'catalog',

@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from models import db
-from services.ifs_dictionary_service import MAX_FILE_BYTES, build_report, import_catalog
+from services.ifs_dictionary_service import MAX_FILE_BYTES, build_report, import_catalog, import_views
 from utils.auth_decorators import admin_required
 
 ifs_dictionary_blueprint = Blueprint('ifs_dictionary', __name__)
@@ -121,3 +121,59 @@ def generate_report(table_id):
             return jsonify(error='Table introuvable dans le catalogue.'), 404
         sql = build_report(table, _columns(connection, table_id), payload.get('columns'), include_owner)
     return jsonify(sql=sql, filename='report.md')
+
+
+@ifs_dictionary_blueprint.route('/ifs-dictionary/views', methods=['GET'])
+@jwt_required()
+@catalog_errors
+def list_views():
+    try:
+        page = int(request.args.get('page', 0))
+        size = int(request.args.get('page_size', 25))
+    except ValueError:
+        raise ValueError('Pagination invalide.')
+    if page < 0 or page > 1000000 or size not in (25, 50, 100):
+        raise ValueError('Pagination invalide (25, 50 ou 100 lignes par page).')
+    search = request.args.get('q', '').strip()
+    escaped = search.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    params = {'owner': request.args.get('owner', '').strip(), 'q': f'%{escaped}%',
+              'in_sql': request.args.get('in_sql') == '1', 'limit': size, 'offset': page * size}
+    # in_sql : recherche aussi dans le texte SQL (ex. trouver les vues qui lisent une table).
+    where = '''
+        WHERE (:owner = '' OR v.owner = :owner)
+          AND (v.view_name ILIKE :q OR v.owner ILIKE :q OR (:in_sql AND v.view_text ILIKE :q))
+    '''
+    with db.engine.connect() as connection:
+        total = connection.execute(text('SELECT count(*) FROM public.ifs_view_catalog v ' + where), params).scalar_one()
+        items = [dict(row) for row in connection.execute(text('''
+            SELECT v.view_id, v.owner, v.view_name, v.read_only, length(v.view_text) AS text_length, v.imported_at
+            FROM public.ifs_view_catalog v
+        ''' + where + ' ORDER BY v.owner, v.view_name LIMIT :limit OFFSET :offset'), params).mappings()]
+        owners = list(connection.execute(text(
+            'SELECT DISTINCT owner FROM public.ifs_view_catalog ORDER BY owner')).scalars())
+        stats = dict(connection.execute(text(
+            'SELECT count(*) AS views, max(imported_at) AS imported_at FROM public.ifs_view_catalog')).mappings().one())
+    return jsonify(items=items, total=total, owners=owners, stats=stats)
+
+
+@ifs_dictionary_blueprint.route('/ifs-dictionary/views/<int:view_id>', methods=['GET'])
+@jwt_required()
+@catalog_errors
+def view_detail(view_id):
+    with db.engine.connect() as connection:
+        view = connection.execute(text('SELECT * FROM public.ifs_view_catalog WHERE view_id = :id'),
+                                  {'id': view_id}).mappings().first()
+    if view is None:
+        return jsonify(error='Vue introuvable dans le catalogue.'), 404
+    return jsonify(view=dict(view))
+
+
+@ifs_dictionary_blueprint.route('/ifs-dictionary/views/import', methods=['POST'])
+@admin_required
+@catalog_errors
+def upload_views():
+    file = request.files.get('file')
+    if not file:
+        raise ValueError('Fournissez le fichier des vues (export ALL_VIEWS).')
+    result = import_views(db.engine, file.read(MAX_FILE_BYTES + 1))
+    return jsonify(**result, message='Import terminé. Les vues absentes du fichier ont été conservées.')

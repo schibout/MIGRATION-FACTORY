@@ -66,7 +66,7 @@ frontend/src/
 - Composants pages dans `src/pages/`, composants reutilisables dans `src/components/`
 
 ### Base de donnees
-- Migrations SQL dans `migrations/` (numerotees 003_, 004_, etc. — dernier numero utilise : 115)
+- Migrations SQL dans `migrations/` (numerotees 003_, 004_, etc. — dernier numero utilise : 116)
 - Procedures stockees dans `sql/`
 - Les imports passent par `import_jobs` + `import_details` pour le suivi ligne par ligne
 
