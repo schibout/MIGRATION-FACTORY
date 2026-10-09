@@ -242,15 +242,18 @@ def liste():
     # Numeros (equipement, article) : tri numerique quand la valeur est un nombre
     ordre = (f"(CASE WHEN {tri} ~ '^[0-9]+$' THEN lpad({tri}, 18, '0') ELSE {tri} END)"
              if tri in ('numero', 'article', 'construction') else tri)
-    total = db.session.execute(text(f'{BASE} SELECT count(*) FROM base {clause}'), params).scalar()
+    # Total et page en une passe (la base coute ~1 s a calculer)
     rows = db.session.execute(text(
-        f'{BASE} SELECT *, {_flags()} FROM base {clause} '
+        f'{BASE} SELECT *, {_flags()}, count(*) OVER () AS total_lignes FROM base {clause} '
         f'ORDER BY {ordre} {sens} NULLS LAST, id LIMIT :limit OFFSET :offset'),
         {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
+    total = rows[0]['total_lignes'] if rows else db.session.execute(
+        text(f'{BASE} SELECT count(*) FROM base {clause}'), params).scalar()
     libelles = _statut_libelles()
     out = []
     for r in rows:
         d = _ligne(r, libelles)
+        d.pop('total_lignes', None)
         d['anomalies'] = [k for k in ANOMALIES if d.pop(k, False)]
         out.append(d)
     return jsonify({'rows': out, 'total': total})
