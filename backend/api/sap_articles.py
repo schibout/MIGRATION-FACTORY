@@ -11,6 +11,10 @@ catalogue IFS (clean_data.part_catalog).
   GET /api/v1/sap-data/articles/groupes      regroupement par gestionnaire / groupe d'achat
   GET /api/v1/sap-data/articles/export.xlsx  selection filtree, toutes les colonnes
   GET /api/v1/sap-data/articles/<numero>     fiche article + usages en maintenance
+  GET /api/v1/sap-data/articles/sync         etat de la derniere synchronisation
+  POST /api/v1/sap-data/articles/sync        {"source": "sap"} extraction SAP puis modules ETL
+                                              articles (part_catalog, tables IFS, article_sap) ;
+                                              {"source": "mf"} modules ETL seuls
 
 Filtres (query string) : search, une cle par facette (valeurs separees par des
 virgules, VIDE = valeur absente), anomalie (une cle d'ANOMALIES ou 'toutes').
@@ -238,6 +242,67 @@ def export_excel():
                                               ', '.join(ANOMALIES[k][0] for k in ANOMALIES if r[k])]
                       for r in rows], set())
     return _envoyer(wb, 'articles_sap')
+
+
+# ---------------------------------------------------------------------------
+# Synchronisation : (extraction SAP differentielle +) modules ETL articles dans
+# l'ordre de l'ecran ETL. Meme mecanique que les ecrans Finance (thread, etat
+# partage entre workers, une synchro a la fois -> 409).
+# ---------------------------------------------------------------------------
+# Tables SAP lues par la chaine articles (alimenter_ifs_article -> part_catalog ->
+# inventory/purchase/sales_part, article_sap). Les textes longs (STXH/STXL)
+# passent par l'ecran Extraction > Textes longs SAP.
+ARTICLE_SAP_TABLES = ['MARA', 'MAKT', 'MARC', 'MARD', 'MBEW', 'MVKE', 'EINA', 'EINE', 'EORD',
+                      'LFA1', 'T001W', 'T023T', 'T134', 'T134T', 'T025T', 'T024', 'T179T',
+                      'T006A', 'USR21', 'ADRP']
+# Modules ETL de etl_target_tables, executes par ordre d'execution : le module
+# Article SAP vide part_catalog, PHL / Composants (ordre 12) le completent ensuite.
+ARTICLE_MODULES = ('etl_inventory_part.py', 'etl_article_sap.py',
+                   'etl_phl_article.py', 'etl_composant_article.py')
+
+
+def _charger_modules(conn):
+    import importlib.util
+    import inspect
+    import os
+
+    from api.finance import _write_status
+
+    modules = conn.execute(text(
+        'SELECT display_name, python_module, module_params FROM public.etl_target_tables '
+        'WHERE python_module = ANY(:m) AND is_active ORDER BY execution_order, id'),
+        {'m': list(ARTICLE_MODULES)}).mappings().all()
+    dossier = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'etl_modules')
+    for i, m in enumerate(modules, 1):
+        _write_status('articles_sap', step=f"{i}/{len(modules)} {m['display_name']}",
+                      progress=90 + int(9 * (i - 1) / len(modules)))
+        spec = importlib.util.spec_from_file_location(m['python_module'][:-3],
+                                                      os.path.join(dossier, m['python_module']))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        params = m['module_params'] or {}
+        accepte = inspect.signature(module.run_etl).parameters
+        resultat = module.run_etl(**{k: v for k, v in params.items() if k in accepte})
+        if not resultat.get('success'):
+            raise RuntimeError(f"{m['display_name']} : {resultat.get('error', 'erreur inconnue')}")
+    return conn.execute(text('SELECT count(*) FROM clean_data.article_sap')).scalar()
+
+
+@sap_articles_blueprint.route('/sync', methods=['GET'])
+@jwt_required()
+def statut_sync():
+    from api.finance import _read_status
+    return jsonify(_read_status('articles_sap') or {'status': 'never'})
+
+
+@sap_articles_blueprint.route('/sync', methods=['POST'])
+@jwt_required()
+def lancer_sync():
+    """{"source": "sap"} (defaut) : extraction SAP puis modules ETL ; {"source": "mf"} :
+    modules ETL seuls (recalcul depuis raw_data : part_catalog, tables IFS, article_sap)."""
+    from api.finance import _start_sync, _sync_source
+    return _start_sync('articles_sap', ARTICLE_SAP_TABLES, 'articles et catalogue IFS',
+                       _charger_modules, extraire=_sync_source() == 'sap')
 
 
 @sap_articles_blueprint.route('/<path:numero>', methods=['GET'])

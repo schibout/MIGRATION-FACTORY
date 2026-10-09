@@ -1,11 +1,13 @@
 import {
   AccountTree as StructureIcon,
   Close as CloseIcon,
+  Cached as RecalculIcon,
   FileDownload as ExcelIcon,
   Inventory2 as ArticleIcon,
   MenuBook as CatalogueIcon,
   OpenInNew as OpenIcon,
   Search as SearchIcon,
+  Sync as SyncIcon,
   ViewColumn as ColumnsIcon,
   WarningAmber as WarningIcon,
 } from '@mui/icons-material';
@@ -43,7 +45,7 @@ import {
 } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { couleur, FacetteAuto, FacetValue, RepartitionBar, telecharger, VIDE } from '../components/data/facettes';
+import { couleur, FacetteAuto, FacetValue, nb, RepartitionBar, telecharger, VIDE } from '../components/data/facettes';
 import api from '../services/api';
 
 // Écran Données SAP > Articles : clean_data.v_article_sap (périmètre STJN + maintenance),
@@ -53,6 +55,18 @@ type Row = Record<string, any>;
 type FacetKey = 'site' | 'classe' | 'categorie' | 'groupe_achat' | 'statut' | 'planification' | 'gestionnaire';
 type Filters = Partial<Record<FacetKey, string[]>>;
 type Mode = 'liste' | 'gestionnaire' | 'groupe_achat';
+
+interface SyncStatus {
+  status: 'never' | 'running' | 'completed' | 'failed';
+  step?: string;
+  progress?: number;
+  error?: string | null;
+  rows?: number | null;
+  source?: 'sap' | 'mf';
+  started_at?: string;
+  finished_at?: string | null;
+}
+const dateHeure = (v?: string | null) => (v ? new Date(v).toLocaleString('fr-FR') : '');
 
 interface FacetsResponse {
   facettes: Record<FacetKey, { titre: string; valeurs: FacetValue[] }>;
@@ -306,6 +320,9 @@ const SapArticles: React.FC = () => {
   const [colsAnchor, setColsAnchor] = useState<HTMLElement | null>(null);
   const [fiche, setFiche] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [sync, setSync] = useState<SyncStatus | null>(null);
+  const [rafraichir, setRafraichir] = useState(0);
+  const running = sync?.status === 'running';
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 350);
@@ -331,10 +348,10 @@ const SapArticles: React.FC = () => {
   useEffect(() => { setPage(0); }, [params]);
 
   useEffect(() => {
-    api.get('/sap-data/articles/facettes', { params })
+    api.get('/sap-data/articles/facettes', { params: { ...params, _r: rafraichir } })
       .then((res) => setFacets(res.data))
       .catch(() => setError('Impossible de charger les compteurs.'));
-  }, [params]);
+  }, [params, rafraichir]);
 
   const charger = useCallback(async () => {
     setLoading(true);
@@ -355,9 +372,39 @@ const SapArticles: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [mode, params, page, pageSize, sort, dir]);
+  }, [mode, params, page, pageSize, sort, dir, rafraichir]);
 
   useEffect(() => { charger(); }, [charger]);
+
+  // Synchronisation SAP / recalcul : état au chargement, puis suivi toutes les 5 s
+  useEffect(() => {
+    api.get<SyncStatus>('/sap-data/articles/sync').then((res) => setSync(res.data)).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    if (!running) return undefined;
+    const timer = setInterval(async () => {
+      try {
+        const res = await api.get<SyncStatus>('/sap-data/articles/sync');
+        setSync(res.data);
+        if (res.data.status !== 'running') setRafraichir((r) => r + 1);
+      } catch { /* nouvel essai au prochain tour */ }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [running]);
+
+  const lancerSync = async (source: 'sap' | 'mf') => {
+    const message = source === 'sap'
+      ? "Extraire les tables articles de SAP puis recalculer le catalogue IFS (part_catalog, articles en stock, d'achat, de vente) et la table des articles ? Compter 15 à 40 minutes."
+      : "Recalculer le catalogue IFS (part_catalog, articles en stock, d'achat, de vente) et la table des articles depuis les données SAP déjà extraites ? Compter environ 10 minutes.";
+    if (!window.confirm(message)) return;
+    try {
+      const res = await api.post<SyncStatus>('/sap-data/articles/sync', { source });
+      setSync(res.data);
+    } catch (err: any) {
+      if (err?.response?.status === 409) setSync(err.response.data);
+      else setError('Impossible de lancer la synchronisation.');
+    }
+  };
 
   const toggleFiltre = (k: FacetKey, code: string) =>
     setFilters((f) => {
@@ -410,11 +457,42 @@ const SapArticles: React.FC = () => {
             <ToggleButton value="gestionnaire">Par gestionnaire</ToggleButton>
             <ToggleButton value="groupe_achat">Par groupe d'achat</ToggleButton>
           </ToggleButtonGroup>
+          <Tooltip title="Recalcule part_catalog, les tables IFS articles et la liste depuis les données SAP déjà extraites">
+            <span>
+              <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => lancerSync('mf')} disabled={running}>
+                Recalculer
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="Extrait les tables articles de SAP, puis recalcule part_catalog, les tables IFS articles et la liste">
+            <span>
+              <Button variant="outlined" color="secondary" startIcon={<SyncIcon />} onClick={() => lancerSync('sap')} disabled={running}>
+                {running ? 'Synchronisation…' : 'Synchroniser SAP'}
+              </Button>
+            </span>
+          </Tooltip>
           <Button variant="contained" startIcon={<ExcelIcon />} onClick={exporter} disabled={exporting}>
             {exporting ? 'Export…' : 'Excel'}
           </Button>
         </Stack>
       </Stack>
+
+      {running && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {sync?.source === 'mf' ? 'Recalcul' : 'Synchronisation SAP'} en cours — {sync?.step} (démarrée le {dateHeure(sync?.started_at)})
+          <LinearProgress variant="determinate" value={sync?.progress ?? 0} sx={{ mt: 1 }} />
+        </Alert>
+      )}
+      {sync?.status === 'completed' && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSync(null)}>
+          {sync.source === 'mf' ? 'Recalcul' : 'Synchronisation SAP'} terminé le {dateHeure(sync.finished_at)} : {nb(sync.rows)} articles.
+        </Alert>
+      )}
+      {sync?.status === 'failed' && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSync(null)}>
+          {sync.source === 'mf' ? 'Recalcul' : 'Synchronisation SAP'} en échec le {dateHeure(sync.finished_at)} : {sync.error}
+        </Alert>
+      )}
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
