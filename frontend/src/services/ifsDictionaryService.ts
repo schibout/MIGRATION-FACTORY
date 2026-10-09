@@ -1,3 +1,4 @@
+import { FacetValue } from '../components/data/facettes';
 import api from './api';
 
 export interface IfsDictionaryTable {
@@ -59,27 +60,47 @@ export interface IfsView {
   view_id: number;
   owner: string;
   view_name: string;
+  nature: string;
+  taille: string | null;
   read_only: boolean | null;
   text_length: number | null;
   imported_at: string;
+  etiquettes: string[];
   view_text?: string | null;
   metadata?: Record<string, string>;
 }
 
-export interface IfsViewList {
-  items: IfsView[];
+export interface IfsViewDetail {
+  view: IfsView;
+  columns: string[];
+  tables: { name: string; table_id: number | null }[];
+  natures: Record<string, string>;
+  etiquettes: Record<string, string>;
+}
+
+export interface IfsViewFacets {
+  facettes: Record<'nature' | 'owner' | 'lecture' | 'taille', { titre: string; valeurs: FacetValue[] }>;
   total: number;
-  owners: string[];
-  stats: { views: number; imported_at: string | null };
+  catalogue: { views: number; imported_at: string | null };
+  etiquettes: { cle: string; libelle: string; nb: number }[];
 }
 
 export const ifsViewService = {
-  async list(params: { q: string; owner: string; in_sql: string; page: number; page_size: number }, signal?: AbortSignal) {
-    return (await api.get<IfsViewList>(`${base}/views`, { params, signal })).data;
+  async list(params: Record<string, string | number>, signal?: AbortSignal) {
+    return (await api.get<{ items: IfsView[]; total: number }>(`${base}/views`, { params, signal })).data;
+  },
+  async facets(params: Record<string, string>, signal?: AbortSignal) {
+    return (await api.get<IfsViewFacets>(`${base}/views/facettes`, { params, signal })).data;
   },
   async detail(id: number, signal?: AbortSignal) {
-    return (await api.get<{ view: IfsView }>(`${base}/views/${id}`, { signal })).data.view;
+    return (await api.get<IfsViewDetail>(`${base}/views/${id}`, { signal })).data;
   },
+  async report(id: number, columns: string[], includeOwner: boolean) {
+    return (await api.post<{ sql: string; filename: string }>(`${base}/views/${id}/report`, {
+      columns, include_owner: includeOwner,
+    })).data;
+  },
+  exportUrl: `${base}/views/export.xlsx`,
   async importFile(file: File) {
     const data = new FormData();
     data.append('file', file);

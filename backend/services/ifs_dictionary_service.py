@@ -260,3 +260,77 @@ def import_views(engine, content):
         for start in range(0, len(rows), 1000):
             connection.execute(query, rows[start:start + 1000])
     return {'views_imported': len(rows)}
+
+
+def _top_level(sql):
+    """Découpe le SQL en (profondeur de parenthèses, caractère), chaînes et commentaires masqués."""
+    out, depth, i, n = [], 0, 0, len(sql)
+    while i < n:
+        ch = sql[i]
+        if ch == "'":                       # chaîne : contenu ignoré ('' = quote échappée)
+            j = i + 1
+            while j < n and not (sql[j] == "'" and sql[j + 1:j + 2] != "'"):
+                j += 2 if sql[j:j + 2] == "''" else 1
+            out.append((depth, ' ')); i = j + 1; continue
+        if sql.startswith('--', i):
+            j = sql.find('\n', i); i = n if j < 0 else j; continue
+        if sql.startswith('/*', i):
+            j = sql.find('*/', i + 2); i = n if j < 0 else j + 2; continue
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        out.append((depth if ch != '(' else depth - 1, ch))
+        i += 1
+    return out
+
+
+def view_columns(sql):
+    """Colonnes d'une vue Oracle : alias de la liste du SELECT principal, en majuscules
+    (Oracle replie les identifiants non quotés). Le premier SELECT de profondeur minimale
+    porte les colonnes (les CTE sont entre parenthèses, une UNION reprend la 1re branche)."""
+    if not sql:
+        return []
+    chars = _top_level(sql)
+    flat = ''.join(c for _, c in chars)
+    level = min((d for d, c in chars if c.isalnum()), default=0)
+    keyword = re.compile(r'\b(select|from)\b', re.I)
+    start = end = None
+    for m in keyword.finditer(flat):
+        if chars[m.start()][0] != level:
+            continue
+        if start is None and m.group(1).lower() == 'select':
+            start = m.end()
+        elif start is not None and m.group(1).lower() == 'from':
+            end = m.start(); break
+    if start is None or end is None:
+        return []
+    items, current = [], ''
+    for pos in range(start, end):
+        depth, ch = chars[pos]
+        if ch == ',' and depth == level:
+            items.append(current); current = ''
+        else:
+            current += ch
+    items.append(current)
+    columns = []
+    for item in items:
+        item = re.sub(r'^\s*(distinct|unique|all)\s+', '', item.strip(), flags=re.I)
+        m = re.search(r'("[^"]+"|[A-Za-z_][\w$#]*)\s*$', item)
+        if not m or item.endswith('*'):
+            continue
+        name = m.group(1)
+        name = name[1:-1] if name.startswith('"') else name.upper()
+        if name not in columns:
+            columns.append(name)
+    return columns
+
+
+def view_tables(sql):
+    """Objets lus par la vue (après FROM / JOIN), dans l'ordre d'apparition."""
+    found = []
+    for m in re.finditer(r'\b(?:from|join)\s+([A-Za-z_][\w$#]*(?:\.[A-Za-z_][\w$#]*)?)', sql or '', re.I):
+        name = m.group(1).upper()
+        if name not in found and name not in ('DUAL', 'TABLE', 'SELECT'):
+            found.append(name)
+    return found

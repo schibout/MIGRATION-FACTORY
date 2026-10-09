@@ -1,15 +1,43 @@
-import { ArrowBack, ContentCopy, Refresh, UploadFile, Visibility } from '@mui/icons-material';
+import {
+  ArrowBack, ContentCopy, Download, FileDownload as ExcelIcon, LocalOffer as TagIcon, Lock as LockIcon,
+  LockOpen as LockOpenIcon, Search as SearchIcon, UploadFile, Visibility,
+} from '@mui/icons-material';
 import {
   Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, FormControlLabel, MenuItem, Paper, Stack, Table, TableBody, TableCell,
-  TableContainer, TableHead, TablePagination, TableRow, TextField, Typography,
+  DialogTitle, FormControlLabel, InputAdornment, LinearProgress, Paper, Stack, Tab, Table, TableBody,
+  TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Tabs, TextField,
+  Tooltip, Typography,
 } from '@mui/material';
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { couleur, FacetteAuto, nb, RepartitionBar, telecharger } from '../components/data/facettes';
 import { RootState } from '../store';
-import { IfsView, IfsViewList, ifsViewService as service } from '../services/ifsDictionaryService';
+import {
+  IfsView, IfsViewDetail, IfsViewFacets, ifsViewService as service,
+} from '../services/ifsDictionaryService';
+
+// Données IFS > Vues IFS : catalogue ALL_VIEWS (migrations 116/117), sur le modèle de
+// Maintenance > Équipements (barres de répartition, étiquettes, facettes, export Excel)
+// et rapport SQL comme le Catalogue des tables IFS. API : api/ifs_dictionary.py.
+
+type FacetKey = 'nature' | 'owner' | 'lecture' | 'taille';
+type Filters = Partial<Record<FacetKey, string[]>>;
+
+const NATURE_COULEURS: Record<string, string> = {
+  TAB: '#1976d2', VRT: '#7e57c2', LOV: '#26a69a', DM: '#ef6c00', OL: '#ffa726', MV: '#ffcc80',
+  REP: '#d81b60', PUB: '#2e7d32', UIV: '#00acc1', QRY: '#5c6bc0', CF: '#8d6e63', TMP: '#bdbdbd',
+  EXT: '#9ccc65', METIER: '#546e7a', SYSTEME: '#c62828',
+};
+const OWNER_COULEURS: Record<string, string> = {
+  IFSAPP: '#1976d2', IFSINFO: '#00897b', IFSCAMSYS: '#7e57c2', CTXSYS: '#c62828', WMSYS: '#ef6c00',
+  GSMADMIN_INTERNAL: '#8d6e63', XDB: '#78909c',
+};
+const LECTURE_COULEURS: Record<string, string> = { true: '#546e7a', false: '#ef6c00' };
+const ETIQUETTE_COULEURS: Record<string, 'default' | 'primary' | 'secondary' | 'warning' | 'info' | 'error'> = {
+  union: 'info', api: 'secondary', cf: 'primary', modifiable: 'warning', volumineux: 'error',
+};
 
 function errorMessage(error: unknown): string {
   return axios.isAxiosError(error)
@@ -17,127 +45,411 @@ function errorMessage(error: unknown): string {
     : 'Une erreur est survenue.';
 }
 
+const NatureChip: React.FC<{ code: string; libelle?: string }> = ({ code, libelle }) => (
+  <Tooltip title={libelle ?? code}>
+    <Chip size="small" label={code} sx={{ bgcolor: couleur(NATURE_COULEURS, code), color: '#fff', fontWeight: 600, height: 20 }} />
+  </Tooltip>
+);
+
+// ---------------------------------------------------------------------------
+// Fiche d'une vue : SQL, colonnes + rapport, objets lus
+// ---------------------------------------------------------------------------
+const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, string>; onClose: () => void }> = ({ view, etiquettes, onClose }) => {
+  const navigate = useNavigate();
+  const [data, setData] = useState<IfsViewDetail | null>(null);
+  const [error, setError] = useState('');
+  const [onglet, setOnglet] = useState(0);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [fieldSearch, setFieldSearch] = useState('');
+  const [includeOwner, setIncludeOwner] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [report, setReport] = useState<{ sql: string; filename: string } | null>(null);
+
+  useEffect(() => {
+    if (!view) return;
+    const controller = new AbortController();
+    setData(null); setError(''); setOnglet(0); setReport(null); setFieldSearch('');
+    service.detail(view.view_id, controller.signal)
+      .then((d) => { setData(d); setSelected(d.columns); })
+      .catch((err) => { if (!controller.signal.aborted) setError(errorMessage(err)); });
+    return () => controller.abort();
+  }, [view]);
+
+  const visibles = useMemo(() => (data?.columns ?? []).filter((c) => c.toLowerCase().includes(fieldSearch.toLowerCase())),
+    [data, fieldSearch]);
+
+  const generate = async () => {
+    if (!view) return;
+    setGenerating(true); setError('');
+    try { setReport(await service.report(view.view_id, selected, includeOwner)); }
+    catch (err) { setError(errorMessage(err)); }
+    finally { setGenerating(false); }
+  };
+
+  const download = () => {
+    if (!report) return;
+    const url = URL.createObjectURL(new Blob([report.sql], { type: 'text/markdown;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = report.filename;
+    document.body.appendChild(link); link.click(); link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const v = data?.view;
+  return (
+    <Dialog open={!!view} onClose={() => { if (!generating) onClose(); }} maxWidth="xl" fullWidth>
+      <DialogTitle sx={{ overflowWrap: 'anywhere' }}>
+        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+          {view && <NatureChip code={view.nature} libelle={data?.natures[view.nature]} />}
+          <span>{report ? 'Rapport SQL — ' : ''}{view?.owner}.{view?.view_name}</span>
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {report ? (
+          <>
+            <Alert severity="info" sx={{ mb: 2 }}>Requête générée au format du modèle report.md. Elle n’est pas exécutée.</Alert>
+            <Box component="pre" tabIndex={0} sx={{ m: 0, p: 2, bgcolor: 'action.hover', overflow: 'auto', maxHeight: '60vh', fontSize: 13 }}>{report.sql}</Box>
+          </>
+        ) : !v ? (!error && <CircularProgress aria-label="Chargement de la vue" />) : (
+          <>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
+              <Chip size="small" icon={v.read_only ? <LockIcon /> : <LockOpenIcon />}
+                label={v.read_only ? 'Lecture seule' : v.read_only === false ? 'Modifiable' : 'Accès inconnu'} />
+              <Chip size="small" label={`${nb(v.text_length)} caractères`} />
+              {v.etiquettes.map((k) => (
+                <Chip key={k} size="small" icon={<TagIcon />} color={ETIQUETTE_COULEURS[k] ?? 'default'} variant="outlined" label={etiquettes[k] ?? k} />
+              ))}
+            </Stack>
+            <Tabs value={onglet} onChange={(_, o) => setOnglet(o)} sx={{ mb: 1.5 }}>
+              <Tab label="SQL" />
+              <Tab label={`Colonnes (${data!.columns.length})`} />
+              <Tab label={`Objets lus (${data!.tables.length})`} />
+              <Tab label="Métadonnées" />
+            </Tabs>
+            {onglet === 0 && (
+              <Box component="pre" tabIndex={0} sx={{ m: 0, p: 2, bgcolor: 'action.hover', overflow: 'auto', maxHeight: '60vh', fontSize: 13 }}>
+                {v.view_text || 'Aucun texte SQL dans le fichier importé.'}
+              </Box>
+            )}
+            {onglet === 1 && (data!.columns.length === 0 ? (
+              <Alert severity="warning">Colonnes non identifiées dans le SQL de la vue : rapport impossible.</Alert>
+            ) : (
+              <>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} sx={{ mb: 1 }}>
+                  <TextField size="small" label="Filtrer les colonnes" value={fieldSearch}
+                    onChange={(e) => setFieldSearch(e.target.value)} sx={{ flexGrow: 1 }} />
+                  <Chip label={`${selected.length} / ${data!.columns.length} colonnes sélectionnées`} />
+                  <Button onClick={() => setSelected(data!.columns)}>Tout sélectionner</Button>
+                  <Button onClick={() => setSelected([])}>Tout désélectionner</Button>
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  Colonnes lues dans la liste du SELECT de la vue (alias), dans leur ordre. Le filtre ne change pas la sélection du rapport.
+                </Typography>
+                <TableContainer sx={{ maxHeight: '45vh' }}>
+                  <Table size="small" stickyHeader aria-label="Colonnes de la vue IFS">
+                    <TableHead><TableRow>
+                      <TableCell>Rapport</TableCell><TableCell>Ordre</TableCell><TableCell>Colonne</TableCell>
+                    </TableRow></TableHead>
+                    <TableBody>
+                      {visibles.map((c) => (
+                        <TableRow key={c}>
+                          <TableCell padding="checkbox"><Checkbox checked={selected.includes(c)}
+                            inputProps={{ 'aria-label': `Inclure ${c} dans le rapport` }}
+                            onChange={(_, checked) => setSelected((p) => checked ? data!.columns.filter((x) => x === c || p.includes(x)) : p.filter((x) => x !== c))} /></TableCell>
+                          <TableCell>{data!.columns.indexOf(c) + 1}</TableCell>
+                          <TableCell sx={{ fontFamily: 'monospace' }}>{c}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <FormControlLabel sx={{ mt: 1 }} control={<Checkbox checked={includeOwner} onChange={(_, val) => setIncludeOwner(val)} />}
+                  label="Préfixer la vue par son propriétaire dans le SQL" />
+              </>
+            ))}
+            {onglet === 2 && (
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {data!.tables.map((t) => t.table_id ? (
+                  <Tooltip key={t.name} title="Table présente dans le catalogue des tables IFS">
+                    <Chip label={t.name} color="primary" variant="outlined" clickable sx={{ fontFamily: 'monospace' }}
+                      onClick={() => navigate('/ifs-data/table-catalog')} />
+                  </Tooltip>
+                ) : <Chip key={t.name} label={t.name} variant="outlined" sx={{ fontFamily: 'monospace' }} />)}
+                {data!.tables.length === 0 && <Typography color="text.secondary">Aucun objet identifié après FROM / JOIN.</Typography>}
+              </Stack>
+            )}
+            {onglet === 3 && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(160px, 1fr) 2fr', gap: 1 }}>
+                {Object.entries(v.metadata ?? {}).map(([k, val]) => (
+                  <React.Fragment key={k}>
+                    <Typography variant="body2" color="text.secondary">{k}</Typography>
+                    <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{val}</Typography>
+                  </React.Fragment>
+                ))}
+              </Box>
+            )}
+          </>
+        )}
+      </DialogContent>
+      <DialogActions>
+        {!report && v && onglet === 0 && (
+          <Button startIcon={<ContentCopy />} disabled={!v.view_text}
+            onClick={() => navigator.clipboard?.writeText(v.view_text || '')}>Copier le SQL</Button>
+        )}
+        <Button onClick={onClose} disabled={generating}>Fermer</Button>
+        {report ? (
+          <>
+            <Button onClick={() => setReport(null)}>Retour à la vue</Button>
+            <Button variant="contained" startIcon={<Download />} onClick={download}>Télécharger report.md</Button>
+          </>
+        ) : (
+          <Button variant="contained" onClick={generate} disabled={!data || !selected.length || generating}>
+            {generating ? 'Génération…' : 'Générer le rapport'}
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 const IfsViewCatalog: React.FC = () => {
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
-  const [data, setData] = useState<IfsViewList | null>(null);
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
   const [inSql, setInSql] = useState(false);
-  const [owner, setOwner] = useState('');
+  const [filters, setFilters] = useState<Filters>({});
+  const [etiquette, setEtiquette] = useState('');
+  const [facets, setFacets] = useState<IfsViewFacets | null>(null);
+  const [rows, setRows] = useState<IfsView[]>([]);
+  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(25);
+  const [size, setSize] = useState(50);
+  const [sort, setSort] = useState('view_name');
+  const [dir, setDir] = useState<'asc' | 'desc'>('asc');
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [exporting, setExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [active, setActive] = useState<IfsView | null>(null);
-  const [detailError, setDetailError] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const params = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (searchDebounced) { p.q = searchDebounced; if (inSql) p.in_sql = '1'; }
+    (Object.keys(filters) as FacetKey[]).forEach((k) => { if (filters[k]?.length) p[k] = filters[k]!.join(','); });
+    if (etiquette) p.etiquette = etiquette;
+    return p;
+  }, [searchDebounced, inSql, filters, etiquette]);
+
+  useEffect(() => { setPage(0); }, [params]);
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError('');
-    const timer = window.setTimeout(() => {
-      service.list({ q: search, owner, in_sql: inSql ? '1' : '0', page, page_size: size }, controller.signal)
-        .then(result => { if (!controller.signal.aborted) setData(result); })
-        .catch(err => { if (!controller.signal.aborted) { setError(errorMessage(err)); setData(null); } })
-        .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    }, 300);
-    return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [search, inSql, owner, page, size, revision]);
+    service.facets(params, controller.signal).then(setFacets)
+      .catch((err) => { if (!controller.signal.aborted) setError(errorMessage(err)); });
+    return () => controller.abort();
+  }, [params, revision]);
 
-  const open = (view: IfsView) => {
-    setActive(view);
-    setDetailError('');
-    service.detail(view.view_id).then(setActive).catch(err => setDetailError(errorMessage(err)));
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true); setError('');
+    service.list({ ...params, page, page_size: size, sort, dir }, controller.signal)
+      .then((r) => { setRows(r.items); setTotal(r.total); })
+      .catch((err) => { if (!controller.signal.aborted) setError(errorMessage(err)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [params, page, size, sort, dir, revision]);
+
+  const toggleFiltre = (k: FacetKey, code: string) => setFilters((f) => {
+    const cur = f[k] ?? [];
+    return { ...f, [k]: cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code] };
+  });
+  const effacer = () => { setFilters({}); setSearch(''); setEtiquette(''); };
+  const nbFiltres = Object.values(filters).reduce((s, v) => s + (v?.length ?? 0), 0)
+    + (searchDebounced ? 1 : 0) + (etiquette ? 1 : 0);
+  const facette = (k: FacetKey) => facets?.facettes[k];
+  const natures = useMemo(() => Object.fromEntries((facette('nature')?.valeurs ?? []).map((v) => [v.code, v.libelle ?? v.code])),
+    [facets]); // eslint-disable-line react-hooks/exhaustive-deps
+  const etiquettesLib = useMemo(() => Object.fromEntries((facets?.etiquettes ?? []).map((e) => [e.cle, e.libelle])), [facets]);
+
+  const filtreAuto = (k: FacetKey, largeur = 200) => (
+    <FacetteAuto key={k} titre={facette(k)?.titre ?? k} valeurs={facette(k)?.valeurs ?? []} largeur={largeur}
+      selection={filters[k] ?? []} onChange={(codes) => setFilters((cur) => ({ ...cur, [k]: codes }))} />
+  );
+
+  const exporter = async () => {
+    try { setExporting(true); await telecharger(service.exportUrl, params, 'vues_ifs.xlsx'); }
+    catch { setError("L'export Excel a échoué."); }
+    finally { setExporting(false); }
   };
 
   const importFile = async () => {
     if (!file) return;
-    setImporting(true);
-    setImportError('');
-    setNotice('');
+    setImporting(true); setImportError(''); setNotice('');
     try {
       const result = await service.importFile(file);
       setNotice(`${result.views_imported.toLocaleString('fr-FR')} vues importées. ${result.message}`);
-      setImportOpen(false);
-      setFile(null);
-      setPage(0);
-      setRevision(value => value + 1);
+      setImportOpen(false); setFile(null); setRevision((r) => r + 1);
     } catch (err) { setImportError(errorMessage(err)); }
     finally { setImporting(false); }
   };
 
+  const triable = (col: string, label: string) => (
+    <TableSortLabel active={sort === col} direction={sort === col ? dir : 'asc'}
+      onClick={() => { if (sort === col) setDir(dir === 'asc' ? 'desc' : 'asc'); else { setSort(col); setDir('asc'); } }}>
+      {label}
+    </TableSortLabel>
+  );
+
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
-      <Stack direction="row" spacing={2} alignItems="center" useFlexGap flexWrap="wrap" sx={{ mb: 2 }}>
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/ifs-data')}>Données IFS</Button>
-        <Visibility color="primary" />
-        <Typography component="h1" variant="h4" sx={{ flexGrow: 1 }}>Vues IFS</Typography>
-        <Button startIcon={<Refresh />} onClick={() => setRevision(value => value + 1)} disabled={loading}>Actualiser</Button>
-        {user?.role === 'admin' && (
-          <Button variant="contained" startIcon={<UploadFile />}
-            onClick={() => { setImportError(''); setFile(null); setImportOpen(true); }}>
-            Importer les vues
+    <Box sx={{ p: { xs: 1.5, md: 3 } }}>
+      {/* En-tête */}
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Button startIcon={<ArrowBack />} onClick={() => navigate('/ifs-data')}>Données IFS</Button>
+          <Box sx={{ p: 1.2, borderRadius: 2, bgcolor: '#e0f7fa', display: 'flex' }}>
+            <Visibility sx={{ color: '#00838f', fontSize: 32 }} />
+          </Box>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700 }}>Vues IFS</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Vues Oracle/IFS (ALL_VIEWS) · {facets ? nb(facets.total) : '…'} vues{nbFiltres > 0 ? ' (sélection)' : ''}
+              {facets?.catalogue.imported_at ? ` · import du ${new Date(facets.catalogue.imported_at).toLocaleString('fr-FR')}` : ''}
+            </Typography>
+          </Box>
+        </Stack>
+        <Stack direction="row" spacing={1}>
+          {user?.role === 'admin' && (
+            <Button variant="outlined" startIcon={<UploadFile />} onClick={() => { setImportError(''); setFile(null); setImportOpen(true); }}>
+              Importer les vues
+            </Button>
+          )}
+          <Button variant="contained" startIcon={<ExcelIcon />} onClick={exporter} disabled={exporting}>
+            {exporting ? 'Export…' : 'Excel'}
           </Button>
-        )}
+        </Stack>
       </Stack>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Vues Oracle/IFS (export ALL_VIEWS) : recherche par nom ou dans le SQL, consultation du texte de la vue.
-      </Typography>
+
       {notice && <Alert severity="success" onClose={() => setNotice('')} sx={{ mb: 2 }}>{notice}</Alert>}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {data && (
-        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2 }}>
-          <Chip label={`${data.stats.views.toLocaleString('fr-FR')} vues`} />
-          <Chip label={`${data.owners.length} propriétaires`} />
-          {data.stats.imported_at && <Chip variant="outlined" label={`Dernier import : ${new Date(data.stats.imported_at).toLocaleString('fr-FR')}`} />}
+      {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
+      {facets?.catalogue.views === 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>Catalogue vide. Importez le fichier des vues depuis un compte administrateur.</Alert>
+      )}
+
+      {/* Répartition */}
+      {facets && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3}>
+            <RepartitionBar titre="Nature (suffixe IFS)" valeurs={facets.facettes.nature.valeurs}
+              actifs={filters.nature ?? []} palette={NATURE_COULEURS} onToggle={(c) => toggleFiltre('nature', c)}
+              legende={(v) => v.code} />
+            <Box sx={{ flex: 0.7, minWidth: 260 }}>
+              <RepartitionBar titre="Propriétaire" valeurs={facets.facettes.owner.valeurs}
+                actifs={filters.owner ?? []} palette={OWNER_COULEURS} onToggle={(c) => toggleFiltre('owner', c)} />
+            </Box>
+            <Box sx={{ flex: 0.5, minWidth: 220 }}>
+              <RepartitionBar titre="Accès" valeurs={facets.facettes.lecture.valeurs}
+                actifs={filters.lecture ?? []} palette={LECTURE_COULEURS} onToggle={(c) => toggleFiltre('lecture', c)} />
+            </Box>
+          </Stack>
+        </Paper>
+      )}
+
+      {/* Étiquettes */}
+      {facets && (
+        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', rowGap: 1 }} alignItems="center">
+          <Typography variant="overline" color="text.secondary" sx={{ mr: 1 }}>Étiquettes</Typography>
+          {facets.etiquettes.map((e) => (
+            <Chip key={e.cle} clickable size="small" icon={<TagIcon />}
+              color={etiquette === e.cle ? (ETIQUETTE_COULEURS[e.cle] ?? 'default') : 'default'}
+              variant={etiquette === e.cle ? 'filled' : 'outlined'}
+              onClick={() => setEtiquette(etiquette === e.cle ? '' : e.cle)}
+              label={`${e.libelle} · ${nb(e.nb)}`} />
+          ))}
         </Stack>
       )}
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} sx={{ mb: 2 }}>
-          <TextField label="Rechercher une vue" size="small" fullWidth value={search}
-            onChange={event => { setSearch(event.target.value); setPage(0); }} />
-          <FormControlLabel sx={{ whiteSpace: 'nowrap' }} label="Chercher aussi dans le SQL"
-            control={<Checkbox checked={inSql} onChange={(_, value) => { setInSql(value); setPage(0); }} />} />
-          <TextField select label="Propriétaire" size="small" value={owner} sx={{ minWidth: 200 }}
-            onChange={event => { setOwner(event.target.value); setPage(0); }}>
-            <MenuItem value="">Tous les propriétaires</MenuItem>
-            {(data?.owners || []).map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}
-          </TextField>
+
+      {/* Filtres */}
+      <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
+        <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', rowGap: 1.5 }} alignItems="center">
+          <TextField size="small" placeholder="Nom de vue, propriétaire…" value={search}
+            onChange={(e) => setSearch(e.target.value)} sx={{ width: 300 }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />
+          <FormControlLabel label="Chercher aussi dans le SQL"
+            control={<Checkbox size="small" checked={inSql} onChange={(_, val) => setInSql(val)} />} />
+          {filtreAuto('nature', 240)}
+          {filtreAuto('owner', 200)}
+          {filtreAuto('taille', 200)}
+          <Box sx={{ flexGrow: 1 }} />
+          {nbFiltres > 0 && <Button size="small" onClick={effacer}>Effacer les filtres ({nbFiltres})</Button>}
         </Stack>
-        {loading ? <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress aria-label="Chargement des vues" /></Box> : (
-          <TableContainer>
-            <Table size="small" aria-label="Vues IFS">
-              <TableHead><TableRow>
-                {['Propriétaire', 'Vue', 'Lecture seule', 'Taille du SQL', ''].map(label => <TableCell key={label}>{label}</TableCell>)}
-              </TableRow></TableHead>
-              <TableBody>
-                {data?.items.map(view => (
-                  <TableRow key={view.view_id} hover>
-                    <TableCell>{view.owner}</TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>{view.view_name}</TableCell>
-                    <TableCell>{view.read_only === null ? '—' : view.read_only ? 'Oui' : 'Non'}</TableCell>
-                    <TableCell>{view.text_length?.toLocaleString('fr-FR') ?? '—'}</TableCell>
-                    <TableCell><Button size="small" onClick={() => open(view)}>Consulter</Button></TableCell>
-                  </TableRow>
-                ))}
-                {data && !data.items.length && <TableRow><TableCell colSpan={5} sx={{ py: 4, textAlign: 'center' }}>
-                  {data.stats.views === 0 ? 'Catalogue vide. Importez le fichier des vues depuis un compte administrateur.' : 'Aucune vue ne correspond à la recherche.'}
-                </TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-        <TablePagination component="div" count={data?.total || 0} page={page} rowsPerPage={size}
-          rowsPerPageOptions={[25, 50, 100]} labelRowsPerPage="Vues par page"
-          labelDisplayedRows={({ from, to, count }) => `${from}–${to} sur ${count}`}
-          onPageChange={(_, value) => setPage(value)}
-          onRowsPerPageChange={event => { setSize(Number(event.target.value)); setPage(0); }} />
+      </Paper>
+
+      {loading && <LinearProgress sx={{ mb: 0.5 }} />}
+
+      <Paper variant="outlined">
+        <TableContainer sx={{ maxHeight: 'calc(100vh - 430px)', minHeight: 300 }}>
+          <Table size="small" stickyHeader aria-label="Vues IFS">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ width: 40 }} />
+                <TableCell sx={{ fontWeight: 600 }}>{triable('owner', 'Propriétaire')}</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>{triable('view_name', 'Vue')}</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>{triable('nature', 'Nature')}</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">{triable('text_length', 'Taille du SQL')}</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Étiquettes</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.view_id} hover sx={{ cursor: 'pointer' }} onClick={() => setActive(r)}>
+                  <TableCell>
+                    <Tooltip title={r.read_only ? 'Lecture seule' : r.read_only === false ? 'Modifiable' : 'Accès inconnu'}>
+                      {r.read_only === false
+                        ? <LockOpenIcon fontSize="small" sx={{ color: '#ef6c00' }} />
+                        : <LockIcon fontSize="small" sx={{ color: 'action.disabled' }} />}
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell>{r.owner}</TableCell>
+                  <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{r.view_name}</TableCell>
+                  <TableCell><NatureChip code={r.nature} libelle={natures[r.nature]} /></TableCell>
+                  <TableCell align="right">{r.text_length === null ? '—' : nb(r.text_length)}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+                      {r.etiquettes.map((k) => (
+                        <Chip key={k} size="small" variant="outlined" color={ETIQUETTE_COULEURS[k] ?? 'default'}
+                          label={etiquettesLib[k] ?? k} sx={{ height: 20, fontSize: '0.7rem' }} />
+                      ))}
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!loading && rows.length === 0 && (
+                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                  Aucune vue ne correspond aux filtres.
+                </TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination component="div" count={total} page={page} rowsPerPage={size}
+          rowsPerPageOptions={[25, 50, 100, 200]} labelRowsPerPage="Lignes par page"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} sur ${nb(count)}`}
+          onPageChange={(_, p) => setPage(p)} onRowsPerPageChange={(ev) => { setSize(Number(ev.target.value)); setPage(0); }} />
       </Paper>
 
       <Dialog open={importOpen} onClose={() => { if (!importing) setImportOpen(false); }} maxWidth="sm" fullWidth>
@@ -160,30 +472,7 @@ const IfsViewCatalog: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={!!active} onClose={() => setActive(null)} maxWidth="xl" fullWidth>
-        <DialogTitle sx={{ overflowWrap: 'anywhere' }}>{active?.owner}.{active?.view_name}</DialogTitle>
-        <DialogContent>
-          {detailError && <Alert severity="error" sx={{ mb: 2 }}>{detailError}</Alert>}
-          {active?.view_text === undefined ? <CircularProgress aria-label="Chargement du SQL" /> : (
-            <>
-              {active.metadata && (
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2 }}>
-                  {Object.entries(active.metadata).filter(([key]) => !['Owner', 'View Name'].includes(key))
-                    .map(([key, value]) => <Chip key={key} size="small" variant="outlined" label={`${key} : ${value}`} />)}
-                </Stack>
-              )}
-              <Box component="pre" tabIndex={0} sx={{ m: 0, p: 2, bgcolor: 'action.hover', overflow: 'auto', maxHeight: '65vh', fontSize: 13 }}>
-                {active.view_text || 'Aucun texte SQL dans le fichier importé.'}
-              </Box>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button startIcon={<ContentCopy />} disabled={!active?.view_text}
-            onClick={() => navigator.clipboard?.writeText(active?.view_text || '')}>Copier le SQL</Button>
-          <Button onClick={() => setActive(null)}>Fermer</Button>
-        </DialogActions>
-      </Dialog>
+      <FicheVue view={active} etiquettes={etiquettesLib} onClose={() => setActive(null)} />
     </Box>
   );
 };
