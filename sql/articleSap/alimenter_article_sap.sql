@@ -38,7 +38,9 @@ BEGIN
         -- migration 110
         "Créé par", "Dernière modification par",
         -- migration 111
-        "Créé par Nom", "Dernière modification par Nom"
+        "Créé par Nom", "Dernière modification par Nom",
+        -- migration 112
+        "Classe d'actifs", "Classe d'actifs Description"
     )
     -- Une ligne par article : 9200 (SJ) s'il y est ouvert, sinon 9000 (CS),
     -- sinon SJ par defaut (max('9200','9000') = '9200').
@@ -105,7 +107,10 @@ BEGIN
         clean_data.texte_long_sap('MATERIAL', 'GRUN', m.matnr, ARRAY['F']),  -- texte de base
         NULLIF(TRIM(m.ernam), ''),                                 -- cree par
         NULLIF(TRIM(m.aenam), ''),                                 -- derniere modification par
-        uc.nom, um.nom                                             -- noms complets (usr21/adrp)
+        uc.nom, um.nom,                                            -- noms complets (usr21/adrp)
+        -- classe calculee depuis la categorie (transco ARTICLE_CLASSE_ACTIF,
+        -- ecran Transcodification) ; categorie non transcodee -> NULL
+        ca.target_value, ca.description
     FROM sites s
     JOIN raw_data.mara m ON m.mandt::text = '700' AND m.matnr::text = s.matnr
     LEFT JOIN raw_data.makt k
@@ -130,6 +135,9 @@ BEGIN
     LEFT JOIN stock st ON st.matnr = s.matnr AND st.werks = s.werks
     LEFT JOIN utilisateur uc ON uc.bname = TRIM(m.ernam)
     LEFT JOIN utilisateur um ON um.bname = TRIM(m.aenam)
+    LEFT JOIN public."TranscodificationTable" ca
+      ON ca.category = 'ARTICLE_CLASSE_ACTIF' AND ca.source_system = 'SAP'
+     AND ca.target_system = 'IFS' AND ca.is_active AND ca.source_value = m.mtart::text
     ORDER BY 1;
     GET DIAGNOSTICS v_count = ROW_COUNT;
 
