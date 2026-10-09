@@ -303,8 +303,11 @@ def view_columns(sql):
             start = m.end()
         elif start is not None and m.group(1).lower() == 'from':
             end = m.start(); break
-    if start is None or end is None:
+    if start is None:
         return []
+    truncated = end is None          # SQL coupé (Text Vc, 4000 car.) : dernière colonne incomplète
+    if truncated:
+        end = len(flat)
     items, current = [], ''
     for pos in range(start, end):
         depth, ch = chars[pos]
@@ -312,7 +315,8 @@ def view_columns(sql):
             items.append(current); current = ''
         else:
             current += ch
-    items.append(current)
+    if not truncated:
+        items.append(current)
     columns = []
     for item in items:
         item = re.sub(r'^\s*(distinct|unique|all)\s+', '', item.strip(), flags=re.I)

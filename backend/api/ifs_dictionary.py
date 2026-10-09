@@ -153,6 +153,10 @@ ETIQUETTES = {
     'cf': ('Champs personnalisés', 'custom_fields'),
     'modifiable': ('Modifiable (sans WITH READ ONLY)', 'read_only IS FALSE'),
     'volumineux': ('SQL ≥ 20 000 caractères', "taille = 'L'"),
+    # Fichier sans colonne Text : seul Text Vc (4000 car.) est disponible
+    'tronque': ('SQL tronqué dans le fichier',
+                "CASE WHEN metadata->>'Text Length' ~ '^[0-9]+$' "
+                "THEN (metadata->>'Text Length')::bigint > length(view_text) END"),
 }
 VIEW_TRIS = {'view_name': 'view_name', 'owner': 'owner', 'nature': 'nature', 'text_length': 'length(view_text)'}
 

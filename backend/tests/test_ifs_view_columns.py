@@ -13,6 +13,7 @@ def test_view_columns():
     assert view_columns(SQL) == ['PART_NO', 'QUALIFIED_SUPPLIER', 'OBJVERSION', 'OBJID', 'Mixed']
     assert view_columns('(select a from t)') == ['A']
     assert view_columns(None) == []
+    assert view_columns('SELECT a x, b y, Decode(c, NULL') == ['X', 'Y']
 
 
 def test_view_tables_et_rapport():

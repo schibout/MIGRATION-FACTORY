@@ -36,7 +36,7 @@ const OWNER_COULEURS: Record<string, string> = {
 };
 const LECTURE_COULEURS: Record<string, string> = { true: '#546e7a', false: '#ef6c00' };
 const ETIQUETTE_COULEURS: Record<string, 'default' | 'primary' | 'secondary' | 'warning' | 'info' | 'error'> = {
-  union: 'info', api: 'secondary', cf: 'primary', modifiable: 'warning', volumineux: 'error',
+  union: 'info', api: 'secondary', cf: 'primary', modifiable: 'warning', volumineux: 'error', tronque: 'error',
 };
 
 function errorMessage(error: unknown): string {
@@ -143,6 +143,9 @@ const FicheVue: React.FC<{ view: IfsView | null; etiquettes: Record<string, stri
                   <Button onClick={() => setSelected(data!.columns)}>Tout sélectionner</Button>
                   <Button onClick={() => setSelected([])}>Tout désélectionner</Button>
                 </Stack>
+                {v.etiquettes.includes('tronque') && (
+                  <Alert severity="warning" sx={{ mb: 1 }}>SQL tronqué dans le fichier importé : seules les colonnes lisibles avant la coupure sont listées.</Alert>
+                )}
                 <Typography variant="caption" color="text.secondary">
                   Colonnes lues dans la liste du SELECT de la vue (alias), dans leur ordre. Le filtre ne change pas la sélection du rapport.
                 </Typography>
