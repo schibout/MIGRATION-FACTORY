@@ -76,8 +76,9 @@ BEGIN
     --   - soit des articles de maintenance actifs (clean_data.maintenance_object,
     --     object_type ARTICLE) : IBAU de la structure (sans aucune ligne marc)
     --     et pieces des nomenclatures IH02, pour qu'aucun article d'une
-    --     nomenclature exportee ne manque dans part_catalog.
-    -- ~35 700 articles. Les agregats (centres, evaluation, stocks) sont
+    --     nomenclature exportee ne manque dans part_catalog ; SAUF ceux qui portent
+    --     l'indicateur de suppression (marc.lvorm) en division STJN ou partout.
+    -- ~33 400 articles. Les agregats (centres, evaluation, stocks) sont
     -- restreints aux divisions STJN.
     -- L'ancienne table pilote raw_data.export_article_qlikview n'est plus
     -- utilisee : elle restreignait le chargement a ~18 700 articles sur les
@@ -96,6 +97,19 @@ BEGIN
                   WHERE o.object_type = 'ARTICLE' AND o.is_active) mo
              ON mo.k = ltrim(mr.matnr::text, '0')
           WHERE mr.mandt::text = '700'::text
+            -- Aucun article portant l'indicateur de suppression (demande du
+            -- 2026-10-09) : ni en division STJN (1 678 articles)...
+            AND NOT EXISTS (SELECT 1 FROM raw_data.marc c
+                             WHERE c.mandt::text = '700' AND c.matnr = mr.matnr
+                               AND c.werks::text IN ('9200', '9000')
+                               AND COALESCE(c.lvorm::text, '') <> '')
+            -- ...ni dans toutes ses divisions (605) ; un article sans aucune
+            -- division (IBAU) n'est pas supprime et reste.
+            AND (NOT EXISTS (SELECT 1 FROM raw_data.marc c
+                              WHERE c.mandt::text = '700' AND c.matnr = mr.matnr)
+                 OR EXISTS (SELECT 1 FROM raw_data.marc c
+                             WHERE c.mandt::text = '700' AND c.matnr = mr.matnr
+                               AND COALESCE(c.lvorm::text, '') = ''))
         ), article_base AS (
          SELECT DISTINCT ON (m_1.matnr)
             m_1.matnr::text AS matnr,
