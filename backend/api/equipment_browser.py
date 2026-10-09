@@ -25,28 +25,30 @@ equipment_browser_blueprint = Blueprint('equipment_browser', __name__)
 
 VIDE = '__vide__'
 
+# MATERIALIZED : sans lui PostgreSQL deplie les CTE dans la requete et choisit des
+# boucles imbriquees sur les tables SAP (liste 15 s, facettes 105 s).
 BASE = """
-WITH z AS (
+WITH z AS MATERIALIZED (
     SELECT DISTINCT ON (equnr) equnr, NULLIF(TRIM(iwerk), '') AS iwerk, NULLIF(TRIM(gewrk), '') AS gewrk,
            NULLIF(LTRIM(TRIM(submt), '0'), '') AS construction
       FROM raw_data.equz WHERE mandt = '700'
      ORDER BY equnr, datbi DESC
-), d AS (
+), d AS MATERIALIZED (
     SELECT DISTINCT ON (equnr) equnr, TRIM(eqktx) AS eqktx, spras
       FROM raw_data.eqkt WHERE mandt = '700'
      ORDER BY equnr, CASE spras WHEN 'F' THEN 1 WHEN 'N' THEN 2 ELSE 3 END
-), st AS (
+), st AS MATERIALIZED (
     SELECT objnr, array_agg(stat ORDER BY stat) AS statuts
       FROM raw_data.jest
      WHERE mandt = '700' AND stat LIKE 'I%' AND (inact IS NULL OR inact = '')
      GROUP BY objnr
-), mo AS (
+), mo AS MATERIALIZED (
     SELECT e.sap_key, e.id AS mo_id, p.object_type AS parent_type, p.code AS parent_code,
            p.designation AS parent_designation
       FROM clean_data.maintenance_object e
       LEFT JOIN clean_data.maintenance_object p ON p.id = e.parent_id
      WHERE e.object_type = 'EQUIPMENT' AND e.is_active
-), base AS (
+), base AS MATERIALIZED (
     SELECT e.equnr AS id,
            LTRIM(e.equnr, '0') AS numero,
            COALESCE(d.eqktx, 'Équipement ' || LTRIM(e.equnr, '0')) AS description,
