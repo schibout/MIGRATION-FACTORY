@@ -8,7 +8,8 @@
 --   (ref_object_id) est deroulee a son tour (garde anti-cycle sur le chemin).
 -- Un article present dans plusieurs nomenclatures apparait donc a chaque usage.
 -- Lignes inactives (soft delete) exclues avec tout leur sous-arbre.
--- Ordre identique a IH02 : postes par code, equipements par sap_key, nomenclature par position.
+-- Ordre : niveau par niveau (tous les parents avant leurs enfants), puis dans un niveau
+-- ordre de l'arbre IH02 : postes par code, equipements par sap_key, nomenclature par position.
 
 CREATE OR REPLACE VIEW clean_data.v_hierarchie_maintenance AS
 WITH RECURSIVE arbre AS (
@@ -67,7 +68,7 @@ FROM arbre a
 JOIN clean_data.maintenance_object o ON o.id = a.id
 LEFT JOIN clean_data.maintenance_object p ON p.id = a.parent_affiche
 LEFT JOIN clean_data.maintenance_object r ON r.id = o.ref_object_id
-ORDER BY a.tri;
+ORDER BY a.niveau, a.tri;
 
 -- Declaration de l'export (categorie lue par la page /export/maintenance)
 DELETE FROM public.etl_export_queries WHERE table_name = 'v_hierarchie_maintenance';
