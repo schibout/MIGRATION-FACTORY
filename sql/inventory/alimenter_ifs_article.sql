@@ -70,8 +70,11 @@ BEGIN
         langue
     )
     -- =====================================================================
-    -- PERIMETRE : TOUS les articles SAP de raw_data.mara (mandt 700) non
-    -- marques pour suppression (lvorm vide).
+    -- PERIMETRE : articles de la societe STJN = articles SAP de raw_data.mara
+    -- (mandt 700, lvorm vide) ouverts (marc.lvorm vide) dans une division
+    -- STJN : 9200 (St Jean) ou 9000 (Castelsarrasin). Les divisions 2200/2000
+    -- appartiennent a l'ancienne societe APSJ. Les agregats (centres,
+    -- evaluation, stocks) sont restreints aux memes divisions.
     -- L'ancienne table pilote raw_data.export_article_qlikview n'est plus
     -- utilisee : elle restreignait le chargement a ~18 700 articles sur les
     -- ~85 200 actifs de mara. raw_data.article_definitif ne l'est pas non plus.
@@ -96,6 +99,10 @@ BEGIN
            FROM raw_data.mara m_1
              LEFT JOIN raw_data.makt mk ON m_1.matnr::text = mk.matnr::text AND mk.mandt::text = '700'::text AND (mk.spras::text = ANY (ARRAY['F'::character varying, 'E'::character varying, 'D'::character varying]::text[]))
           WHERE m_1.mandt::text = '700'::text AND (m_1.lvorm IS NULL OR m_1.lvorm::text = ''::text)
+            AND EXISTS (SELECT 1 FROM raw_data.marc c
+                         WHERE c.mandt::text = '700'::text AND c.matnr::text = m_1.matnr::text
+                           AND c.werks::text IN ('9200', '9000')
+                           AND (c.lvorm IS NULL OR c.lvorm::text = ''::text))
           ORDER BY m_1.matnr, (
                 CASE mk.spras
                     WHEN 'F'::text THEN 1
@@ -120,6 +127,7 @@ BEGIN
             string_agg(DISTINCT marc.sernp::text, ', '::text) FILTER (WHERE marc.sernp IS NOT NULL AND marc.sernp::text <> ''::text) AS profils_serie_list
            FROM raw_data.marc
           WHERE marc.mandt::text = '700'::text AND (marc.lvorm IS NULL OR marc.lvorm::text = ''::text)
+            AND marc.werks::text IN ('9200', '9000')
           GROUP BY marc.matnr::text, marc.mandt
         ), commerciales_agg AS (
          SELECT mvke.matnr::text AS matnr,
@@ -141,6 +149,7 @@ BEGIN
             string_agg(DISTINCT mbew.bklas::text, ', '::text) FILTER (WHERE mbew.bklas IS NOT NULL) AS classes_evaluation_list
            FROM raw_data.mbew
           WHERE mbew.mandt::text = '700'::text AND (mbew.lvorm IS NULL OR mbew.lvorm::text = ''::text)
+            AND mbew.bwkey::text IN ('9200', '9000')
           GROUP BY mbew.matnr::text, mbew.mandt
         ), stocks_agg AS (
          SELECT mard.matnr::text AS matnr,
@@ -152,6 +161,7 @@ BEGIN
             sum(COALESCE(mard.vmlab::numeric, 0::numeric)) AS valeur_stock_magasins_total
            FROM raw_data.mard
           WHERE mard.mandt::text = '700'::text AND (mard.lvorm IS NULL OR mard.lvorm::text = ''::text)
+            AND mard.werks::text IN ('9200', '9000')
           GROUP BY mard.matnr::text, mard.mandt
         ), ei_principal AS (
          SELECT DISTINCT ON (eina.matnr::text, eina.mandt) eina.matnr::text AS matnr,
