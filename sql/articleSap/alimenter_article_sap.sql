@@ -4,9 +4,9 @@
 -- sql/inventory/alimenter_ifs_article.sql) : lancer alimenter_ifs_article()
 -- avant.
 --
--- Grain : une ligne par (article, site). Site = division STJN ouverte dans
--- marc (9200 -> SJ, 9000 -> CS) ; un article sans division STJN (IBAU, pieces
--- de maintenance APSJ) sort une seule ligne sur SJ.
+-- Grain : une ligne par article (~35 700). Site = division STJN ouverte dans
+-- marc, SJ (9200) prioritaire sur CS (9000) ; un article sans division STJN
+-- (IBAU, pieces de maintenance APSJ) sort sur SJ.
 --
 -- Colonnes : valeur SAP quand SAP la porte (mara / makt / marc / mard / mbew),
 -- sinon la meme valeur par defaut IFS que clean_data.inventory_part
@@ -49,21 +49,16 @@ BEGIN
         "Prévision de consommation", "Avis de rupt. de stock",
         "Gestion du stock", "Master Part Description"
     )
+    -- Une ligne par article : 9200 (SJ) s'il y est ouvert, sinon 9000 (CS),
+    -- sinon SJ par defaut (max('9200','9000') = '9200').
     WITH sites AS MATERIALIZED (
-        SELECT a.numero_article AS matnr, c.werks::text AS werks
+        SELECT a.numero_article AS matnr, COALESCE(max(c.werks::text), '9200') AS werks
           FROM clean_data.ifs_article_maitre a
-          JOIN raw_data.marc c
+          LEFT JOIN raw_data.marc c
             ON c.mandt::text = '700' AND c.matnr::text = a.numero_article
            AND c.werks::text IN ('9200', '9000')
            AND (c.lvorm IS NULL OR c.lvorm::text = '')
-        UNION ALL
-        SELECT a.numero_article, '9200'
-          FROM clean_data.ifs_article_maitre a
-         WHERE NOT EXISTS (
-               SELECT 1 FROM raw_data.marc c
-                WHERE c.mandt::text = '700' AND c.matnr::text = a.numero_article
-                  AND c.werks::text IN ('9200', '9000')
-                  AND (c.lvorm IS NULL OR c.lvorm::text = ''))
+         GROUP BY a.numero_article
     ), stock AS (
         SELECT d.matnr::text AS matnr, d.werks::text AS werks,
                sum(COALESCE(d.labst::numeric, 0) + COALESCE(d.insme::numeric, 0)
@@ -160,7 +155,7 @@ BEGIN
     ORDER BY 1, 4;
     GET DIAGNOSTICS v_count = ROW_COUNT;
 
-    RAISE NOTICE 'article_sap : % lignes (article x site)', v_count;
+    RAISE NOTICE 'article_sap : % articles', v_count;
     RETURN v_count;
 END;
 $function$;
