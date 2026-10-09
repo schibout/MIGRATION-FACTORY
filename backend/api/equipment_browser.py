@@ -50,6 +50,33 @@ WITH z AS MATERIALIZED (
       FROM clean_data.maintenance_object e
       LEFT JOIN clean_data.maintenance_object p ON p.id = e.parent_id
      WHERE e.object_type = 'EQUIPMENT' AND e.is_active
+), refs AS MATERIALIZED (
+    -- Numeros d'article portes par les equipements (n° article + type de construction)
+    SELECT NULLIF(LTRIM(TRIM(matnr), '0'), '') AS k FROM raw_data.equi
+     WHERE mandt = '700' AND NULLIF(TRIM(matnr), '') IS NOT NULL
+    UNION
+    SELECT construction FROM z WHERE construction IS NOT NULL
+), ref AS MATERIALIZED (
+    -- Recherche elargie aux articles hors perimetre (supprimes, etc.) : designation
+    -- SAP + statut expliquant pourquoi l'article n'est pas dans article_sap.
+    SELECT DISTINCT ON (r.k) r.k,
+           COALESCE(a."Description article", NULLIF(TRIM(mk.maktx), '')) AS description,
+           COALESCE(a."Catégorie article", NULLIF(TRIM(m.mtart), '')) AS categorie,
+           CASE WHEN a."N° article" IS NOT NULL THEN 'CATALOGUE'
+                WHEN m.matnr IS NULL THEN 'INEXISTANT'
+                WHEN COALESCE(m.lvorm, '') <> '' THEN 'SUPPRIME'
+                WHEN EXISTS (SELECT 1 FROM raw_data.marc c WHERE c.mandt = '700' AND c.matnr = m.matnr
+                                AND c.werks IN ('9200', '9000') AND COALESCE(c.lvorm, '') <> '')
+                  OR (EXISTS (SELECT 1 FROM raw_data.marc c WHERE c.mandt = '700' AND c.matnr = m.matnr)
+                      AND NOT EXISTS (SELECT 1 FROM raw_data.marc c WHERE c.mandt = '700' AND c.matnr = m.matnr
+                                         AND COALESCE(c.lvorm, '') = ''))
+                  THEN 'SUPPRIME_DIVISION'
+                ELSE 'HORS_PERIMETRE' END AS statut
+      FROM refs r
+      LEFT JOIN clean_data.article_sap a ON a."N° article" = r.k
+      LEFT JOIN raw_data.mara m ON m.mandt = '700' AND m.matnr IN (r.k, lpad(r.k, 18, '0'))
+      LEFT JOIN raw_data.makt mk ON mk.mandt = '700' AND mk.matnr = m.matnr AND mk.spras = 'F'
+     ORDER BY r.k, mk.maktx NULLS LAST
 ), base AS MATERIALIZED (
     SELECT e.equnr AS id,
            LTRIM(e.equnr, '0') AS numero,
@@ -58,11 +85,14 @@ WITH z AS MATERIALIZED (
            NULLIF(TRIM(e.eqtyp), '') AS categorie,
            NULLIF(TRIM(e.eqart), '') AS type_objet,
            NULLIF(LTRIM(TRIM(e.matnr), '0'), '') AS article,
-           a."Description article" AS article_description,
-           a."Catégorie article" AS article_categorie,
+           ra.description AS article_description,
+           ra.categorie AS article_categorie,
+           ra.statut AS article_statut,
            z.construction,
-           ac."Description article" AS construction_description,
-           ac."Catégorie article" AS construction_categorie,
+           rc.description AS construction_description,
+           rc.categorie AS construction_categorie,
+           rc.statut AS construction_statut,
+           COALESCE(ra.statut, rc.statut, 'AUCUN') AS statut_article,
            CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN 'ARTICLE'
                 WHEN z.construction IS NOT NULL THEN 'CONSTRUCTION'
                 ELSE 'AUCUN' END AS lien_article,
@@ -84,8 +114,8 @@ WITH z AS MATERIALIZED (
       LEFT JOIN d ON d.equnr = e.equnr
       LEFT JOIN st ON st.objnr = e.objnr
       LEFT JOIN mo ON mo.sap_key = e.equnr
-      LEFT JOIN clean_data.article_sap a ON a."N° article" = NULLIF(LTRIM(TRIM(e.matnr), '0'), '')
-      LEFT JOIN clean_data.article_sap ac ON ac."N° article" = z.construction
+      LEFT JOIN ref ra ON ra.k = NULLIF(LTRIM(TRIM(e.matnr), '0'), '')
+      LEFT JOIN ref rc ON rc.k = z.construction
       LEFT JOIN raw_data.t001w w ON w.mandt = '700' AND w.werks = z.iwerk
       LEFT JOIN raw_data.crhd c ON c.mandt = '700' AND c.objty = 'A' AND c.objid = z.gewrk
       LEFT JOIN raw_data.crtx ct ON ct.mandt = '700' AND ct.objty = 'A' AND ct.objid = z.gewrk AND ct.spras = 'F'
@@ -98,6 +128,15 @@ POSITIONS = {
     'EQUIPMENT': 'Sous un équipement',
     'SANS_PARENT': 'Sans parent',
     'HORS_STRUCTURE': 'Hors structure IH02',
+}
+# Statut de l'article lie (n° article, a defaut type de construction)
+STATUTS_ARTICLE = {
+    'CATALOGUE': 'Au catalogue',
+    'SUPPRIME': 'Supprimé dans SAP',
+    'SUPPRIME_DIVISION': 'Supprimé en division',
+    'HORS_PERIMETRE': 'Hors périmètre',
+    'INEXISTANT': 'Inexistant dans SAP',
+    'AUCUN': 'Sans article',
 }
 LIENS = {
     'ARTICLE': 'Avec n° article',
@@ -114,15 +153,16 @@ FACETTES = {
     'statut': ('statuts', None, 'Statut SAP'),
     'type_objet': ('type_objet', None, "Type d'objet"),
     'lien_article': ('lien_article', None, 'Article'),
+    'statut_article': ('statut_article', None, "Statut de l'article"),
 }
 
 ANOMALIES = {
     'sans_parent': ('Sans parent dans la structure', "position = 'SANS_PARENT'"),
     'hors_structure': ('Hors structure IH02', "position = 'HORS_STRUCTURE'"),
     'sans_article': ('Sans article ni type de construction', "lien_article = 'AUCUN'"),
-    'article_inconnu': ('Article absent du catalogue',
-                        '(article IS NOT NULL AND article_description IS NULL) '
-                        'OR (construction IS NOT NULL AND construction_description IS NULL)'),
+    'article_inconnu': ('Article hors catalogue (supprimé, inexistant…)',
+                        "(article IS NOT NULL AND article_statut <> 'CATALOGUE') "
+                        "OR (construction IS NOT NULL AND construction_statut <> 'CATALOGUE')"),
     'sans_description_fr': ('Sans description FR', "langue_description IS DISTINCT FROM 'F'"),
     'inactif': ('Inactif ou marqué pour suppression', "statuts && ARRAY['I0320', 'I0076']::varchar[]"),
 }
@@ -229,6 +269,7 @@ def facettes():
             libelle = (libelles.get(code) if cle == 'statut'
                        else POSITIONS.get(code) if cle == 'position'
                        else LIENS.get(code) if cle == 'lien_article'
+                       else STATUTS_ARTICLE.get(code) if cle == 'statut_article'
                        else r.get('libelle'))
             valeurs.append({'code': code if code is not None else VIDE, 'libelle': libelle, 'nb': r['nb']})
         resultat[cle] = {'titre': titre, 'valeurs': valeurs}
@@ -262,9 +303,10 @@ def export_excel():
     libelles = _statut_libelles()
     entetes = [('numero', 'N° équipement'), ('description', 'Description'),
                ('article', 'N° article'), ('article_description', 'Désignation article'),
-               ('article_categorie', 'Catégorie article'),
+               ('article_categorie', 'Catégorie article'), ('article_statut', 'Statut article'),
                ('construction', 'Type de construction'), ('construction_description', 'Désignation type de construction'),
                ('construction_categorie', 'Catégorie type de construction'),
+               ('construction_statut', 'Statut type de construction'),
                ('categorie', "Catégorie d'équipement"), ('type_objet', "Type d'objet"),
                ('position', 'Position dans la structure'), ('parent_code', 'Parent'),
                ('parent_designation', 'Désignation parent'), ('division', 'Division'),
@@ -276,6 +318,8 @@ def export_excel():
     for r in rows:
         d = dict(r)
         d['position'] = POSITIONS.get(d['position'], d['position'])
+        for c in ('article_statut', 'construction_statut'):
+            d[c] = STATUTS_ARTICLE.get(d[c], d[c])
         d['statuts'] = ', '.join(libelles.get(s, s) for s in d['statuts'] or [])
         d['anomalies'] = ', '.join(lib for k, (lib, _) in ANOMALIES.items() if d[k])
         lignes.append([d[c] for c, _ in entetes])
@@ -315,5 +359,6 @@ def structure(equnr):
     return jsonify({'equipement': ligne,
                     'anomalies_libelles': {k: lib for k, (lib, _) in ANOMALIES.items()},
                     'positions': POSITIONS,
+                    'statuts_article': STATUTS_ARTICLE,
                     'chemin': [dict(c) for c in chemin],
                     'fils': [dict(f) for f in fils]})

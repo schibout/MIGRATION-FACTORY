@@ -51,7 +51,7 @@ import api from '../services/api';
 // complète vient aussi de /maintenance/equipment/<id>/details (api/maintenance_hierarchy.py).
 
 type Row = Record<string, any>;
-type FacetKey = 'position' | 'categorie' | 'division' | 'poste_travail' | 'statut' | 'type_objet' | 'lien_article';
+type FacetKey = 'position' | 'categorie' | 'division' | 'poste_travail' | 'statut' | 'type_objet' | 'lien_article' | 'statut_article';
 type Filters = Partial<Record<FacetKey, string[]>>;
 interface Statut { code: string; libelle: string }
 interface FacetsResponse {
@@ -94,6 +94,20 @@ const POSITION_COULEURS: Record<string, string> = {
 const CATEGORIE_COULEURS: Record<string, string> = {
   M: '#5c6bc0', Q: '#26a69a', Z: '#8d6e63', R: '#ab47bc', Y: '#ffa726', P: '#78909c',
 };
+// Statut de l'article lié (recherche élargie aux articles supprimés / hors périmètre)
+const STATUT_ARTICLE: Record<string, { libelle: string; couleur: 'success' | 'error' | 'warning' | 'default' }> = {
+  CATALOGUE: { libelle: 'Au catalogue', couleur: 'success' },
+  SUPPRIME: { libelle: 'Supprimé dans SAP', couleur: 'error' },
+  SUPPRIME_DIVISION: { libelle: 'Supprimé en division', couleur: 'error' },
+  HORS_PERIMETRE: { libelle: 'Hors périmètre', couleur: 'warning' },
+  INEXISTANT: { libelle: 'Inexistant dans SAP', couleur: 'default' },
+};
+const StatutArticle: React.FC<{ statut?: string | null }> = ({ statut }) => {
+  if (!statut || statut === 'CATALOGUE') return null;
+  const s = STATUT_ARTICLE[statut] ?? { libelle: statut, couleur: 'default' as const };
+  return <Chip size="small" variant="outlined" color={s.couleur} label={s.libelle} sx={{ height: 18, fontSize: '0.68rem', mt: 0.25 }} />;
+};
+
 const POSITION_ICONE: Record<string, string> = { FUNC_LOC: 'Poste technique', EQUIPMENT: 'Équipement' };
 
 const COLS_KEY = 'equipements.colonnes';
@@ -132,10 +146,8 @@ const Cellule: React.FC<{ field: Field; row: Row; positions: Record<string, stri
     return (
       <Box sx={{ lineHeight: 1.2 }}>
         <Typography variant="body2" sx={{ fontFamily: field.mono ? 'monospace' : undefined, fontWeight: 600 }}>{v}</Typography>
-        {lib
-          ? <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 230 }}>{lib}</Typography>
-          : (field.col === 'article' || field.col === 'construction')
-            ? <Typography variant="caption" color="warning.main">absent du catalogue</Typography> : null}
+        {lib && <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 230 }}>{lib}</Typography>}
+        {(field.col === 'article' || field.col === 'construction') && <StatutArticle statut={row[`${field.col}_statut`]} />}
       </Box>
     );
   }
@@ -176,14 +188,18 @@ const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void }> 
 
   const e = data?.equipement;
   const versArticle = (n: string) => navigate(`/sap-data/articles?search=${encodeURIComponent(n)}`);
-  const lienArticle = (n: string | null, lib: string | null, cat: string | null) => (n ? (
+  // Lien vers l'écran Articles uniquement pour un article du catalogue
+  const lienArticle = (n: string | null, lib: string | null, cat: string | null, statut: string | null) => (n ? (
     <Box>
-      <Link component="button" variant="body2" onClick={() => versArticle(n)} sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-        {n}
-      </Link>
-      <Typography variant="caption" color={lib ? 'text.secondary' : 'warning.main'} sx={{ display: 'block' }}>
-        {lib ? `${lib}${cat ? ` · ${cat}` : ''}` : 'Absent du catalogue des articles'}
+      {statut === 'CATALOGUE' ? (
+        <Link component="button" variant="body2" onClick={() => versArticle(n)} sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+          {n}
+        </Link>
+      ) : <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{n}</Typography>}
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+        {lib ? `${lib}${cat ? ` · ${cat}` : ''}` : 'Aucune désignation dans SAP'}
       </Typography>
+      <StatutArticle statut={statut} />
     </Box>
   ) : <span style={{ color: '#aaa' }}>—</span>);
 
@@ -257,9 +273,9 @@ const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void }> 
             <Typography variant="overline" color="primary">Article</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '170px 1fr', rowGap: 1, columnGap: 2, mb: 1.5 }}>
               <Typography variant="body2" color="text.secondary">N° article</Typography>
-              {lienArticle(e.article, e.article_description, e.article_categorie)}
+              {lienArticle(e.article, e.article_description, e.article_categorie, e.article_statut)}
               <Typography variant="body2" color="text.secondary">Type de construction</Typography>
-              {lienArticle(e.construction, e.construction_description, e.construction_categorie)}
+              {lienArticle(e.construction, e.construction_description, e.construction_categorie, e.construction_statut)}
             </Box>
             <Divider sx={{ my: 1.5 }} />
 
@@ -501,6 +517,7 @@ const EquipmentPage: React.FC = () => {
           {filtreAuto('poste_travail', 260)}
           {filtreAuto('statut', 240)}
           {filtreAuto('division', 220)}
+          {filtreAuto('statut_article', 210)}
           {filtreAuto('type_objet', 160)}
           <Box sx={{ flexGrow: 1 }} />
           {nbFiltres > 0 && <Button size="small" onClick={effacer}>Effacer les filtres ({nbFiltres})</Button>}
