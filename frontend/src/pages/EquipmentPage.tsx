@@ -94,9 +94,6 @@ const PRESETS: Record<string, string[]> = {
 const POSITION_COULEURS: Record<string, string> = {
   FUNC_LOC: '#1976d2', EQUIPMENT: '#00897b', SANS_PARENT: '#ef6c00', HORS_STRUCTURE: '#c62828',
 };
-const CATEGORIE_COULEURS: Record<string, string> = {
-  M: '#5c6bc0', Q: '#26a69a', Z: '#8d6e63', R: '#ab47bc', Y: '#ffa726', P: '#78909c',
-};
 // Statut de l'article lié (recherche élargie aux articles supprimés / hors périmètre)
 const STATUT_ARTICLE: Record<string, { libelle: string; couleur: 'success' | 'error' | 'warning' | 'default' }> = {
   CATALOGUE: { libelle: 'Au catalogue', couleur: 'success' },
@@ -523,11 +520,6 @@ const EquipmentPage: React.FC = () => {
           <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3}>
             <RepartitionBar titre="Position dans la structure IH02" valeurs={facets.facettes.position.valeurs}
               actifs={filters.position ?? []} palette={POSITION_COULEURS} onToggle={(c) => toggleFiltre('position', c)} />
-            <Box sx={{ flex: 0.7, minWidth: 260 }}>
-              <RepartitionBar titre="Catégorie d'équipement" valeurs={facets.facettes.categorie.valeurs}
-                actifs={filters.categorie ?? []} palette={CATEGORIE_COULEURS} onToggle={(c) => toggleFiltre('categorie', c)}
-                legende={(v) => v.code} />
-            </Box>
             <Box sx={{ flex: 0.6, minWidth: 240 }}>
               <RepartitionBar titre="Lien article" valeurs={facets.facettes.lien_article.valeurs}
                 actifs={filters.lien_article ?? []}
