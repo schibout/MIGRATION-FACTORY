@@ -1,7 +1,9 @@
 import {
   AccountTree as StructureIcon,
   Build as EquipmentIcon,
+  Check as CheckIcon,
   Close as CloseIcon,
+  Edit as EditIcon,
   FileDownload as ExcelIcon,
   Inventory2 as ArticleIcon,
   OpenInNew as OpenIcon,
@@ -68,6 +70,7 @@ const FIELDS: Field[] = [
   { col: 'categorie', label: 'Catégorie', theme: 'Identification', tri: true },
   { col: 'type_objet', label: "Type d'objet", theme: 'Identification', tri: true },
   { col: 'statuts', label: 'Statuts SAP', theme: 'Identification' },
+  { col: 'article_lie', lib: 'article_lie_description', label: 'Article', theme: 'Article', mono: true, tri: true },
   { col: 'article', lib: 'article_description', label: 'N° article', theme: 'Article', mono: true, tri: true },
   { col: 'construction', lib: 'construction_description', label: 'Type de construction', theme: 'Article', mono: true, tri: true },
   { col: 'position', label: 'Position', theme: 'Structure', tri: true },
@@ -82,7 +85,7 @@ const FIELDS: Field[] = [
 const THEMES = Array.from(new Set(FIELDS.map((f) => f.theme)));
 
 const PRESETS: Record<string, string[]> = {
-  Essentiel: ['numero', 'description', 'article', 'construction', 'position', 'parent_code', 'poste_travail', 'statuts'],
+  Essentiel: ['numero', 'description', 'article_lie', 'numero_serie', 'position', 'parent_code', 'poste_travail', 'statuts'],
   Structure: ['numero', 'description', 'position', 'parent_code', 'division', 'poste_travail'],
   Technique: ['numero', 'description', 'categorie', 'fabricant', 'modele', 'numero_serie', 'numero_inventaire'],
   Tout: FIELDS.map((f) => f.col),
@@ -110,7 +113,7 @@ const StatutArticle: React.FC<{ statut?: string | null }> = ({ statut }) => {
 
 const POSITION_ICONE: Record<string, string> = { FUNC_LOC: 'Poste technique', EQUIPMENT: 'Équipement' };
 
-const COLS_KEY = 'equipements.colonnes';
+const COLS_KEY = 'equipements.colonnes.v2';
 const lireColonnes = (): string[] => {
   try {
     const v = JSON.parse(localStorage.getItem(COLS_KEY) || 'null');
@@ -133,9 +136,50 @@ const Statuts: React.FC<{ statuts: Statut[] }> = ({ statuts }) => (
 // ---------------------------------------------------------------------------
 // Cellule
 // ---------------------------------------------------------------------------
-const Cellule: React.FC<{ field: Field; row: Row; positions: Record<string, string> }> = ({ field, row, positions }) => {
+// N° de série modifiable (stocké dans maintenance_object : équipement de la structure IH02 seulement)
+const NumeroSerie: React.FC<{ row: Row; onSaved: (v: string | null) => void }> = ({ row, onSaved }) => {
+  const [edition, setEdition] = useState(false);
+  const [valeur, setValeur] = useState('');
+  const [erreur, setErreur] = useState<string | null>(null);
+  const enregistrer = async () => {
+    try {
+      const res = await api.put(`/maintenance/equipment-browser/${encodeURIComponent(row.numero)}/numero-serie`, { numero_serie: valeur });
+      onSaved(res.data.numero_serie);
+      setEdition(false);
+    } catch (e: any) {
+      setErreur(e?.response?.data?.error ?? e?.response?.data?.message ?? 'Enregistrement impossible');
+    }
+  };
+  if (edition) {
+    return (
+      <Stack direction="row" alignItems="center" onClick={(e) => e.stopPropagation()}>
+        <TextField size="small" autoFocus value={valeur} error={!!erreur} helperText={erreur}
+          inputProps={{ maxLength: 18, style: { fontFamily: 'monospace', padding: '4px 8px' } }} sx={{ width: 170 }}
+          onChange={(e) => { setValeur(e.target.value); setErreur(null); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') enregistrer(); if (e.key === 'Escape') setEdition(false); }} />
+        <IconButton size="small" onClick={enregistrer}><CheckIcon fontSize="small" /></IconButton>
+        <IconButton size="small" onClick={() => setEdition(false)}><CloseIcon fontSize="small" /></IconButton>
+      </Stack>
+    );
+  }
+  return (
+    <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Typography variant="body2" sx={{ fontFamily: 'monospace' }} color={row.numero_serie ? undefined : 'text.disabled'}>
+        {row.numero_serie ?? '—'}
+      </Typography>
+      {row.serie_modifiable ? (
+        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setValeur(row.numero_serie ?? ''); setErreur(null); setEdition(true); }}>
+          <EditIcon sx={{ fontSize: 15 }} />
+        </IconButton>
+      ) : null}
+    </Stack>
+  );
+};
+
+const Cellule: React.FC<{ field: Field; row: Row; positions: Record<string, string>; onSerie: (v: string | null) => void }> = ({ field, row, positions, onSerie }) => {
   const v = row[field.col];
   if (field.col === 'statuts') return <Statuts statuts={v ?? []} />;
+  if (field.col === 'numero_serie') return <NumeroSerie row={row} onSaved={onSerie} />;
   if (field.col === 'position') {
     return <Chip size="small" label={positions[v] ?? v}
       sx={{ bgcolor: couleur(POSITION_COULEURS, v), color: '#fff', fontWeight: 500 }} />;
@@ -147,7 +191,10 @@ const Cellule: React.FC<{ field: Field; row: Row; positions: Record<string, stri
       <Box sx={{ lineHeight: 1.2 }}>
         <Typography variant="body2" sx={{ fontFamily: field.mono ? 'monospace' : undefined, fontWeight: 600 }}>{v}</Typography>
         {lib && <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 230 }}>{lib}</Typography>}
-        {(field.col === 'article' || field.col === 'construction') && <StatutArticle statut={row[`${field.col}_statut`]} />}
+        {field.col === 'article_lie' && row.lien_article === 'CONSTRUCTION' && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>type de construction</Typography>
+        )}
+        {(field.col === 'article' || field.col === 'construction' || field.col === 'article_lie') && <StatutArticle statut={row[`${field.col}_statut`]} />}
       </Box>
     );
   }
@@ -571,7 +618,7 @@ const EquipmentPage: React.FC = () => {
             </TableHead>
             <TableBody>
               {rows.map((r) => (
-                <TableRow key={r.id} hover sx={{ cursor: 'pointer' }} onClick={() => setFiche(r.numero)}>
+                <TableRow key={r.id} hover sx={{ cursor: 'pointer', opacity: r.tsup ? 0.6 : 1 }} onClick={() => setFiche(r.numero)}>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>
                     <Tooltip title={positions[r.position] ?? r.position}>
                       <StructureIcon fontSize="small" sx={{ color: couleur(POSITION_COULEURS, r.position) }} />
@@ -586,7 +633,8 @@ const EquipmentPage: React.FC = () => {
                     )}
                   </TableCell>
                   {champs.map((f) => (
-                    <TableCell key={f.col}><Cellule field={f} row={r} positions={positions} /></TableCell>
+                    <TableCell key={f.col}><Cellule field={f} row={r} positions={positions}
+                      onSerie={(v) => setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, numero_serie: v } : x)))} /></TableCell>
                   ))}
                 </TableRow>
               ))}

@@ -52,7 +52,7 @@ WITH z AS MATERIALIZED (
      WHERE q.mandt = '700' AND j.stat LIKE 'I%' AND (j.inact IS NULL OR j.inact = '')
      GROUP BY q.objnr
 ), mo AS MATERIALIZED (
-    SELECT e.sap_key, e.id AS mo_id, p.object_type AS parent_type, p.code AS parent_code,
+    SELECT e.sap_key, e.id AS mo_id, e.attributes->>'sernr' AS mo_sernr, p.object_type AS parent_type, p.code AS parent_code,
            p.designation AS parent_designation
       FROM clean_data.maintenance_object e
       LEFT JOIN clean_data.maintenance_object p ON p.id = e.parent_id
@@ -101,12 +101,20 @@ WITH z AS MATERIALIZED (
            rc.categorie AS construction_categorie,
            rc.statut AS construction_statut,
            COALESCE(ra.statut, rc.statut, 'AUCUN') AS statut_article,
+           -- Article affiche : n° article s'il est renseigne, sinon type de construction
+           COALESCE(NULLIF(LTRIM(TRIM(e.matnr), '0'), ''), z.construction) AS article_lie,
+           CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN ra.description ELSE rc.description END AS article_lie_description,
+           CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN ra.statut ELSE rc.statut END AS article_lie_statut,
            CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN 'ARTICLE'
                 WHEN z.construction IS NOT NULL THEN 'CONSTRUCTION'
                 ELSE 'AUCUN' END AS lien_article,
            NULLIF(TRIM(e.herst), '') AS fabricant,
            NULLIF(TRIM(e.typbz), '') AS modele,
-           NULLIF(TRIM(e.sernr), '') AS numero_serie,
+           -- N° de serie saisi dans l'ecran (maintenance_object.attributes.sernr), sinon SAP
+           CASE WHEN mo.mo_sernr IS NOT NULL THEN NULLIF(TRIM(mo.mo_sernr), '')
+                ELSE NULLIF(TRIM(e.sernr), '') END AS numero_serie,
+           mo.sap_key IS NOT NULL AS serie_modifiable,
+           'I0076' = ANY(COALESCE(st.statuts, '{}')) AS tsup,
            NULLIF(TRIM(e.invnr), '') AS numero_inventaire,
            z.iwerk AS division,
            w.name1 AS division_description,
@@ -175,7 +183,10 @@ ANOMALIES = {
     'inactif': ('Inactif ou marqué pour suppression', "statuts && ARRAY['I0320', 'I0076']::varchar[]"),
 }
 
-COLONNES = ['numero', 'description', 'article', 'construction', 'categorie', 'type_objet',
+# TSUP (temoin de suppression) et sans parent toujours en fin de liste (demande du 2026-10-15)
+EN_FIN = "(CASE WHEN tsup THEN 2 WHEN position = 'SANS_PARENT' THEN 1 ELSE 0 END)"
+
+COLONNES = ['numero', 'description', 'article_lie', 'article', 'construction', 'categorie', 'type_objet',
             'position', 'parent_code', 'division', 'poste_travail', 'fabricant', 'modele',
             'numero_serie', 'numero_inventaire']
 
@@ -241,11 +252,11 @@ def liste():
     sens = 'DESC' if request.args.get('dir') == 'desc' else 'ASC'
     # Numeros (equipement, article) : tri numerique quand la valeur est un nombre
     ordre = (f"(CASE WHEN {tri} ~ '^[0-9]+$' THEN lpad({tri}, 18, '0') ELSE {tri} END)"
-             if tri in ('numero', 'article', 'construction') else tri)
+             if tri in ('numero', 'article_lie', 'article', 'construction') else tri)
     # Total et page en une passe (la base coute ~1 s a calculer)
     rows = db.session.execute(text(
         f'{BASE} SELECT *, {_flags()}, count(*) OVER () AS total_lignes FROM base {clause} '
-        f'ORDER BY {ordre} {sens} NULLS LAST, id LIMIT :limit OFFSET :offset'),
+        f'ORDER BY {EN_FIN}, {ordre} {sens} NULLS LAST, id LIMIT :limit OFFSET :offset'),
         {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
     total = rows[0]['total_lignes'] if rows else db.session.execute(
         text(f'{BASE} SELECT count(*) FROM base {clause}'), params).scalar()
@@ -309,10 +320,11 @@ def export_excel():
     clause, params = _filtres()
     rows = db.session.execute(text(
         f"{BASE} SELECT *, {_flags()} FROM base {clause} "
-        "ORDER BY lpad(numero, 18, '0')"), params).mappings().all()
+        f"ORDER BY {EN_FIN}, lpad(numero, 18, '0')"), params).mappings().all()
     db.session.commit()
     libelles = _statut_libelles()
     entetes = [('numero', 'N° équipement'), ('description', 'Description'),
+               ('article_lie', 'Article (n° article, sinon type de construction)'),
                ('article', 'N° article'), ('article_description', 'Désignation article'),
                ('article_categorie', 'Catégorie article'), ('article_statut', 'Statut article'),
                ('construction', 'Type de construction'), ('construction_description', 'Désignation type de construction'),
@@ -373,3 +385,31 @@ def structure(equnr):
                     'statuts_article': STATUTS_ARTICLE,
                     'chemin': [dict(c) for c in chemin],
                     'fils': [dict(f) for f in fils]})
+
+
+@equipment_browser_blueprint.route('/<equnr>/numero-serie', methods=['PUT'])
+@jwt_required()
+def modifier_numero_serie(equnr):
+    """N° de serie saisi dans l'ecran : ecrit dans maintenance_object.attributes.sernr
+    (raw_data reste intact) ; updated_by protege la saisie d'un rechargement en fusion."""
+    from flask_jwt_extended import get_jwt_identity
+
+    from api.maintenance_snapshots import active_job_conflict
+    conflit = active_job_conflict()
+    if conflit:
+        return conflit
+    valeur = ((request.get_json(silent=True) or {}).get('numero_serie') or '').strip()
+    if len(valeur) > 18:
+        return jsonify({'error': 'Le n° de série est limité à 18 caractères (SAP SERNR)'}), 400
+    cle = equnr.zfill(18) if equnr.isdigit() else equnr
+    n = db.session.execute(text("""
+        UPDATE clean_data.maintenance_object
+           SET attributes = COALESCE(attributes, '{}'::jsonb) || jsonb_build_object('sernr', CAST(:v AS text)),
+               updated_by = :u, updated_at = now()
+         WHERE object_type = 'EQUIPMENT' AND is_active AND sap_key = :id"""),
+        {'v': valeur, 'u': str(get_jwt_identity()), 'id': cle}).rowcount
+    if not n:
+        db.session.rollback()
+        return jsonify({'error': "Équipement absent de la structure IH02 : n° de série non modifiable"}), 404
+    db.session.commit()
+    return jsonify({'numero_serie': valeur or None})
