@@ -189,7 +189,7 @@ const Cellule: React.FC<{ field: Field; row: Row; positions: Record<string, stri
       <Box sx={{ lineHeight: 1.2 }}>
         <Typography variant="body2" sx={{ fontFamily: field.mono ? 'monospace' : undefined, fontWeight: 600 }}>{v}</Typography>
         {lib && <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 230 }}>{lib}</Typography>}
-        {field.col === 'article_lie' && row.lien_article === 'CONSTRUCTION' && (
+        {field.col === 'article_lie' && !row.article && (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>type de construction</Typography>
         )}
         {(field.col === 'article' || field.col === 'construction' || field.col === 'article_lie') && <StatutArticle statut={row[`${field.col}_statut`]} />}
@@ -524,7 +524,7 @@ const EquipmentPage: React.FC = () => {
             <Box sx={{ flex: 0.6, minWidth: 240 }}>
               <RepartitionBar titre="Lien article" valeurs={facets.facettes.lien_article.valeurs}
                 actifs={filters.lien_article ?? []}
-                palette={{ ARTICLE: '#d81b60', CONSTRUCTION: '#f48fb1', AUCUN: '#cfd8dc' }}
+                palette={{ ARTICLE: '#d81b60', AUCUN: '#cfd8dc' }}
                 onToggle={(c) => toggleFiltre('lien_article', c)} />
             </Box>
           </Stack>

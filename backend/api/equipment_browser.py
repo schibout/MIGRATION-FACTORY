@@ -106,7 +106,7 @@ WITH z AS MATERIALIZED (
            CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN ra.description ELSE rc.description END AS article_lie_description,
            CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN ra.statut ELSE rc.statut END AS article_lie_statut,
            CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN 'ARTICLE'
-                WHEN z.construction IS NOT NULL THEN 'CONSTRUCTION'
+                WHEN z.construction IS NOT NULL THEN 'ARTICLE'
                 ELSE 'AUCUN' END AS lien_article,
            NULLIF(TRIM(e.herst), '') AS fabricant,
            NULLIF(TRIM(e.typbz), '') AS modele,
@@ -155,9 +155,8 @@ STATUTS_ARTICLE = {
     'AUCUN': 'Sans article',
 }
 LIENS = {
-    'ARTICLE': 'Avec n° article',
-    'CONSTRUCTION': 'Type de construction seul',
-    'AUCUN': 'Sans article',
+    'ARTICLE': 'Article / type de construction',
+    'AUCUN': 'Sans lien article',
 }
 
 # cle -> (colonne, expression du libelle ou None, titre). 'statut' est un tableau.
