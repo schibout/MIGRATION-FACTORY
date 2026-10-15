@@ -59,6 +59,7 @@ interface Statut { code: string; libelle: string }
 interface FacetsResponse {
   facettes: Record<FacetKey, { titre: string; valeurs: FacetValue[] }>;
   total: number;
+  total_general: number;
   anomalies: { cle: string; libelle: string; nb: number }[];
   anomalies_total: number;
 }
@@ -559,6 +560,12 @@ const EquipmentPage: React.FC = () => {
           {filtreAuto('statut_article', 210)}
           {filtreAuto('type_objet', 160)}
           <Box sx={{ flexGrow: 1 }} />
+          {/* Compteur dynamique : suit le filtre (total de la liste) */}
+          <Chip color={nbFiltres > 0 ? 'primary' : 'default'} variant={nbFiltres > 0 ? 'filled' : 'outlined'}
+            sx={{ fontWeight: 600, fontSize: '0.9rem' }}
+            label={loading ? 'Comptage…' : nbFiltres > 0 && facets
+              ? `${nb(total)} / ${nb(facets.total_general)} équipements`
+              : `${nb(total)} équipements`} />
           {nbFiltres > 0 && <Button size="small" onClick={effacer}>Effacer les filtres ({nbFiltres})</Button>}
           <Badge badgeContent={colonnes.length} color="primary">
             <Button size="small" variant="outlined" startIcon={<ColumnsIcon />} onClick={(ev) => setColsAnchor(ev.currentTarget)}>

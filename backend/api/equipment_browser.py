@@ -301,10 +301,12 @@ def facettes():
         + ', '.join(f'count(*) FILTER (WHERE {sql}) AS {k}' for k, (_, sql) in ANOMALIES.items())
         + ', count(*) FILTER (WHERE ' + ' OR '.join(f'({s})' for _, s in ANOMALIES.values()) + ') AS toutes '
         f'FROM base_tmp {clause}'), params).mappings().one()
+    total_general = db.session.execute(text('SELECT count(*) FROM base_tmp')).scalar()
     db.session.commit()
     return jsonify({
         'facettes': resultat,
         'total': compteurs['total'],
+        'total_general': total_general,
         'anomalies': [{'cle': k, 'libelle': lib, 'nb': compteurs[k]} for k, (lib, _) in ANOMALIES.items()],
         'anomalies_total': compteurs['toutes'],
     })
