@@ -13,8 +13,11 @@ Enchaîne trois traitements, dans cet ordre imposé (chaque étape lit la préc�
   3. clean_data.load_equipment_spare_structure('FULL') : structure kit -> composants des
      articles de l'étape 2 (BOM_ITEM sous ARTICLE, récursif) -> clean_data.equipment_spare_structure.
 
-Mode FULL uniquement (TRUNCATE + rechargement) : snapshot de la structure. Les équipements
-(objets série) ne sont pas couverts par ce module.
+  + clean_data.alimenter_equipment_serial() (après l'étape 1) : équipements (objets série)
+     sous un poste technique ou portant un code article, puis leurs équipements enfants
+     -> clean_data.equipment_serial.
+
+Mode FULL uniquement (TRUNCATE + rechargement) : snapshot de la structure.
 """
 
 import os
@@ -84,6 +87,8 @@ class EquipmentFunctionalETL:
         etapes = [
             ("SELECT clean_data.alimenter_equipment_functional()",
              "clean_data.alimenter_equipment_functional()"),
+            ("SELECT clean_data.alimenter_equipment_serial()",
+             "clean_data.alimenter_equipment_serial()"),
             ("CALL clean_data.load_equipment_object_spare('FULL')",
              "clean_data.load_equipment_object_spare('FULL')"),
             ("CALL clean_data.load_equipment_spare_structure('FULL')",

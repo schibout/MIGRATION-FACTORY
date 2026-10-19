@@ -77,11 +77,9 @@ errors=0
 # volontairement pas compile.
 files=(
     # --- Table unique ecran IH02 (maintenance_object) ---
-    "proc_load_maintenance_object.sql"       # chargement FULL (ecrase les lignes SAP)
-    "proc_load_maintenance_object_merge.sql" # chargement MERGE (preserve le travail UI)
-    # --- Export IFS des structures (module ETL etl_equipment_functional.py),
     #     dans l'ordre des dependances : chaque etape lit la precedente ---
     "alimenter_equipment_functional.sql"       # FUNC_LOC -> equipment_functional
+    "alimenter_equipment_serial.sql"           # EQUIPMENT -> equipment_serial
     "proc_load_equipment_object_spare.sql"     # BOM des postes -> equipment_object_spare
     "proc_load_equipment_spare_structure.sql"  # BOM des articles -> equipment_spare_structure
 )
