@@ -1,8 +1,8 @@
 -- =====================================================================
--- clean_data.sp_keep_maintenance_node(p_mch_code)  —  ONE-SHOT DE TEST
+-- clean_data.sp_keep_maintenance_node(VARIADIC p_mch_codes)  —  ONE-SHOT DE TEST
 --
--- Reduit les tables d'export IFS de la structure de maintenance a UN noeud,
--- ses PARENTS (jusqu'a la racine) et tous ses ENFANTS :
+-- Reduit les tables d'export IFS de la structure de maintenance a UN OU PLUSIEURS
+-- noeuds, leurs PARENTS (jusqu'a la racine) et tous ses ENFANTS :
 --   equipment_functional (postes techniques) + equipment_serial (equipements)
 --     -> noeud + ascendants + descendants (lien mch_code / sup_mch_code, les
 --        deux tables formant un seul arbre : un equipement pointe sur son poste)
@@ -16,14 +16,27 @@
 -- maintenance_object (ecran IH02) n'est PAS touchee.
 --
 -- Usage : CALL clean_data.sp_keep_maintenance_node('T200-X060');
+--         CALL clean_data.sp_keep_maintenance_node('T650-A', 'T200-X060', '10001234');
+-- Un code absent des deux tables -> erreur, rien n'est supprime.
 -- Essai a blanc : BEGIN; CALL ...; <controles>; ROLLBACK;
 -- =====================================================================
-CREATE OR REPLACE PROCEDURE clean_data.sp_keep_maintenance_node(p_mch_code varchar)
+DROP PROCEDURE IF EXISTS clean_data.sp_keep_maintenance_node(varchar);
+
+CREATE OR REPLACE PROCEDURE clean_data.sp_keep_maintenance_node(VARIADIC p_mch_codes varchar[])
 LANGUAGE plpgsql
 AS $procedure$
 DECLARE
-    v_n integer;
+    v_n        integer;
+    v_absents  text;
 BEGIN
+    SELECT string_agg(c, ', ') INTO v_absents
+    FROM unnest(p_mch_codes) c
+    WHERE NOT EXISTS (SELECT 1 FROM clean_data.equipment_functional f WHERE f.mch_code = c)
+      AND NOT EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = c);
+    IF v_absents IS NOT NULL THEN
+        RAISE EXCEPTION 'Noeud(s) absent(s) de equipment_functional et de equipment_serial : % -- rien n''est supprime', v_absents;
+    END IF;
+
     CREATE TEMP TABLE _keep_obj ON COMMIT DROP AS
     WITH RECURSIVE arbre AS (
         SELECT mch_code, sup_mch_code FROM clean_data.equipment_functional
@@ -32,7 +45,7 @@ BEGIN
     ),
     ascendants AS (
         SELECT a.mch_code, a.sup_mch_code, ARRAY[a.mch_code::text] AS chemin
-        FROM arbre a WHERE a.mch_code = p_mch_code
+        FROM arbre a WHERE a.mch_code = ANY (p_mch_codes)
         UNION ALL
         SELECT a.mch_code, a.sup_mch_code, s.chemin || a.mch_code::text
         FROM ascendants s JOIN arbre a ON a.mch_code = s.sup_mch_code
@@ -40,7 +53,7 @@ BEGIN
     ),
     descendants AS (
         SELECT a.mch_code, ARRAY[a.mch_code::text] AS chemin
-        FROM arbre a WHERE a.mch_code = p_mch_code
+        FROM arbre a WHERE a.mch_code = ANY (p_mch_codes)
         UNION ALL
         SELECT a.mch_code, d.chemin || a.mch_code::text
         FROM descendants d JOIN arbre a ON a.sup_mch_code = d.mch_code
@@ -51,10 +64,7 @@ BEGIN
     SELECT mch_code FROM descendants;
 
     SELECT count(*) INTO v_n FROM _keep_obj;
-    IF v_n = 0 THEN
-        RAISE EXCEPTION 'Noeud % absent de equipment_functional et de equipment_serial : rien n''est supprime', p_mch_code;
-    END IF;
-    RAISE NOTICE 'Noeud % : % objets conserves (parents + noeud + enfants)', p_mch_code, v_n;
+    RAISE NOTICE 'Noeud(s) % : % objets conserves (parents + noeuds + enfants)', array_to_string(p_mch_codes, ', '), v_n;
 
     DELETE FROM clean_data.equipment_functional t
     WHERE NOT EXISTS (SELECT 1 FROM _keep_obj k WHERE k.mch_code = t.mch_code);
