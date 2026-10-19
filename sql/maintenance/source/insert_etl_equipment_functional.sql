@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Insertion du module ETL Equipment Functional dans etl_target_tables
--- Alimente clean_data.equipment_functional depuis iflot/iflotx/iflos/iloa + itob
+-- Alimente equipment_functional, equipment_serial, equipment_object_spare et
+-- equipment_spare_structure depuis clean_data.maintenance_object (IH02)
 -- ============================================================================
 
 DELETE FROM public.etl_target_tables
@@ -25,8 +26,8 @@ INSERT INTO public.etl_target_tables (
 ) VALUES (
     'equipment_functional',
     'Postes techniques & Équipements (IFS)',
-    'Alimentation de la table EQUIPMENT_FUNCTIONAL depuis les tables SAP standard : iflot/iflotx/iflos/iloa (postes techniques, hiérarchie via tplma) et itob (équipements et sous-équipements via hequi). Insertion niveau par niveau (parents avant enfants).',
-    'raw_data',
+    'Structure de maintenance IFS depuis l''écran IH02 (clean_data.maintenance_object), dans l''ordre : 1. alimenter_equipment_functional (postes techniques -> EQUIPMENT_FUNCTIONAL), 2. alimenter_equipment_serial (équipements sous un poste technique ou portant un code article, puis leurs enfants -> EQUIPMENT_SERIAL), 3. load_equipment_object_spare (nomenclatures des postes -> EQUIPMENT_OBJECT_SPARE), 4. load_equipment_spare_structure (nomenclatures des articles -> EQUIPMENT_SPARE_STRUCTURE). Parents avant enfants.',
+    'clean_data',
     'clean_data',
     'etl_equipment_functional.py',
     10,
