@@ -25,7 +25,7 @@ INSERT INTO public.etl_target_tables (
     display_order
 ) VALUES (
     'equipment_functional',
-    'Postes techniques & Équipements (IFS)',
+    'Maintenance - Structure de maintenance et équipements',
     'Structure de maintenance IFS depuis l''écran IH02 (clean_data.maintenance_object), dans l''ordre : 1. alimenter_equipment_functional (postes techniques -> EQUIPMENT_FUNCTIONAL), 2. alimenter_equipment_serial (équipements sous un poste technique ou portant un code article, puis leurs enfants -> EQUIPMENT_SERIAL), 3. load_equipment_object_spare (nomenclatures des postes -> EQUIPMENT_OBJECT_SPARE), 4. load_equipment_spare_structure (nomenclatures des articles -> EQUIPMENT_SPARE_STRUCTURE). Parents avant enfants.',
     'clean_data',
     'clean_data',
