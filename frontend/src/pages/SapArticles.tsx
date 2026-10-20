@@ -552,6 +552,7 @@ const SapArticles: React.FC = () => {
           <TextField size="small" placeholder="N°, description, ancien n°, textes SAP…" value={search}
             onChange={(e) => setSearch(e.target.value)} sx={{ width: 300 }}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />
+          {filtreAuto('classe', 180)}
           {filtreAuto('categorie')}
           {filtreAuto('groupe_achat', 250)}
           {filtreAuto('gestionnaire', 180)}

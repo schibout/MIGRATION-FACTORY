@@ -109,8 +109,13 @@ BEGIN
         NULLIF(TRIM(m.aenam), ''),                                 -- derniere modification par
         uc.nom, um.nom,                                            -- noms complets (usr21/adrp)
         -- classe calculee depuis la categorie (transco ARTICLE_CLASSE_ACTIF,
-        -- ecran Transcodification) ; categorie non transcodee -> NULL
-        ca.target_value, ca.description
+        -- ecran Transcodification) ; categorie non transcodee -> NULL.
+        -- Article stockable ou en stock (= ligne mard non supprimee sur le site :
+        -- tout stock est porte par mard) -> MAGASIN, quelle que soit la
+        -- categorie (demande du 2026-10-20)
+        CASE WHEN st.matnr IS NOT NULL THEN 'MAGASIN' ELSE ca.target_value END,
+        CASE WHEN st.matnr IS NOT NULL
+             THEN 'Article de magasin (consommable stocke)' ELSE ca.description END
     FROM sites s
     JOIN raw_data.mara m ON m.mandt::text = '700' AND m.matnr::text = s.matnr
     LEFT JOIN raw_data.makt k
