@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 # Uniquement des tables transparentes : une vue SAP s'extrait vide.
 # ANLP : date d'arrete (derniere periode d'amortissement comptabilisee).
 IMMO_SAP_TABLES = ['ANLA', 'ANLB', 'ANLC', 'ANLZ', 'ANKT', 'T001', 'T095', 'T095T',
-                   'T090NAT', 'CSKT', 'TGSBT', 'PRPS', 'ANLP']
+                   'T090NAT', 'CSKT', 'TGSBT', 'PRPS', 'PROJ', 'ANLP']
 
 EXTRACTION_TIMEOUT_SECONDS = 3600
 EXTRACTION_POLL_SECONDS = 10
@@ -135,21 +135,25 @@ LIBELLES = [
     ('site_ifs', 'Site IFS'),
     ('element_otp', "Élément d'OTP (ANLA-POSNR -> PRPS-POSID)"),
     ('libelle_otp', 'Libellé OTP (PRPS-POST1)'),
+    # migration 123
+    ('numero_projet_sn', 'N° projet SN (PROJ-PSPID)'),
+    ('projet_id', 'Projet Id (SharePoint / IFS)'),
 ]
 LIBELLE = dict(LIBELLES)
 COLONNES = [c for c, _ in LIBELLES]
 _MONTANTS = {'valeur_acq_debut_exercice', 'mouvements_acq_exercice', 'sorties_exercice',
              'valeur_acq_fin_exercice', 'amort_cumules', 'vnc', 'dotation_annuelle'}
 
-# Vue « immobilisations » = les 60 colonnes du fichier livre.
-COLONNES_IMMO = COLONNES[:60]
+# Vue « immobilisations » = les 60 colonnes du fichier livre + projet SN / Id.
+_PROJET = ['numero_projet_sn', 'projet_id']
+COLONNES_IMMO = COLONNES[:60] + _PROJET
 # Vue « travail » = onglet Travail du classeur : les 60 colonnes avec OBJECT_GROUP_ID
 # insere apres la duree en annees (meme place que dans le classeur), puis les
 # colonnes converties (comptes IFS, site, OTP) que la Methode demande de remplir.
-_i = COLONNES_IMMO.index('duree_amort_annees') + 1
-COLONNES_TRAVAIL = (COLONNES_IMMO[:_i] + ['object_group_id'] + COLONNES_IMMO[_i:]
+_i = COLONNES[:60].index('duree_amort_annees') + 1
+COLONNES_TRAVAIL = (COLONNES[:_i] + ['object_group_id'] + COLONNES[_i:60]
                     + ['compte_immobilisation_ifs', 'compte_amort_cumule_ifs', 'site_ifs',
-                       'element_otp', 'libelle_otp'])
+                       'element_otp', 'libelle_otp'] + _PROJET)
 
 # Etapes de l'onglet « Méthode » du classeur et leur automatisation (affichees
 # dans l'onglet Travail de l'ecran).
@@ -242,7 +246,8 @@ def _filtres(vue=None):
     if search:
         where.append("(num_immobilisation ILIKE :s OR libelle ILIKE :s OR famille_immo ILIKE :s "
                      "OR centre_cout ILIKE :s OR numero_inventaire ILIKE :s "
-                     "OR compte_immobilisation ILIKE :s)")
+                     "OR compte_immobilisation ILIKE :s OR numero_projet_sn ILIKE :s "
+                     "OR projet_id ILIKE :s)")
         params['s'] = f'%{search}%'
     if secteur:
         where.append('secteur_sap = :secteur')

@@ -90,6 +90,8 @@ CREATE TABLE clean_data.immobilisation (
     element_otp                 varchar(24),
     libelle_otp                 varchar(40),
     date_arrete                 date,        -- migration 102
+    numero_projet_sn            varchar(24), -- migration 123
+    projet_id                   varchar(10), -- migration 123
     PRIMARY KEY (societe_sap, num_immobilisation, sous_numero)
 );
 

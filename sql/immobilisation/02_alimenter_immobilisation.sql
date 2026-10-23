@@ -46,6 +46,8 @@
 --     9030 Fonderie Castel -> CS sinon SJ ;
 --   * element_otp / libelle_otp : ANLA-POSNR -> raw_data.prps (POSID, POST1),
 --     reponse a la question « code projet des fiches » (ANLA-PROJN est vide).
+--   * numero_projet_sn : PRPS-PSPHI -> PROJ-PSPID ; projet_id : project_number
+--     SharePoint dont le code correspond (migration 123).
 --   Les transcodifications sont resolues par valeur DISTINCTE (petites CTE),
 --   jamais par ligne.
 -- DELETE + INSERT (idempotent). Retour : lignes chargees. DELETE et non
@@ -135,7 +137,18 @@ BEGIN
         WHERE category = 'FA_OBJECT_GROUP_IMMO' AND source_system = 'SAP'
           AND target_system = 'IFS' AND is_active
     ), otp AS (
-        SELECT DISTINCT ON (pspnr) pspnr, posid, post1 FROM raw_data.prps ORDER BY pspnr
+        SELECT DISTINCT ON (p.pspnr) p.pspnr, p.posid, p.post1, j.pspid
+        FROM raw_data.prps p
+        LEFT JOIN raw_data.proj j ON j.pspnr = p.psphi
+        ORDER BY p.pspnr
+    ), sp AS (
+        -- Projet IFS : code SharePoint 'SN.16044' = PSPID 'SN16044' ; doublons
+        -- (3 codes) : projet non annule, puis le plus recent
+        SELECT DISTINCT ON (1) upper(regexp_replace(code, '[^A-Za-z0-9]', '', 'g')) AS pspid,
+               project_number
+        FROM raw_data.sharepoint_projets
+        WHERE COALESCE(code, '') <> '' AND COALESCE(project_number, '') <> ''
+        ORDER BY 1, (global_status = 'Annulé'), project_number DESC
     ), anlc AS (
         SELECT TRIM(bukrs) AS bukrs, TRIM(anln1) AS anln1, TRIM(anln2) AS anln2,
                SUM(COALESCE(kansw, 0)) AS acq,
@@ -187,6 +200,7 @@ BEGIN
                CASE WHEN z.werks = '9000' THEN 'CS' WHEN z.werks = '9200' THEN 'SJ'
                     WHEN z.gsber = '9030' THEN 'CS' ELSE 'SJ' END AS site_ifs,
                o.posid AS element_otp, o.post1 AS libelle_otp,
+               o.pspid AS numero_projet_sn, LEFT(sp.project_number, 10) AS projet_id,
                clean_data.immo_to_date(a.abgdt) AS date_sortie,
                b.afabg, b.ndjar, b.ndper, b.afabe AS b_afabe, b.afasl, d.afatxt,
                COALESCE(NULLIF(b.ndjar, '')::int, 0) * 12
@@ -207,6 +221,7 @@ BEGIN
         LEFT JOIN grp_classe gc ON gc.anlkl = a.anlkl
         LEFT JOIN grp_immo gi   ON gi.anln1 = a.anln1
         LEFT JOIN otp o         ON o.pspnr = a.posnr AND COALESCE(a.posnr, '') <> ''
+        LEFT JOIN sp            ON sp.pspid = o.pspid
         WHERE a.bukrs = 'STJN'
     )
     SELECT bukrs, anln1, anln2, CONCAT(bukrs, '-', anln1, '-', anln2),
@@ -237,7 +252,7 @@ BEGIN
                 THEN 'Sortie le ' || to_char(date_sortie, 'DD/MM/YYYY')
                      || ' <= bascule IFS ' || to_char(v_bascule, 'DD/MM/YYYY') END,
            ktansw_ifs, ktanza_ifs, object_group_id, site_ifs, element_otp, libelle_otp,
-           v_arrete
+           v_arrete, numero_projet_sn, projet_id
     FROM base;
 
     GET DIAGNOSTICS v_nb = ROW_COUNT;
