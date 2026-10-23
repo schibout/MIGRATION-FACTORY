@@ -24,11 +24,17 @@
 -- commandes ouvertes : le reliquat evolue a chaque run, pas d'historique).
 --
 -- DEUX BRANCHES selon l'etat de raw_data.ekpo :
---   * ekpo alimentee -> niveau POSTE : une ligne par poste EKPO non supprime,
---     non clos (ekpo.elikz vide = pas de "livraison finale") et dont le
---     reliquat a livrer (menge - recu EKBE) est > 0. Cible finale. Les postes
---     anciens que les acheteurs n'ont jamais clos dans SAP restent ouverts :
---     borner par p_date_debut si le metier ne veut pas les reprendre.
+--   * ekpo alimentee -> niveau POSTE : une ligne par poste EKPO non supprime
+--     repris selon la regle metier du 2026-10-23 :
+--       - reception non facturee (recu EKBE > facture, pas de facture finale
+--         erekz) : repris quelle que soit l'anteriorite, meme clos en
+--         livraison (elikz) -> reste a livrer 0, reste a facturer = recu - facture ;
+--       - poste ouvert (elikz vide, reliquat a livrer > 0) deja partiellement
+--         recu : repris sans limite de date ;
+--       - poste ouvert SANS aucune reception : repris seulement s'il est cree
+--         a partir de date_creation_min_sans_reception (ecran Valeurs par
+--         defaut, module commandeAchat, defaut 01/03/2026, migration 124).
+--     p_date_debut / p_date_fin bornent en plus l'ensemble.
 --   * ekpo VIDE (defaut d'extraction constate le 11/09/2026, ekkn vide aussi)
 --     -> RAISE WARNING puis repli EN-TETE : une ligne par commande EKKO, les
 --     colonnes de poste restent NULL. Le reliquat est alors approche par les
@@ -110,7 +116,14 @@ DECLARE
     v_nb_lignes integer := 0;
     v_debut     timestamp := clock_timestamp();
     v_ekpo_vide boolean;
+    v_min_sans_reception text;
 BEGIN
+    -- Date de creation minimale d'un poste SANS reception (ecran Valeurs par
+    -- defaut, migration 124), en texte YYYYMMDD comme ekko.aedat
+    v_min_sans_reception := TO_CHAR(COALESCE(
+        NULLIF(public.get_default_value('clean_data.commande_achat_ifs', 'date_creation_min_sans_reception', 'STANDARD'), '')::date,
+        DATE '2026-03-01'), 'YYYYMMDD');
+
     RAISE NOTICE '[%] Debut alimentation clean_data.commande_achat_ifs (p_date_debut=%, p_date_fin=%, p_ebeln=%)',
         clock_timestamp(), p_date_debut, p_date_fin, p_ebeln;
 
@@ -308,8 +321,11 @@ BEGIN
             SELECT
                 ekko.ebeln, ekpo.ebelp, ekko.bukrs, ekko.lifnr, ekko.waers, ekko.wkurs,
                 clean_data.commande_achat_to_date(ekko.aedat) AS aedat,
+                ekko.aedat AS aedat_sap,
                 ekko.zterm, ekko.inco1, ekko.inco2, ekko.ekgrp,
                 ekpo.matnr, ekpo.txz01, ekpo.werks,
+                COALESCE(ekpo.elikz, '') <> '' AS livraison_finale,
+                COALESCE(ekpo.erekz, '') <> '' AS facture_finale,
                 clean_data.commande_achat_to_num(ekpo.menge) AS menge,
                 ekpo.meins,
                 clean_data.commande_achat_to_num(ekpo.netpr) AS netpr,
@@ -354,12 +370,8 @@ BEGIN
               AND ekko.bukrs = 'STJN'
               AND (ekko.loekz IS NULL OR ekko.loekz = '')  -- estimable par le planificateur, COALESCE ne l'est pas
               AND (ekpo.loekz IS NULL OR ekpo.loekz = '')
-              -- Poste OUVERT au sens SAP : pas d'indicateur "livraison finale"
-              -- (elikz = 'X' cloture le poste meme si la quantite recue est
-              -- inferieure a la commandee). Sans ce filtre, 58 397 postes
-              -- partiellement livres puis clotures ressortaient, dont des
-              -- postes de 1999 ; avec, 5 155 postes ouverts (12/09/2026).
-              AND (ekpo.elikz IS NULL OR ekpo.elikz = '')
+              -- Le perimetre (reception non facturee / poste ouvert) est
+              -- applique dans le WHERE final, cf. regle de reprise ci-dessous.
               -- Bornes comparees en texte sur aedat (YYYYMMDD sur 100 % des
               -- lignes) : un predicat via fonction n'a pas de statistiques, le
               -- planificateur estimait 8 commandes et partait en boucles
@@ -383,12 +395,12 @@ BEGIN
             NULLIF(LTRIM(TRIM(base.matnr), '0'), ''),
             REGEXP_REPLACE(COALESCE(base.txz01, ''), '[[:cntrl:]]', ' ', 'g'),
             base.menge,
-            GREATEST(COALESCE(base.menge, 0) - COALESCE(base.qte_recue, 0), 0),
-            GREATEST(COALESCE(base.menge, 0) - COALESCE(base.qte_facturee, 0), 0),
+            base.reste_livrer,
+            base.reste_facturer,
             COALESCE(public.get_transcodification('UOM', NULLIF(UPPER(TRIM(base.meins)), '')), '*'),
             ROUND(base.netpr / NULLIF(base.peinh, 0), 4),
-            ROUND(GREATEST(COALESCE(base.menge, 0) - COALESCE(base.qte_recue, 0), 0) * base.netpr / NULLIF(base.peinh, 0), 4),
-            ROUND(GREATEST(COALESCE(base.menge, 0) - COALESCE(base.qte_facturee, 0), 0) * base.netpr / NULLIF(base.peinh, 0), 4),
+            ROUND(base.reste_livrer * base.netpr / NULLIF(base.peinh, 0), 4),
+            ROUND(base.reste_facturer * base.netpr / NULLIF(base.peinh, 0), 4),
             base.waers,
             base.wkurs,
             TO_CHAR(base.aedat, 'DD/MM/YYYY'),
@@ -413,12 +425,33 @@ BEGIN
             NULLIF(TRIM(base.projet_posid), ''),
             ps.project_number,
             COALESCE(NULLIF(TRIM(base.kostl), ''), NULLIF(TRIM(base.ordre_kostv), ''))
-        FROM base
+        FROM (
+            -- Poste clos en livraison (elikz) : plus rien a livrer, reste a
+            -- facturer = recu - facture (et non commande - facture)
+            SELECT b.*,
+                   CASE WHEN b.livraison_finale THEN 0
+                        ELSE GREATEST(COALESCE(b.menge, 0) - COALESCE(b.qte_recue, 0), 0) END AS reste_livrer,
+                   GREATEST(CASE WHEN b.livraison_finale THEN COALESCE(b.qte_recue, 0)
+                                 ELSE COALESCE(b.menge, 0) END
+                            - COALESCE(b.qte_facturee, 0), 0) AS reste_facturer
+            FROM base b
+        ) base
         LEFT JOIN fournisseur_ifs f1 ON f1.lifnr = base.lifnr
         LEFT JOIN fournisseur_ifs f2 ON f2.lifnr = base.fournisseur_facturation_sap
         LEFT JOIN projet_sharepoint ps
             ON ps.cle = REGEXP_REPLACE(REPLACE(UPPER(TRIM(base.projet_posid)), '.', ''), '[A-Z]+$', '')
-        WHERE COALESCE(base.menge, 0) - COALESCE(base.qte_recue, 0) > 0
+        -- Regle de reprise (demande metier du 2026-10-23) :
+        --   * reception non facturee (recu > facture, pas de facture finale
+        --     erekz) -> repris QUELLE QUE SOIT la date, meme si le poste est
+        --     clos en livraison (elikz) ;
+        --   * sinon poste ouvert (pas de livraison finale elikz, reliquat a
+        --     livrer > 0) : repris s'il a deja eu une reception, ou, sans
+        --     aucune reception, s'il est cree a partir de
+        --     date_creation_min_sans_reception (defaut 01/03/2026).
+        WHERE (COALESCE(base.qte_recue, 0) > COALESCE(base.qte_facturee, 0) AND NOT base.facture_finale)
+           OR (NOT base.livraison_finale
+               AND COALESCE(base.menge, 0) - COALESCE(base.qte_recue, 0) > 0
+               AND (COALESCE(base.qte_recue, 0) > 0 OR base.aedat_sap >= v_min_sans_reception))
         ORDER BY base.ebeln, base.ebelp;
 
         GET DIAGNOSTICS v_nb_lignes = ROW_COUNT;

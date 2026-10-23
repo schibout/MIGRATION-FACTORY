@@ -8,13 +8,16 @@ Sont reprises les **commandes d'achat SAP ouvertes de la société STJN**, c'est
 
 - les commandes d'achat fermes (type de document `F`), non supprimées ;
 - de la seule société **STJN** – l'ancienne société APSJ (arrêtée en 2014) est exclue ;
-- et, pour chaque commande, uniquement les **postes encore ouverts** : poste non supprimé, **sans indicateur « livraison finale »** dans SAP (le poste n'a pas été clôturé par l'acheteur), et dont la **quantité restant à livrer est strictement positive** (quantité commandée moins quantité réceptionnée).
+- et, pour chaque commande, les postes non supprimés relevant de l'un des cas suivants (règle du 23/10/2026) :
+  1. **réception non facturée** (quantité réceptionnée supérieure à la quantité facturée, sans indicateur « facture finale ») : repris **quelle que soit l'ancienneté de la commande**, même si le poste est clôturé en livraison (« livraison finale » cochée) ; il n'a alors plus rien à livrer et son reste à facturer est la quantité réceptionnée moins la quantité facturée ;
+  2. **poste ouvert déjà partiellement réceptionné** (pas de « livraison finale », reste à livrer strictement positif) : repris sans limite de date ;
+  3. **poste ouvert sans aucune réception** : repris uniquement si la commande a été **créée à partir du 01/03/2026**. Cette date se modifie dans l'écran *Valeurs par défaut* (module commandeAchat, colonne `date_creation_min_sans_reception`) et s'applique au prochain chargement.
 
 Conséquences à connaître :
 
-- une commande n'apparaît que par ses postes ouverts ; un poste totalement livré ou clôturé n'est pas repris, même si d'autres postes de la même commande le sont ;
-- un poste **partiellement livré puis clôturé** par l'acheteur (« livraison finale » cochée) est considéré comme soldé et n'est pas repris ;
-- à l'inverse, un poste ancien **jamais clôturé dans SAP** reste ouvert et est repris (au 12/09/2026 : des postes remontent jusqu'à 2013). Si ces postes ne doivent pas être migrés, il faut soit les clôturer dans SAP, soit borner le chargement sur une date de création (paramètre du module, sans modification de code – voir § 14).
+- une commande n'apparaît que par ses postes repris ; un poste totalement livré et facturé n'est pas repris, même si d'autres postes de la même commande le sont ;
+- un poste **partiellement livré puis clôturé** par l'acheteur, entièrement facturé, est considéré comme soldé et n'est pas repris ;
+- un poste ancien **jamais réceptionné** et créé avant la date paramétrée n'est pas repris, même s'il n'a jamais été clôturé dans SAP.
 
 La table est un **instantané** : elle est vidée et rechargée intégralement à chaque exécution, les reliquats reflètent donc l'état de SAP au moment du chargement.
 
