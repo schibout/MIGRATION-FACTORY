@@ -2,6 +2,7 @@ import {
   AccountTree as StructureIcon,
   Build as EquipmentIcon,
   Check as CheckIcon,
+  Clear as ClearIcon,
   Close as CloseIcon,
   Edit as EditIcon,
   FileDownload as ExcelIcon,
@@ -14,6 +15,7 @@ import {
 } from '@mui/icons-material';
 import {
   Alert,
+  Autocomplete,
   Badge,
   Box,
   Button,
@@ -174,7 +176,81 @@ const NumeroSerie: React.FC<{ row: Row; onSaved: (v: string | null) => void }> =
   );
 };
 
-const Cellule: React.FC<{ field: Field; row: Row; positions: Record<string, string>; onSerie: (v: string | null) => void }> = ({ field, row, positions, onSerie }) => {
+// Choix du n° article dans la liste des articles SAP (recherche IH02) : un article doit être
+// sélectionné dans les propositions ; « Sans article » retire l'article de l'équipement.
+const ChoixArticle: React.FC<{ numero: string; onFin: (enregistre: boolean) => void }> = ({ numero, onFin }) => {
+  const [q, setQ] = useState('');
+  const [options, setOptions] = useState<any[]>([]);
+  const [chargement, setChargement] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      setChargement(true);
+      try {
+        const res = await api.get('/ih02-hierarchy/search-article', { params: { q, limit: 20 } });
+        setOptions(res.data?.data || []);
+      } catch {
+        setOptions([]);
+      } finally {
+        setChargement(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+  const enregistrer = async (article: string) => {
+    try {
+      await api.put(`/maintenance/equipment-browser/${encodeURIComponent(numero)}/article`, { article });
+      onFin(true);
+    } catch (e: any) {
+      setErreur(e?.response?.data?.error ?? e?.response?.data?.message ?? 'Enregistrement impossible');
+    }
+  };
+  return (
+    <Stack direction="row" alignItems="flex-start" onClick={(e) => e.stopPropagation()}>
+      <Autocomplete size="small" openOnFocus options={options} loading={chargement} filterOptions={(x) => x}
+        sx={{ width: 300 }} noOptionsText="Aucun article"
+        getOptionLabel={(o: any) => `${o.matnr_short || o.matnr} — ${o.designation || ''}`}
+        isOptionEqualToValue={(a: any, b: any) => a.matnr === b.matnr}
+        onInputChange={(_, v, raison) => { if (raison === 'input') { setQ(v); setErreur(null); } }}
+        onChange={(_, o: any) => { if (o) enregistrer(o.matnr_short || o.matnr); }}
+        renderOption={(props, o: any) => (
+          <li {...props} key={o.matnr}>
+            <Box>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{o.matnr_short || o.matnr}</Typography>
+              <Typography variant="caption" color="text.secondary">{o.designation}{o.mtart ? ` · ${o.mtart}` : ''}</Typography>
+            </Box>
+          </li>
+        )}
+        renderInput={(params) => (
+          <TextField {...params} autoFocus placeholder="N° ou désignation" error={!!erreur} helperText={erreur}
+            onKeyDown={(e) => { if (e.key === 'Escape') onFin(false); }} />
+        )} />
+      <Tooltip title="Sans article">
+        <IconButton size="small" onClick={() => enregistrer('')}><ClearIcon fontSize="small" /></IconButton>
+      </Tooltip>
+      <IconButton size="small" onClick={() => onFin(false)}><CloseIcon fontSize="small" /></IconButton>
+    </Stack>
+  );
+};
+
+// Colonnes N° article / Article : modifiables pour un équipement de la structure IH02
+const Cellule: React.FC<{ field: Field; row: Row; positions: Record<string, string>; onSerie: (v: string | null) => void; onArticle: () => void }> = ({ onArticle, ...p }) => {
+  const [edition, setEdition] = useState(false);
+  if ((p.field.col !== 'article' && p.field.col !== 'article_lie') || !p.row.serie_modifiable) return <CelluleLecture {...p} />;
+  if (edition) return <ChoixArticle numero={p.row.numero} onFin={(ok) => { setEdition(false); if (ok) onArticle(); }} />;
+  return (
+    <Stack direction="row" alignItems="flex-start" spacing={0.5}>
+      <CelluleLecture {...p} />
+      <Tooltip title="Modifier l'article">
+        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setEdition(true); }}>
+          <EditIcon sx={{ fontSize: 15 }} />
+        </IconButton>
+      </Tooltip>
+    </Stack>
+  );
+};
+
+const CelluleLecture: React.FC<{ field: Field; row: Row; positions: Record<string, string>; onSerie: (v: string | null) => void }> = ({ field, row, positions, onSerie }) => {
   const v = row[field.col];
   if (field.col === 'statuts') return <Statuts statuts={v ?? []} />;
   if (field.col === 'numero_serie') return <NumeroSerie row={row} onSaved={onSerie} />;
@@ -218,8 +294,7 @@ const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void; on
   const [details, setDetails] = useState<Row | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   // Édition du n° article (stocké dans maintenance_object : équipement de la structure IH02 seulement)
-  const [article, setArticle] = useState<string | null>(null);
-  const [erreurArticle, setErreurArticle] = useState<string | null>(null);
+  const [editionArticle, setEditionArticle] = useState(false);
 
   const chargerStructure = useCallback(() => {
     if (!numero) return;
@@ -228,23 +303,12 @@ const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void; on
       .catch(() => setErreur("Impossible de charger la fiche de l'équipement."));
   }, [numero]);
 
-  const enregistrerArticle = async () => {
-    try {
-      await api.put(`/maintenance/equipment-browser/${encodeURIComponent(numero!)}/article`, { article });
-      setArticle(null);
-      chargerStructure();
-      onChange();
-    } catch (err: any) {
-      setErreurArticle(err?.response?.data?.error ?? err?.response?.data?.message ?? 'Enregistrement impossible');
-    }
-  };
-
   useEffect(() => {
     if (!numero) return;
     setData(null);
     setDetails(null);
     setErreur(null);
-    setArticle(null);
+    setEditionArticle(false);
     chargerStructure();
     api.get(`/maintenance/equipment/${encodeURIComponent(numero.padStart(18, '0'))}/details`)
       .then((res) => setDetails(res.data?.data ?? null))
@@ -338,22 +402,17 @@ const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void; on
             <Typography variant="overline" color="primary">Article</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '170px 1fr', rowGap: 1, columnGap: 2, mb: 1.5 }}>
               <Typography variant="body2" color="text.secondary">N° article</Typography>
-              {article !== null ? (
-                <Stack direction="row" alignItems="flex-start">
-                  <TextField size="small" autoFocus value={article} error={!!erreurArticle}
-                    helperText={erreurArticle ?? 'Vide = sans article'}
-                    inputProps={{ maxLength: 18, style: { fontFamily: 'monospace', padding: '4px 8px' } }} sx={{ width: 200 }}
-                    onChange={(ev) => { setArticle(ev.target.value); setErreurArticle(null); }}
-                    onKeyDown={(ev) => { if (ev.key === 'Enter') enregistrerArticle(); if (ev.key === 'Escape') setArticle(null); }} />
-                  <IconButton size="small" onClick={enregistrerArticle}><CheckIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" onClick={() => setArticle(null)}><CloseIcon fontSize="small" /></IconButton>
-                </Stack>
+              {editionArticle ? (
+                <ChoixArticle numero={e.numero} onFin={(ok) => {
+                  setEditionArticle(false);
+                  if (ok) { chargerStructure(); onChange(); }
+                }} />
               ) : (
                 <Stack direction="row" alignItems="flex-start" spacing={0.5}>
                   {lienArticle(e.article, e.article_description, e.article_categorie, e.article_statut)}
                   {e.serie_modifiable && (
                     <Tooltip title="Modifier l'article">
-                      <IconButton size="small" onClick={() => { setArticle(e.article ?? ''); setErreurArticle(null); }}>
+                      <IconButton size="small" onClick={() => setEditionArticle(true)}>
                         <EditIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                     </Tooltip>
@@ -674,7 +733,8 @@ const EquipmentPage: React.FC = () => {
                   </TableCell>
                   {champs.map((f) => (
                     <TableCell key={f.col}><Cellule field={f} row={r} positions={positions}
-                      onSerie={(v) => setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, numero_serie: v } : x)))} /></TableCell>
+                      onSerie={(v) => setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, numero_serie: v } : x)))}
+                      onArticle={charger} /></TableCell>
                   ))}
                 </TableRow>
               ))}
