@@ -212,24 +212,44 @@ const Info: React.FC<{ label: string; value: any; mono?: boolean }> = ({ label, 
   </>
 );
 
-const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void }> = ({ numero, onClose }) => {
+const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void; onChange: () => void }> = ({ numero, onClose, onChange }) => {
   const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [details, setDetails] = useState<Row | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  // Édition du n° article (stocké dans maintenance_object : équipement de la structure IH02 seulement)
+  const [article, setArticle] = useState<string | null>(null);
+  const [erreurArticle, setErreurArticle] = useState<string | null>(null);
+
+  const chargerStructure = useCallback(() => {
+    if (!numero) return;
+    api.get(`/maintenance/equipment-browser/${encodeURIComponent(numero)}/structure`)
+      .then((res) => setData(res.data))
+      .catch(() => setErreur("Impossible de charger la fiche de l'équipement."));
+  }, [numero]);
+
+  const enregistrerArticle = async () => {
+    try {
+      await api.put(`/maintenance/equipment-browser/${encodeURIComponent(numero!)}/article`, { article });
+      setArticle(null);
+      chargerStructure();
+      onChange();
+    } catch (err: any) {
+      setErreurArticle(err?.response?.data?.error ?? err?.response?.data?.message ?? 'Enregistrement impossible');
+    }
+  };
 
   useEffect(() => {
     if (!numero) return;
     setData(null);
     setDetails(null);
     setErreur(null);
-    api.get(`/maintenance/equipment-browser/${encodeURIComponent(numero)}/structure`)
-      .then((res) => setData(res.data))
-      .catch(() => setErreur("Impossible de charger la fiche de l'équipement."));
+    setArticle(null);
+    chargerStructure();
     api.get(`/maintenance/equipment/${encodeURIComponent(numero.padStart(18, '0'))}/details`)
       .then((res) => setDetails(res.data?.data ?? null))
       .catch(() => setDetails(null));
-  }, [numero]);
+  }, [numero, chargerStructure]);
 
   const e = data?.equipement;
   const versArticle = (n: string) => navigate(`/sap-data/articles?search=${encodeURIComponent(n)}`);
@@ -318,7 +338,28 @@ const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void }> 
             <Typography variant="overline" color="primary">Article</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '170px 1fr', rowGap: 1, columnGap: 2, mb: 1.5 }}>
               <Typography variant="body2" color="text.secondary">N° article</Typography>
-              {lienArticle(e.article, e.article_description, e.article_categorie, e.article_statut)}
+              {article !== null ? (
+                <Stack direction="row" alignItems="flex-start">
+                  <TextField size="small" autoFocus value={article} error={!!erreurArticle}
+                    helperText={erreurArticle ?? 'Vide = sans article'}
+                    inputProps={{ maxLength: 18, style: { fontFamily: 'monospace', padding: '4px 8px' } }} sx={{ width: 200 }}
+                    onChange={(ev) => { setArticle(ev.target.value); setErreurArticle(null); }}
+                    onKeyDown={(ev) => { if (ev.key === 'Enter') enregistrerArticle(); if (ev.key === 'Escape') setArticle(null); }} />
+                  <IconButton size="small" onClick={enregistrerArticle}><CheckIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" onClick={() => setArticle(null)}><CloseIcon fontSize="small" /></IconButton>
+                </Stack>
+              ) : (
+                <Stack direction="row" alignItems="flex-start" spacing={0.5}>
+                  {lienArticle(e.article, e.article_description, e.article_categorie, e.article_statut)}
+                  {e.serie_modifiable && (
+                    <Tooltip title="Modifier l'article">
+                      <IconButton size="small" onClick={() => { setArticle(e.article ?? ''); setErreurArticle(null); }}>
+                        <EditIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Stack>
+              )}
               <Typography variant="body2" color="text.secondary">Type de construction</Typography>
               {lienArticle(e.construction, e.construction_description, e.construction_categorie, e.construction_statut)}
             </Box>
@@ -651,7 +692,7 @@ const EquipmentPage: React.FC = () => {
           onPageChange={(_, p) => setPage(p)} onRowsPerPageChange={(ev) => { setPageSize(Number(ev.target.value)); setPage(0); }} />
       </Paper>
 
-      <FicheEquipement numero={fiche} onClose={() => setFiche(null)} />
+      <FicheEquipement numero={fiche} onClose={() => setFiche(null)} onChange={charger} />
     </Box>
   );
 };

@@ -11,6 +11,8 @@ api/maintenance_hierarchy.py (/maintenance/equipment...).
                                                              (chaque facette ignore son filtre)
   GET /api/v1/maintenance/equipment-browser/export.xlsx     selection filtree
   GET /api/v1/maintenance/equipment-browser/<equnr>/structure  chemin dans l'arbre + fils
+  PUT /api/v1/maintenance/equipment-browser/<equnr>/numero-serie  saisie (maintenance_object)
+  PUT /api/v1/maintenance/equipment-browser/<equnr>/article       saisie (maintenance_object)
 
 Filtres : search, une cle par facette (valeurs separees par des virgules, VIDE =
 valeur absente), anomalie (cle d'ANOMALIES ou 'toutes').
@@ -52,7 +54,8 @@ WITH z AS MATERIALIZED (
      WHERE q.mandt = '700' AND j.stat LIKE 'I%' AND (j.inact IS NULL OR j.inact = '')
      GROUP BY q.objnr
 ), mo AS MATERIALIZED (
-    SELECT e.sap_key, e.id AS mo_id, e.attributes->>'sernr' AS mo_sernr, p.object_type AS parent_type, p.code AS parent_code,
+    SELECT e.sap_key, e.id AS mo_id, e.attributes->>'sernr' AS mo_sernr, e.attributes->>'matnr' AS mo_matnr,
+           p.object_type AS parent_type, p.code AS parent_code,
            p.designation AS parent_designation
       FROM clean_data.maintenance_object e
       LEFT JOIN clean_data.maintenance_object p ON p.id = e.parent_id
@@ -61,6 +64,8 @@ WITH z AS MATERIALIZED (
     -- Numeros d'article portes par les equipements (n° article + type de construction)
     SELECT NULLIF(LTRIM(TRIM(matnr), '0'), '') AS k FROM raw_data.equi
      WHERE mandt = '700' AND NULLIF(TRIM(matnr), '') IS NOT NULL
+    UNION
+    SELECT NULLIF(LTRIM(TRIM(mo_matnr), '0'), '') FROM mo WHERE NULLIF(TRIM(mo_matnr), '') IS NOT NULL
     UNION
     SELECT construction FROM z WHERE construction IS NOT NULL
 ), ref AS MATERIALIZED (
@@ -92,7 +97,8 @@ WITH z AS MATERIALIZED (
            d.spras AS langue_description,
            NULLIF(TRIM(e.eqtyp), '') AS categorie,
            NULLIF(TRIM(e.eqart), '') AS type_objet,
-           NULLIF(LTRIM(TRIM(e.matnr), '0'), '') AS article,
+           NULLIF(LTRIM(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '0'), '') AS article,
+           -- N° article : saisie de l'ecran (maintenance_object.attributes.matnr), sinon SAP
            ra.description AS article_description,
            ra.categorie AS article_categorie,
            ra.statut AS article_statut,
@@ -102,10 +108,10 @@ WITH z AS MATERIALIZED (
            rc.statut AS construction_statut,
            COALESCE(ra.statut, rc.statut, 'AUCUN') AS statut_article,
            -- Article affiche : n° article s'il est renseigne, sinon type de construction
-           COALESCE(NULLIF(LTRIM(TRIM(e.matnr), '0'), ''), z.construction) AS article_lie,
-           CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN ra.description ELSE rc.description END AS article_lie_description,
-           CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN ra.statut ELSE rc.statut END AS article_lie_statut,
-           CASE WHEN NULLIF(TRIM(e.matnr), '') IS NOT NULL THEN 'ARTICLE'
+           COALESCE(NULLIF(LTRIM(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '0'), ''), z.construction) AS article_lie,
+           CASE WHEN NULLIF(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '') IS NOT NULL THEN ra.description ELSE rc.description END AS article_lie_description,
+           CASE WHEN NULLIF(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '') IS NOT NULL THEN ra.statut ELSE rc.statut END AS article_lie_statut,
+           CASE WHEN NULLIF(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '') IS NOT NULL THEN 'ARTICLE'
                 WHEN z.construction IS NOT NULL THEN 'ARTICLE'
                 ELSE 'AUCUN' END AS lien_article,
            NULLIF(TRIM(e.herst), '') AS fabricant,
@@ -130,7 +136,7 @@ WITH z AS MATERIALIZED (
       LEFT JOIN d ON d.equnr = e.equnr
       LEFT JOIN st ON st.objnr = e.objnr
       LEFT JOIN mo ON mo.sap_key = e.equnr
-      LEFT JOIN ref ra ON ra.k = NULLIF(LTRIM(TRIM(e.matnr), '0'), '')
+      LEFT JOIN ref ra ON ra.k = NULLIF(LTRIM(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '0'), '')
       LEFT JOIN ref rc ON rc.k = z.construction
       LEFT JOIN raw_data.t001w w ON w.mandt = '700' AND w.werks = z.iwerk
       LEFT JOIN raw_data.crhd c ON c.mandt = '700' AND c.objty = 'A' AND c.objid = z.gewrk
@@ -414,3 +420,39 @@ def modifier_numero_serie(equnr):
         return jsonify({'error': "Équipement absent de la structure IH02 : n° de série non modifiable"}), 404
     db.session.commit()
     return jsonify({'numero_serie': valeur or None})
+
+
+@equipment_browser_blueprint.route('/<equnr>/article', methods=['PUT'])
+@jwt_required()
+def modifier_article(equnr):
+    """N° article saisi dans l'ecran : ecrit dans maintenance_object.attributes.matnr
+    (lu par alimenter_equipment_serial -> part_no IFS ; raw_data reste intact) ;
+    updated_by protege la saisie d'un rechargement en fusion. Vide = sans article."""
+    from flask_jwt_extended import get_jwt_identity
+
+    from api.maintenance_snapshots import active_job_conflict
+    conflit = active_job_conflict()
+    if conflit:
+        return conflit
+    valeur = ((request.get_json(silent=True) or {}).get('article') or '').strip().upper()
+    matnr = ''
+    if valeur:
+        # Numero SAP tel que stocke dans mara (numerique complete a 18 zeros)
+        matnr = db.session.execute(text("""
+            SELECT matnr FROM raw_data.mara
+             WHERE mandt = '700' AND matnr IN (:v, :p) LIMIT 1"""),
+            {'v': valeur, 'p': valeur.zfill(18) if valeur.isdigit() else valeur}).scalar()
+        if not matnr:
+            return jsonify({'error': f"Article {valeur} inexistant dans SAP (mara)"}), 400
+    cle = equnr.zfill(18) if equnr.isdigit() else equnr
+    n = db.session.execute(text("""
+        UPDATE clean_data.maintenance_object
+           SET attributes = COALESCE(attributes, '{}'::jsonb) || jsonb_build_object('matnr', CAST(:v AS text)),
+               updated_by = :u, updated_at = now()
+         WHERE object_type = 'EQUIPMENT' AND is_active AND sap_key = :id"""),
+        {'v': matnr, 'u': str(get_jwt_identity()), 'id': cle}).rowcount
+    if not n:
+        db.session.rollback()
+        return jsonify({'error': "Équipement absent de la structure IH02 : article non modifiable"}), 404
+    db.session.commit()
+    return jsonify({'article': matnr.lstrip('0') or None})
