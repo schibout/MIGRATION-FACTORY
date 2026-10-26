@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance : historique des coûts par projet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #F6F7FA; --surface: #FFFFFF; --surface-sunken: #EEF1F6;
+    --ink: #17202B; --ink-soft: #4C5666; --ink-faint: #7C8698; --line: #DDE2EA;
+    --accent: #2454C7; --accent-ink: #17347A; --accent-soft: #E7EDFB; --accent-soft-line: #C6D4F5;
+    --success: #187A57; --success-soft: #E3F5EC; --success-line: #BFE6D3;
+    --amber: #9C6B0B; --amber-soft: #FBF0DB; --amber-line: #EFD6A0;
+    --shadow: 0 1px 2px rgba(23,32,43,0.04), 0 8px 24px -12px rgba(23,32,43,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10141C; --surface: #171D28; --surface-sunken: #131822;
+      --ink: #E8ECF3; --ink-soft: #A7B0C0; --ink-faint: #737E91; --line: #262E3C;
+      --accent: #7CA0FF; --accent-ink: #C4D4FF; --accent-soft: #1B2947; --accent-soft-line: #2C3F6C;
+      --success: #4FCB9B; --success-soft: #143327; --success-line: #1F5A44;
+      --amber: #E3B255; --amber-soft: #34290F; --amber-line: #5A4517;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10141C; --surface: #171D28; --surface-sunken: #131822;
+    --ink: #E8ECF3; --ink-soft: #A7B0C0; --ink-faint: #737E91; --line: #262E3C;
+    --accent: #7CA0FF; --accent-ink: #C4D4FF; --accent-soft: #1B2947; --accent-soft-line: #2C3F6C;
+    --success: #4FCB9B; --success-soft: #143327; --success-line: #1F5A44;
+    --amber: #E3B255; --amber-soft: #34290F; --amber-line: #5A4517;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.85em; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.45em; color: var(--accent-ink); white-space: nowrap; }
+  a { color: var(--accent); }
+  .masthead { padding: 3.2rem 1.5rem 2.4rem; border-bottom: 1px solid var(--line); background: radial-gradient(1100px 420px at 12% -10%, var(--accent-soft) 0%, transparent 60%); }
+  .masthead-inner { max-width: 920px; margin: 0 auto; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-soft-line); padding: 0.35rem 0.7rem; border-radius: 999px; margin-bottom: 1.2rem; }
+  h1 { font-size: clamp(2rem, 4vw, 2.7rem); line-height: 1.1; letter-spacing: -0.015em; margin: 0 0 0.9rem; font-weight: 700; text-wrap: balance; }
+  .subtitle { font-size: 1.05rem; color: var(--ink-soft); max-width: 66ch; margin: 0 0 1.6rem; }
+  .flow-strip { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .flow-strip .node { font-family: "IBM Plex Mono", monospace; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); padding: 0.4rem 0.75rem; border-radius: 7px; box-shadow: var(--shadow); }
+  .flow-strip .arrow { color: var(--ink-faint); }
+  .layout { max-width: 920px; margin: 0 auto; padding: 2.6rem 1.5rem 5rem; }
+  .toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; margin-bottom: 3rem; }
+  .toc a { text-decoration: none; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem 0.7rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .toc a:hover { border-color: var(--accent-soft-line); }
+  .toc .n { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); }
+  .toc .t { font-size: 0.82rem; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  section.step { padding-bottom: 2.6rem; margin-bottom: 2.6rem; border-bottom: 1px solid var(--line); scroll-margin-top: 1.5rem; }
+  section.step:last-of-type { border-bottom: none; }
+  .step-head { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+  .step-num { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: "IBM Plex Mono", monospace; font-weight: 600; box-shadow: var(--shadow); }
+  .step-kicker { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.2rem; }
+  h2 { font-size: 1.45rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 0.6rem; font-weight: 600; }
+  p { margin: 0.6rem 0; }
+  .intro { color: var(--ink-soft); max-width: 70ch; }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1.2rem; font-size: 0.92rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--surface-sunken); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-soft); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+  .callout { display: flex; gap: 0.8rem; padding: 0.9rem 1.1rem; border-radius: 10px; border: 1px solid var(--accent-soft-line); background: var(--accent-soft); margin: 1rem 0; font-size: 0.95rem; }
+  .callout.warn { border-color: var(--amber-line); background: var(--amber-soft); }
+  .callout.ok { border-color: var(--success-line); background: var(--success-soft); }
+  .callout .ic { flex: none; font-weight: 700; }
+  ul { padding-left: 1.3rem; margin: 0.5rem 0; }
+  li { margin: 0.25rem 0; }
+  .btn { display: inline-block; font-size: 0.82rem; font-weight: 600; padding: 0.1rem 0.55rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pill { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; font-weight: 600; border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
+  .pill.warn { color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber-line); }
+  .pill.ok { color: var(--success); background: var(--success-soft); border: 1px solid var(--success-line); }
+  .back { display: inline-block; margin-bottom: 1.2rem; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <span class="eyebrow">Migration Factory &middot; Finance</span>
+    <h1>Historique des coûts par projet</h1>
+    <p class="subtitle">
+      Réel, plan, budget et engagements de chaque projet SAP, mois par mois, reconstitués à partir de la base
+      d'informations projet de SAP. Ce guide explique d'où viennent les chiffres, ce que signifie chaque colonne
+      et comment utiliser l'écran.
+    </p>
+    <div class="flow-strip">
+      <span class="node">SAP (RPSCO, PRPS, PROJ)</span><span class="arrow">&rarr;</span>
+      <span class="node">SharePoint « Projets »</span><span class="arrow">&rarr;</span>
+      <span class="node">raw_data</span><span class="arrow">&rarr;</span>
+      <span class="node">alimenter_historique_cout_projet</span><span class="arrow">&rarr;</span>
+      <span class="node">clean_data.historique_cout_projet</span><span class="arrow">&rarr;</span>
+      <span class="node">Écran / Excel</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <a class="back" href="index.html">&larr; Sommaire des modes d'emploi</a>
+
+  <nav class="toc">
+    <a href="#s1"><span class="n">01</span><span class="t">D'où viennent les chiffres</span></a>
+    <a href="#s2"><span class="n">02</span><span class="t">Les colonnes</span></a>
+    <a href="#s3"><span class="n">03</span><span class="t">N° projet et migration</span></a>
+    <a href="#s4"><span class="n">04</span><span class="t">Onglets, filtres, totaux</span></a>
+    <a href="#s5"><span class="n">05</span><span class="t">Recalculer et synchroniser</span></a>
+    <a href="#s6"><span class="n">06</span><span class="t">Limites connues</span></a>
+  </nav>
+
+  <!-- 01 -->
+  <section class="step" id="s1">
+    <div class="step-head">
+      <div class="step-num">01</div>
+      <div><div class="step-kicker">Données</div><h2>D'où viennent les chiffres</h2></div>
+    </div>
+    <p class="intro">
+      L'écran reconstitue l'état SAP des crédits d'investissement (transaction ZCOA) à partir des tables déjà
+      extraites dans Migration Factory. Rien n'est saisi à la main. Seule la société <b>STJN</b> est chargée,
+      tous projets et toutes classes d'objets confondus.
+    </p>
+    <table>
+      <tr><th>Source</th><th>Rôle</th></tr>
+      <tr><td><code>RPSCO</code></td><td>Base d'informations projet de SAP. Une ligne par élément d'OTP, exercice et type de valeur, avec les montants des périodes 0 à 16. Seul le ledger <code>0003</code> en version <code>000</code> est lu&nbsp;: c'est le seul alimenté pour STJN, en euros.</td></tr>
+      <tr><td><code>PRPS</code></td><td>Éléments d'OTP&nbsp;: code, désignation, rattachement au projet.</td></tr>
+      <tr><td><code>PROJ</code></td><td>Définitions de projet&nbsp;: code, désignation, responsable.</td></tr>
+      <tr><td>SharePoint «&nbsp;Projets&nbsp;»</td><td>Liste des projets tenue dans SharePoint, qui donne le n° projet utilisé dans IFS.</td></tr>
+      <tr><td><code>clean_data.project_base</code></td><td>Projets préparés pour la reprise IFS. Un projet de l'historique qui y figure est à migrer.</td></tr>
+    </table>
+    <div class="callout"><span class="ic">i</span><div>
+      La table <code>clean_data.historique_cout_projet</code> est un <b>instantané</b>&nbsp;: elle est vidée et
+      recalculée entièrement à chaque rechargement. Une ligne correspond à un élément d'OTP, une année et une
+      période. Les périodes où tous les montants sont nuls sont écartées, y compris quand deux écritures
+      s'annulent dans le mois.
+    </div></div>
+  </section>
+
+  <!-- 02 -->
+  <section class="step" id="s2">
+    <div class="step-head">
+      <div class="step-num">02</div>
+      <div><div class="step-kicker">Lecture</div><h2>Les colonnes</h2></div>
+    </div>
+    <p class="intro">
+      Les colonnes sont présentées dans l'ordre de l'écran. «&nbsp;Type de valeur&nbsp;» désigne le code SAP
+      <code>WRTTP</code> de la table RPSCO. Tous les montants sont en euros, avec le signe SAP&nbsp;: un montant
+      négatif est un avoir ou une annulation.
+    </p>
+
+    <h3>Identification</h3>
+    <table>
+      <tr><th>Colonne</th><th>Source SAP</th><th>Signification</th></tr>
+      <tr><td><b>Projet (PROJ-PSPID)</b></td><td><code>PROJ-PSPID</code></td><td>Code de la définition de projet SAP, par exemple <code>SN21009</code> ou <code>CS.16020</code>. Tous les éléments d'OTP du projet y sont rattachés.</td></tr>
+      <tr><td><b>Désignation projet</b></td><td><code>PROJ-POST1</code></td><td>Libellé du projet dans SAP.</td></tr>
+      <tr><td><b>Responsable</b></td><td><code>PROJ-VERNA</code></td><td>Nom du responsable du projet dans SAP.</td></tr>
+      <tr><td><b>N° projet</b></td><td>SharePoint</td><td>Numéro du projet dans la liste SharePoint, qui est aussi l'identifiant du projet dans IFS, par exemple <code>21.009</code>. Vide quand aucun projet SharePoint ne correspond. Voir <a href="#s3">03</a>.</td></tr>
+      <tr><td><b>À migrer</b></td><td>Migration Factory</td><td><span class="pill ok">Oui</span> si le n° projet figure dans les projets préparés pour IFS, <span class="pill warn">Non</span> sinon. Voir <a href="#s3">03</a>.</td></tr>
+      <tr><td><b>Élément OTP</b></td><td><code>PRPS-POSID</code></td><td>Code de l'élément d'OTP, par exemple <code>SN21009EX</code>. Uniquement dans l'onglet «&nbsp;Par élément d'OTP&nbsp;».</td></tr>
+      <tr><td><b>Désignation OTP</b></td><td><code>PRPS-POST1</code></td><td>Libellé de l'élément d'OTP. Uniquement dans l'onglet «&nbsp;Par élément d'OTP&nbsp;».</td></tr>
+      <tr><td><b>Année</b></td><td><code>RPSCO-GJAHR</code></td><td>Exercice SAP.</td></tr>
+      <tr><td><b>Période</b></td><td>colonnes <code>WLP00</code> à <code>WLP16</code></td><td>Mois de l'exercice, de 1 à 12. La période <b>0</b> porte les valeurs annuelles, en pratique le budget annuel. Les périodes 13 à 16 sont les périodes spéciales de clôture, vides aujourd'hui.</td></tr>
+    </table>
+
+    <h3>Montants</h3>
+    <table>
+      <tr><th>Colonne</th><th>Type de valeur</th><th>Signification</th></tr>
+      <tr><td><b>Réel</b></td><td><code>04</code></td><td>Coûts réels comptabilisés sur le projet dans la période. Les répartitions (opération SAP <code>KOAO</code>) sont exclues&nbsp;: elles déplacent des coûts déjà comptés ailleurs.</td></tr>
+      <tr><td><b>Réel cumulé</b></td><td>calculé</td><td>Somme du réel depuis la première période connue du projet, ou de l'élément d'OTP, jusqu'à la ligne. Le cumul part toujours du début de l'historique, même quand un filtre d'années est posé.</td></tr>
+      <tr><td><b>Plan</b></td><td><code>01</code></td><td>Planification de coûts saisie dans SAP.</td></tr>
+      <tr><td><b>Budget annuel</b></td><td><code>41</code></td><td>Budget du projet ventilé par année, porté par la période 0. Le budget global sans année n'est pas repris car il n'a pas de période.</td></tr>
+      <tr><td><b>Commandes non réceptionnées</b></td><td><code>22</code></td><td>Engagement des commandes d'achat imputées au projet et pas encore réceptionnées.</td></tr>
+      <tr><td><b>Demandes d'achat</b></td><td><code>21</code></td><td>Engagement des demandes d'achat imputées au projet et pas encore transformées en commande.</td></tr>
+    </table>
+    <div class="callout warn"><span class="ic">!</span><div>
+      Les engagements sont rangés par SAP dans la période de <b>livraison prévue</b>, pas dans la période où la
+      commande a été passée. Ils représentent l'encours actuel&nbsp;: une ligne de 2027 peut porter une commande
+      passée en 2026.
+    </div></div>
+  </section>
+
+  <!-- 03 -->
+  <section class="step" id="s3">
+    <div class="step-head">
+      <div class="step-num">03</div>
+      <div><div class="step-kicker">Reprise IFS</div><h2>N° projet et indicateur de migration</h2></div>
+    </div>
+    <h3>Comment le n° projet est trouvé</h3>
+    <p>
+      La règle est la même que pour les commandes d'achat. Les codes SAP et SharePoint s'écrivent différemment,
+      on les compare donc après avoir retiré les points et les lettres finales.
+    </p>
+    <table>
+      <tr><th>Code</th><th>Après nettoyage</th></tr>
+      <tr><td>Élément d'OTP SAP <code>SN21009EX</code></td><td class="num">SN21009</td></tr>
+      <tr><td>Code SharePoint <code>SN.21009</code></td><td class="num">SN21009</td></tr>
+    </table>
+    <ul>
+      <li>La recherche se fait d'abord sur l'<b>élément d'OTP</b>, puis, à défaut, sur le <b>code du projet</b>. Le repli est utile pour les OTP numérotés comme <code>SN1503302</code>, dont le code nettoyé ne correspond à aucun projet SharePoint.</li>
+      <li>Si plusieurs projets SharePoint ont le même code, le plus récemment modifié l'emporte.</li>
+      <li>Un projet a toujours un seul n° projet, quel que soit l'élément d'OTP.</li>
+    </ul>
+    <h3>Indicateur «&nbsp;À migrer&nbsp;»</h3>
+    <p>
+      Un projet est à migrer quand son n° projet figure dans <code>clean_data.project_base</code>, la table des
+      projets préparés pour IFS. Un projet sans n° projet, ou dont le n° projet n'y figure pas, n'est pas migré.
+      L'indicateur est recalculé à chaque rechargement&nbsp;: un projet ajouté dans la reprise IFS apparaît à migrer
+      après un clic sur <span class="btn">Recalculer</span>.
+    </p>
+  </section>
+
+  <!-- 04 -->
+  <section class="step" id="s4">
+    <div class="step-head">
+      <div class="step-num">04</div>
+      <div><div class="step-kicker">Écran</div><h2>Onglets, filtres et totaux</h2></div>
+    </div>
+    <table>
+      <tr><th>Élément</th><th>Rôle</th></tr>
+      <tr><td>Onglet <b>Par projet</b></td><td>Une ligne par projet, année et période. Les montants de tous les éléments d'OTP du projet sont additionnés.</td></tr>
+      <tr><td>Onglet <b>Par élément d'OTP</b></td><td>Une ligne par élément d'OTP, année et période, avec le code et la désignation de l'OTP.</td></tr>
+      <tr><td>Onglet <b>Mode d'emploi</b></td><td>Ce guide.</td></tr>
+      <tr><td>Recherche</td><td>Cherche dans le projet, le n° projet, la désignation, le responsable et l'élément d'OTP. Valider avec la touche Entrée.</td></tr>
+      <tr><td>Année de / Année à</td><td>Limite l'affichage à une plage d'années. Le réel cumulé n'est pas remis à zéro.</td></tr>
+      <tr><td>Migration</td><td>Tous, À migrer ou Non migrés.</td></tr>
+      <tr><td>Pastilles</td><td>Nombre de projets, de projets à migrer et de lignes, puis totaux du réel, du budget annuel, du plan et des engagements sur la sélection filtrée.</td></tr>
+      <tr><td><span class="btn">Exporter Excel</span></td><td>Classeur des lignes filtrées de l'onglet affiché, toutes pages comprises, avec les mêmes colonnes.</td></tr>
+    </table>
+  </section>
+
+  <!-- 05 -->
+  <section class="step" id="s5">
+    <div class="step-head">
+      <div class="step-num">05</div>
+      <div><div class="step-kicker">Mise à jour</div><h2>Recalculer et synchroniser</h2></div>
+    </div>
+    <table>
+      <tr><th>Bouton</th><th>Ce qu'il fait</th><th>Durée</th></tr>
+      <tr><td><span class="btn">Recalculer</span></td><td>Recharge l'historique à partir des tables déjà présentes dans Migration Factory et recalcule le n° projet et l'indicateur À migrer. N'appelle ni SAP ni SharePoint.</td><td class="num">quelques secondes</td></tr>
+      <tr><td><span class="btn primary">Synchroniser SAP</span></td><td>Ré-extrait de SAP les tables RPSCO, PRPS et PROJ, ré-importe la liste SharePoint des projets, puis recharge l'historique.</td><td class="num">quelques minutes</td></tr>
+    </table>
+    <ul>
+      <li>Une seule synchronisation peut tourner à la fois. La progression s'affiche dans un bandeau et la liste se recharge à la fin.</li>
+      <li>Si SharePoint ne répond pas, la synchronisation se termine quand même avec les n° projet du dernier import. Un bandeau orange le signale.</li>
+      <li>Si la table RPSCO est vide, par exemple pendant une extraction, l'historique n'est pas effacé.</li>
+    </ul>
+  </section>
+
+  <!-- 06 -->
+  <section class="step" id="s6">
+    <div class="step-head">
+      <div class="step-num">06</div>
+      <div><div class="step-kicker">Contrôles</div><h2>Limites connues</h2></div>
+    </div>
+    <ul>
+      <li><b>Ordres d'investissement non couverts.</b> Les ordres de type IM01 ne figurent pas dans RPSCO. Il faudrait les tables SAP COEP, COOI et BPGE, qui ne sont pas extraites.</li>
+      <li><b>Engagements non arrêtés à une date.</b> Les commandes et demandes d'achat représentent l'encours actuel, sans coupure à une période d'édition, contrairement à l'état SAP ZCOS2300.</li>
+      <li><b>Un seul ledger.</b> Seul le ledger <code>0003</code> est lu, le seul alimenté pour STJN.</li>
+      <li><b>Projets sans n° projet.</b> Environ une centaine de projets SAP, souvent anciens, n'ont pas de projet SharePoint correspondant. Ils restent sans n° projet et ne sont pas migrés.</li>
+    </ul>
+    <div class="callout ok"><span class="ic">&check;</span><div>
+      Contrôle du 26/10/2026&nbsp;: le réel total de l'écran est égal, au centime, à la somme directe de RPSCO
+      (type de valeur 04 hors répartition) sur les mêmes projets.
+    </div></div>
+  </section>
+
+</main>
+</body>
+</html>

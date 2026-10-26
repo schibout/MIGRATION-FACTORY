@@ -37,7 +37,7 @@ import api from '../services/api';
 // Source : clean_data.historique_cout_projet (RPSCO ledger 0003, cf. docs/zcoa_credits_investissement_raw_data.sql).
 
 type Row = Record<string, string | number | null>;
-type Vue = 'projet' | 'otp';
+type Vue = 'projet' | 'otp' | 'mode_emploi';
 
 interface SyncStatus {
   status: 'never' | 'running' | 'completed' | 'failed';
@@ -77,7 +77,12 @@ const ONGLETS: { value: Vue; label: string; description: string }[] = [
     description: "Une ligne par projet SAP, année et période (tous les éléments d'OTP du projet cumulés). Réel cumulé = depuis le début de l'historique." },
   { value: 'otp', label: "Par élément d'OTP",
     description: "Une ligne par élément d'OTP, année et période. Réel cumulé = depuis le début de l'historique de l'OTP." },
+  { value: 'mode_emploi', label: "Mode d'emploi",
+    description: "Sources SAP, signification de chaque colonne, n° projet et indicateur de migration, utilisation de l'écran." },
 ];
+
+// Guide HTML autonome (frontend/public/guides/, copie dans docs/guides/), aussi listé dans Mode d'emploi.
+const GUIDE = '/guides/finance-historique-couts.html';
 
 const euros = (v: number | null | undefined) =>
   v == null ? '—' : v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -108,6 +113,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
   const filtres = { vue, search, annee_debut: anneeDebut, annee_fin: anneeFin, migration };
 
   const load = useCallback(async () => {
+    if (vue === 'mode_emploi') return;
     try {
       setLoading(true);
       setError(null);
@@ -192,7 +198,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
         <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
           <Tooltip title="Classeur Excel des lignes filtrées (toutes les pages) de l'onglet affiché">
             <span>
-              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !data?.total}>
+              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !data?.total || vue === 'mode_emploi'}>
                 {exporting ? 'Export…' : 'Exporter Excel'}
               </Button>
             </span>
@@ -221,6 +227,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
         {ONGLETS.find((o) => o.value === vue)?.description}
       </Typography>
 
+      {vue !== 'mode_emploi' && (<>
       <Alert severity="info" sx={{ mb: 2 }}>
         Société STJN, ledger RPSCO 0003, montants en EUR. Réel = valeurs réelles (WRTTP 04) hors répartition KOAO,
         Plan = 01, Budget annuel = 41 en période 0 (le budget global sans année est exclu), Commandes non
@@ -243,6 +250,8 @@ const FinanceHistoriqueCouts: React.FC = () => {
         </Box>
       )}
 
+      </>)}
+
       {running && (
         <Alert severity="info" sx={{ mb: 2 }}>
           {sync?.step} — démarrée le {formatDateTime(sync?.started_at)}
@@ -262,6 +271,14 @@ const FinanceHistoriqueCouts: React.FC = () => {
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
+      {vue === 'mode_emploi' ? (
+        <Box
+          component="iframe"
+          src={GUIDE}
+          title="Mode d'emploi : historique des coûts par projet"
+          sx={{ width: '100%', height: 'calc(100vh - 300px)', minHeight: 500, border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}
+        />
+      ) : (<>
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           size="small"
@@ -345,6 +362,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
           labelRowsPerPage="Lignes par page"
         />
       </Paper>
+      </>)}
     </Box>
   );
 };
