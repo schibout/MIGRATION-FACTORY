@@ -28,6 +28,7 @@ import Finance from './pages/Finance';
 import FinanceImmobilisations from './pages/FinanceImmobilisations';
 import FinanceCommandesAchat from './pages/FinanceCommandesAchat';
 import FinanceComptes from './pages/FinanceComptes';
+import FinanceHistoriqueCouts from './pages/FinanceHistoriqueCouts';
 import ExportPmAction from './pages/ExportPmAction';
 import ExportProjects from './pages/ExportProjects';
 import ExportStructureMaintenance from './pages/ExportStructureMaintenance';
@@ -244,6 +245,7 @@ function App() {
           <Route path="finance/immobilisations" element={<FinanceImmobilisations />} />
           <Route path="finance/commandes-achat" element={<FinanceCommandesAchat />} />
           <Route path="finance/comptes" element={<FinanceComptes />} />
+          <Route path="finance/historique-couts" element={<FinanceHistoriqueCouts />} />
           <Route path="export/commandes-achat" element={<ExportCommandeAchat />} />
           <Route
             path="export/immobilisations"

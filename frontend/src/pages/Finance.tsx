@@ -3,6 +3,7 @@ import {
     AccountTree as ComptesIcon,
     MenuBook as GuideIcon,
     ShoppingCart as CommandeAchatIcon,
+    Timeline as HistoriqueIcon,
     Euro as FinanceIcon,
 } from '@mui/icons-material';
 import { Box, Card, CardActionArea, Grid, Typography } from '@mui/material';
@@ -34,6 +35,12 @@ const financeItems = [
     path: '/finance/commandes-achat',
     icon: <CommandeAchatIcon sx={{ fontSize: 48, color: '#00897b' }} />,
     description: 'Commandes d\'achat SAP ouvertes (reliquat à livrer) au format de reprise IFS, synchronisables depuis SAP',
+  },
+  {
+    title: 'Historique des coûts par projet',
+    path: '/finance/historique-couts',
+    icon: <HistoriqueIcon sx={{ fontSize: 48, color: '#3949ab' }} />,
+    description: 'Réel, plan, budget annuel et engagements par projet SAP, année et période (RPSCO), synchronisables depuis SAP',
   },
 ];
 

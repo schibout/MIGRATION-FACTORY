@@ -22,6 +22,13 @@ Commandes d'achat :
                                          purchase_order_line_part / _line_nopart
                                          (export.xlsx?vue=<table> pour le classeur) ;
                                          /sync enchaine alimenter_purchase_order()
+Historique des couts par projet (clean_data.historique_cout_projet, RPSCO) :
+  GET  /api/v1/finance/historique-couts  ?vue=projet (defaut, une ligne par projet /
+                                         annee / periode) | otp (par element d'OTP) ;
+                                         filtres search, annee_debut, annee_fin ;
+                                         reel_cumule = cumul depuis le debut de l'historique
+  GET  /api/v1/finance/historique-couts/export.xlsx
+  GET|POST /api/v1/finance/historique-couts/sync   (RPSCO, PRPS, PROJ)
   GET  /api/v1/finance/comptes          conversion des comptes (FA_ACCOUNT) + comptes des fiches
 """
 import io
@@ -768,6 +775,146 @@ def start_ca_sync():
 
     return _start_sync('commande_achat', CA_SAP_TABLES,
                        'clean_data.commande_achat_ifs puis purchase_order*', load,
+                       extraire=_sync_source() == 'sap')
+
+
+# ---------------------------------------------------------------------------
+# Historique des couts par projet (clean_data.historique_cout_projet,
+# module sql/historiqueCoutProjet/, reconstitution ZCOA requete 3 sur RPSCO)
+# ---------------------------------------------------------------------------
+
+# Tables lues par clean_data.alimenter_historique_cout_projet.
+HCP_SAP_TABLES = ['RPSCO', 'PRPS', 'PROJ']
+
+# Colonnes de regroupement par vue ; les mesures sont sommees.
+HCP_CLES = {
+    'projet': ['projet', 'projet_libelle', 'responsable'],
+    'otp': ['projet', 'projet_libelle', 'responsable', 'element_otp', 'otp_libelle'],
+}
+HCP_MESURES = ['reel', 'reel_cumule', 'plan', 'budget_annuel', 'engag_cde', 'engag_da']
+HCP_LIBELLE = {
+    'projet': 'Projet (PROJ-PSPID)',
+    'projet_libelle': 'Désignation projet',
+    'responsable': 'Responsable',
+    'element_otp': "Élément d'OTP (PRPS-POSID)",
+    'otp_libelle': 'Désignation OTP',
+    'annee': 'Année',
+    'periode': 'Période',
+    'reel': 'Réel',
+    'reel_cumule': 'Réel cumulé',
+    'plan': 'Plan',
+    'budget_annuel': 'Budget annuel',
+    'engag_cde': 'Commandes non réceptionnées',
+    'engag_da': "Demandes d'achat",
+}
+
+
+def _hcp_vue():
+    return 'otp' if request.args.get('vue') == 'otp' else 'projet'
+
+
+def _hcp_colonnes(vue):
+    return HCP_CLES[vue] + ['annee', 'periode'] + HCP_MESURES
+
+
+def _hcp_requete(vue):
+    """(SQL sans LIMIT, params) : lignes agregees au grain de la vue. Le cumul du reel
+    est calcule sur TOUT l'historique du projet / de l'OTP, puis filtre par annee
+    (sinon il repartirait de zero a l'annee de debut du filtre)."""
+    search = (request.args.get('search') or '').strip()
+    cles = ', '.join(HCP_CLES[vue])
+    params = {}
+    interne = ''
+    if search:
+        interne = ('WHERE projet ILIKE :s OR projet_libelle ILIKE :s '
+                   'OR responsable ILIKE :s OR element_otp ILIKE :s')
+        params['s'] = f'%{search}%'
+
+    externe = []
+    for borne, op in (('annee_debut', '>='), ('annee_fin', '<=')):
+        v = request.args.get(borne) or ''
+        if v.isdigit():
+            externe.append(f'annee {op} :{borne}')
+            params[borne] = int(v)
+    clause_annee = ('WHERE ' + ' AND '.join(externe)) if externe else ''
+
+    sql = (
+        f'WITH agg AS ('
+        f' SELECT {cles}, annee, periode, SUM(reel) AS reel,'
+        f' SUM(SUM(reel)) OVER (PARTITION BY {cles} ORDER BY annee, periode) AS reel_cumule,'
+        f' SUM(plan) AS plan, SUM(budget_annuel) AS budget_annuel,'
+        f' SUM(engag_cde) AS engag_cde, SUM(engag_da) AS engag_da'
+        f' FROM clean_data.historique_cout_projet {interne}'
+        f' GROUP BY {cles}, annee, periode)'
+        f' SELECT {", ".join(_hcp_colonnes(vue))} FROM agg {clause_annee}'
+        f' ORDER BY {cles}, annee, periode'
+    )
+    return sql, params
+
+
+@finance_blueprint.route('/historique-couts', methods=['GET'])
+@jwt_required()
+def list_historique_couts():
+    page = max(int(request.args.get('page', 1)), 1)
+    page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
+    vue = _hcp_vue()
+    sql, params = _hcp_requete(vue)
+
+    rows = db.session.execute(
+        text(f'{sql} LIMIT :limit OFFSET :offset'),
+        {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
+    # reel_cumule n'est pas sommable : les totaux portent sur les autres mesures
+    stats = db.session.execute(text(
+        'SELECT count(*) AS lignes, count(DISTINCT projet) AS projets, '
+        'sum(reel) AS reel, sum(plan) AS plan, sum(budget_annuel) AS budget_annuel, '
+        f'sum(engag_cde) AS engag_cde, sum(engag_da) AS engag_da FROM ({sql}) q'),
+        params).mappings().one()
+    annees = [r[0] for r in db.session.execute(text(
+        'SELECT DISTINCT annee FROM clean_data.historique_cout_projet ORDER BY 1'))]
+
+    return jsonify({
+        'rows': [{k: _json(v) for k, v in r.items()} for r in rows],
+        'total': stats['lignes'],
+        'page': page,
+        'page_size': page_size,
+        'stats': {k: _json(v) for k, v in stats.items()},
+        'annees': annees,
+        'colonnes': [{'key': c, 'label': HCP_LIBELLE[c],
+                      'kind': 'montant' if c in HCP_MESURES else 'text'}
+                     for c in _hcp_colonnes(vue)],
+        'sync': _read_status('historique_cout_projet'),
+    })
+
+
+@finance_blueprint.route('/historique-couts/export.xlsx', methods=['GET'])
+@jwt_required()
+def export_historique_couts_excel():
+    from openpyxl import Workbook
+
+    vue = _hcp_vue()
+    sql, params = _hcp_requete(vue)
+    rows = db.session.execute(text(sql), params).all()
+    db.session.commit()  # liberer la transaction de lecture avant la generation
+    wb = Workbook()
+    _feuille_tableau(wb.active, 'Historique des coûts',
+                     [(c, HCP_LIBELLE[c]) for c in _hcp_colonnes(vue)], rows, set(HCP_MESURES))
+    return _envoyer(wb, f'historique_couts_{vue}')
+
+
+@finance_blueprint.route('/historique-couts/sync', methods=['GET'])
+@jwt_required()
+def get_hcp_sync_status():
+    return jsonify(_read_status('historique_cout_projet') or {'status': 'never'})
+
+
+@finance_blueprint.route('/historique-couts/sync', methods=['POST'])
+@jwt_required()
+def start_hcp_sync():
+    def load(conn):
+        return conn.execute(text('SELECT clean_data.alimenter_historique_cout_projet()')).scalar()
+
+    return _start_sync('historique_cout_projet', HCP_SAP_TABLES,
+                       'clean_data.historique_cout_projet', load,
                        extraire=_sync_source() == 'sap')
 
 
