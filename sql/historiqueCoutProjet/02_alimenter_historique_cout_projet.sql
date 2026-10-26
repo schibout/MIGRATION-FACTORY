@@ -61,7 +61,13 @@ BEGIN
            COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '21'), 0)
     FROM val v
     GROUP BY v.pspid, v.projet_libelle, v.verna, v.posid, v.otp_libelle, v.annee, v.periode
-    HAVING bool_or(v.mt <> 0);
+    -- Lignes dont toutes les mesures sont nulles ecartees, y compris quand des
+    -- mouvements se compensent dans la periode (ex. COIE +3,82 / COIN -3,82).
+    HAVING COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '04' AND v.vorga <> 'KOAO'), 0) <> 0
+        OR COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '01'), 0) <> 0
+        OR COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '41'), 0) <> 0
+        OR COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '22'), 0) <> 0
+        OR COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '21'), 0) <> 0;
 
     GET DIAGNOSTICS v_n = ROW_COUNT;
     RAISE NOTICE 'historique_cout_projet : % lignes chargees (societe %)', v_n, p_bukrs;
