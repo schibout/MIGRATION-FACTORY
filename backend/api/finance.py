@@ -786,17 +786,19 @@ def start_ca_sync():
 # Tables lues par clean_data.alimenter_historique_cout_projet.
 HCP_SAP_TABLES = ['RPSCO', 'PRPS', 'PROJ']
 
-# Colonnes de regroupement par vue ; les mesures sont sommees.
+# Colonnes de regroupement par vue ; les mesures sont sommees. numero_projet ne
+# depend que du projet (la cle de l'OTP et celle du projet ne divergent jamais).
 HCP_CLES = {
-    'projet': ['projet', 'projet_libelle', 'responsable'],
-    'otp': ['projet', 'projet_libelle', 'responsable', 'element_otp', 'otp_libelle'],
+    'projet': ['projet', 'projet_libelle', 'responsable', 'numero_projet'],
+    'otp': ['projet', 'projet_libelle', 'responsable', 'numero_projet', 'element_otp', 'otp_libelle'],
 }
 HCP_MESURES = ['reel', 'reel_cumule', 'plan', 'budget_annuel', 'engag_cde', 'engag_da']
 HCP_LIBELLE = {
     'projet': 'Projet (PROJ-PSPID)',
     'projet_libelle': 'Désignation projet',
     'responsable': 'Responsable',
-    'element_otp': "Élément d'OTP (PRPS-POSID)",
+    'numero_projet': 'N° projet',
+    'element_otp': 'Élément OTP',
     'otp_libelle': 'Désignation OTP',
     'annee': 'Année',
     'periode': 'Période',
@@ -827,7 +829,7 @@ def _hcp_requete(vue):
     interne = ''
     if search:
         interne = ('WHERE projet ILIKE :s OR projet_libelle ILIKE :s '
-                   'OR responsable ILIKE :s OR element_otp ILIKE :s')
+                   'OR responsable ILIKE :s OR element_otp ILIKE :s OR numero_projet ILIKE :s')
         params['s'] = f'%{search}%'
 
     externe = []

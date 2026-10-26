@@ -78,3 +78,17 @@ def test_rpsco_vide_ne_purge_pas(cur):
     assert cur.fetchone()['n'] == 0
     cur.execute(f'SELECT count(*) AS n FROM {HCP}')
     assert cur.fetchone()['n'] == avant
+
+
+def test_numero_projet_meme_regle_que_commandes_achat(cur):
+    """N° projet SharePoint : cle sans points ni suffixe alphabetique (OTP puis projet),
+    une seule valeur par projet."""
+    cur.execute(f"""SELECT count(*) AS n FROM (SELECT projet FROM {HCP}
+                    GROUP BY projet HAVING count(DISTINCT numero_projet) > 1) x""")
+    assert cur.fetchone()['n'] == 0
+    cur.execute(f"""SELECT h.numero_projet, s.project_number
+                    FROM {HCP} h JOIN raw_data.sharepoint_projets s
+                      ON REGEXP_REPLACE(REPLACE(UPPER(TRIM(s.code)), '.', ''), '[A-Z]+$', '') = h.projet
+                    WHERE h.projet LIKE 'SN%%' AND h.numero_projet IS NOT NULL LIMIT 1""")
+    r = cur.fetchone()
+    assert r is not None and r['numero_projet'] == r['project_number']

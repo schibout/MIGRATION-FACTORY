@@ -22,3 +22,7 @@ CREATE TABLE IF NOT EXISTS clean_data.historique_cout_projet (
     charge_at       timestamp   NOT NULL DEFAULT current_timestamp,
     PRIMARY KEY (projet, element_otp, annee, periode)
 );
+
+-- N° projet SharePoint (= project_id IFS) de l'element d'OTP, meme regle que
+-- clean_data.commande_achat_ifs.numero_projet (ajout du 2026-10-26).
+ALTER TABLE clean_data.historique_cout_projet ADD COLUMN IF NOT EXISTS numero_projet text;

@@ -257,7 +257,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           size="small"
-          placeholder="Projet, désignation, responsable, élément d'OTP…"
+          placeholder="Projet, N° projet, désignation, responsable, élément OTP…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={(e) => {
