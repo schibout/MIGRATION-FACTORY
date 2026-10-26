@@ -45,15 +45,17 @@ interface SyncStatus {
   progress?: number;
   error?: string | null;
   rows?: number | null;
+  warning?: string | null;
   started_at?: string;
   finished_at?: string | null;
 }
 
-interface Colonne { key: string; label: string; kind: 'montant' | 'text' }
+interface Colonne { key: string; label: string; kind: 'montant' | 'bool' | 'text' }
 
 interface Stats {
   lignes: number;
   projets: number;
+  projets_a_migrer: number;
   reel: number | null;
   plan: number | null;
   budget_annuel: number | null;
@@ -81,6 +83,7 @@ const euros = (v: number | null | undefined) =>
   v == null ? '—' : v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const formatCell = (v: string | number | null, kind: Colonne['kind']) => {
+  if (kind === 'bool') return v ? 'Oui' : 'Non';
   if (v == null || v === '') return '';
   return kind === 'montant' ? euros(Number(v)) : String(v);
 };
@@ -98,17 +101,18 @@ const FinanceHistoriqueCouts: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [anneeDebut, setAnneeDebut] = useState('');
   const [anneeFin, setAnneeFin] = useState('');
+  const [migration, setMigration] = useState('');
   const [sync, setSync] = useState<SyncStatus | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const filtres = { vue, search, annee_debut: anneeDebut, annee_fin: anneeFin };
+  const filtres = { vue, search, annee_debut: anneeDebut, annee_fin: anneeFin, migration };
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const res = await api.get<ListResponse>('/finance/historique-couts', {
-        params: { vue, search, annee_debut: anneeDebut, annee_fin: anneeFin, page: page + 1, page_size: pageSize },
+        params: { vue, search, annee_debut: anneeDebut, annee_fin: anneeFin, migration, page: page + 1, page_size: pageSize },
       });
       setData(res.data);
       setSync(res.data.sync);
@@ -118,7 +122,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [vue, page, pageSize, search, anneeDebut, anneeFin]);
+  }, [vue, page, pageSize, search, anneeDebut, anneeFin, migration]);
 
   useEffect(() => {
     load();
@@ -193,14 +197,14 @@ const FinanceHistoriqueCouts: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Recharge l'historique depuis les tables SAP déjà extraites (RPSCO, PRPS, PROJ), sans appeler SAP">
+          <Tooltip title="Recharge l'historique depuis les tables déjà extraites (RPSCO, PRPS, PROJ, projets SharePoint) et recalcule l'indicateur À migrer, sans appeler SAP ni SharePoint">
             <span>
               <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
                 Recalculer
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Ré-extrait de SAP RPSCO, PRPS, PROJ puis recharge la table">
+          <Tooltip title="Ré-extrait de SAP RPSCO, PRPS, PROJ, ré-importe la liste SharePoint des projets (n° projet) puis recharge la table">
             <span>
               <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
                 {running ? 'Synchronisation…' : 'Synchroniser SAP'}
@@ -222,11 +226,14 @@ const FinanceHistoriqueCouts: React.FC = () => {
         Plan = 01, Budget annuel = 41 en période 0 (le budget global sans année est exclu), Commandes non
         réceptionnées = 22, Demandes d'achat = 21 (engagements rangés par période de livraison prévue : encours actuel).
         Les ordres d'investissement (IM01) ne sont pas couverts : COEP, COOI et BPGE ne sont pas extraites.
+        N° projet = projet SharePoint de l'OTP (à défaut du projet) ; À migrer = n° projet présent dans les projets
+        IFS (clean_data.project_base).
       </Alert>
 
       {stats && (
         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Chip label={`${stats.projets.toLocaleString('fr-FR')} projets`} color="primary" />
+          <Chip label={`${stats.projets_a_migrer.toLocaleString('fr-FR')} projets à migrer`} color="warning" />
           <Chip label={`${stats.lignes.toLocaleString('fr-FR')} lignes`} />
           <Chip label={`Réel : ${euros(stats.reel)} €`} color="success" />
           <Chip label={`Budget annuel : ${euros(stats.budget_annuel)} €`} />
@@ -247,6 +254,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
           Dernière synchronisation le {formatDateTime(sync.finished_at)} : {sync.rows?.toLocaleString('fr-FR')} lignes chargées.
         </Alert>
       )}
+      {sync?.status === 'completed' && sync.warning && <Alert severity="warning" sx={{ mb: 2 }}>{sync.warning}</Alert>}
       {sync?.status === 'failed' && (
         <Alert severity="error" sx={{ mb: 2 }}>
           Synchronisation en échec le {formatDateTime(sync.finished_at)} : {sync.error}
@@ -281,6 +289,14 @@ const FinanceHistoriqueCouts: React.FC = () => {
           <Select label="Année à" value={anneeFin} onChange={(e) => { setPage(0); setAnneeFin(e.target.value); }}>
             <MenuItem value="">Toutes</MenuItem>
             {annees.map((a) => <MenuItem key={a} value={String(a)}>{a}</MenuItem>)}
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Migration</InputLabel>
+          <Select label="Migration" value={migration} onChange={(e) => { setPage(0); setMigration(e.target.value); }}>
+            <MenuItem value="">Tous</MenuItem>
+            <MenuItem value="oui">À migrer</MenuItem>
+            <MenuItem value="non">Non migrés</MenuItem>
           </Select>
         </FormControl>
       </Box>

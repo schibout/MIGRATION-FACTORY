@@ -92,3 +92,14 @@ def test_numero_projet_meme_regle_que_commandes_achat(cur):
                     WHERE h.projet LIKE 'SN%%' AND h.numero_projet IS NOT NULL LIMIT 1""")
     r = cur.fetchone()
     assert r is not None and r['numero_projet'] == r['project_number']
+
+
+def test_a_migrer_si_projet_dans_project_base(cur):
+    """a_migrer = numero_projet present dans clean_data.project_base, sinon FALSE."""
+    cur.execute(f"""SELECT count(*) AS n FROM {HCP} h
+                    WHERE h.a_migrer IS DISTINCT FROM EXISTS (
+                        SELECT 1 FROM clean_data.project_base pb WHERE pb.project_id = h.numero_projet)""")
+    assert cur.fetchone()['n'] == 0
+    cur.execute(f'SELECT count(*) FILTER (WHERE a_migrer) AS oui, count(*) FILTER (WHERE NOT a_migrer) AS non FROM {HCP}')
+    r = cur.fetchone()
+    assert r['oui'] > 0 and r['non'] > 0

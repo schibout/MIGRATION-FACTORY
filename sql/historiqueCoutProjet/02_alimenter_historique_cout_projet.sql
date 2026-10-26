@@ -12,6 +12,8 @@
 --                   cherchee sur l'element d'OTP puis, a defaut, sur le projet
 --                   (OTP numerotes 'SN1503302' : la cle de l'OTP ne resout pas).
 --                   Code SharePoint en double : le plus recemment modifie gagne.
+--   a_migrer      = numero_projet present dans clean_data.project_base
+--                   (projets repris dans IFS) ; FALSE sinon ou sans n° projet.
 -- Retourne le nombre de lignes chargees. Si rpsco est vide (extraction SAP en
 -- cours), la table est laissee telle quelle et un WARNING est emis.
 -- ============================================================================
@@ -30,7 +32,7 @@ BEGIN
     TRUNCATE clean_data.historique_cout_projet;
 
     INSERT INTO clean_data.historique_cout_projet
-        (projet, projet_libelle, responsable, numero_projet, element_otp, otp_libelle, annee, periode,
+        (projet, projet_libelle, responsable, numero_projet, a_migrer, element_otp, otp_libelle, annee, periode,
          reel, plan, budget_annuel, engag_cde, engag_da)
     WITH projet_sharepoint AS (
         SELECT DISTINCT ON (cle) cle, project_number
@@ -74,7 +76,9 @@ BEGIN
           AND r.wrttp IN ('01', '04', '21', '22', '41')
           AND r.gjahr <> '0000'
     )
-    SELECT v.pspid, v.projet_libelle, v.verna, v.numero_projet, v.posid, v.otp_libelle, v.annee, v.periode,
+    SELECT v.pspid, v.projet_libelle, v.verna, v.numero_projet,
+           EXISTS (SELECT 1 FROM clean_data.project_base pb WHERE pb.project_id = v.numero_projet),
+           v.posid, v.otp_libelle, v.annee, v.periode,
            COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '04' AND v.vorga <> 'KOAO'), 0),
            COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '01'), 0),
            COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '41'), 0),

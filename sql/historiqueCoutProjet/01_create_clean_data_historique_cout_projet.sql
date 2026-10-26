@@ -26,3 +26,7 @@ CREATE TABLE IF NOT EXISTS clean_data.historique_cout_projet (
 -- N° projet SharePoint (= project_id IFS) de l'element d'OTP, meme regle que
 -- clean_data.commande_achat_ifs.numero_projet (ajout du 2026-10-26).
 ALTER TABLE clean_data.historique_cout_projet ADD COLUMN IF NOT EXISTS numero_projet text;
+
+-- Indicateur de migration (2026-10-26) : TRUE si le n° projet est repris dans
+-- IFS, c'est-a-dire present dans clean_data.project_base (project_id).
+ALTER TABLE clean_data.historique_cout_projet ADD COLUMN IF NOT EXISTS a_migrer boolean NOT NULL DEFAULT false;

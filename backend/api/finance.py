@@ -783,14 +783,19 @@ def start_ca_sync():
 # module sql/historiqueCoutProjet/, reconstitution ZCOA requete 3 sur RPSCO)
 # ---------------------------------------------------------------------------
 
-# Tables lues par clean_data.alimenter_historique_cout_projet.
+# Tables lues par clean_data.alimenter_historique_cout_projet. Le n° projet vient
+# en plus de raw_data.sharepoint_projets (liste SharePoint « Projets », importee
+# avant le rechargement par « Synchroniser SAP ») et a_migrer de
+# clean_data.project_base (projets repris dans IFS).
 HCP_SAP_TABLES = ['RPSCO', 'PRPS', 'PROJ']
 
 # Colonnes de regroupement par vue ; les mesures sont sommees. numero_projet ne
-# depend que du projet (la cle de l'OTP et celle du projet ne divergent jamais).
+# depend que du projet (la cle de l'OTP et celle du projet ne divergent jamais),
+# a_migrer non plus.
 HCP_CLES = {
-    'projet': ['projet', 'projet_libelle', 'responsable', 'numero_projet'],
-    'otp': ['projet', 'projet_libelle', 'responsable', 'numero_projet', 'element_otp', 'otp_libelle'],
+    'projet': ['projet', 'projet_libelle', 'responsable', 'numero_projet', 'a_migrer'],
+    'otp': ['projet', 'projet_libelle', 'responsable', 'numero_projet', 'a_migrer',
+            'element_otp', 'otp_libelle'],
 }
 HCP_MESURES = ['reel', 'reel_cumule', 'plan', 'budget_annuel', 'engag_cde', 'engag_da']
 HCP_LIBELLE = {
@@ -798,6 +803,7 @@ HCP_LIBELLE = {
     'projet_libelle': 'Désignation projet',
     'responsable': 'Responsable',
     'numero_projet': 'N° projet',
+    'a_migrer': 'À migrer',
     'element_otp': 'Élément OTP',
     'otp_libelle': 'Désignation OTP',
     'annee': 'Année',
@@ -826,11 +832,15 @@ def _hcp_requete(vue):
     search = (request.args.get('search') or '').strip()
     cles = ', '.join(HCP_CLES[vue])
     params = {}
-    interne = ''
+    where = []
     if search:
-        interne = ('WHERE projet ILIKE :s OR projet_libelle ILIKE :s '
-                   'OR responsable ILIKE :s OR element_otp ILIKE :s OR numero_projet ILIKE :s')
+        where.append('(projet ILIKE :s OR projet_libelle ILIKE :s OR responsable ILIKE :s '
+                     'OR element_otp ILIKE :s OR numero_projet ILIKE :s)')
         params['s'] = f'%{search}%'
+    migration = request.args.get('migration')
+    if migration in ('oui', 'non'):
+        where.append('a_migrer' if migration == 'oui' else 'NOT a_migrer')
+    interne = ('WHERE ' + ' AND '.join(where)) if where else ''
 
     externe = []
     for borne, op in (('annee_debut', '>='), ('annee_fin', '<=')):
@@ -868,6 +878,7 @@ def list_historique_couts():
     # reel_cumule n'est pas sommable : les totaux portent sur les autres mesures
     stats = db.session.execute(text(
         'SELECT count(*) AS lignes, count(DISTINCT projet) AS projets, '
+        'count(DISTINCT projet) FILTER (WHERE a_migrer) AS projets_a_migrer, '
         'sum(reel) AS reel, sum(plan) AS plan, sum(budget_annuel) AS budget_annuel, '
         f'sum(engag_cde) AS engag_cde, sum(engag_da) AS engag_da FROM ({sql}) q'),
         params).mappings().one()
@@ -882,7 +893,8 @@ def list_historique_couts():
         'stats': {k: _json(v) for k, v in stats.items()},
         'annees': annees,
         'colonnes': [{'key': c, 'label': HCP_LIBELLE[c],
-                      'kind': 'montant' if c in HCP_MESURES else 'text'}
+                      'kind': 'montant' if c in HCP_MESURES
+                      else 'bool' if c == 'a_migrer' else 'text'}
                      for c in _hcp_colonnes(vue)],
         'sync': _read_status('historique_cout_projet'),
     })
@@ -912,12 +924,27 @@ def get_hcp_sync_status():
 @finance_blueprint.route('/historique-couts/sync', methods=['POST'])
 @jwt_required()
 def start_hcp_sync():
+    extraire = _sync_source() == 'sap'
+
     def load(conn):
+        # « Synchroniser SAP » : la liste SharePoint des projets (n° projet) est
+        # re-importee apres l'extraction SAP. Upsert sur sa propre connexion, donc
+        # visible du rechargement. Echec non bloquant : le n° projet reste celui du
+        # dernier import, signale dans l'etat de la synchro.
+        if extraire:
+            _write_status('historique_cout_projet', step='Import des projets SharePoint', progress=88)
+            try:
+                from services.sharepoint_service import SharePointService
+                res = SharePointService().import_projets_from_sharepoint()
+                avert = None if res.get('db_saved') else '; '.join(res.get('errors') or []) or 'non sauvegarde'
+            except Exception as e:
+                avert = str(e)
+            _write_status('historique_cout_projet', warning=avert and
+                          f'Projets SharePoint non re-importes ({avert}) : n° projet du dernier import')
         return conn.execute(text('SELECT clean_data.alimenter_historique_cout_projet()')).scalar()
 
     return _start_sync('historique_cout_projet', HCP_SAP_TABLES,
-                       'clean_data.historique_cout_projet', load,
-                       extraire=_sync_source() == 'sap')
+                       'clean_data.historique_cout_projet', load, extraire=extraire)
 
 
 # ---------------------------------------------------------------------------
@@ -1022,7 +1049,7 @@ def _start_sync(key, tables, cible, load, extraire=True):
 
     user = str(get_jwt_identity() or 'finance-sync')
     status = _write_status(
-        key, status='running', step='Demarrage', progress=0, error=None, rows=None,
+        key, status='running', step='Demarrage', progress=0, error=None, rows=None, warning=None,
         source='sap' if extraire else 'mf',
         started_at=_now(), finished_at=None, started_by=user, extraction_id=None,
     )
