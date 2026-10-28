@@ -161,25 +161,122 @@
       <tr><td><b>À migrer</b></td><td>Migration Factory</td><td><span class="pill ok">Oui</span> si le n° projet figure dans les projets préparés pour IFS, <span class="pill warn">Non</span> sinon. Voir <a href="#s3">03</a>.</td></tr>
       <tr><td><b>Élément OTP</b></td><td><code>PRPS-POSID</code></td><td>Code de l'élément d'OTP, par exemple <code>SN21009EX</code>. Uniquement dans l'onglet «&nbsp;Par élément d'OTP&nbsp;».</td></tr>
       <tr><td><b>Désignation OTP</b></td><td><code>PRPS-POST1</code></td><td>Libellé de l'élément d'OTP. Uniquement dans l'onglet «&nbsp;Par élément d'OTP&nbsp;».</td></tr>
-      <tr><td><b>Année</b></td><td><code>RPSCO-GJAHR</code></td><td>Exercice SAP.</td></tr>
-      <tr><td><b>Période</b></td><td>colonnes <code>WLP00</code> à <code>WLP16</code></td><td>Mois de l'exercice, de 1 à 12. La période <b>0</b> porte les valeurs annuelles, en pratique le budget annuel. Les périodes 13 à 16 sont les périodes spéciales de clôture, vides aujourd'hui.</td></tr>
+      <tr><td><b>Année</b></td><td><code>RPSCO-GJAHR</code></td><td>Exercice SAP, de juillet à juin&nbsp;: l'exercice 2027 va du 1<sup>er</sup> juillet 2026 au 30 juin 2027. Voir le calendrier ci-dessous.</td></tr>
+      <tr><td><b>Période</b></td><td>colonnes <code>WLP00</code> à <code>WLP16</code></td><td>Mois dans l'exercice, de 1 (juillet) à 12 (juin). La période <b>0</b> porte les valeurs annuelles, en pratique le budget annuel. Les périodes 13 à 16 sont les périodes spéciales de clôture, vides aujourd'hui.</td></tr>
     </table>
 
-    <h3>Montants</h3>
+    <h3>Calendrier : exercice et période</h3>
+    <p>
+      L'exercice de la société STJN ne suit pas l'année civile&nbsp;: il va de <b>juillet à juin</b> (variante
+      d'exercice SAP <code>Z2</code>). L'exercice <b>2027</b> a ouvert le 1<sup>er</sup> juillet 2026 et se clôt le
+      30 juin 2027. La colonne Année porte l'exercice, la colonne Période le mois dans l'exercice.
+    </p>
     <table>
-      <tr><th>Colonne</th><th>Type de valeur</th><th>Signification</th></tr>
-      <tr><td><b>Réel</b></td><td><code>04</code></td><td>Coûts réels comptabilisés sur le projet dans la période. Les répartitions (opération SAP <code>KOAO</code>) sont exclues&nbsp;: elles déplacent des coûts déjà comptés ailleurs.</td></tr>
-      <tr><td><b>Réel cumulé</b></td><td>calculé</td><td>Somme du réel depuis la première période connue du projet, ou de l'élément d'OTP, jusqu'à la ligne. Le cumul part toujours du début de l'historique, même quand un filtre d'années est posé.</td></tr>
-      <tr><td><b>Plan</b></td><td><code>01</code></td><td>Planification de coûts saisie dans SAP.</td></tr>
-      <tr><td><b>Budget annuel</b></td><td><code>41</code></td><td>Budget du projet ventilé par année, porté par la période 0. Le budget global sans année n'est pas repris car il n'a pas de période.</td></tr>
-      <tr><td><b>Commandes non réceptionnées</b></td><td><code>22</code></td><td>Engagement des commandes d'achat imputées au projet et pas encore réceptionnées.</td></tr>
-      <tr><td><b>Demandes d'achat</b></td><td><code>21</code></td><td>Engagement des demandes d'achat imputées au projet et pas encore transformées en commande.</td></tr>
+      <tr><th>Période</th><th>Mois (exercice N)</th><th>Période</th><th>Mois (exercice N)</th></tr>
+      <tr><td class="num">0</td><td>valeurs annuelles, sans mois</td><td class="num">7</td><td>janvier N</td></tr>
+      <tr><td class="num">1</td><td>juillet N-1</td><td class="num">8</td><td>février N</td></tr>
+      <tr><td class="num">2</td><td>août N-1</td><td class="num">9</td><td>mars N</td></tr>
+      <tr><td class="num">3</td><td>septembre N-1</td><td class="num">10</td><td>avril N</td></tr>
+      <tr><td class="num">4</td><td>octobre N-1</td><td class="num">11</td><td>mai N</td></tr>
+      <tr><td class="num">5</td><td>novembre N-1</td><td class="num">12</td><td>juin N</td></tr>
+      <tr><td class="num">6</td><td>décembre N-1</td><td class="num">13 à 16</td><td>périodes spéciales de clôture, vides aujourd'hui</td></tr>
     </table>
-    <div class="callout warn"><span class="ic">!</span><div>
-      Les engagements sont rangés par SAP dans la période de <b>livraison prévue</b>, pas dans la période où la
-      commande a été passée. Ils représentent l'encours actuel&nbsp;: une ligne de 2027 peut porter une commande
-      passée en 2026.
+    <div class="callout"><span class="ic">i</span><div>
+      Exemple&nbsp;: la ligne <b>2027 / période 4</b> correspond à <b>octobre 2026</b>, la ligne <b>2026 / période 12</b>
+      à <b>juin 2026</b>. Le dernier réel comptabilisé sur les projets STJN est en 2027 période 4, le mois en cours.
     </div></div>
+
+    <h3>Les montants en détail</h3>
+    <p class="intro">
+      Tous les montants viennent de la table SAP <code>RPSCO</code>, la base d'informations projet que SAP tient à jour
+      à chaque écriture sur un élément d'OTP. Chaque ligne de RPSCO porte un <b>type de valeur</b> (<code>WRTTP</code>),
+      une <b>opération</b> d'origine (<code>VORGA</code>) et un montant par période (<code>WLP00</code> à <code>WLP16</code>).
+    </p>
+    <p>Le calcul est le même pour toutes les colonnes&nbsp;:</p>
+    <ol>
+      <li>On garde le ledger <code>0003</code> en version <code>000</code> (version réelle), société STJN. Les montants sont en euros, devise de la société.</li>
+      <li>Pour un élément d'OTP, un exercice et une période, on additionne les montants du type de valeur de la colonne, toutes opérations confondues sauf exception indiquée.</li>
+      <li>Dans l'onglet «&nbsp;Par projet&nbsp;», on additionne ensuite tous les éléments d'OTP du projet.</li>
+      <li>Le signe SAP est conservé&nbsp;: un montant négatif est une annulation, un avoir ou une correction.</li>
+    </ol>
+
+    <table>
+      <tr><th>Colonne</th><th>Type de valeur</th><th>Opérations SAP incluses</th><th class="num">Total STJN</th></tr>
+      <tr><td><b>Réel</b></td><td><code>04</code></td><td><code>COIN</code>, <code>RKU1</code>, <code>COIE</code>. Exclue&nbsp;: <code>KOAO</code></td><td class="num">270,76 M€</td></tr>
+      <tr><td><b>Réel cumulé</b></td><td>calculé</td><td>cumul de la colonne Réel</td><td class="num">&mdash;</td></tr>
+      <tr><td><b>Plan</b></td><td><code>01</code></td><td><code>KSTP</code></td><td class="num">234,21 M€</td></tr>
+      <tr><td><b>Budget annuel</b></td><td><code>41</code></td><td><code>KBUD</code>, hors budget global</td><td class="num">246,30 M€</td></tr>
+      <tr><td><b>Commandes non réceptionnées</b></td><td><code>22</code></td><td><code>RMBE</code></td><td class="num">4,74 M€</td></tr>
+      <tr><td><b>Demandes d'achat</b></td><td><code>21</code></td><td><code>RMBA</code></td><td class="num">2,82 M€</td></tr>
+    </table>
+
+    <h3>Réel</h3>
+    <ul>
+      <li><b>Ce que c'est.</b> Les coûts effectivement comptabilisés sur le projet dans le mois&nbsp;: factures fournisseurs imputées, réceptions valorisées, prestations, frais.</li>
+      <li><b>Source.</b> Type de valeur <code>04</code>. Presque tout vient de l'opération <code>COIN</code>, les écritures comptables passées sur l'élément d'OTP (270,62 M€). S'y ajoutent <code>RKU1</code>, les réimputations manuelles de coûts (0,14 M€), et <code>COIE</code>, trois corrections pour −1&nbsp;319 €.</li>
+      <li><b>Calcul.</b> Somme des montants de la période, hors opération <code>KOAO</code>.</li>
+      <li><b>Pourquoi exclure KOAO.</b> <code>KOAO</code> est la répartition réelle&nbsp;: elle transfère des coûts du projet vers un autre objet, par exemple une immobilisation à la mise en service. La garder ferait baisser le réel du montant transféré, alors que la dépense a bien eu lieu sur le projet. Une seule écriture est concernée aujourd'hui, pour −4&nbsp;187 €.</li>
+      <li><b>À savoir.</b> Le réel est daté à la date comptable de l'écriture, pas à la date de la commande.</li>
+    </ul>
+
+    <h3>Réel cumulé</h3>
+    <ul>
+      <li><b>Ce que c'est.</b> Le total des coûts réels du projet depuis sa première dépense jusqu'au mois de la ligne. Il permet de lire la consommation du projet à une date donnée.</li>
+      <li><b>Calcul.</b> Somme de la colonne Réel sur toutes les lignes du même projet, triées par exercice puis période, jusqu'à la ligne incluse. Dans l'onglet «&nbsp;Par élément d'OTP&nbsp;», le cumul se fait par élément d'OTP.</li>
+      <li><b>Avec un filtre d'années.</b> Le cumul part toujours du début de l'historique. Une ligne de 2026 affiche donc le total depuis le début du projet, pas depuis janvier.</li>
+      <li><b>Avec la recherche.</b> La recherche filtre des projets entiers, le cumul reste juste. Ne pas additionner la colonne Réel cumulé&nbsp;: c'est un solde à date, pas un flux. Pour cette raison il n'a pas de pastille de total.</li>
+    </ul>
+
+    <h3>Plan</h3>
+    <ul>
+      <li><b>Ce que c'est.</b> Les coûts prévus pour le projet, tels que saisis par le chef de projet dans SAP. C'est une estimation, sans valeur d'autorisation.</li>
+      <li><b>Source.</b> Type de valeur <code>01</code>, opération <code>KSTP</code> (planification manuelle des coûts).</li>
+      <li><b>Calcul.</b> Somme des montants de la période. Quand le plan est saisi à l'année, il apparaît sur la période 0.</li>
+      <li><b>À savoir.</b> Le plan n'est pas tenu sur tous les projets. Une ligne à zéro ne veut pas dire que rien n'était prévu.</li>
+    </ul>
+
+    <h3>Budget annuel</h3>
+    <ul>
+      <li><b>Ce que c'est.</b> L'enveloppe autorisée pour le projet, répartie par exercice. Contrairement au plan, c'est un montant validé qui sert au contrôle des dépenses.</li>
+      <li><b>Source.</b> Type de valeur <code>41</code>, opération <code>KBUD</code> (budget initial).</li>
+      <li><b>Calcul.</b> Somme des montants de l'exercice. SAP range le budget annuel sur la <b>période 0</b>&nbsp;: il n'a pas de mois.</li>
+      <li><b>Budget global exclu.</b> SAP tient aussi un budget global pour toute la durée du projet, sur un exercice «&nbsp;0000&nbsp;». Il n'a ni année ni période, il n'est donc pas repris ici.</li>
+      <li><b>Pour comparer au réel.</b> Additionner le budget annuel et le réel sur le même exercice, toutes périodes confondues.</li>
+    </ul>
+
+    <h3>Commandes non réceptionnées</h3>
+    <ul>
+      <li><b>Ce que c'est.</b> Le montant des commandes d'achat imputées au projet qui ne sont pas encore réceptionnées. C'est de la dépense engagée, pas encore comptabilisée en réel.</li>
+      <li><b>Source.</b> Type de valeur <code>22</code>, opération <code>RMBE</code> (engagement de commande).</li>
+      <li><b>Calcul.</b> Somme des engagements de la période. SAP réduit l'engagement à chaque réception ou facture&nbsp;: le montant affiché est le reste à recevoir.</li>
+      <li><b>Date.</b> L'engagement est rangé dans la période de <b>livraison prévue</b>, pas dans la période de la commande. Des lignes futures, en 2027 ou 2028, sont donc normales.</li>
+      <li><b>À savoir.</b> C'est l'encours d'aujourd'hui. On ne peut pas retrouver ce qui était engagé à une date passée.</li>
+    </ul>
+
+    <h3>Demandes d'achat</h3>
+    <ul>
+      <li><b>Ce que c'est.</b> Le montant des demandes d'achat imputées au projet et pas encore transformées en commande. C'est un engagement prévisionnel, avant la commande.</li>
+      <li><b>Source.</b> Type de valeur <code>21</code>, opération <code>RMBA</code> (engagement de demande d'achat).</li>
+      <li><b>Calcul.</b> Somme des engagements de la période. Quand la demande devient une commande, SAP transfère le montant vers Commandes non réceptionnées.</li>
+      <li><b>Date et encours.</b> Mêmes règles que pour les commandes&nbsp;: période de livraison souhaitée, encours d'aujourd'hui.</li>
+    </ul>
+
+    <h3>Exemple&nbsp;: projet SN21009</h3>
+    <p>Extrait de l'onglet «&nbsp;Par projet&nbsp;», montants en euros.</p>
+    <table>
+      <tr><th>Exercice / période</th><th>Mois</th><th class="num">Réel</th><th class="num">Réel cumulé</th><th class="num">Budget annuel</th><th class="num">Cdes non récep.</th><th class="num">DA</th></tr>
+      <tr><td>2021 / 0</td><td>annuel</td><td class="num">0,00</td><td class="num">0,00</td><td class="num">709&nbsp;000,00</td><td class="num">0,00</td><td class="num">0,00</td></tr>
+      <tr><td>2021 / 3</td><td>sept. 2020</td><td class="num">10&nbsp;700,00</td><td class="num">10&nbsp;700,00</td><td class="num">0,00</td><td class="num">0,00</td><td class="num">0,00</td></tr>
+      <tr><td>2025 / 12</td><td>juin 2025</td><td class="num">3&nbsp;975,50</td><td class="num">2&nbsp;843&nbsp;578,16</td><td class="num">0,00</td><td class="num">0,00</td><td class="num">0,00</td></tr>
+      <tr><td>2026 / 2</td><td>août 2025</td><td class="num">339&nbsp;624,00</td><td class="num">3&nbsp;183&nbsp;202,16</td><td class="num">0,00</td><td class="num">0,00</td><td class="num">0,00</td></tr>
+      <tr><td>2027 / 4</td><td>oct. 2026</td><td class="num">240&nbsp;906,10</td><td class="num">4&nbsp;742&nbsp;921,73</td><td class="num">0,00</td><td class="num">0,00</td><td class="num">22&nbsp;000,00</td></tr>
+      <tr><td>2028 / 3</td><td>sept. 2027</td><td class="num">0,00</td><td class="num">4&nbsp;742&nbsp;921,73</td><td class="num">0,00</td><td class="num">369&nbsp;385,00</td><td class="num">0,00</td></tr>
+    </table>
+    <ul>
+      <li>Le réel cumulé d'août 2025 vaut le cumul de juin 2025 plus le réel du mois&nbsp;: 2&nbsp;843&nbsp;578,16 + 339&nbsp;624,00 = 3&nbsp;183&nbsp;202,16.</li>
+      <li>Le budget annuel n'apparaît que sur les lignes de période 0, une par exercice budgété.</li>
+      <li>La ligne de septembre 2027 ne porte que de l'engagement&nbsp;: une commande dont la livraison est prévue à cette date. Le réel cumulé y reste égal au dernier réel connu.</li>
+    </ul>
   </section>
 
   <!-- 03 -->
