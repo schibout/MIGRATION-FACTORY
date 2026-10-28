@@ -79,6 +79,9 @@ files=(
     # l'ecran /configuration/valeurs-defaut des le premier chargement.
     "../../migrations/065_seed_valeur_defaut_date_arrete_fournisseurs.sql"
     "01_alimenter_ifs_fournisseurs.sql"
+    # Perimetre fichier + SAP_NOUVEAU (colonne source) ; reutilise la
+    # fonction bancaire et la table d'affectation du script 01.
+    "01b_alimenter_ifs_fournisseurs_perimetre.sql"
     # Mapping LIFNR SAP -> numero de compte IFS, lu par les modules
     # inventory (purchase_part_supplier) et operation (jt_task,
     # maint_material_req_line). Depend de clean_data.ifs_fournisseurs.
