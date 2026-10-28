@@ -7,9 +7,9 @@
 --   SAP_NOUVEAU : absent du fichier, cree dans SAP (lfa1.erdat) a partir de la
 --                 date d'arrete, non marque pour suppression
 -- Memes regles que clean_data.ifs_fournisseurs (script 01) : fichier > SAP,
--- coordonnees bancaires SAP, numero IFS fige par ifs_fournisseur_id_map.
--- Prerequis : script 01 compile (fn_coordonnees_bancaires_sap, sequence et
--- table d'affectation des numeros IFS).
+-- coordonnees bancaires SAP. Numero IFS : uniquement celui du fichier (NULL
+-- pour un SAP_NOUVEAU) ; ifs_fournisseur_id_map n'est ni lue ni alimentee.
+-- Prerequis : script 01 compile (fn_coordonnees_bancaires_sap).
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS clean_data.ifs_fournisseurs_perimetre (
@@ -92,39 +92,6 @@ DECLARE
    v_nb_fichier INTEGER;
    v_nb_sap INTEGER;
 BEGIN
-   -- =========================================================================
-   -- 1. Numeros IFS : table d'affectation partagee avec ifs_fournisseurs, un
-   --    fournisseur garde donc le meme numero dans les deux tables.
-   -- =========================================================================
-   -- 1.a Numeros du fichier, jamais reecrits
-   INSERT INTO clean_data.ifs_fournisseur_id_map (numero_compte_sap, numero_compte_ifs, source)
-   SELECT LPAD(TRIM(sf.numero_compte_sap), 10, '0'), sf.numero_compte_ifs::INTEGER, 'FICHIER'
-     FROM raw_data.selection_fournisseurs_stg sf
-    WHERE TRIM(COALESCE(sf.numero_compte_ifs, '')) ~ '^[0-9]+$'
-   ON CONFLICT (numero_compte_sap) DO NOTHING;
-
-   -- 1.b Sequence recalee au-dessus du dernier numero attribue
-   PERFORM setval('clean_data.seq_numero_compte_ifs',
-                  COALESCE((SELECT MAX(numero_compte_ifs) FROM clean_data.ifs_fournisseur_id_map), 600000));
-
-   -- 1.c Nouveau numero pour les fournisseurs SAP posterieurs a l'arrete,
-   --     dans l'ordre du LIFNR
-   INSERT INTO clean_data.ifs_fournisseur_id_map (numero_compte_sap, numero_compte_ifs, source)
-   SELECT t.lifnr, nextval('clean_data.seq_numero_compte_ifs'), 'SAP_NOUVEAU'
-     FROM (
-         SELECT a.lifnr::text AS lifnr
-           FROM raw_data.lfa1 a
-          WHERE clean_data.fn_date_sap(a.erdat) >= v_date_arrete
-            AND COALESCE(a.loevm, '') <> 'X'
-            AND NOT EXISTS (SELECT 1 FROM clean_data.ifs_fournisseur_id_map mp
-                             WHERE mp.numero_compte_sap = a.lifnr::text)
-          ORDER BY a.lifnr::text
-     ) t
-   ON CONFLICT (numero_compte_sap) DO NOTHING;
-
-   -- =========================================================================
-   -- 2. Rechargement complet
-   -- =========================================================================
    TRUNCATE TABLE clean_data.ifs_fournisseurs_perimetre;
 
    INSERT INTO clean_data.ifs_fournisseurs_perimetre (
@@ -163,7 +130,8 @@ BEGIN
    SELECT
       p.lifnr,
       p.source,
-      COALESCE(mp.numero_compte_ifs::text, NULLIF(TRIM(sf.numero_compte_ifs), '')),
+      -- Numero IFS : uniquement celui du fichier, NULL pour un SAP_NOUVEAU
+      NULLIF(TRIM(sf.numero_compte_ifs), ''),
       public.get_default_value('clean_data.ifs_fournisseurs', 'company'),
       COALESCE(NULLIF(TRIM(a.adrnr), ''), public.get_default_value('clean_data.ifs_fournisseurs', 'address_id')),
 
@@ -213,7 +181,6 @@ BEGIN
       banque.titulaire
    FROM perimetre p
    LEFT JOIN fichier sf ON sf.cle_lifnr = p.lifnr
-   LEFT JOIN clean_data.ifs_fournisseur_id_map mp ON mp.numero_compte_sap = p.lifnr
    LEFT JOIN raw_data.lfa1 a ON a.lifnr::text = p.lifnr
    LEFT JOIN LATERAL (
        SELECT string_agg(DISTINCT b.bukrs::text, ', ' ORDER BY b.bukrs::text) AS societe,
