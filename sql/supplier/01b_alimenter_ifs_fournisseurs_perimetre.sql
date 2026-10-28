@@ -133,6 +133,9 @@ BEGIN
          FROM raw_data.lfa1 a
         WHERE clean_data.fn_date_sap(a.erdat) >= v_date_arrete
           AND COALESCE(a.loevm, '') <> 'X'
+          -- Employes geres en fournisseur exclus (groupes de comptes T077Y :
+          -- ZPER / ZPE1 « Personnel (AGORA) gere en fourn », P001 « Fournisseurs personnel »)
+          AND COALESCE(a.ktokk, '') NOT IN ('ZPER', 'ZPE1', 'P001')
           AND NOT EXISTS (SELECT 1 FROM fichier f WHERE f.cle_lifnr = a.lifnr::text)
    )
    -- Une seule requete pour les deux sources : pour un SAP_NOUVEAU, sf est

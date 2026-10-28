@@ -196,7 +196,7 @@ const FinanceFournisseurs: React.FC = () => {
 
       <Alert severity="info" sx={{ mb: 2 }}>
         FICHIER = fournisseur du fichier de sélection (valeurs du fichier, complétées par SAP) ; SAP_NOUVEAU = fournisseur
-        absent du fichier, créé dans SAP à partir de la date d'arrêté et non marqué pour suppression (données SAP seules,
+        absent du fichier, créé dans SAP à partir de la date d'arrêté, non marqué pour suppression et hors employés (groupes de comptes ZPER, ZPE1, P001) (données SAP seules,
         sans N° IFS). Coordonnées bancaires : LFBK / TIBAN / BNKA.
       </Alert>
 
