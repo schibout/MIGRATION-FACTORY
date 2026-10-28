@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS clean_data.ifs_fournisseurs_perimetre (
     CONSTRAINT pk_ifs_fournisseurs_perimetre PRIMARY KEY (numero_compte_fournisseur)
 );
 
+-- Date d'arrete utilisee au dernier chargement (ecran Finance > Fournisseurs)
+ALTER TABLE clean_data.ifs_fournisseurs_perimetre ADD COLUMN IF NOT EXISTS date_arrete DATE;
+
 COMMENT ON TABLE clean_data.ifs_fournisseurs_perimetre IS
     'Perimetre fournisseurs IFS : fichier de selection + fournisseurs crees dans SAP apres la date d''arrete. Rechargee en entier par clean_data.alimenter_ifs_fournisseurs_perimetre().';
 COMMENT ON COLUMN clean_data.ifs_fournisseurs_perimetre.source IS
@@ -80,13 +83,19 @@ AS $function$
     END;
 $function$;
 
-CREATE OR REPLACE FUNCTION clean_data.alimenter_ifs_fournisseurs_perimetre()
- RETURNS void
+-- Ancienne signature sans parametre : sinon un appel sans argument serait ambigu
+DROP FUNCTION IF EXISTS clean_data.alimenter_ifs_fournisseurs_perimetre();
+
+-- p_date_arrete : saisie dans l'ecran Finance > Fournisseurs ; NULL = valeur
+-- de l'ecran /configuration/valeurs-defaut (meme parametre que le script 01).
+-- Retourne le nombre de lignes chargees.
+CREATE OR REPLACE FUNCTION clean_data.alimenter_ifs_fournisseurs_perimetre(p_date_arrete DATE DEFAULT NULL)
+ RETURNS integer
  LANGUAGE plpgsql
 AS $function$
 DECLARE
-   -- Meme parametre que le script 01 (ecran /configuration/valeurs-defaut)
    v_date_arrete CONSTANT DATE := COALESCE(
+       p_date_arrete,
        NULLIF(TRIM(public.get_default_value('clean_data.ifs_fournisseurs', 'date_arrete')), '')::DATE,
        DATE '2025-10-07');
    v_nb_fichier INTEGER;
@@ -102,7 +111,8 @@ BEGIN
       condition_paiement_sap, mode_paiement, incoterms_1, incoterms_2,
       telephone_1, telephone_2, telephone_3, email, critere_recherche, langue, language_sap,
       destinataire_paiement, date_creation_sap,
-      iban_paiement, swift_bic, nom_banque, numero_compte_bancaire, code_banque, pays_banque, titulaire_compte
+      iban_paiement, swift_bic, nom_banque, numero_compte_bancaire, code_banque, pays_banque, titulaire_compte,
+      date_arrete
    )
    WITH fichier AS (
        -- Le staging s'empile a chaque import : une ligne par fournisseur, la
@@ -178,7 +188,8 @@ BEGIN
       banque.compte,
       banque.code_banque,
       banque.pays_banque,
-      banque.titulaire
+      banque.titulaire,
+      v_date_arrete
    FROM perimetre p
    LEFT JOIN fichier sf ON sf.cle_lifnr = p.lifnr
    LEFT JOIN raw_data.lfa1 a ON a.lifnr::text = p.lifnr
@@ -207,5 +218,6 @@ BEGIN
 
    RAISE NOTICE 'ifs_fournisseurs_perimetre : % FICHIER + % SAP_NOUVEAU (crees depuis le %) = % lignes',
                 v_nb_fichier, v_nb_sap, v_date_arrete, v_nb_fichier + v_nb_sap;
+   RETURN v_nb_fichier + v_nb_sap;
 END;
 $function$;

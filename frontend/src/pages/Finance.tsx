@@ -3,6 +3,7 @@ import {
     AccountTree as ComptesIcon,
     MenuBook as GuideIcon,
     ShoppingCart as CommandeAchatIcon,
+    Store as FournisseurIcon,
     Timeline as HistoriqueIcon,
     Euro as FinanceIcon,
 } from '@mui/icons-material';
@@ -41,6 +42,12 @@ const financeItems = [
     path: '/finance/historique-couts',
     icon: <HistoriqueIcon sx={{ fontSize: 48, color: '#3949ab' }} />,
     description: 'Réel, plan, budget annuel et engagements par projet SAP, année et période (RPSCO), synchronisables depuis SAP',
+  },
+  {
+    title: 'Fournisseurs',
+    path: '/finance/fournisseurs',
+    icon: <FournisseurIcon sx={{ fontSize: 48, color: '#6d4c41' }} />,
+    description: 'Fournisseurs du fichier de sélection + créés dans SAP après la date d\'arrêté (paramétrable), synchronisables depuis SAP',
   },
 ];
 

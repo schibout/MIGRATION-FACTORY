@@ -30,6 +30,11 @@ Historique des couts par projet (clean_data.historique_cout_projet, RPSCO) :
   GET  /api/v1/finance/historique-couts/export.xlsx
   GET|POST /api/v1/finance/historique-couts/sync   (RPSCO, PRPS, PROJ)
   GET  /api/v1/finance/comptes          conversion des comptes (FA_ACCOUNT) + comptes des fiches
+Fournisseurs (clean_data.ifs_fournisseurs_perimetre : fichier + crees dans SAP apres l'arrete) :
+  GET  /api/v1/finance/fournisseurs     filtres search, source (FICHIER | SAP_NOUVEAU)
+  GET  /api/v1/finance/fournisseurs/export.xlsx
+  GET|POST /api/v1/finance/fournisseurs/sync   corps {source, date_arrete} (LFA1, LFB1,
+                                         LFM1, LFBK, TIBAN, BNKA)
 """
 import io
 import json
@@ -945,6 +950,149 @@ def start_hcp_sync():
 
     return _start_sync('historique_cout_projet', HCP_SAP_TABLES,
                        'clean_data.historique_cout_projet', load, extraire=extraire)
+
+
+# ---------------------------------------------------------------------------
+# Fournisseurs (clean_data.ifs_fournisseurs_perimetre, sql/supplier/01b_*) :
+# fichier de selection + fournisseurs crees dans SAP depuis la date d'arrete
+# ---------------------------------------------------------------------------
+
+# Tables SAP lues par clean_data.alimenter_ifs_fournisseurs_perimetre (le
+# fichier de selection, raw_data.selection_fournisseurs_stg, s'importe a part).
+FOURN_SAP_TABLES = ['LFA1', 'LFB1', 'LFM1', 'LFBK', 'TIBAN', 'BNKA']
+
+FOURN_LIBELLE = {
+    'numero_compte_fournisseur': 'N° fournisseur SAP',
+    'source': 'Source',
+    'numero_compte_ifs': 'N° IFS',
+    'nom_1': 'Nom',
+    'rue': 'Rue',
+    'complement_adresse': "Complément d'adresse",
+    'code_postal': 'Code postal',
+    'localite': 'Localité',
+    'cle_pays': 'Pays',
+    'date_creation_sap': 'Date de création SAP',
+    'siret': 'SIRET',
+    'numero_siren': 'SIREN',
+    'tva': 'N° TVA',
+    'code_tva_ifs': 'Code TVA IFS',
+    'code_tva_sap': 'Code TVA SAP',
+    'france_etranger': 'France / étranger',
+    'company': 'Société IFS',
+    'address_id': 'N° adresse',
+    'societe': 'Sociétés SAP',
+    'organisation_achats': 'Organisation achats',
+    'conditions_paiement_compta': 'Conditions de paiement compta',
+    'conditions_paiement_achats': 'Conditions de paiement achats',
+    'condition_paiement_sap': 'Condition de paiement SAP',
+    'mode_paiement': 'Mode de paiement',
+    'incoterms_1': 'Incoterm',
+    'incoterms_2': 'Lieu incoterm',
+    'telephone_1': 'Téléphone 1',
+    'telephone_2': 'Téléphone 2',
+    'telephone_3': 'Téléphone 3',
+    'email': 'E-mail',
+    'critere_recherche': 'Critère de recherche',
+    'langue': 'Langue (fichier)',
+    'language_sap': 'Langue IFS',
+    'destinataire_paiement': 'Destinataire du paiement',
+    'iban_paiement': 'IBAN',
+    'swift_bic': 'SWIFT / BIC',
+    'nom_banque': 'Banque',
+    'numero_compte_bancaire': 'N° de compte bancaire',
+    'code_banque': 'Code banque',
+    'pays_banque': 'Pays banque',
+    'titulaire_compte': 'Titulaire du compte',
+}
+FOURN_COLONNES = list(FOURN_LIBELLE)
+
+
+def _fourn_filtres():
+    where, params = [], {}
+    search = (request.args.get('search') or '').strip()
+    if search:
+        where.append('(' + ' OR '.join(f'{c} ILIKE :s' for c in (
+            'numero_compte_fournisseur', 'numero_compte_ifs', 'nom_1', 'localite',
+            'siret', 'tva', 'critere_recherche')) + ')')
+        params['s'] = f'%{search}%'
+    if request.args.get('source') in ('FICHIER', 'SAP_NOUVEAU'):
+        where.append('source = :source')
+        params['source'] = request.args['source']
+    return ('WHERE ' + ' AND '.join(where)) if where else '', params
+
+
+def _fourn_sql(clause):
+    return (f'SELECT {", ".join(FOURN_COLONNES)} FROM clean_data.ifs_fournisseurs_perimetre '
+            f'{clause} ORDER BY source, numero_compte_fournisseur')
+
+
+@finance_blueprint.route('/fournisseurs', methods=['GET'])
+@jwt_required()
+def list_fournisseurs():
+    page = max(int(request.args.get('page', 1)), 1)
+    page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
+    clause, params = _fourn_filtres()
+    rows = db.session.execute(
+        text(f'{_fourn_sql(clause)} LIMIT :limit OFFSET :offset'),
+        {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
+    total = db.session.execute(text(
+        f'SELECT count(*) FROM clean_data.ifs_fournisseurs_perimetre {clause}'), params).scalar()
+    # Date du dernier chargement, a defaut celle de l'ecran Valeurs par defaut
+    stats = db.session.execute(text(
+        "SELECT count(*) AS total, count(*) FILTER (WHERE source = 'FICHIER') AS fichier, "
+        "count(*) FILTER (WHERE source = 'SAP_NOUVEAU') AS sap_nouveau, "
+        "COALESCE(max(date_arrete), NULLIF(TRIM(public.get_default_value("
+        "'clean_data.ifs_fournisseurs', 'date_arrete')), '')::date) AS date_arrete "
+        "FROM clean_data.ifs_fournisseurs_perimetre")).mappings().one()
+
+    return jsonify({
+        'rows': [{k: _json(v) for k, v in r.items()} for r in rows],
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'stats': {k: _json(v) for k, v in stats.items()},
+        'colonnes': [{'key': c, 'label': FOURN_LIBELLE[c],
+                      'kind': 'date' if c.startswith('date_') else 'text'} for c in FOURN_COLONNES],
+        'sync': _read_status('fournisseurs'),
+    })
+
+
+@finance_blueprint.route('/fournisseurs/export.xlsx', methods=['GET'])
+@jwt_required()
+def export_fournisseurs_excel():
+    from openpyxl import Workbook
+
+    clause, params = _fourn_filtres()
+    rows = db.session.execute(text(_fourn_sql(clause)), params).all()
+    db.session.commit()  # liberer la transaction de lecture avant la generation
+    wb = Workbook()
+    _feuille_tableau(wb.active, 'Fournisseurs',
+                     [(c, FOURN_LIBELLE[c]) for c in FOURN_COLONNES], rows, set())
+    return _envoyer(wb, 'fournisseurs')
+
+
+@finance_blueprint.route('/fournisseurs/sync', methods=['GET'])
+@jwt_required()
+def get_fourn_sync_status():
+    return jsonify(_read_status('fournisseurs') or {'status': 'never'})
+
+
+@finance_blueprint.route('/fournisseurs/sync', methods=['POST'])
+@jwt_required()
+def start_fourn_sync():
+    """{"source": "sap"|"mf", "date_arrete": "YYYY-MM-DD"} : fournisseurs SAP crees
+    a partir de date_arrete (absente = valeur de l'ecran Valeurs par defaut)."""
+    saisie = (request.get_json(silent=True) or {}).get('date_arrete') or None
+    try:
+        date_arrete = date.fromisoformat(saisie) if saisie else None
+    except (TypeError, ValueError):
+        return jsonify({'error': f"Date d'arrêté invalide : {saisie}"}), 400
+
+    return _start_sync('fournisseurs', FOURN_SAP_TABLES, 'clean_data.ifs_fournisseurs_perimetre',
+                       lambda conn: conn.execute(
+                           text('SELECT clean_data.alimenter_ifs_fournisseurs_perimetre(:d)'),
+                           {'d': date_arrete}).scalar(),
+                       extraire=_sync_source() == 'sap')
 
 
 # ---------------------------------------------------------------------------
