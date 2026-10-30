@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance : fournisseurs</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #F6F7FA; --surface: #FFFFFF; --surface-sunken: #EEF1F6;
+    --ink: #17202B; --ink-soft: #4C5666; --ink-faint: #7C8698; --line: #DDE2EA;
+    --accent: #2454C7; --accent-ink: #17347A; --accent-soft: #E7EDFB; --accent-soft-line: #C6D4F5;
+    --success: #187A57; --success-soft: #E3F5EC; --success-line: #BFE6D3;
+    --amber: #9C6B0B; --amber-soft: #FBF0DB; --amber-line: #EFD6A0;
+    --shadow: 0 1px 2px rgba(23,32,43,0.04), 0 8px 24px -12px rgba(23,32,43,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10141C; --surface: #171D28; --surface-sunken: #131822;
+      --ink: #E8ECF3; --ink-soft: #A7B0C0; --ink-faint: #737E91; --line: #262E3C;
+      --accent: #7CA0FF; --accent-ink: #C4D4FF; --accent-soft: #1B2947; --accent-soft-line: #2C3F6C;
+      --success: #4FCB9B; --success-soft: #143327; --success-line: #1F5A44;
+      --amber: #E3B255; --amber-soft: #34290F; --amber-line: #5A4517;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10141C; --surface: #171D28; --surface-sunken: #131822;
+    --ink: #E8ECF3; --ink-soft: #A7B0C0; --ink-faint: #737E91; --line: #262E3C;
+    --accent: #7CA0FF; --accent-ink: #C4D4FF; --accent-soft: #1B2947; --accent-soft-line: #2C3F6C;
+    --success: #4FCB9B; --success-soft: #143327; --success-line: #1F5A44;
+    --amber: #E3B255; --amber-soft: #34290F; --amber-line: #5A4517;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.85em; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.45em; color: var(--accent-ink); white-space: nowrap; }
+  a { color: var(--accent); }
+  .masthead { padding: 3.2rem 1.5rem 2.4rem; border-bottom: 1px solid var(--line); background: radial-gradient(1100px 420px at 12% -10%, var(--accent-soft) 0%, transparent 60%); }
+  .masthead-inner { max-width: 920px; margin: 0 auto; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-soft-line); padding: 0.35rem 0.7rem; border-radius: 999px; margin-bottom: 1.2rem; }
+  h1 { font-size: clamp(2rem, 4vw, 2.7rem); line-height: 1.1; letter-spacing: -0.015em; margin: 0 0 0.9rem; font-weight: 700; text-wrap: balance; }
+  .subtitle { font-size: 1.05rem; color: var(--ink-soft); max-width: 66ch; margin: 0 0 1.6rem; }
+  .flow-strip { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .flow-strip .node { font-family: "IBM Plex Mono", monospace; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); padding: 0.4rem 0.75rem; border-radius: 7px; box-shadow: var(--shadow); }
+  .flow-strip .arrow { color: var(--ink-faint); }
+  .layout { max-width: 920px; margin: 0 auto; padding: 2.6rem 1.5rem 5rem; }
+  .toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; margin-bottom: 3rem; }
+  .toc a { text-decoration: none; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem 0.7rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .toc a:hover { border-color: var(--accent-soft-line); }
+  .toc .n { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); }
+  .toc .t { font-size: 0.82rem; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  section.step { padding-bottom: 2.6rem; margin-bottom: 2.6rem; border-bottom: 1px solid var(--line); scroll-margin-top: 1.5rem; }
+  section.step:last-of-type { border-bottom: none; }
+  .step-head { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+  .step-num { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: "IBM Plex Mono", monospace; font-weight: 600; box-shadow: var(--shadow); }
+  .step-kicker { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.2rem; }
+  h2 { font-size: 1.45rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 0.6rem; font-weight: 600; }
+  p { margin: 0.6rem 0; }
+  .intro { color: var(--ink-soft); max-width: 70ch; }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1.2rem; font-size: 0.92rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--surface-sunken); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-soft); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+  .callout { display: flex; gap: 0.8rem; padding: 0.9rem 1.1rem; border-radius: 10px; border: 1px solid var(--accent-soft-line); background: var(--accent-soft); margin: 1rem 0; font-size: 0.95rem; }
+  .callout.warn { border-color: var(--amber-line); background: var(--amber-soft); }
+  .callout.ok { border-color: var(--success-line); background: var(--success-soft); }
+  .callout .ic { flex: none; font-weight: 700; }
+  ul { padding-left: 1.3rem; margin: 0.5rem 0; }
+  li { margin: 0.25rem 0; }
+  .btn { display: inline-block; font-size: 0.82rem; font-weight: 600; padding: 0.1rem 0.55rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pill { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; font-weight: 600; border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
+  .pill.warn { color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber-line); }
+  .pill.ok { color: var(--success); background: var(--success-soft); border: 1px solid var(--success-line); }
+  .back { display: inline-block; margin-bottom: 1.2rem; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <span class="eyebrow">Migration Factory &middot; Finance</span>
+    <h1>Fournisseurs</h1>
+    <p class="subtitle">
+      Le périmètre des fournisseurs à reprendre dans IFS&nbsp;: ceux du fichier de sélection, plus ceux créés dans
+      SAP après la date d'arrêté du fichier. Ce guide explique comment le périmètre est calculé, d'où vient chaque
+      colonne et comment utiliser les trois onglets de l'écran.
+    </p>
+    <div class="flow-strip">
+      <span class="node">Fichier de sélection</span><span class="arrow">+</span>
+      <span class="node">SAP (LFA1, LFB1, LFM1, WYT3, ADRC, ADR2 à ADR6, LFBK, TIBAN, BNKA)</span><span class="arrow">&rarr;</span>
+      <span class="node">alimenter_ifs_fournisseurs_perimetre</span><span class="arrow">&rarr;</span>
+      <span class="node">Fournisseurs / Adresses / Communications</span><span class="arrow">&rarr;</span>
+      <span class="node">Écran / Excel</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <a class="back" href="index.html">&larr; Sommaire des modes d'emploi</a>
+
+  <nav class="toc">
+    <a href="#s1"><span class="n">01</span><span class="t">Le périmètre</span></a>
+    <a href="#s2"><span class="n">02</span><span class="t">D'où viennent les données</span></a>
+    <a href="#s3"><span class="n">03</span><span class="t">Onglet Fournisseurs</span></a>
+    <a href="#s4"><span class="n">04</span><span class="t">Onglet Adresses</span></a>
+    <a href="#s5"><span class="n">05</span><span class="t">Onglet Méthodes de communication</span></a>
+    <a href="#s6"><span class="n">06</span><span class="t">Boutons, filtres, export</span></a>
+    <a href="#s7"><span class="n">07</span><span class="t">Limites connues</span></a>
+  </nav>
+
+  <!-- 01 -->
+  <section class="step" id="s1">
+    <div class="step-head">
+      <div class="step-num">01</div>
+      <div><div class="step-kicker">Périmètre</div><h2>Quels fournisseurs sont repris</h2></div>
+    </div>
+    <p class="intro">
+      Le métier a arrêté la liste des fournisseurs à reprendre dans un <b>fichier de sélection</b>. Comme ce fichier
+      a été figé à une date donnée, les fournisseurs créés dans SAP depuis lui échappent&nbsp;: l'écran les ajoute.
+      La colonne <b>Source</b> dit d'où vient chaque fournisseur.
+    </p>
+    <table>
+      <tr><th>Source</th><th>Règle</th><th class="num">Au 30/10/2026</th></tr>
+      <tr><td><span class="pill ok">FICHIER</span></td><td>Fournisseur présent dans le fichier de sélection (<code>raw_data.selection_fournisseurs_stg</code>), quelle que soit sa date de création.</td><td class="num">1&nbsp;841</td></tr>
+      <tr><td><span class="pill warn">SAP_NOUVEAU</span></td><td>Fournisseur <b>absent du fichier</b>, créé dans SAP (<code>LFA1-ERDAT</code>) <b>à partir de la date d'arrêté</b>, et qui respecte les deux exclusions ci-dessous.</td><td class="num">42</td></tr>
+    </table>
+    <h3>Exclusions des nouveaux fournisseurs SAP</h3>
+    <ul>
+      <li><b>Marqués pour suppression</b> dans SAP (<code>LFA1-LOEVM = X</code>).</li>
+      <li><b>Employés gérés en fournisseur</b>, reconnus à leur groupe de comptes (<code>LFA1-KTOKK</code>)&nbsp;: <code>ZPER</code> «&nbsp;Personnel géré en fournisseur&nbsp;», <code>ZPE1</code> «&nbsp;Personnel AGORA géré en fournisseur&nbsp;» et <code>P001</code> «&nbsp;Fournisseurs personnel&nbsp;».</li>
+    </ul>
+    <p>Ces exclusions ne touchent pas les fournisseurs du fichier&nbsp;: le choix du métier prime.</p>
+    <h3>La date d'arrêté</h3>
+    <p>
+      Elle se saisit en haut de l'écran, à côté du bouton <span class="btn">Calculer</span>. Le champ est pré-rempli
+      avec la date du dernier calcul, rappelée dans la pastille «&nbsp;Date d'arrêté du chargement&nbsp;». Sans date
+      saisie, le calcul prend la valeur de l'écran <b>Configuration &gt; Valeurs par défaut</b>
+      (<code>clean_data.ifs_fournisseurs</code> / <code>date_arrete</code>, 02/09/2026 aujourd'hui).
+    </p>
+    <div class="callout"><span class="ic">i</span><div>
+      Exemple&nbsp;: avec le 02/09/2026, 42 fournisseurs SAP_NOUVEAU&nbsp;; avec le 01/10/2026, seuls ceux créés
+      depuis le 1<sup>er</sup> octobre restent. Les fournisseurs FICHIER ne changent pas.
+    </div></div>
+  </section>
+
+  <!-- 02 -->
+  <section class="step" id="s2">
+    <div class="step-head">
+      <div class="step-num">02</div>
+      <div><div class="step-kicker">Sources</div><h2>D'où viennent les données</h2></div>
+    </div>
+    <p class="intro">
+      Du fichier de sélection, on ne reprend que ce que le métier y a arbitré. <b>Tout le reste vient de SAP</b>,
+      pour les deux sources&nbsp;: les textes du fichier sont mal encodés (accents abîmés, par exemple
+      «&nbsp;FranÃ§ais&nbsp;» au lieu de «&nbsp;Français&nbsp;»), alors que les données SAP sont propres.
+    </p>
+    <table>
+      <tr><th>Donnée</th><th>Source</th></tr>
+      <tr><td>N° fournisseur SAP</td><td>fichier (FICHIER) ou <code>LFA1-LIFNR</code> (SAP_NOUVEAU)</td></tr>
+      <tr><td>N° IFS</td><td><b>fichier uniquement</b>&nbsp;: vide pour un SAP_NOUVEAU</td></tr>
+      <tr><td>Codes TVA IFS et SAP</td><td><b>fichier uniquement</b>&nbsp;: aucun champ de la fiche fournisseur SAP ne les porte, vides pour un SAP_NOUVEAU</td></tr>
+      <tr><td>Toutes les autres colonnes</td><td>SAP, voir les onglets ci-dessous</td></tr>
+    </table>
+    <h3>Transcodifications</h3>
+    <p>Trois colonnes sont converties en codes IFS par l'écran <b>Transcodification</b>&nbsp;:</p>
+    <table>
+      <tr><th>Catégorie</th><th>Colonne</th><th>Si le code SAP n'est pas transcodé</th></tr>
+      <tr><td><code>COUNTRY</code></td><td>Pays (fournisseur et adresses)</td><td>le code pays SAP est gardé</td></tr>
+      <tr><td><code>PAY_TERM</code></td><td>Conditions de paiement compta et achats</td><td>vide&nbsp;; le code SAP reste visible dans «&nbsp;Condition de paiement SAP&nbsp;»</td></tr>
+      <tr><td><code>LANGUAGE</code></td><td>Langue IFS</td><td>vide&nbsp;; le code SAP reste visible dans «&nbsp;Langue&nbsp;»</td></tr>
+    </table>
+    <p>
+      Une transcodification modifiée ne s'applique qu'au prochain clic sur <span class="btn">Calculer</span>.
+    </p>
+  </section>
+
+  <!-- 03 -->
+  <section class="step" id="s3">
+    <div class="step-head">
+      <div class="step-num">03</div>
+      <div><div class="step-kicker">Onglet</div><h2>Fournisseurs</h2></div>
+    </div>
+    <p class="intro">Une ligne par fournisseur du périmètre.</p>
+    <table>
+      <tr><th>Colonnes</th><th>Source SAP</th><th>Remarque</th></tr>
+      <tr><td>Nom, Rue, Code postal, Localité</td><td><code>LFA1</code> (NAME1, STRAS, PSTLZ, ORT01)</td><td></td></tr>
+      <tr><td>Complément d'adresse</td><td><code>ADRC</code> (STR_SUPPL1, STR_SUPPL2)</td><td>adresse <code>LFA1-ADRNR</code></td></tr>
+      <tr><td>Pays</td><td><code>LFA1-LAND1</code></td><td>transcodé COUNTRY</td></tr>
+      <tr><td>France / étranger</td><td>déduit du pays</td><td>FR &rarr; Français, sinon Etranger</td></tr>
+      <tr><td>Date de création SAP</td><td><code>LFA1-ERDAT</code></td><td>sert au périmètre SAP_NOUVEAU</td></tr>
+      <tr><td>SIRET, N° TVA</td><td><code>LFA1</code> (STCD1, STCEG)</td><td></td></tr>
+      <tr><td>SIREN</td><td>déduit du SIRET</td><td>9 premiers chiffres d'un SIRET à 14 chiffres</td></tr>
+      <tr><td>Sociétés SAP, Condition de paiement SAP, Mode de paiement, Destinataire du paiement</td><td><code>LFB1</code></td><td>société STJN en priorité&nbsp;; «&nbsp;Sociétés SAP&nbsp;» les liste toutes</td></tr>
+      <tr><td>Conditions de paiement compta</td><td><code>LFB1-ZTERM</code></td><td>transcodé PAY_TERM</td></tr>
+      <tr><td>Organisation achats, Conditions de paiement achats, Incoterm, Lieu incoterm</td><td><code>LFM1</code></td><td>plus petite organisation d'achats&nbsp;; condition transcodée PAY_TERM</td></tr>
+      <tr><td>Téléphone 1, Téléphone 2</td><td><code>LFA1</code> (TELF1, TELF2)</td><td>Téléphone 3 reste vide</td></tr>
+      <tr><td>E-mail</td><td><code>ADR6</code></td><td>e-mail par défaut de l'adresse</td></tr>
+      <tr><td>Critère de recherche</td><td><code>LFA1-SORTL</code></td><td></td></tr>
+      <tr><td>Langue (fichier), Langue IFS</td><td><code>LFA1-SPRAS</code></td><td>code SAP, puis transcodé LANGUAGE</td></tr>
+      <tr><td>IBAN, SWIFT, Banque, N° de compte, Code banque, Pays banque, Titulaire</td><td><code>LFBK</code>, <code>TIBAN</code>, <code>BNKA</code></td><td>un seul compte&nbsp;: celui qui a un IBAN, sinon le premier</td></tr>
+      <tr><td>Société IFS, N° adresse</td><td>Valeurs par défaut / <code>LFA1-ADRNR</code></td><td></td></tr>
+    </table>
+  </section>
+
+  <!-- 04 -->
+  <section class="step" id="s4">
+    <div class="step-head">
+      <div class="step-num">04</div>
+      <div><div class="step-kicker">Onglet</div><h2>Adresses</h2></div>
+    </div>
+    <p class="intro">
+      Une ligne par adresse SAP d'un fournisseur du périmètre. Un fournisseur a toujours son adresse propre, et
+      parfois celles de ses <b>partenaires</b> SAP (table <code>WYT3</code>, fonctions partenaires de l'achat).
+    </p>
+    <table>
+      <tr><th>Fonction</th><th>Origine SAP</th><th class="num">Au 30/10/2026</th></tr>
+      <tr><td><b>Adresse du fournisseur</b></td><td><code>LFA1-ADRNR</code> &rarr; <code>ADRC</code></td><td class="num">1&nbsp;883</td></tr>
+      <tr><td><b>Auteur de la facture</b></td><td>partenaire <code>RS</code></td><td class="num">324</td></tr>
+      <tr><td><b>Adresse de commande</b></td><td>partenaire <code>BA</code></td><td class="num">294</td></tr>
+      <tr><td><b>Adresse contrat</b></td><td>partenaire <code>VA</code></td><td class="num">0</td></tr>
+      <tr><td><b>Transporteur</b></td><td>partenaire <code>SP</code></td><td class="num">1</td></tr>
+    </table>
+    <ul>
+      <li>L'adresse d'un partenaire est celle de la fiche SAP du partenaire (<code>LFA1</code> du partenaire &rarr; <code>ADRC</code>). Son numéro SAP est dans la colonne <b>Partenaire SAP</b>.</li>
+      <li>Une même adresse n'apparaît qu'une fois par fournisseur. Le cas le plus fréquent, un fournisseur auteur de sa propre facture, ne crée donc pas de ligne en plus.</li>
+      <li>Si une adresse porte plusieurs fonctions, la première de cet ordre l'emporte&nbsp;: auteur de la facture, adresse de commande, adresse contrat, transporteur.</li>
+      <li>Les partenaires marqués pour suppression dans SAP sont ignorés.</li>
+      <li><code>ADRC</code> garde l'historique des adresses&nbsp;: seule la version la plus récente est reprise. «&nbsp;Valide du&nbsp;» et «&nbsp;Valide au&nbsp;» sont ses dates de validité.</li>
+    </ul>
+  </section>
+
+  <!-- 05 -->
+  <section class="step" id="s5">
+    <div class="step-head">
+      <div class="step-num">05</div>
+      <div><div class="step-kicker">Onglet</div><h2>Méthodes de communication</h2></div>
+    </div>
+    <p class="intro">
+      Une ligne par numéro ou adresse électronique rattaché à une adresse de l'onglet Adresses. La colonne
+      <b>N° adresse</b> fait le lien, «&nbsp;Fonction de l'adresse&nbsp;» rappelle de quelle adresse il s'agit.
+    </p>
+    <table>
+      <tr><th>Méthode</th><th>Table SAP</th><th class="num">Au 30/10/2026</th></tr>
+      <tr><td><b>TELEPHONE</b></td><td><code>ADR2</code></td><td class="num">3&nbsp;879</td></tr>
+      <tr><td><b>EMAIL</b></td><td><code>ADR6</code></td><td class="num">3&nbsp;420</td></tr>
+      <tr><td><b>FAX</b></td><td><code>ADR3</code></td><td class="num">1&nbsp;516</td></tr>
+      <tr><td><b>TELEX</b></td><td><code>ADR5</code></td><td class="num">970</td></tr>
+      <tr><td><b>TELETEX</b></td><td><code>ADR4</code></td><td class="num">2</td></tr>
+    </table>
+    <ul>
+      <li><b>Par défaut</b>&nbsp;: <span class="pill ok">Oui</span> pour le numéro principal de la méthode sur l'adresse (indicateur SAP <code>FLGDEFAULT</code>).</li>
+      <li><b>Extension</b>&nbsp;: poste du téléphone ou du fax.</li>
+      <li>Seuls les numéros de l'<b>adresse</b> sont repris, pas ceux des personnes de contact.</li>
+      <li>Comme pour les adresses, seule la version la plus récente de chaque numéro est reprise.</li>
+    </ul>
+  </section>
+
+  <!-- 06 -->
+  <section class="step" id="s6">
+    <div class="step-head">
+      <div class="step-num">06</div>
+      <div><div class="step-kicker">Écran</div><h2>Boutons, filtres et export</h2></div>
+    </div>
+    <table>
+      <tr><th>Élément</th><th>Rôle</th></tr>
+      <tr><td>Date d'arrêté</td><td>Date de création SAP à partir de laquelle un fournisseur absent du fichier est repris. Utilisée par Calculer et Synchroniser SAP.</td></tr>
+      <tr><td><span class="btn">Calculer</span></td><td>Recharge les trois onglets à partir du fichier et des tables SAP déjà extraites, avec la date saisie. N'appelle pas SAP. Environ une minute.</td></tr>
+      <tr><td><span class="btn primary">Synchroniser SAP</span></td><td>Ré-extrait de SAP LFA1, LFB1, LFM1, WYT3, ADRC, ADR2 à ADR6, LFBK, TIBAN et BNKA, puis fait le même calcul. Quelques minutes. Le fichier de sélection n'est pas ré-importé&nbsp;: il passe par l'écran Import.</td></tr>
+      <tr><td><span class="btn">Exporter Excel</span></td><td>Classeur à <b>trois feuilles</b>&nbsp;: Fournisseurs, Adresses, Méthodes de communication. Voir ci-dessous.</td></tr>
+      <tr><td>Recherche</td><td>Cherche dans les colonnes de l'onglet affiché (N° SAP, N° IFS, nom, localité&hellip;). Valider avec la touche Entrée.</td></tr>
+      <tr><td>Source</td><td>Toutes, FICHIER ou SAP_NOUVEAU, sur les trois onglets.</td></tr>
+      <tr><td>Méthode</td><td>Onglet Méthodes de communication seulement&nbsp;: une seule méthode.</td></tr>
+      <tr><td>Pastilles</td><td>Nombre de fournisseurs, de FICHIER et de SAP_NOUVEAU, nombre de lignes de l'onglet affiché et date d'arrêté du dernier calcul.</td></tr>
+    </table>
+    <h3>Contenu de l'export</h3>
+    <ul>
+      <li>La feuille <b>Fournisseurs</b> contient les fournisseurs filtrés par la recherche et la source. La recherche porte alors sur les colonnes de l'onglet Fournisseurs, quel que soit l'onglet affiché.</li>
+      <li>Les feuilles <b>Adresses</b> et <b>Méthodes de communication</b> contiennent les adresses et moyens de communication de ces fournisseurs, et d'eux seulement.</li>
+      <li>Le filtre Méthode ne s'applique qu'à la dernière feuille.</li>
+    </ul>
+    <div class="callout"><span class="ic">i</span><div>
+      Pendant un calcul, l'écran reste utilisable&nbsp;: il affiche les données précédentes jusqu'à la fin du
+      calcul, puis se recharge. Un seul calcul peut tourner à la fois.
+    </div></div>
+  </section>
+
+  <!-- 07 -->
+  <section class="step" id="s7">
+    <div class="step-head">
+      <div class="step-num">07</div>
+      <div><div class="step-kicker">Contrôles</div><h2>Limites connues</h2></div>
+    </div>
+    <ul>
+      <li><b>SAP_NOUVEAU sans N° IFS ni codes TVA.</b> Ces valeurs viennent du fichier, qui ne connaît pas ces fournisseurs. Elles sont à attribuer par le métier.</li>
+      <li><b>Conditions de paiement C030 et F005.</b> La transcodification et le fichier ne donnent pas la même valeur (C030&nbsp;: 30FM15 contre 30NETS&nbsp;; F005&nbsp;: 30NETS contre 30FM15). La transcodification est gardée en attendant la confirmation du métier.</li>
+      <li><b>Portables non distingués.</b> Le champ SAP qui signale un portable est vide partout&nbsp;: tous les numéros de <code>ADR2</code> sont des TELEPHONE.</li>
+      <li><b>Télex.</b> Beaucoup de télex ressemblent à des numéros de téléphone (par exemple <code>64 3260752</code>)&nbsp;: c'est la saisie de SAP, reprise telle quelle.</li>
+      <li><b>Personnes de contact non reprises.</b> Leurs numéros et e-mails ne figurent pas dans l'onglet Méthodes de communication.</li>
+      <li><b>Écran indépendant du chargement IFS.</b> Le module ETL Fournisseurs, qui produit les fichiers de reprise IFS, lit toujours son propre périmètre (<code>clean_data.ifs_fournisseurs</code>)&nbsp;: les calculs de cet écran ne le modifient pas.</li>
+    </ul>
+  </section>
+
+</main>
+</body>
+</html>

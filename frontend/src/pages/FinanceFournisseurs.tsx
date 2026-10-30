@@ -38,7 +38,10 @@ import api from '../services/api';
 // communication : ifs_fournisseurs_perimetre_adresse / _communication (sql/supplier/01c_*).
 
 type Row = Record<string, string | number | boolean | null>;
-type Vue = 'fournisseurs' | 'adresses' | 'communications';
+type Vue = 'fournisseurs' | 'adresses' | 'communications' | 'mode_emploi';
+
+// Guide HTML autonome (frontend/public/guides/, copie dans docs/guides/), aussi listé dans Mode d'emploi.
+const GUIDE = '/guides/finance-fournisseurs.html';
 
 const ONGLETS: { value: Vue; label: string; recherche: string; description: string }[] = [
   { value: 'fournisseurs', label: 'Fournisseurs', recherche: 'N° SAP, N° IFS, nom, localité, SIRET, TVA…',
@@ -47,6 +50,8 @@ const ONGLETS: { value: Vue; label: string; recherche: string; description: stri
     description: "Une ligne par adresse SAP : celle du fournisseur (LFA1 -> ADRC) et celles de ses partenaires (WYT3 : auteur de la facture, adresse de commande, adresse contrat, transporteur)." },
   { value: 'communications', label: 'Méthodes de communication', recherche: 'N° SAP, N° IFS, valeur, N° adresse…',
     description: "Une ligne par moyen de communication des adresses de l'onglet Adresses : téléphone (ADR2), fax (ADR3), télétex (ADR4), télex (ADR5), e-mail (ADR6). Les numéros des personnes de contact ne sont pas repris." },
+  { value: 'mode_emploi', label: "Mode d'emploi", recherche: '',
+    description: "Calcul du périmètre, origine de chaque colonne, adresses et méthodes de communication, boutons et export Excel." },
 ];
 
 interface SyncStatus {
@@ -94,6 +99,7 @@ const FinanceFournisseurs: React.FC = () => {
   const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
+    if (vue === 'mode_emploi') return;
     try {
       setLoading(true);
       setError(null);
@@ -226,7 +232,7 @@ const FinanceFournisseurs: React.FC = () => {
         {ONGLETS.find((o) => o.value === vue)?.description}
       </Typography>
 
-      {stats && (
+      {stats && vue !== 'mode_emploi' && (
         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Chip label={`${stats.total.toLocaleString('fr-FR')} fournisseurs`} color="primary" />
           <Chip label={`${stats.fichier.toLocaleString('fr-FR')} FICHIER`} />
@@ -256,6 +262,14 @@ const FinanceFournisseurs: React.FC = () => {
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
+      {vue === 'mode_emploi' ? (
+        <Box
+          component="iframe"
+          src={GUIDE}
+          title="Mode d'emploi : fournisseurs"
+          sx={{ width: '100%', height: 'calc(100vh - 300px)', minHeight: 500, border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}
+        />
+      ) : (<>
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           size="small"
@@ -334,6 +348,7 @@ const FinanceFournisseurs: React.FC = () => {
           labelRowsPerPage="Lignes par page"
         />
       </Paper>
+      </>)}
     </Box>
   );
 };
