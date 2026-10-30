@@ -17,6 +17,7 @@ import {
     MenuItem,
     Paper,
     Select,
+    Tab,
     Table,
     TableBody,
     TableCell,
@@ -24,6 +25,7 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    Tabs,
     TextField,
     Tooltip,
     Typography,
@@ -32,9 +34,20 @@ import React, { useCallback, useEffect, useState } from 'react';
 import api from '../services/api';
 
 // Même logique que FinanceHistoriqueCouts : liste paginée, export Excel, Calculer / Synchroniser SAP.
-// Source : clean_data.ifs_fournisseurs_perimetre (sql/supplier/01b_alimenter_ifs_fournisseurs_perimetre.sql).
+// Sources : clean_data.ifs_fournisseurs_perimetre (sql/supplier/01b_*) ; onglets Adresses et Méthodes de
+// communication : ifs_fournisseurs_perimetre_adresse / _communication (sql/supplier/01c_*).
 
-type Row = Record<string, string | number | null>;
+type Row = Record<string, string | number | boolean | null>;
+type Vue = 'fournisseurs' | 'adresses' | 'communications';
+
+const ONGLETS: { value: Vue; label: string; recherche: string; description: string }[] = [
+  { value: 'fournisseurs', label: 'Fournisseurs', recherche: 'N° SAP, N° IFS, nom, localité, SIRET, TVA…',
+    description: 'Une ligne par fournisseur du périmètre.' },
+  { value: 'adresses', label: 'Adresses', recherche: 'N° SAP, N° IFS, nom, rue, localité, code postal, partenaire…',
+    description: "Une ligne par adresse SAP : celle du fournisseur (LFA1 -> ADRC) et celles de ses partenaires (WYT3 : auteur de la facture, adresse de commande, adresse contrat, transporteur)." },
+  { value: 'communications', label: 'Méthodes de communication', recherche: 'N° SAP, N° IFS, valeur, N° adresse…',
+    description: "Une ligne par moyen de communication des adresses de l'onglet Adresses : téléphone (ADR2), fax (ADR3), télétex (ADR4), télex (ADR5), e-mail (ADR6). Les numéros des personnes de contact ne sont pas repris." },
+];
 
 interface SyncStatus {
   status: 'never' | 'running' | 'completed' | 'failed';
@@ -46,17 +59,19 @@ interface SyncStatus {
   finished_at?: string | null;
 }
 
-interface Colonne { key: string; label: string; kind: 'date' | 'text' }
+interface Colonne { key: string; label: string; kind: 'date' | 'text' | 'bool' }
 
 interface ListResponse {
   rows: Row[];
   total: number;
   stats: { total: number; fichier: number; sap_nouveau: number; date_arrete: string | null };
+  methodes: string[];
   colonnes: Colonne[];
   sync: SyncStatus | null;
 }
 
-const formatCell = (v: string | number | null, kind: Colonne['kind']) => {
+const formatCell = (v: string | number | boolean | null, kind: Colonne['kind']) => {
+  if (kind === 'bool') return v ? 'Oui' : 'Non';
   if (v == null || v === '') return '';
   return kind === 'date' ? new Date(String(v)).toLocaleDateString('fr-FR') : String(v);
 };
@@ -64,6 +79,8 @@ const formatCell = (v: string | number | null, kind: Colonne['kind']) => {
 const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : '');
 
 const FinanceFournisseurs: React.FC = () => {
+  const [vue, setVue] = useState<Vue>('fournisseurs');
+  const [methode, setMethode] = useState('');
   const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +98,7 @@ const FinanceFournisseurs: React.FC = () => {
       setLoading(true);
       setError(null);
       const res = await api.get<ListResponse>('/finance/fournisseurs', {
-        params: { search, source, page: page + 1, page_size: pageSize },
+        params: { vue, search, source, methode, page: page + 1, page_size: pageSize },
       });
       setData(res.data);
       setSync(res.data.sync);
@@ -93,7 +110,7 @@ const FinanceFournisseurs: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, source]);
+  }, [vue, page, pageSize, search, source, methode]);
 
   useEffect(() => {
     load();
@@ -130,12 +147,12 @@ const FinanceFournisseurs: React.FC = () => {
     try {
       setExporting(true);
       setError(null);
-      const res = await api.get('/finance/fournisseurs/export.xlsx', { params: { search, source }, responseType: 'blob' });
+      const res = await api.get('/finance/fournisseurs/export.xlsx', { params: { vue, search, source, methode }, responseType: 'blob' });
       const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
       const url = window.URL.createObjectURL(res.data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = match?.[1] ?? 'fournisseurs.xlsx';
+      link.download = match?.[1] ?? `fournisseurs_${vue}.xlsx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -177,14 +194,14 @@ const FinanceFournisseurs: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Ré-extrait de SAP LFA1, LFB1, LFM1, ADRC, ADR6, LFBK, TIBAN, BNKA puis recharge la table avec la date d'arrêté saisie">
+          <Tooltip title="Ré-extrait de SAP LFA1, LFB1, LFM1, WYT3, ADRC, ADR2 à ADR6, LFBK, TIBAN, BNKA puis recharge la table avec la date d'arrêté saisie">
             <span>
               <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
                 {running ? 'Synchronisation…' : 'Synchroniser SAP'}
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Classeur Excel des lignes filtrées (toutes les pages)">
+          <Tooltip title="Classeur Excel des lignes filtrées (toutes les pages) de l'onglet affiché">
             <span>
               <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !data?.total}>
                 {exporting ? 'Export…' : 'Exporter Excel'}
@@ -202,11 +219,21 @@ const FinanceFournisseurs: React.FC = () => {
         (COUNTRY, PAY_TERM, LANGUAGE).
       </Alert>
 
+      <Tabs value={vue} onChange={(_, v: Vue) => { setVue(v); setPage(0); }} sx={{ mb: 1 }}>
+        {ONGLETS.map((o) => <Tab key={o.value} value={o.value} label={o.label} />)}
+      </Tabs>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {ONGLETS.find((o) => o.value === vue)?.description}
+      </Typography>
+
       {stats && (
         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Chip label={`${stats.total.toLocaleString('fr-FR')} fournisseurs`} color="primary" />
           <Chip label={`${stats.fichier.toLocaleString('fr-FR')} FICHIER`} />
           <Chip label={`${stats.sap_nouveau.toLocaleString('fr-FR')} SAP_NOUVEAU`} color="warning" />
+          {vue !== 'fournisseurs' && (
+            <Chip label={`${(data?.total ?? 0).toLocaleString('fr-FR')} ${vue === 'adresses' ? 'adresses' : 'moyens de communication'}`} color="secondary" />
+          )}
           {stats.date_arrete && <Chip label={`Date d'arrêté du chargement : ${formatCell(stats.date_arrete, 'date')}`} variant="outlined" />}
         </Box>
       )}
@@ -232,7 +259,7 @@ const FinanceFournisseurs: React.FC = () => {
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           size="small"
-          placeholder="N° SAP, N° IFS, nom, localité, SIRET, TVA…"
+          placeholder={ONGLETS.find((o) => o.value === vue)?.recherche}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={(e) => {
@@ -252,6 +279,15 @@ const FinanceFournisseurs: React.FC = () => {
             <MenuItem value="SAP_NOUVEAU">SAP_NOUVEAU</MenuItem>
           </Select>
         </FormControl>
+        {vue === 'communications' && (
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <InputLabel>Méthode</InputLabel>
+            <Select label="Méthode" value={methode} onChange={(e) => { setPage(0); setMethode(e.target.value); }}>
+              <MenuItem value="">Toutes</MenuItem>
+              {(data?.methodes ?? []).map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+            </Select>
+          </FormControl>
+        )}
       </Box>
 
       <Paper>
@@ -266,12 +302,12 @@ const FinanceFournisseurs: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {data?.rows.map((r) => (
-                <TableRow key={String(r.numero_compte_fournisseur)} hover>
+              {data?.rows.map((r, i) => (
+                <TableRow key={i} hover>
                   {colonnes.map((c) => (
                     <TableCell key={c.key} sx={{ whiteSpace: 'nowrap' }}>
                       {c.key === 'source' && r.source
-                        ? <Chip size="small" label={r.source} color={r.source === 'SAP_NOUVEAU' ? 'warning' : 'default'} />
+                        ? <Chip size="small" label={String(r.source)} color={r.source === 'SAP_NOUVEAU' ? 'warning' : 'default'} />
                         : formatCell(r[c.key], c.kind)}
                     </TableCell>
                   ))}
@@ -280,7 +316,7 @@ const FinanceFournisseurs: React.FC = () => {
               {data?.rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={colonnes.length || 1} align="center">
-                    Aucun fournisseur : lancer « Calculer » (ou « Synchroniser SAP » si LFA1 n'a jamais été extraite)
+                    Aucune ligne : lancer « Calculer » (ou « Synchroniser SAP » si LFA1 n'a jamais été extraite)
                   </TableCell>
                 </TableRow>
               )}

@@ -959,7 +959,8 @@ def start_hcp_sync():
 
 # Tables SAP lues par clean_data.alimenter_ifs_fournisseurs_perimetre (le
 # fichier de selection, raw_data.selection_fournisseurs_stg, s'importe a part).
-FOURN_SAP_TABLES = ['LFA1', 'LFB1', 'LFM1', 'ADRC', 'ADR6', 'LFBK', 'TIBAN', 'BNKA']
+FOURN_SAP_TABLES = ['LFA1', 'LFB1', 'LFM1', 'WYT3', 'ADRC', 'ADR2', 'ADR3', 'ADR4', 'ADR5', 'ADR6',
+                    'LFBK', 'TIBAN', 'BNKA']
 
 FOURN_LIBELLE = {
     'numero_compte_fournisseur': 'N° fournisseur SAP',
@@ -1004,39 +1005,101 @@ FOURN_LIBELLE = {
     'pays_banque': 'Pays banque',
     'titulaire_compte': 'Titulaire du compte',
 }
-FOURN_COLONNES = list(FOURN_LIBELLE)
+
+FOURN_ADRESSE_LIBELLE = {
+    'numero_compte_fournisseur': 'N° fournisseur SAP',
+    'numero_compte_ifs': 'N° IFS',
+    'source': 'Source',
+    'address_id': 'N° adresse',
+    'fonction_libelle': 'Fonction',
+    'partenaire_sap': 'Partenaire SAP',
+    'nom': 'Nom',
+    'rue': 'Rue',
+    'complement_adresse': "Complément d'adresse",
+    'boite_postale': 'Boîte postale',
+    'code_postal': 'Code postal',
+    'localite': 'Localité',
+    'region': 'Région',
+    'pays': 'Pays',
+    'langue': 'Langue',
+    'valide_du': 'Valide du',
+    'valide_au': 'Valide au',
+}
+
+FOURN_COMM_LIBELLE = {
+    'numero_compte_fournisseur': 'N° fournisseur SAP',
+    'numero_compte_ifs': 'N° IFS',
+    'source': 'Source',
+    'address_id': 'N° adresse',
+    'fonction_libelle': "Fonction de l'adresse",
+    'methode': 'Méthode',
+    'valeur': 'Valeur',
+    'extension': 'Extension',
+    'pays': 'Pays',
+    'par_defaut': 'Par défaut',
+}
+
+# Onglets de l'ecran : table, libelles, colonnes de recherche, tri, titre de la feuille Excel
+FOURN_VUES = {
+    'fournisseurs': ('clean_data.ifs_fournisseurs_perimetre', FOURN_LIBELLE,
+                     ('numero_compte_fournisseur', 'numero_compte_ifs', 'nom_1', 'localite',
+                      'siret', 'tva', 'critere_recherche'),
+                     'source, numero_compte_fournisseur', 'Fournisseurs'),
+    'adresses': ('clean_data.ifs_fournisseurs_perimetre_adresse', FOURN_ADRESSE_LIBELLE,
+                 ('numero_compte_fournisseur', 'numero_compte_ifs', 'nom', 'rue', 'localite',
+                  'code_postal', 'partenaire_sap'),
+                 'numero_compte_fournisseur, fonction NULLS FIRST, address_id', 'Adresses'),
+    'communications': ('clean_data.ifs_fournisseurs_perimetre_communication', FOURN_COMM_LIBELLE,
+                       ('numero_compte_fournisseur', 'numero_compte_ifs', 'valeur', 'address_id'),
+                       'numero_compte_fournisseur, address_id, methode, par_defaut DESC, num_sequence',
+                       'Méthodes de communication'),
+}
 
 
-def _fourn_filtres():
+def _fourn_vue():
+    vue = request.args.get('vue')
+    return FOURN_VUES[vue if vue in FOURN_VUES else 'fournisseurs']
+
+
+def _fourn_filtres(recherche):
     where, params = [], {}
     search = (request.args.get('search') or '').strip()
     if search:
-        where.append('(' + ' OR '.join(f'{c} ILIKE :s' for c in (
-            'numero_compte_fournisseur', 'numero_compte_ifs', 'nom_1', 'localite',
-            'siret', 'tva', 'critere_recherche')) + ')')
+        where.append('(' + ' OR '.join(f'{c} ILIKE :s' for c in recherche) + ')')
         params['s'] = f'%{search}%'
     if request.args.get('source') in ('FICHIER', 'SAP_NOUVEAU'):
         where.append('source = :source')
         params['source'] = request.args['source']
+    methode = request.args.get('methode')
+    if methode and recherche is FOURN_VUES['communications'][2]:
+        where.append('methode = :methode')
+        params['methode'] = methode
     return ('WHERE ' + ' AND '.join(where)) if where else '', params
 
 
-def _fourn_sql(clause):
-    return (f'SELECT {", ".join(FOURN_COLONNES)} FROM clean_data.ifs_fournisseurs_perimetre '
-            f'{clause} ORDER BY source, numero_compte_fournisseur')
+def _fourn_sql(table, libelles, clause, tri):
+    return f'SELECT {", ".join(libelles)} FROM {table} {clause} ORDER BY {tri}'
+
+
+def _fourn_kind(col):
+    if col == 'par_defaut':
+        return 'bool'
+    return 'date' if col.startswith(('date_', 'valide_')) else 'text'
 
 
 @finance_blueprint.route('/fournisseurs', methods=['GET'])
 @jwt_required()
 def list_fournisseurs():
+    """?vue=fournisseurs (defaut) | adresses | communications ; filtres search, source
+    (et methode pour les communications)."""
     page = max(int(request.args.get('page', 1)), 1)
     page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
-    clause, params = _fourn_filtres()
+    table, libelles, recherche, tri, _ = _fourn_vue()
+    clause, params = _fourn_filtres(recherche)
     rows = db.session.execute(
-        text(f'{_fourn_sql(clause)} LIMIT :limit OFFSET :offset'),
+        text(f'{_fourn_sql(table, libelles, clause, tri)} LIMIT :limit OFFSET :offset'),
         {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
-    total = db.session.execute(text(
-        f'SELECT count(*) FROM clean_data.ifs_fournisseurs_perimetre {clause}'), params).scalar()
+    total = db.session.execute(text(f'SELECT count(*) FROM {table} {clause}'), params).scalar()
     # Date du dernier chargement, a defaut celle de l'ecran Valeurs par defaut
     stats = db.session.execute(text(
         "SELECT count(*) AS total, count(*) FILTER (WHERE source = 'FICHIER') AS fichier, "
@@ -1044,6 +1107,8 @@ def list_fournisseurs():
         "COALESCE(max(date_arrete), NULLIF(TRIM(public.get_default_value("
         "'clean_data.ifs_fournisseurs', 'date_arrete')), '')::date) AS date_arrete "
         "FROM clean_data.ifs_fournisseurs_perimetre")).mappings().one()
+    methodes = [r[0] for r in db.session.execute(text(
+        'SELECT DISTINCT methode FROM clean_data.ifs_fournisseurs_perimetre_communication ORDER BY 1'))]
 
     return jsonify({
         'rows': [{k: _json(v) for k, v in r.items()} for r in rows],
@@ -1051,8 +1116,8 @@ def list_fournisseurs():
         'page': page,
         'page_size': page_size,
         'stats': {k: _json(v) for k, v in stats.items()},
-        'colonnes': [{'key': c, 'label': FOURN_LIBELLE[c],
-                      'kind': 'date' if c.startswith('date_') else 'text'} for c in FOURN_COLONNES],
+        'methodes': methodes,
+        'colonnes': [{'key': c, 'label': libelles[c], 'kind': _fourn_kind(c)} for c in libelles],
         'sync': _read_status('fournisseurs'),
     })
 
@@ -1060,15 +1125,17 @@ def list_fournisseurs():
 @finance_blueprint.route('/fournisseurs/export.xlsx', methods=['GET'])
 @jwt_required()
 def export_fournisseurs_excel():
+    """Classeur de l'onglet affiche (?vue=...), memes filtres que la liste."""
     from openpyxl import Workbook
 
-    clause, params = _fourn_filtres()
-    rows = db.session.execute(text(_fourn_sql(clause)), params).all()
+    table, libelles, recherche, tri, titre = _fourn_vue()
+    clause, params = _fourn_filtres(recherche)
+    rows = db.session.execute(text(_fourn_sql(table, libelles, clause, tri)), params).all()
     db.session.commit()  # liberer la transaction de lecture avant la generation
     wb = Workbook()
-    _feuille_tableau(wb.active, 'Fournisseurs',
-                     [(c, FOURN_LIBELLE[c]) for c in FOURN_COLONNES], rows, set())
-    return _envoyer(wb, 'fournisseurs')
+    _feuille_tableau(wb.active, titre, list(libelles.items()), rows, set())
+    vue = request.args.get('vue')
+    return _envoyer(wb, f'fournisseurs_{vue}' if vue in ('adresses', 'communications') else 'fournisseurs')
 
 
 @finance_blueprint.route('/fournisseurs/sync', methods=['GET'])
