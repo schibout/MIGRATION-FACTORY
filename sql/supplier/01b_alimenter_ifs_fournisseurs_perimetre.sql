@@ -6,7 +6,7 @@
 --   FICHIER     : present dans raw_data.selection_fournisseurs_stg
 --   SAP_NOUVEAU : absent du fichier, cree dans SAP (lfa1.erdat) a partir de la
 --                 date d'arrete, non marque pour suppression
--- Du fichier on ne lit que le n° SAP et le n° IFS (NULL pour un SAP_NOUVEAU ;
+-- Du fichier on ne lit que le n° SAP, le n° IFS et les codes TVA SAP / IFS (NULL pour un SAP_NOUVEAU ;
 -- ifs_fournisseur_id_map n'est ni lue ni alimentee). Tout le reste vient de
 -- SAP (lfa1, lfb1, lfm1, adrc, adr6, coordonnees bancaires lfbk/tiban/bnka),
 -- avec les transcodifications COUNTRY, PAY_TERM (migration 125) et LANGUAGE.
@@ -116,13 +116,17 @@ BEGIN
       date_arrete
    )
    WITH fichier AS (
-       -- Du fichier on ne garde QUE le n° SAP et le n° IFS (demande du
+       -- Du fichier on ne garde QUE le n° SAP, le n° IFS et les codes TVA (demande du
        -- 2026-10-30 : ses textes sont mal encodes, « FranÃ§ais »). Le staging
        -- s'empile a chaque import : une ligne par fournisseur, celle qui porte
        -- un n° IFS puis la plus recente.
        SELECT DISTINCT ON (LPAD(TRIM(stg.numero_compte_sap), 10, '0'))
               LPAD(TRIM(stg.numero_compte_sap), 10, '0') AS cle_lifnr,
-              NULLIF(TRIM(stg.numero_compte_ifs), '') AS numero_compte_ifs
+              NULLIF(TRIM(stg.numero_compte_ifs), '') AS numero_compte_ifs,
+              -- Codes TVA : arbitres par le metier, sans source SAP (codes ASCII,
+              -- non touches par le probleme d'encodage du fichier)
+              NULLIF(TRIM(stg.code_tva_ifs), '') AS code_tva_ifs,
+              NULLIF(TRIM(stg.code_tva_sap), '') AS code_tva_sap
          FROM raw_data.selection_fournisseurs_stg stg
         WHERE NULLIF(TRIM(stg.numero_compte_sap), '') IS NOT NULL
         ORDER BY LPAD(TRIM(stg.numero_compte_sap), 10, '0'),
@@ -164,10 +168,9 @@ BEGIN
       -- SIREN = 9 premiers chiffres d'un SIRET francais
       CASE WHEN TRIM(a.stcd1) ~ '^[0-9]{14}$' THEN LEFT(TRIM(a.stcd1), 9) END,
       NULLIF(TRIM(a.stceg), ''),
-      -- Codes TVA : arbitres par le metier dans le fichier, sans source SAP
-      -- identifiee -> non repris
-      NULL,
-      NULL,
+      -- Codes TVA : repris du fichier (NULL pour un SAP_NOUVEAU)
+      sf.code_tva_ifs,
+      sf.code_tva_sap,
       CASE WHEN a.land1 = 'FR' THEN 'Français' WHEN NULLIF(TRIM(a.land1), '') IS NOT NULL THEN 'Etranger' END,
 
       cpta.societe,
