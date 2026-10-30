@@ -152,7 +152,7 @@ const FinanceFournisseurs: React.FC = () => {
       const url = window.URL.createObjectURL(res.data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = match?.[1] ?? `fournisseurs_${vue}.xlsx`;
+      link.download = match?.[1] ?? 'fournisseurs.xlsx';
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -201,7 +201,7 @@ const FinanceFournisseurs: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Classeur Excel des lignes filtrées (toutes les pages) de l'onglet affiché">
+          <Tooltip title="Classeur Excel à 3 onglets (Fournisseurs, Adresses, Méthodes de communication) : les fournisseurs filtrés (recherche, source) et leurs adresses et moyens de communication (filtre méthode)">
             <span>
               <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !data?.total}>
                 {exporting ? 'Export…' : 'Exporter Excel'}

@@ -1125,17 +1125,30 @@ def list_fournisseurs():
 @finance_blueprint.route('/fournisseurs/export.xlsx', methods=['GET'])
 @jwt_required()
 def export_fournisseurs_excel():
-    """Classeur de l'onglet affiche (?vue=...), memes filtres que la liste."""
+    """Classeur a 3 feuilles (Fournisseurs, Adresses, Méthodes de communication) :
+    les fournisseurs filtres (search, source) puis leurs adresses et moyens de
+    communication (filtre methode sur la derniere feuille)."""
     from openpyxl import Workbook
 
-    table, libelles, recherche, tri, titre = _fourn_vue()
+    table, libelles, recherche, tri, titre = FOURN_VUES['fournisseurs']
     clause, params = _fourn_filtres(recherche)
-    rows = db.session.execute(text(_fourn_sql(table, libelles, clause, tri)), params).all()
+    feuilles = [(titre, libelles, db.session.execute(
+        text(_fourn_sql(table, libelles, clause, tri)), params).all())]
+    perimetre = f'numero_compte_fournisseur IN (SELECT numero_compte_fournisseur FROM {table} {clause})'
+    for vue in ('adresses', 'communications'):
+        t, lib, _, tr, ti = FOURN_VUES[vue]
+        where, p = [perimetre], dict(params)
+        if vue == 'communications' and request.args.get('methode'):
+            where.append('methode = :methode')
+            p['methode'] = request.args['methode']
+        feuilles.append((ti, lib, db.session.execute(
+            text(_fourn_sql(t, lib, 'WHERE ' + ' AND '.join(where), tr)), p).all()))
     db.session.commit()  # liberer la transaction de lecture avant la generation
+
     wb = Workbook()
-    _feuille_tableau(wb.active, titre, list(libelles.items()), rows, set())
-    vue = request.args.get('vue')
-    return _envoyer(wb, f'fournisseurs_{vue}' if vue in ('adresses', 'communications') else 'fournisseurs')
+    for i, (ti, lib, rows) in enumerate(feuilles):
+        _feuille_tableau(wb.active if i == 0 else wb.create_sheet(), ti, list(lib.items()), rows, set())
+    return _envoyer(wb, 'fournisseurs')
 
 
 @finance_blueprint.route('/fournisseurs/sync', methods=['GET'])
