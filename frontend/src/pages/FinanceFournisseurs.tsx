@@ -177,7 +177,7 @@ const FinanceFournisseurs: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Ré-extrait de SAP LFA1, LFB1, LFM1, LFBK, TIBAN, BNKA puis recharge la table avec la date d'arrêté saisie">
+          <Tooltip title="Ré-extrait de SAP LFA1, LFB1, LFM1, ADRC, ADR6, LFBK, TIBAN, BNKA puis recharge la table avec la date d'arrêté saisie">
             <span>
               <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
                 {running ? 'Synchronisation…' : 'Synchroniser SAP'}
@@ -195,9 +195,11 @@ const FinanceFournisseurs: React.FC = () => {
       </Box>
 
       <Alert severity="info" sx={{ mb: 2 }}>
-        FICHIER = fournisseur du fichier de sélection (valeurs du fichier, complétées par SAP) ; SAP_NOUVEAU = fournisseur
-        absent du fichier, créé dans SAP à partir de la date d'arrêté, non marqué pour suppression et hors employés (groupes de comptes ZPER, ZPE1, P001) (données SAP seules,
-        sans N° IFS). Coordonnées bancaires : LFBK / TIBAN / BNKA.
+        FICHIER = fournisseur du fichier de sélection ; SAP_NOUVEAU = fournisseur absent du fichier, créé dans SAP à partir
+        de la date d'arrêté, non marqué pour suppression et hors employés (groupes de comptes ZPER, ZPE1, P001), sans N° IFS.
+        Du fichier, seuls le N° SAP et le N° IFS sont repris : toutes les autres colonnes viennent de SAP (LFA1, LFB1, LFM1,
+        ADRC, ADR6, coordonnées bancaires LFBK / TIBAN / BNKA), pays, conditions de paiement et langue transcodés
+        (COUNTRY, PAY_TERM, LANGUAGE).
       </Alert>
 
       {stats && (

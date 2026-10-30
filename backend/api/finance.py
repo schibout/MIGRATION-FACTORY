@@ -959,7 +959,7 @@ def start_hcp_sync():
 
 # Tables SAP lues par clean_data.alimenter_ifs_fournisseurs_perimetre (le
 # fichier de selection, raw_data.selection_fournisseurs_stg, s'importe a part).
-FOURN_SAP_TABLES = ['LFA1', 'LFB1', 'LFM1', 'LFBK', 'TIBAN', 'BNKA']
+FOURN_SAP_TABLES = ['LFA1', 'LFB1', 'LFM1', 'ADRC', 'ADR6', 'LFBK', 'TIBAN', 'BNKA']
 
 FOURN_LIBELLE = {
     'numero_compte_fournisseur': 'N° fournisseur SAP',
