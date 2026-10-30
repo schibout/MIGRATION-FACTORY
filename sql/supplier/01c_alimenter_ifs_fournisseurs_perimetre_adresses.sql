@@ -65,8 +65,10 @@ DECLARE
    v_nb_adr INTEGER;
    v_nb_comm INTEGER;
 BEGIN
-   TRUNCATE TABLE clean_data.ifs_fournisseurs_perimetre_adresse,
-                  clean_data.ifs_fournisseurs_perimetre_communication;
+   -- DELETE et non TRUNCATE (verrou exclusif) : l'ecran lit ces tables pendant
+   -- le calcul, TRUNCATE provoquait un interblocage (deadlock du 30/10/2026)
+   DELETE FROM clean_data.ifs_fournisseurs_perimetre_communication;
+   DELETE FROM clean_data.ifs_fournisseurs_perimetre_adresse;
 
    INSERT INTO clean_data.ifs_fournisseurs_perimetre_adresse (
       numero_compte_fournisseur, numero_compte_ifs, source, address_id, fonction,

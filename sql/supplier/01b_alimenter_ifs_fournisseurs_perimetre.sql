@@ -102,7 +102,10 @@ DECLARE
    v_nb_fichier INTEGER;
    v_nb_sap INTEGER;
 BEGIN
-   TRUNCATE TABLE clean_data.ifs_fournisseurs_perimetre;
+   -- DELETE et non TRUNCATE (verrou exclusif) : l'ecran Finance > Fournisseurs
+   -- lit les tables pendant le calcul, TRUNCATE provoquait un interblocage
+   -- (deadlock du 30/10/2026) ; les lecteurs voient l'ancien contenu jusqu'au COMMIT
+   DELETE FROM clean_data.ifs_fournisseurs_perimetre;
 
    INSERT INTO clean_data.ifs_fournisseurs_perimetre (
       numero_compte_fournisseur, source, numero_compte_ifs, company, address_id,
