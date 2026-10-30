@@ -82,6 +82,8 @@ files=(
     # Perimetre fichier + SAP_NOUVEAU (colonne source) ; reutilise la
     # fonction bancaire et la table d'affectation du script 01.
     "01b_alimenter_ifs_fournisseurs_perimetre.sql"
+    # Adresses et moyens de communication SAP du perimetre (appele par le 01b)
+    "01c_alimenter_ifs_fournisseurs_perimetre_adresses.sql"
     # Mapping LIFNR SAP -> numero de compte IFS, lu par les modules
     # inventory (purchase_part_supplier) et operation (jt_task,
     # maint_material_req_line). Depend de clean_data.ifs_fournisseurs.

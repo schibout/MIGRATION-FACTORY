@@ -242,6 +242,9 @@ BEGIN
 
    RAISE NOTICE 'ifs_fournisseurs_perimetre : % FICHIER + % SAP_NOUVEAU (crees depuis le %) = % lignes',
                 v_nb_fichier, v_nb_sap, v_date_arrete, v_nb_fichier + v_nb_sap;
+   -- Onglets Adresses et Méthodes de communication (script 01c)
+   PERFORM clean_data.alimenter_ifs_fournisseurs_perimetre_adresses();
+
    RETURN v_nb_fichier + v_nb_sap;
 END;
 $function$;
