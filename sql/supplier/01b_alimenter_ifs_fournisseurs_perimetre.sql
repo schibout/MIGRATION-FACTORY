@@ -6,9 +6,10 @@
 --   FICHIER     : present dans raw_data.selection_fournisseurs_stg
 --   SAP_NOUVEAU : absent du fichier, cree dans SAP (lfa1.erdat) a partir de la
 --                 date d'arrete, non marque pour suppression
--- Memes regles que clean_data.ifs_fournisseurs (script 01) : fichier > SAP,
--- coordonnees bancaires SAP. Numero IFS : uniquement celui du fichier (NULL
--- pour un SAP_NOUVEAU) ; ifs_fournisseur_id_map n'est ni lue ni alimentee.
+-- Du fichier on ne lit que le n° SAP et le n° IFS (NULL pour un SAP_NOUVEAU ;
+-- ifs_fournisseur_id_map n'est ni lue ni alimentee). Tout le reste vient de
+-- SAP (lfa1, lfb1, lfm1, adrc, adr6, coordonnees bancaires lfbk/tiban/bnka),
+-- avec les transcodifications COUNTRY, PAY_TERM (migration 125) et LANGUAGE.
 -- Prerequis : script 01 compile (fn_coordonnees_bancaires_sap).
 -- ============================================================================
 
@@ -115,15 +116,17 @@ BEGIN
       date_arrete
    )
    WITH fichier AS (
-       -- Le staging s'empile a chaque import : une ligne par fournisseur, la
-       -- plus renseignee puis la plus recente (meme regle que le script 01)
+       -- Du fichier on ne garde QUE le n° SAP et le n° IFS (demande du
+       -- 2026-10-30 : ses textes sont mal encodes, « FranÃ§ais »). Le staging
+       -- s'empile a chaque import : une ligne par fournisseur, celle qui porte
+       -- un n° IFS puis la plus recente.
        SELECT DISTINCT ON (LPAD(TRIM(stg.numero_compte_sap), 10, '0'))
-              LPAD(TRIM(stg.numero_compte_sap), 10, '0') AS cle_lifnr, stg.*
+              LPAD(TRIM(stg.numero_compte_sap), 10, '0') AS cle_lifnr,
+              NULLIF(TRIM(stg.numero_compte_ifs), '') AS numero_compte_ifs
          FROM raw_data.selection_fournisseurs_stg stg
         WHERE NULLIF(TRIM(stg.numero_compte_sap), '') IS NOT NULL
         ORDER BY LPAD(TRIM(stg.numero_compte_sap), 10, '0'),
-                 (SELECT COUNT(*) FROM jsonb_each_text(to_jsonb(stg)) j
-                   WHERE NULLIF(TRIM(j.value), '') IS NOT NULL) DESC,
+                 (NULLIF(TRIM(stg.numero_compte_ifs), '') IS NULL),
                  stg.ctid DESC
    ),
    perimetre AS (
@@ -138,56 +141,58 @@ BEGIN
           AND COALESCE(a.ktokk, '') NOT IN ('ZPER', 'ZPE1', 'P001')
           AND NOT EXISTS (SELECT 1 FROM fichier f WHERE f.cle_lifnr = a.lifnr::text)
    )
-   -- Une seule requete pour les deux sources : pour un SAP_NOUVEAU, sf est
-   -- NULL et chaque COALESCE retombe sur la valeur SAP.
+   -- Toutes les donnees viennent de SAP, pour les deux sources ; transcodifications
+   -- COUNTRY (pays), PAY_TERM (conditions de paiement), LANGUAGE (langue). Code
+   -- non transcode -> NULL (le code SAP reste visible dans condition_paiement_sap
+   -- / langue), sauf le pays : COUNTRY est l'identite, repli sur le code SAP.
    SELECT
       p.lifnr,
       p.source,
       -- Numero IFS : uniquement celui du fichier, NULL pour un SAP_NOUVEAU
-      NULLIF(TRIM(sf.numero_compte_ifs), ''),
+      sf.numero_compte_ifs,
       public.get_default_value('clean_data.ifs_fournisseurs', 'company'),
       COALESCE(NULLIF(TRIM(a.adrnr), ''), public.get_default_value('clean_data.ifs_fournisseurs', 'address_id')),
 
-      COALESCE(NULLIF(TRIM(sf.denomination_sociale), ''), a.name1),
-      COALESCE(NULLIF(TRIM(sf.libelle_concatene), ''),
-               NULLIF(TRIM(CONCAT_WS(' ', sf.numero_voie, sf.indice_numero_voie, sf.type_voie, sf.libelle_voie)), ''),
-               a.stras),
-      NULLIF(TRIM(sf.complement_adresse), ''),
-      COALESCE(NULLIF(TRIM(sf.localite), ''), a.ort01),
-      COALESCE(NULLIF(TRIM(sf.code_postal), ''), a.pstlz),
-      COALESCE(NULLIF(TRIM(sf.code_pays), ''), a.land1),
+      a.name1,
+      a.stras,
+      NULLIF(CONCAT_WS(' ', NULLIF(TRIM(adr.str_suppl1), ''), NULLIF(TRIM(adr.str_suppl2), '')), ''),
+      a.ort01,
+      a.pstlz,
+      COALESCE(public.get_transcodification('COUNTRY', a.land1), a.land1),
 
-      COALESCE(NULLIF(TRIM(sf.numero_siret), ''), a.stcd1),
-      NULLIF(TRIM(sf.numero_siren), ''),
-      COALESCE(NULLIF(TRIM(sf.numero_tva_intra), ''), a.stceg),
-      NULLIF(TRIM(sf.code_tva_ifs), ''),
-      NULLIF(TRIM(sf.code_tva_sap), ''),
-      NULLIF(TRIM(sf.france_etranger), ''),
+      NULLIF(TRIM(a.stcd1), ''),
+      -- SIREN = 9 premiers chiffres d'un SIRET francais
+      CASE WHEN TRIM(a.stcd1) ~ '^[0-9]{14}$' THEN LEFT(TRIM(a.stcd1), 9) END,
+      NULLIF(TRIM(a.stceg), ''),
+      -- Codes TVA : arbitres par le metier dans le fichier, sans source SAP
+      -- identifiee -> non repris
+      NULL,
+      NULL,
+      CASE WHEN a.land1 = 'FR' THEN 'Français' WHEN NULLIF(TRIM(a.land1), '') IS NOT NULL THEN 'Etranger' END,
 
-      sap_data.societe,
-      sap_data.organisation_achats,
-      COALESCE(NULLIF(TRIM(sf.condition_paiement_ifs), ''), sap_data.conditions_paiement_compta),
-      COALESCE(NULLIF(TRIM(sf.condition_paiement_ifs), ''), sap_data.conditions_paiement_achats),
-      NULLIF(TRIM(sf.condition_paiement_sap), ''),
-      NULLIF(TRIM(sf.mode_paiement), ''),
-      sap_data.incoterms_1,
-      sap_data.incoterms_2,
+      cpta.societe,
+      achats.ekorg,
+      public.get_transcodification('PAY_TERM', cpta.zterm),
+      public.get_transcodification('PAY_TERM', achats.zterm),
+      cpta.zterm,
+      cpta.zwels,
+      achats.inco1,
+      achats.inco2,
 
-      COALESCE(NULLIF(TRIM(sf.telephone_1), ''), a.telf1),
-      COALESCE(NULLIF(TRIM(sf.telephone_2), ''), NULLIF(TRIM(sf.telephone_3), ''), a.telf2),
-      NULLIF(TRIM(sf.telephone_3), ''),
-      NULLIF(TRIM(sf.email), ''),
-      NULLIF(TRIM(sf.critere_recherche), ''),
-      NULLIF(TRIM(sf.langue), ''),
-      COALESCE(public.get_transcodification('LANGUAGE', NULLIF(TRIM(sf.langue), '')),
-               public.get_transcodification('LANGUAGE', a.spras)),
+      NULLIF(TRIM(a.telf1), ''),
+      NULLIF(TRIM(a.telf2), ''),
+      NULL,  -- telephone_3 : pas de 3e numero dans LFA1 (telfx = fax)
+      mail.smtp_addr,
+      NULLIF(TRIM(a.sortl), ''),
+      a.spras,
+      public.get_transcodification('LANGUAGE', a.spras),
 
-      sap_data.destinataire_paiement,
+      cpta.lnrzb,
       clean_data.fn_date_sap(a.erdat),
 
-      COALESCE(NULLIF(TRIM(sf.iban_paiement), ''), banque.iban),
-      COALESCE(NULLIF(TRIM(sf.swift_bic), ''),     banque.swift),
-      COALESCE(NULLIF(TRIM(sf.nom_banque), ''),    banque.nom_banque),
+      banque.iban,
+      banque.swift,
+      banque.nom_banque,
       banque.compte,
       banque.code_banque,
       banque.pays_banque,
@@ -196,22 +201,35 @@ BEGIN
    FROM perimetre p
    LEFT JOIN fichier sf ON sf.cle_lifnr = p.lifnr
    LEFT JOIN raw_data.lfa1 a ON a.lifnr::text = p.lifnr
+   -- Donnees comptables : societe STJN en priorite, toutes les societes listees
    LEFT JOIN LATERAL (
-       SELECT string_agg(DISTINCT b.bukrs::text, ', ' ORDER BY b.bukrs::text) AS societe,
-              m.ekorg AS organisation_achats,
-              min(b.zterm::text) AS conditions_paiement_compta,
-              m.zterm AS conditions_paiement_achats,
-              m.inco1 AS incoterms_1,
-              m.inco2 AS incoterms_2,
-              min(b.lnrzb) AS destinataire_paiement
+       SELECT b.zterm::text AS zterm, NULLIF(TRIM(b.zwels), '') AS zwels, b.lnrzb,
+              string_agg(b.bukrs::text, ', ') OVER () AS societe
          FROM raw_data.lfb1 b
-         JOIN raw_data.lfm1 m ON b.mandt::text = m.mandt::text AND b.lifnr::text = m.lifnr::text
         WHERE b.lifnr::text = p.lifnr
-          AND m.ekorg::text = (SELECT min(m2.ekorg::text) FROM raw_data.lfm1 m2
-                                WHERE m2.mandt::text = m.mandt::text AND m2.lifnr::text = m.lifnr::text)
-        GROUP BY m.ekorg, m.zterm, m.inco1, m.inco2
+        ORDER BY (b.bukrs = 'STJN') DESC, b.bukrs
         LIMIT 1
-   ) sap_data ON TRUE
+   ) cpta ON TRUE
+   -- Donnees d'achat : plus petite organisation d'achats
+   LEFT JOIN LATERAL (
+       SELECT m.ekorg, m.zterm::text AS zterm, m.inco1, m.inco2
+         FROM raw_data.lfm1 m
+        WHERE m.lifnr::text = p.lifnr
+        ORDER BY m.ekorg
+        LIMIT 1
+   ) achats ON TRUE
+   LEFT JOIN LATERAL (
+       SELECT c.str_suppl1, c.str_suppl2 FROM raw_data.adrc c
+        WHERE c.addrnumber = a.adrnr LIMIT 1
+   ) adr ON TRUE
+   -- E-mail de l'adresse (pas d'une personne de contact), celui par defaut d'abord
+   LEFT JOIN LATERAL (
+       SELECT NULLIF(TRIM(e.smtp_addr), '') AS smtp_addr FROM raw_data.adr6 e
+        WHERE e.addrnumber = a.adrnr AND COALESCE(TRIM(e.persnumber), '') = ''
+          AND NULLIF(TRIM(e.smtp_addr), '') IS NOT NULL
+        ORDER BY (e.flgdefault = 'X') DESC, e.consnumber
+        LIMIT 1
+   ) mail ON TRUE
    LEFT JOIN LATERAL clean_data.fn_coordonnees_bancaires_sap(p.lifnr) banque ON TRUE;
 
    SELECT COUNT(*) FILTER (WHERE source = 'FICHIER'),
