@@ -46,7 +46,7 @@ from .interface_contracts import interface_contracts_blueprint
 from .finance import finance_blueprint
 from .sap_articles import sap_articles_blueprint
 from .equipment_browser import equipment_browser_blueprint
-from .resource_detail_file import resource_detail_file_blueprint
+from .resource_files import resource_files_blueprint
 
 def register_blueprints(app):
     """Enregistrement des blueprints d'API dans l'application"""
@@ -114,7 +114,7 @@ def register_blueprints(app):
     app.register_blueprint(finance_blueprint, url_prefix=f'{API_PREFIX}/finance')
     app.register_blueprint(sap_articles_blueprint, url_prefix=f'{API_PREFIX}/sap-data/articles')
     app.register_blueprint(equipment_browser_blueprint, url_prefix=f'{API_PREFIX}/maintenance/equipment-browser')
-    app.register_blueprint(resource_detail_file_blueprint, url_prefix=f'{API_PREFIX}/resource-detail-file')
+    app.register_blueprint(resource_files_blueprint, url_prefix=f'{API_PREFIX}/resource-files')
 
     # Enregistrement des blueprints SAP
     register_sap_blueprints(app, API_PREFIX)

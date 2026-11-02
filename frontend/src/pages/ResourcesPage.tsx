@@ -31,43 +31,43 @@ const ResourcesPage: React.FC = () => {
 
     const resourceCards: ResourceCard[] = [
         {
-            title: 'Resource Detail File',
-            description: 'Consulter les détails des fichiers de ressources',
+            title: 'Ressources',
+            description: 'Personnes, groupes et équipements : consulter, modifier, importer',
             icon: <FileIcon sx={{ fontSize: 48 }} />,
             path: '/ressources/detail-file',
             color: '#2196f3'
         },
         {
-            title: 'Resource Connection',
-            description: 'Gérer les connexions entre ressources',
+            title: 'Connexions des ressources',
+            description: 'Rattachement de chaque ressource à sa ressource parente',
             icon: <ConnectionIcon sx={{ fontSize: 48 }} />,
             path: '/ressources/connection',
             color: '#4caf50'
         },
         {
-            title: 'Resource Availability',
-            description: 'Consulter la disponibilité des ressources',
+            title: 'Disponibilités',
+            description: 'Périodes de disponibilité et efficacité des ressources',
             icon: <AvailabilityIcon sx={{ fontSize: 48 }} />,
             path: '/ressources/availability',
             color: '#ff9800'
         },
         {
-            title: 'Resource Parent',
-            description: 'Gérer la hiérarchie des ressources parentes',
+            title: 'Ressources parentes',
+            description: 'Hiérarchie des ressources et compétence de planification',
             icon: <ParentIcon sx={{ fontSize: 48 }} />,
             path: '/ressources/parent',
             color: '#9c27b0'
         },
         {
-            title: 'Maint Person Resource',
-            description: 'Gérer les ressources de maintenance par personne',
+            title: 'Ressources de maintenance par personne',
+            description: 'Organisation de maintenance et paramètres mobiles',
             icon: <MaintenanceIcon sx={{ fontSize: 48 }} />,
             path: '/ressources/maint-person',
             color: '#f44336'
         },
         {
-            title: 'IFS Person',
-            description: 'Consulter les personnes dans IFS',
+            title: 'Personnes IFS',
+            description: 'Référentiel des personnes IFS',
             icon: <PersonIcon sx={{ fontSize: 48 }} />,
             path: '/ressources/ifs-person',
             color: '#00bcd4'
@@ -84,7 +84,7 @@ const ResourcesPage: React.FC = () => {
                     </Typography>
                 </Box>
                 <Typography variant="body1" color="text.secondary">
-                    Consultez et gérez les ressources, connexions, disponibilités et hiérarchies
+                    Consultez, modifiez et importez les fichiers du module ressources ; « Recalculer » met à jour les tables IFS
                 </Typography>
             </Box>
 

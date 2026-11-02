@@ -83,12 +83,7 @@ import ProjetsAReprendre from './pages/ProjetsAReprendre';
 import ReglesGestion from './pages/ReglesGestion';
 import ResetPassword from './pages/ResetPassword';
 import ResourceDetailPage from './pages/ResourceDetailPage';
-import IfsPersonPage from './pages/resources/IfsPersonPage';
-import MaintPersonResourcePage from './pages/resources/MaintPersonResourcePage';
-import ResourceAvailabilityPage from './pages/resources/ResourceAvailabilityPage';
-import ResourceConnectionPageAdvanced from './pages/resources/ResourceConnectionPageAdvanced';
-import ResourceDetailFilePage from './pages/resources/ResourceDetailFilePage';
-import ResourceParentPage from './pages/resources/ResourceParentPage';
+import ResourceFilePage from './pages/resources/ResourceFilePage';
 import ResourcesPage from './pages/ResourcesPage';
 import ResultatsIA from './pages/ResultatsIA';
 import SapArticles from './pages/SapArticles';
@@ -199,12 +194,12 @@ function App() {
           
           {/* Routes pour les ressources */}
           <Route path="ressources" element={<ResourcesPage />} />
-          <Route path="ressources/detail-file" element={<ResourceDetailFilePage />} />
-          <Route path="ressources/connection" element={<ResourceConnectionPageAdvanced />} />
-          <Route path="ressources/availability" element={<ResourceAvailabilityPage />} />
-          <Route path="ressources/parent" element={<ResourceParentPage />} />
-          <Route path="ressources/maint-person" element={<MaintPersonResourcePage />} />
-          <Route path="ressources/ifs-person" element={<IfsPersonPage />} />
+          <Route path="ressources/detail-file" element={<ResourceFilePage fichier="detail-file" />} />
+          <Route path="ressources/connection" element={<ResourceFilePage fichier="connection" />} />
+          <Route path="ressources/availability" element={<ResourceFilePage fichier="availability" />} />
+          <Route path="ressources/parent" element={<ResourceFilePage fichier="parent" />} />
+          <Route path="ressources/maint-person" element={<ResourceFilePage fichier="maint-person" />} />
+          <Route path="ressources/ifs-person" element={<ResourceFilePage fichier="ifs-person" />} />
           
           {/* Route pour le chargement des données */}
           <Route path="data-loading" element={<DataLoadingPage />} />
