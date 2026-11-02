@@ -87,7 +87,7 @@ import IfsPersonPage from './pages/resources/IfsPersonPage';
 import MaintPersonResourcePage from './pages/resources/MaintPersonResourcePage';
 import ResourceAvailabilityPage from './pages/resources/ResourceAvailabilityPage';
 import ResourceConnectionPageAdvanced from './pages/resources/ResourceConnectionPageAdvanced';
-import ResourceDetailFilePageAdvanced from './pages/resources/ResourceDetailFilePageAdvanced';
+import ResourceDetailFilePage from './pages/resources/ResourceDetailFilePage';
 import ResourceParentPage from './pages/resources/ResourceParentPage';
 import ResourcesPage from './pages/ResourcesPage';
 import ResultatsIA from './pages/ResultatsIA';
@@ -199,7 +199,7 @@ function App() {
           
           {/* Routes pour les ressources */}
           <Route path="ressources" element={<ResourcesPage />} />
-          <Route path="ressources/detail-file" element={<ResourceDetailFilePageAdvanced />} />
+          <Route path="ressources/detail-file" element={<ResourceDetailFilePage />} />
           <Route path="ressources/connection" element={<ResourceConnectionPageAdvanced />} />
           <Route path="ressources/availability" element={<ResourceAvailabilityPage />} />
           <Route path="ressources/parent" element={<ResourceParentPage />} />
