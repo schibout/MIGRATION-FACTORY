@@ -29,6 +29,11 @@ Historique des couts par projet (clean_data.historique_cout_projet, RPSCO) :
                                          reel_cumule = cumul depuis le debut de l'historique
   GET  /api/v1/finance/historique-couts/export.xlsx
   GET|POST /api/v1/finance/historique-couts/sync   (RPSCO, PRPS, PROJ)
+  GET  /api/v1/finance/historique-couts/reprise?date_arrete=AAAA-MM-JJ (fin de mois)
+                                         OD de reprise IFS par OTP a migrer + anomalies
+  PUT  .../reprise/nature/<otp>          {nature: CAPEX|OPEX|null} (OTP sans suffixe IM/EX)
+  PUT  .../reprise/projet/<n° projet>    {project_id_ifs, activity_seq_capex, activity_seq_opex}
+  GET  .../reprise/export.xlsx           fichier OD, 409 tant qu'il reste une anomalie
   GET  /api/v1/finance/comptes          conversion des comptes (FA_ACCOUNT) + comptes des fiches
 Fournisseurs (clean_data.ifs_fournisseurs_perimetre : fichier + crees dans SAP apres l'arrete) :
   GET  /api/v1/finance/fournisseurs     filtres search, source (FICHIER | SAP_NOUVEAU)
@@ -44,7 +49,7 @@ import re
 import tempfile
 import threading
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from flask import Blueprint, current_app, jsonify, request, send_file
@@ -802,7 +807,7 @@ HCP_CLES = {
     'otp': ['projet', 'projet_libelle', 'responsable', 'numero_projet', 'a_migrer',
             'element_otp', 'otp_libelle'],
 }
-HCP_MESURES = ['reel', 'reel_cumule', 'plan', 'budget_annuel', 'engag_cde', 'engag_da']
+HCP_MESURES = ['reel', 'reel_capex', 'reel_opex', 'reel_a_qualifier', 'reel_cumule', 'plan', 'budget_annuel', 'engag_cde', 'engag_da']
 HCP_LIBELLE = {
     'projet': 'Projet (PROJ-PSPID)',
     'projet_libelle': 'Désignation projet',
@@ -814,6 +819,9 @@ HCP_LIBELLE = {
     'annee': 'Année',
     'periode': 'Période',
     'reel': 'Réel',
+    'reel_capex': 'Réel CAPEX',
+    'reel_opex': 'Réel OPEX',
+    'reel_a_qualifier': 'Réel à qualifier',
     'reel_cumule': 'Réel cumulé',
     'plan': 'Plan',
     'budget_annuel': 'Budget annuel',
@@ -858,10 +866,12 @@ def _hcp_requete(vue):
     sql = (
         f'WITH agg AS ('
         f' SELECT {cles}, annee, periode, SUM(reel) AS reel,'
+        f' SUM(reel_capex) AS reel_capex, SUM(reel_opex) AS reel_opex,'
+        f' SUM(reel_a_qualifier) AS reel_a_qualifier,'
         f' SUM(SUM(reel)) OVER (PARTITION BY {cles} ORDER BY annee, periode) AS reel_cumule,'
         f' SUM(plan) AS plan, SUM(budget_annuel) AS budget_annuel,'
         f' SUM(engag_cde) AS engag_cde, SUM(engag_da) AS engag_da'
-        f' FROM clean_data.historique_cout_projet {interne}'
+        f' FROM clean_data.v_historique_cout_projet {interne}'
         f' GROUP BY {cles}, annee, periode)'
         f' SELECT {", ".join(_hcp_colonnes(vue))} FROM agg {clause_annee}'
         f' ORDER BY {cles}, annee, periode'
@@ -884,7 +894,8 @@ def list_historique_couts():
     stats = db.session.execute(text(
         'SELECT count(*) AS lignes, count(DISTINCT projet) AS projets, '
         'count(DISTINCT projet) FILTER (WHERE a_migrer) AS projets_a_migrer, '
-        'sum(reel) AS reel, sum(plan) AS plan, sum(budget_annuel) AS budget_annuel, '
+        'sum(reel) AS reel, sum(reel_capex) AS reel_capex, sum(reel_opex) AS reel_opex, '
+        'sum(reel_a_qualifier) AS reel_a_qualifier, sum(plan) AS plan, sum(budget_annuel) AS budget_annuel, '
         f'sum(engag_cde) AS engag_cde, sum(engag_da) AS engag_da FROM ({sql}) q'),
         params).mappings().one()
     annees = [r[0] for r in db.session.execute(text(
@@ -950,6 +961,136 @@ def start_hcp_sync():
 
     return _start_sync('historique_cout_projet', HCP_SAP_TABLES,
                        'clean_data.historique_cout_projet', load, extraire=extraire)
+
+
+# Reprise IFS des couts historiques (OD) : clean_data.reprise_cout_projet(date_arrete),
+# sql/historiqueCoutProjet/03_reprise_cout_projet.sql, saisies de la migration 126.
+REPRISE_COLONNES = ['numero_projet', 'projet', 'projet_libelle', 'element_otp', 'otp_libelle',
+                    'nature', 'nature_source', 'montant', 'project_id_ifs', 'project_id_source',
+                    'activity_seq', 'anomalies', 'exporte']
+# Fichier attendu par IFS. ponytail: le credit = element d'OTP SAP tel quel ('SN26052IM'),
+# format a confirmer avec le modele d'import de l'OD.
+REPRISE_OD = [('element_otp', 'Centre de coûts/crédit'), ('project_id_ifs', 'ID projet IFS'),
+              ('montant', 'Montant'), ('activity_seq', "Séquence d'activité")]
+REPRISE_ANOMALIES = {
+    'NATURE_A_QUALIFIER': "OTP sans suffixe IM / EX ni qualification manuelle",
+    'SEQUENCE_MANQUANTE': "Séquence d'activité IFS de reprise non saisie pour cette nature",
+    'PROJET_IFS_INCONNU': 'ID projet IFS absent des projets IFS (project_base)',
+    'SEQUENCE_INCONNUE': "Séquence d'activité absente des activités IFS du projet",
+    'OTP_EN_DOUBLE': "Même élément d'OTP rattaché à plusieurs projets",
+    'PROJET_IFS_PARTAGE': 'Même ID projet IFS pour plusieurs n° projet',
+    'CUMUL_PARENT_ENFANTS': 'Montant du parent égal à la somme de ses enfants : cumul, double comptage',
+}
+
+
+def _reprise_arrete():
+    """Date d'arrete (fin de mois) depuis ?date_arrete=YYYY-MM-DD ; ValueError sinon."""
+    d = date.fromisoformat(request.args.get('date_arrete') or '')
+    if (d.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) != d:
+        raise ValueError('Arrêté mensuel uniquement : RPSCO ne porte que des montants par période')
+    return d
+
+
+def _reprise_lignes(d):
+    return db.session.execute(text(
+        f'SELECT {", ".join(REPRISE_COLONNES)}, exercice, periode '
+        'FROM clean_data.reprise_cout_projet(:d)'), {'d': d}).mappings().all()
+
+
+@finance_blueprint.route('/historique-couts/reprise', methods=['GET'])
+@jwt_required()
+def get_reprise_couts():
+    try:
+        d = _reprise_arrete()
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    rows = _reprise_lignes(d)
+    saisies = db.session.execute(text(
+        'SELECT numero_projet, project_id_ifs, activity_seq_capex, activity_seq_opex, saisi_par, saisi_le '
+        'FROM clean_data.reprise_cout_projet_ifs')).mappings().all()
+    return jsonify({
+        'saisies': {s['numero_projet']: {k: _json(v) for k, v in s.items()} for s in saisies},
+        'arrete': {'date': d.isoformat(),
+                   'exercice': rows[0]['exercice'] if rows else None,
+                   'periode': rows[0]['periode'] if rows else None},
+        'rows': [{k: _json(r[k]) for k in REPRISE_COLONNES} for r in rows],
+        'libelles_anomalies': REPRISE_ANOMALIES,
+    })
+
+
+@finance_blueprint.route('/historique-couts/reprise/nature/<path:otp>', methods=['PUT'])
+@jwt_required()
+def put_reprise_nature(otp):
+    """Qualification CAPEX / OPEX d'un OTP sans suffixe reconnu ; nature null = suppression."""
+    body = request.get_json(silent=True) or {}
+    nature = body.get('nature')
+    if db.session.execute(text('SELECT clean_data.nature_suffixe_otp(:o)'), {'o': otp}).scalar():
+        return jsonify({'error': 'Nature donnée par le suffixe IM / EX : non modifiable'}), 400
+    if nature is None:
+        db.session.execute(text('DELETE FROM clean_data.reprise_cout_otp_nature WHERE element_otp = :o'),
+                           {'o': otp})
+    elif nature in ('CAPEX', 'OPEX'):
+        db.session.execute(text(
+            'INSERT INTO clean_data.reprise_cout_otp_nature (element_otp, nature, commentaire, qualifie_par) '
+            'VALUES (:o, :n, :c, :u) ON CONFLICT (element_otp) DO UPDATE SET nature = EXCLUDED.nature, '
+            'commentaire = EXCLUDED.commentaire, qualifie_par = EXCLUDED.qualifie_par, '
+            'qualifie_le = current_timestamp'),
+            {'o': otp, 'n': nature, 'c': body.get('commentaire'), 'u': str(get_jwt_identity())})
+    else:
+        return jsonify({'error': 'nature attendue : CAPEX, OPEX ou null'}), 400
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@finance_blueprint.route('/historique-couts/reprise/projet/<path:numero_projet>', methods=['PUT'])
+@jwt_required()
+def put_reprise_projet(numero_projet):
+    """Correspondance n° projet -> ID projet IFS / sequences de reprise (vide = non renseigne)."""
+    body = request.get_json(silent=True) or {}
+    try:
+        seqs = {k: None if body.get(k) in (None, '') else Decimal(str(body[k]))
+                for k in ('activity_seq_capex', 'activity_seq_opex')}
+    except Exception:
+        return jsonify({'error': "Séquence d'activité numérique attendue"}), 400
+    db.session.execute(text(
+        'INSERT INTO clean_data.reprise_cout_projet_ifs (numero_projet, project_id_ifs, activity_seq_capex, '
+        'activity_seq_opex, commentaire, saisi_par) VALUES (:p, :i, :sc, :so, :c, :u) '
+        'ON CONFLICT (numero_projet) DO UPDATE SET project_id_ifs = EXCLUDED.project_id_ifs, '
+        'activity_seq_capex = EXCLUDED.activity_seq_capex, activity_seq_opex = EXCLUDED.activity_seq_opex, '
+        'commentaire = EXCLUDED.commentaire, saisi_par = EXCLUDED.saisi_par, saisi_le = current_timestamp'),
+        {'p': numero_projet, 'i': (body.get('project_id_ifs') or '').strip() or None,
+         'sc': seqs['activity_seq_capex'], 'so': seqs['activity_seq_opex'],
+         'c': body.get('commentaire'), 'u': str(get_jwt_identity())})
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@finance_blueprint.route('/historique-couts/reprise/export.xlsx', methods=['GET'])
+@jwt_required()
+def export_reprise_couts():
+    """Fichier OD (lignes a montant non nul) ; refuse (409) tant qu'il reste une anomalie."""
+    from openpyxl import Workbook
+
+    try:
+        d = _reprise_arrete()
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    rows = _reprise_lignes(d)
+    db.session.commit()
+    bloquantes = [r for r in rows if r['anomalies']]
+    if bloquantes:
+        return jsonify({'error': f'{len(bloquantes)} ligne(s) en anomalie : export refusé',
+                        'anomalies': len(bloquantes)}), 409
+    od = [r for r in rows if r['exporte']]
+    wb = Workbook()
+    _feuille_tableau(wb.active, 'OD reprise', REPRISE_OD,
+                     [[r[c] for c, _ in REPRISE_OD] for r in od], {'montant'})
+    detail = [('numero_projet', 'N° projet'), ('projet', 'Projet SAP'), ('element_otp', 'Élément OTP'),
+              ('otp_libelle', 'Désignation OTP'), ('nature', 'Nature'), ('montant', 'Montant'),
+              ('project_id_ifs', 'ID projet IFS'), ('activity_seq', "Séquence d'activité")]
+    _feuille_tableau(wb.create_sheet(), f'Détail arrêté {d:%d-%m-%Y}', detail,
+                     [[r[c] for c, _ in detail] for r in od], {'montant'})
+    return _envoyer(wb, f'reprise_couts_projet_{d:%Y%m%d}')
 
 
 # ---------------------------------------------------------------------------

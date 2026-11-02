@@ -85,6 +85,7 @@ errors=0
 files=(
     "01_create_clean_data_historique_cout_projet.sql"
     "02_alimenter_historique_cout_projet.sql"
+    "03_reprise_cout_projet.sql"  # prerequis : migration 126
 )
 
 # Exécution de chaque fichier

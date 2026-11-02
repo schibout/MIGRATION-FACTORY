@@ -31,13 +31,14 @@ import {
     Typography,
 } from '@mui/material';
 import React, { useCallback, useEffect, useState } from 'react';
+import RepriseCoutsIfs from '../components/finance/RepriseCoutsIfs';
 import api from '../services/api';
 
 // Même logique que FinanceCommandesAchat : liste paginée, export Excel, Recalculer / Synchroniser SAP.
 // Source : clean_data.historique_cout_projet (RPSCO ledger 0003, cf. docs/zcoa_credits_investissement_raw_data.sql).
 
 type Row = Record<string, string | number | null>;
-type Vue = 'projet' | 'otp' | 'mode_emploi';
+type Vue = 'projet' | 'otp' | 'reprise' | 'mode_emploi';
 
 interface SyncStatus {
   status: 'never' | 'running' | 'completed' | 'failed';
@@ -57,6 +58,9 @@ interface Stats {
   projets: number;
   projets_a_migrer: number;
   reel: number | null;
+  reel_capex: number | null;
+  reel_opex: number | null;
+  reel_a_qualifier: number | null;
   plan: number | null;
   budget_annuel: number | null;
   engag_cde: number | null;
@@ -77,6 +81,8 @@ const ONGLETS: { value: Vue; label: string; description: string }[] = [
     description: "Une ligne par projet SAP, année et période (tous les éléments d'OTP du projet cumulés). Réel cumulé = depuis le début de l'historique." },
   { value: 'otp', label: "Par élément d'OTP",
     description: "Une ligne par élément d'OTP, année et période. Réel cumulé = depuis le début de l'historique de l'OTP." },
+  { value: 'reprise', label: 'Reprise IFS',
+    description: "OD de reprise des coûts historiques des projets à migrer : montant par élément d'OTP à une date d'arrêté, nature CAPEX / OPEX, ID projet et séquence d'activité IFS, anomalies bloquantes." },
   { value: 'mode_emploi', label: "Mode d'emploi",
     description: "Sources SAP, signification de chaque colonne, n° projet et indicateur de migration, utilisation de l'écran." },
 ];
@@ -113,7 +119,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
   const filtres = { vue, search, annee_debut: anneeDebut, annee_fin: anneeFin, migration };
 
   const load = useCallback(async () => {
-    if (vue === 'mode_emploi') return;
+    if (vue === 'mode_emploi' || vue === 'reprise') return;
     try {
       setLoading(true);
       setError(null);
@@ -198,7 +204,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
         <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
           <Tooltip title="Classeur Excel des lignes filtrées (toutes les pages) de l'onglet affiché">
             <span>
-              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !data?.total || vue === 'mode_emploi'}>
+              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !data?.total || vue === 'mode_emploi' || vue === 'reprise'}>
                 {exporting ? 'Export…' : 'Exporter Excel'}
               </Button>
             </span>
@@ -227,7 +233,7 @@ const FinanceHistoriqueCouts: React.FC = () => {
         {ONGLETS.find((o) => o.value === vue)?.description}
       </Typography>
 
-      {vue !== 'mode_emploi' && (<>
+      {(vue === 'projet' || vue === 'otp') && (<>
       <Alert severity="info" sx={{ mb: 2 }}>
         Société STJN, ledger RPSCO 0003, montants en EUR. Réel = valeurs réelles (WRTTP 04) hors répartition KOAO,
         Plan = 01, Budget annuel = 41 en période 0 (le budget global sans année est exclu), Commandes non
@@ -243,6 +249,9 @@ const FinanceHistoriqueCouts: React.FC = () => {
           <Chip label={`${stats.projets_a_migrer.toLocaleString('fr-FR')} projets à migrer`} color="warning" />
           <Chip label={`${stats.lignes.toLocaleString('fr-FR')} lignes`} />
           <Chip label={`Réel : ${euros(stats.reel)} €`} color="success" />
+          <Chip label={`dont CAPEX : ${euros(stats.reel_capex)} €`} />
+          <Chip label={`dont OPEX : ${euros(stats.reel_opex)} €`} />
+          <Chip label={`dont à qualifier : ${euros(stats.reel_a_qualifier)} €`} color={stats.reel_a_qualifier ? 'warning' : 'default'} />
           <Chip label={`Budget annuel : ${euros(stats.budget_annuel)} €`} />
           <Chip label={`Plan : ${euros(stats.plan)} €`} />
           <Chip label={`Cdes non réceptionnées : ${euros(stats.engag_cde)} €`} />
@@ -271,7 +280,9 @@ const FinanceHistoriqueCouts: React.FC = () => {
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {vue === 'mode_emploi' ? (
+      {vue === 'reprise' ? (
+        <RepriseCoutsIfs />
+      ) : vue === 'mode_emploi' ? (
         <Box
           component="iframe"
           src={GUIDE}

@@ -15,6 +15,7 @@ import pytest
 BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SQL_DIR = os.environ.get('HCP_SQL_DIR') or os.path.join(
     os.path.dirname(BACKEND), 'sql', 'historiqueCoutProjet')
+MIGRATIONS_DIR = os.environ.get('HCP_MIGRATIONS_DIR') or os.path.join(os.path.dirname(BACKEND), 'migrations')
 if BACKEND not in sys.path:
     sys.path.insert(0, BACKEND)
 
@@ -30,8 +31,11 @@ def cur():
         pytest.skip(f'base injoignable : {exc}')
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        with open(os.path.join(MIGRATIONS_DIR, '126_reprise_cout_projet_ifs.sql'), encoding='utf-8') as f:
+            cur.execute(f.read())
         for name in ('01_create_clean_data_historique_cout_projet.sql',
-                     '02_alimenter_historique_cout_projet.sql'):
+                     '02_alimenter_historique_cout_projet.sql',
+                     '03_reprise_cout_projet.sql'):
             with open(os.path.join(SQL_DIR, name), encoding='utf-8') as f:
                 cur.execute(f.read())
         cur.execute('SELECT clean_data.alimenter_historique_cout_projet() AS n')
@@ -103,3 +107,84 @@ def test_a_migrer_si_projet_dans_project_base(cur):
     cur.execute(f'SELECT count(*) FILTER (WHERE a_migrer) AS oui, count(*) FILTER (WHERE NOT a_migrer) AS non FROM {HCP}')
     r = cur.fetchone()
     assert r['oui'] > 0 and r['non'] > 0
+
+
+# --- Reprise IFS (migration 126, 03_reprise_cout_projet.sql) ----------------
+
+def test_calendrier_fiscal_juillet_juin(cur):
+    """Exercice STJN Z2 : juillet = periode 1, juin = 12 ; exercice 2027 = 07/2026 -> 06/2027."""
+    for d, attendu in (('2026-07-31', (2027, 1)), ('2026-10-31', (2027, 4)), ('2026-12-31', (2027, 6)),
+                       ('2027-01-31', (2027, 7)), ('2027-06-30', (2027, 12)), ('2026-06-30', (2026, 12))):
+        cur.execute('SELECT exercice, periode FROM clean_data.exercice_periode_stjn(%s)', (d,))
+        r = cur.fetchone()
+        assert (r['exercice'], r['periode']) == attendu, d
+
+
+def test_nature_par_suffixe(cur):
+    for otp, nature in (('SN26052IM', 'CAPEX'), ('SN.26052.IM', 'CAPEX'), ('sn26052ex ', 'OPEX'),
+                        ('SN.26052.EX', 'OPEX'), ('SN19031', None), ('CS.21002', None)):
+        cur.execute('SELECT clean_data.nature_suffixe_otp(%s) AS n', (otp,))
+        assert cur.fetchone()['n'] == nature, otp
+
+
+def test_ventilation_capex_opex_sans_cumul(cur):
+    """Reel CAPEX + OPEX + a qualifier = reel de la periode, ligne a ligne."""
+    cur.execute("""SELECT count(*) AS n FROM clean_data.v_historique_cout_projet
+                   WHERE reel_capex + reel_opex + reel_a_qualifier <> reel
+                      OR (reel_capex <> 0)::int + (reel_opex <> 0)::int + (reel_a_qualifier <> 0)::int > 1""")
+    assert cur.fetchone()['n'] == 0
+
+
+def test_arrete_mensuel_seulement(cur):
+    cur.execute('SAVEPOINT s')
+    with pytest.raises(psycopg2.Error):
+        cur.execute("SELECT * FROM clean_data.reprise_cout_projet('2026-09-15')")
+    cur.execute('ROLLBACK TO SAVEPOINT s')
+
+
+def test_montant_somme_des_periodes_jusqu_a_l_arrete(cur):
+    """Arrete 31/10/2026 = exercice 2027 periode 4 : exercices anterieurs + 2027 periodes 0..4,
+    projets a migrer seulement, ni plan ni engagements."""
+    cur.execute("SELECT * FROM clean_data.reprise_cout_projet('2026-10-31')")
+    rows = cur.fetchall()
+    assert rows and {(r['exercice'], r['periode']) for r in rows} == {(2027, 4)}
+    cur.execute(f"""SELECT count(DISTINCT element_otp) AS otp, round(sum(reel), 2) AS t FROM {HCP}
+                    WHERE a_migrer AND (annee < 2027 OR (annee = 2027 AND periode <= 4))""")
+    attendu = cur.fetchone()
+    assert len(rows) == attendu['otp']
+    assert round(sum(r['montant'] for r in rows), 2) == attendu['t']
+    cur.execute(f'SELECT count(DISTINCT projet) AS n FROM {HCP} WHERE NOT a_migrer')
+    assert cur.fetchone()['n'] > 0  # des projets exclus existent...
+    cur.execute(f'SELECT DISTINCT projet FROM {HCP} WHERE a_migrer')
+    assert {r['projet'] for r in rows} <= {x['projet'] for x in cur.fetchall()}  # ...et n'y sont pas
+
+
+def test_aucun_cumul_parent_enfant_ni_doublon(cur):
+    cur.execute("""SELECT count(*) AS n FROM clean_data.reprise_cout_projet('2099-06-30')
+                   WHERE anomalies && ARRAY['CUMUL_PARENT_ENFANTS', 'OTP_EN_DOUBLE']""")
+    assert cur.fetchone()['n'] == 0
+
+
+def test_qualification_et_sequences_levent_les_anomalies(cur):
+    cur.execute("""SELECT * FROM clean_data.reprise_cout_projet('2099-06-30')
+                   WHERE 'NATURE_A_QUALIFIER' = ANY(anomalies) AND EXISTS (
+                       SELECT 1 FROM clean_data.activity a WHERE a.project_id = project_id_ifs) LIMIT 1""")
+    r = cur.fetchone()
+    assert r is not None and r['nature'] is None and not r['exporte']
+    cur.execute("""INSERT INTO clean_data.reprise_cout_otp_nature (element_otp, nature, qualifie_par)
+                   VALUES (%s, 'CAPEX', 'test')""", (r['element_otp'],))
+    cur.execute("""SELECT activity_seq FROM clean_data.activity WHERE project_id = %s LIMIT 1""",
+                (r['project_id_ifs'],))
+    seq = cur.fetchone()['activity_seq']
+    cur.execute("""INSERT INTO clean_data.reprise_cout_projet_ifs (numero_projet, activity_seq_capex, saisi_par)
+                   VALUES (%s, %s, 'test')""", (r['numero_projet'], seq))
+    cur.execute("""SELECT * FROM clean_data.reprise_cout_projet('2099-06-30')
+                   WHERE numero_projet = %s AND element_otp = %s""", (r['numero_projet'], r['element_otp']))
+    apres = cur.fetchone()
+    assert apres['nature'] == 'CAPEX' and apres['nature_source'] == 'MANUELLE'
+    assert apres['activity_seq'] == seq and apres['anomalies'] == [] and apres['exporte']
+    cur.execute("UPDATE clean_data.reprise_cout_projet_ifs SET activity_seq_capex = -1 WHERE numero_projet = %s",
+                (r['numero_projet'],))
+    cur.execute("""SELECT anomalies FROM clean_data.reprise_cout_projet('2099-06-30')
+                   WHERE numero_projet = %s AND element_otp = %s""", (r['numero_projet'], r['element_otp']))
+    assert 'SEQUENCE_INCONNUE' in cur.fetchone()['anomalies']
