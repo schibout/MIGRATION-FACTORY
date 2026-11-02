@@ -639,18 +639,23 @@ def _existante(cfg, cle):
     return dict(r) if r else None
 
 
-def _controle(cfg, ligne, cle_avant):
-    """Ligne complete (existante + saisie) -> message d'erreur ou None."""
+def _controle(cfg, ligne, cle_avant, avant=None):
+    """Ligne complete (existante + saisie) -> message d'erreur ou None. References et
+    unicite ne sont controlees que sur une valeur nouvelle ou modifiee : les ecarts deja
+    presents dans les fichiers (signales en anomalie) ne bloquent ni la saisie ni le reimport."""
+    def change(c):
+        return avant is None or ligne.get(c) != avant.get(c)
+
     for c, m in cfg['champs'].items():
         if m['obligatoire'] and ligne.get(c) in (None, ''):
             return f"{m['label']} : valeur obligatoire"
     for c, m in cfg['champs'].items():
-        if m['ref'] and ligne.get(c) is not None:
+        if m['ref'] and ligne.get(c) is not None and change(c):
             table, col, lib = REFS[m['ref']]
             if not db.session.execute(text(f'SELECT 1 FROM raw_data.{table} WHERE {col} = :v'), {'v': ligne[c]}).scalar():
                 return f"{m['label']} : {lib.lower()} n° {_json(ligne[c])} inconnue"
     nat = cfg.get('naturelle')
-    if nat and ligne.get(nat):
+    if nat and ligne.get(nat) and change(nat):
         autre = db.session.execute(text(
             f"SELECT {cfg['cle'][0]} FROM raw_data.{cfg['table']} WHERE upper(trim({nat})) = upper(:v) "
             f"AND NOT ({_where(cfg)}) LIMIT 1"),
@@ -730,7 +735,7 @@ def modifier(fichier, ident):
         return jsonify({'error': 'Ligne introuvable'}), 404
     ligne = {**existante, **valeurs}
     cle = {k: ligne.get(k) for k in cfg['cle']}
-    probleme = _conflit_cle(cfg, cle, cle_avant) or _controle(cfg, ligne, cle_avant)
+    probleme = _conflit_cle(cfg, cle, cle_avant) or _controle(cfg, ligne, cle_avant, existante)
     if probleme:
         return jsonify({'error': probleme}), 409
     if valeurs:
@@ -852,7 +857,7 @@ def importer(fichier):
             continue
         vues.add(marque)
         complete = {**(existante or {}), **valeurs, **cle}
-        probleme = _controle(cfg, complete, cle if existante else None)
+        probleme = _controle(cfg, complete, cle if existante else None, existante)
         if probleme:
             erreurs.append({'ligne': ligne, 'message': probleme})
             continue
