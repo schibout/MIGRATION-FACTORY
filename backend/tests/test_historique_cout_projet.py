@@ -148,8 +148,10 @@ def test_montant_somme_des_periodes_jusqu_a_l_arrete(cur):
     cur.execute("SELECT * FROM clean_data.reprise_cout_projet('2026-10-31')")
     rows = cur.fetchall()
     assert rows and {(r['exercice'], r['periode']) for r in rows} == {(2027, 4)}
-    cur.execute(f"""SELECT count(DISTINCT element_otp) AS otp, round(sum(reel), 2) AS t FROM {HCP}
-                    WHERE a_migrer AND (annee < 2027 OR (annee = 2027 AND periode <= 4))""")
+    # Tous les OTP a migrer sont listes, y compris ceux dont le reel est posterieur (montant 0)
+    cur.execute(f"""SELECT count(DISTINCT element_otp) AS otp,
+                           round(sum(reel) FILTER (WHERE annee < 2027 OR (annee = 2027 AND periode <= 4)), 2) AS t
+                    FROM {HCP} WHERE a_migrer""")
     attendu = cur.fetchone()
     assert len(rows) == attendu['otp']
     assert round(sum(r['montant'] for r in rows), 2) == attendu['t']
