@@ -76,6 +76,12 @@ def _resolve_id(cursor, object_type, sap_key):
     return row['id'] if row else None
 
 
+def _resolve_bom_parent(cursor, key):
+    """Porteur d'une nomenclature : poste technique (tplnr) ou equipement
+    (equnr, nomenclature stlty=E chargee depuis eqst)."""
+    return _resolve_id(cursor, 'FUNC_LOC', key) or _resolve_id(cursor, 'EQUIPMENT', key)
+
+
 def _normalize_sap_matnr(raw: str) -> str:
     """Numeriques -> 18 zeros a gauche, sinon tel quel (aligne sur l'ancien code)."""
     matnr = (raw or '').strip().upper()
@@ -205,7 +211,9 @@ def _equipment_select():
         o.resp_work_center AS poste_resp,
         o.resp_work_center_txt AS poste_resp_texte,
         (SELECT COUNT(*) FROM {MO} c
-          WHERE c.parent_id = o.id AND c.object_type = 'EQUIPMENT' AND c.is_active) AS children_count
+          WHERE c.parent_id = o.id AND c.object_type = 'EQUIPMENT' AND c.is_active) AS children_count,
+        (SELECT COUNT(*) FROM {MO} c
+          WHERE c.parent_id = o.id AND c.object_type = 'BOM_ITEM' AND c.is_active) AS bom_count
     """
 
 
@@ -1281,7 +1289,7 @@ def get_fl_bom(tplnr):
                     (a.attributes->>'ibau_nb_occurrences')::int AS ibau_nb_occurrences,
                     COALESCE(a.designation, a.code) AS designation
                 FROM {MO} b
-                JOIN {MO} fl ON fl.id = b.parent_id AND fl.object_type = 'FUNC_LOC'
+                JOIN {MO} fl ON fl.id = b.parent_id AND fl.object_type IN ('FUNC_LOC', 'EQUIPMENT')
                 JOIN {MO} a  ON a.id  = b.ref_object_id AND a.object_type = 'ARTICLE'
                 -- Pas de filtre sur attributes->>'stlty' : la jointure sur un
                 -- parent FUNC_LOC exprime deja « nomenclature portee par un
@@ -1316,7 +1324,7 @@ def get_fl_bom_counts():
             cursor.execute(f"""
                 SELECT fl.sap_key AS tplnr, COUNT(*) AS nb
                 FROM {MO} b
-                JOIN {MO} fl ON fl.id = b.parent_id AND fl.object_type = 'FUNC_LOC'
+                JOIN {MO} fl ON fl.id = b.parent_id AND fl.object_type IN ('FUNC_LOC', 'EQUIPMENT')
                 -- Meme regle que /bom : pas de filtre stlty, sinon le compteur
                 -- (pastille verte + chevron) ignorerait les nomenclatures
                 -- issues du type de construction IBAU.
@@ -1474,9 +1482,9 @@ def add_bom_component():
         user = _current_user()
         with get_db_connection() as conn:
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            fl_id = _resolve_id(cursor, 'FUNC_LOC', tplnr)
+            fl_id = _resolve_bom_parent(cursor, tplnr)
             if fl_id is None:
-                return jsonify({'success': False, 'error': f'Poste technique "{tplnr}" non trouvé'}), 404
+                return jsonify({'success': False, 'error': f'Poste technique ou équipement "{tplnr}" non trouvé'}), 404
 
             art_id = _ensure_article(cursor, idnrk, user)
 
@@ -1598,9 +1606,9 @@ def update_bom_component():
         user = _current_user()
         with get_db_connection() as conn:
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            fl_id = _resolve_id(cursor, 'FUNC_LOC', tplnr)
+            fl_id = _resolve_bom_parent(cursor, tplnr)
             if fl_id is None:
-                return jsonify({'success': False, 'error': 'Poste technique introuvable'}), 404
+                return jsonify({'success': False, 'error': 'Poste technique ou équipement introuvable'}), 404
 
             if stlkn:
                 locate_sql = "AND attributes->>'stlkn' = %s"

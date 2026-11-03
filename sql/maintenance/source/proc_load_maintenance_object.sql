@@ -22,10 +22,11 @@
 --   1. FUNC_LOC          (postes techniques, sans parent)
 --   2. resolution parent FUNC_LOC (tplma -> id)
 --   3. EQUIPMENT + resolution parent (FL porteur, sinon equipement hequi)
---   4. ARTICLE           (composants de BOM T/M + IBAU type de construction)
+--   4. ARTICLE           (composants de BOM T/M/E + IBAU type de construction)
 --   5. BOM_ITEM          (a: BOM de FL stlty=T ; b: BOM matiere stlty=M ;
 --                         c: BOM du type de construction iflo.submt, a plat
---                            sous le poste technique quand tpst est absent)
+--                            sous le poste technique quand tpst est absent ;
+--                         d: BOM d'equipement stlty=E, eqst, sous l'EQUIPMENT)
 --
 -- NB parite ecran : on charge TOUS les postes/equipements (l'ecran IH02 ne
 --   filtre pas les objets archives). is_active reste TRUE au chargement ; le
@@ -57,6 +58,7 @@ DECLARE
     v_bom_orphan  BIGINT := 0;   -- BOM sans article reference resolu (log)
     v_nb_bom_sub  BIGINT := 0;   -- BOM_ITEM issus du type de construction (passe 5c)
     v_nb_iflo     BIGINT := 0;   -- lignes de raw_data.iflo (source du submt)
+    v_nb_bom_eq   BIGINT := 0;   -- BOM_ITEM des nomenclatures d'equipement (passe 5d)
 BEGIN
     INSERT INTO clean_data.etl_log (procedure_name, mode, status)
     VALUES (v_proc, 'FULL', 'RUNNING')
@@ -372,7 +374,7 @@ BEGIN
     RAISE NOTICE '[%] Passe 3 EQUIPMENT : %', TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), v_nb_eq;
 
     -- ============================================================
-    -- PASSE 4 : ARTICLE (articles references par une BOM T ou M)
+    -- PASSE 4 : ARTICLE (articles references par une BOM T, M ou E)
     --   mara + makt (F>E>any)
     -- ============================================================
     INSERT INTO clean_data.maintenance_object (
@@ -391,10 +393,13 @@ BEGIN
         )),
         'SAP'
     FROM (
-        -- a) composants de nomenclature
+        -- a) composants de nomenclature. 'E' : sans les composants des
+        --    nomenclatures d'equipement, la passe 5d ne trouve pas leurs
+        --    articles et la passe 5b ne charge pas leurs sous-nomenclatures
+        --    (ex. 617546 MECANISME SUPERIEUR sous l'equipement 122467).
         SELECT DISTINCT p.idnrk AS matnr, p.mandt
         FROM raw_data.stpo p
-        WHERE p.stlty IN ('T', 'M')
+        WHERE p.stlty IN ('T', 'M', 'E')
           AND p.idnrk IS NOT NULL AND TRIM(p.idnrk) <> ''
         UNION
         -- b) TETE de nomenclature designee comme TYPE DE CONSTRUCTION (IBAU)
@@ -609,8 +614,52 @@ BEGIN
         v_nb_bom := v_nb_bom + v_nb_bom_sub;
     END IF;
 
-    RAISE NOTICE '[%] Passe 5 BOM_ITEM (T+M+submt) : % (dont % via type de construction)',
-        TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), v_nb_bom, v_nb_bom_sub;
+    -- ============================================================
+    -- PASSE 5d : nomenclature d'EQUIPEMENT (stlty='E', transaction IB01/IB03)
+    --   eqst -> stko -> stpo ; parent = EQUIPMENT(equnr), ref = ARTICLE(idnrk).
+    --   Jamais lue avant le 2026-11-03 : 57 equipements (ex. 122467 PORTE
+    --   AUTO 083) apparaissaient sans enfant dans IH02 alors que SAP affiche
+    --   leurs ensembles et, sous ceux-ci, la nomenclature matiere (passe 5b).
+    --   Prefixe 'E:' propre, equnr dans la cle comme le tplnr de la passe 5c.
+    -- ============================================================
+    INSERT INTO clean_data.maintenance_object (
+        object_type, sap_key, parent_id, ref_object_id, sort_order,
+        code, designation, category, quantity, unit, attributes, source
+    )
+    SELECT
+        'BOM_ITEM',
+        'E:' || q.equnr || ':' || q.stlnr || ':' || COALESCE(NULLIF(TRIM(q.stlal), ''), '01')
+             || ':' || p.posnr || ':' || p.stlkn,
+        eq.id,
+        art.id,
+        NULLIF(regexp_replace(p.posnr, '[^0-9]', '', 'g'), '')::int,
+        art.code,
+        art.designation,
+        p.postp,
+        NULLIF(regexp_replace(TRIM(p.menge), '[^0-9.]', '', 'g'), '')::numeric,
+        p.meins,
+        jsonb_strip_nulls(jsonb_build_object(
+            'stlty', 'E', 'stlnr', q.stlnr, 'stlal', q.stlal, 'stlan', q.stlan,
+            'posnr', p.posnr, 'stlkn', p.stlkn, 'postp', p.postp,
+            'potx1', NULLIF(TRIM(p.potx1), ''), 'potx2', NULLIF(TRIM(p.potx2), ''),
+            'base_quantity', k.bmeng, 'base_unit', k.bmein, 'mandt', p.mandt
+        )),
+        'SAP'
+    FROM raw_data.eqst q
+    JOIN raw_data.stpo p ON p.stlnr = q.stlnr AND p.mandt = q.mandt AND p.stlty = 'E'
+    LEFT JOIN raw_data.stko k
+        ON k.stlnr = q.stlnr AND k.mandt = q.mandt AND k.stlty = 'E' AND k.stlal = q.stlal
+    JOIN clean_data.maintenance_object eq
+        ON eq.object_type = 'EQUIPMENT' AND eq.sap_key = q.equnr
+    JOIN clean_data.maintenance_object art
+        ON art.object_type = 'ARTICLE' AND art.sap_key = p.idnrk
+    ON CONFLICT (object_type, sap_key) DO NOTHING;
+
+    GET DIAGNOSTICS v_nb_bom_eq = ROW_COUNT;
+    v_nb_bom := v_nb_bom + v_nb_bom_eq;
+
+    RAISE NOTICE '[%] Passe 5 BOM_ITEM (T+M+submt+E) : % (dont % via type de construction, % d''equipement)',
+        TO_CHAR(CLOCK_TIMESTAMP(),'HH24:MI:SS'), v_nb_bom, v_nb_bom_sub, v_nb_bom_eq;
 
     DROP TABLE IF EXISTS pg_temp.fl_scope;
 
@@ -645,8 +694,8 @@ $$;
 
 COMMENT ON PROCEDURE clean_data.load_maintenance_object(TEXT) IS
 'Charge clean_data.maintenance_object depuis raw_data (iflot/iflos/iflotx/iflo,
- equi/eqkt/equz/iloa/crhd/crtx, mara/makt, tpst/stko/stpo, mast/stpo). 5 passes :
- FUNC_LOC, parents FL, EQUIPMENT+parents, ARTICLE, BOM_ITEM (T puis M).
+ equi/eqkt/equz/iloa/crhd/crtx, mara/makt, tpst/stko/stpo, mast/stpo, eqst/stpo). 5 passes :
+ FUNC_LOC, parents FL, EQUIPMENT+parents, ARTICLE, BOM_ITEM (T, M, submt, E).
  N''importe que p_root_tplnr (defaut ''T'') et ses descendants ; raw_data reste
  intact. Supprime uniquement source=SAP (preserve MANUAL). Idempotent (parents
  resolus par sap_key). Appel : CALL clean_data.load_maintenance_object();';

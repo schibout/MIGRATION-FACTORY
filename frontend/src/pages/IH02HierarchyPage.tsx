@@ -115,6 +115,8 @@ interface EquipmentNode {
   material_number: string | null;
   parent_tplnr: string | null;
   children_count: number;
+  // Lignes de la nomenclature d'equipement (stlty=E, eqst)
+  bom_count?: number;
   node_type: 'equipment';
 }
 
@@ -797,6 +799,14 @@ const IH02HierarchyPage: React.FC = () => {
     const isExpanded = expandedNodes[key];
     if (!isExpanded) await loadEquipmentChildren(eq);
     setExpandedNodes((prev) => ({ ...prev, [key]: !isExpanded }));
+    // Nomenclature d'equipement : ouverte et refermee avec le noeud, comme
+    // celle d'un poste technique (toggleNode).
+    if (!isExpanded && (bomCounts[eq.equnr] ?? eq.bom_count ?? 0) > 0) {
+      await loadBom(eq.equnr);
+      setExpandedBom((prev) => ({ ...prev, [eq.equnr]: true }));
+    } else if (isExpanded) {
+      setExpandedBom((prev) => ({ ...prev, [eq.equnr]: false }));
+    }
   };
 
   const loadLocationDetails = async (node: LocationNode): Promise<LocationNode | null> => {
@@ -1602,7 +1612,8 @@ const IH02HierarchyPage: React.FC = () => {
     // isExpanded inclus pour la meme raison que dans renderTreeNode : un
     // equipement deplie dont la requete ne ramene aucun sous-equipement
     // perdait son chevron et devenait impossible a replier.
-    const hasChildren = eq.children_count > 0 || (eqChildren && eqChildren.length > 0) || isExpanded;
+    const eqBomCount = bomCounts[eq.equnr] ?? eq.bom_count ?? 0;
+    const hasChildren = eq.children_count > 0 || eqBomCount > 0 || (eqChildren && eqChildren.length > 0) || isExpanded;
 
     return (
       <Box key={key}>
@@ -1665,6 +1676,22 @@ const IH02HierarchyPage: React.FC = () => {
               />
             </Tooltip>
           )}
+          {eqBomCount > 0 && (
+            <Tooltip title="Nomenclature d'équipement (BOM)">
+              <Chip
+                size="small"
+                icon={<BomIcon sx={{ fontSize: '0.8rem !important' }} />}
+                label={eqBomCount}
+                onClick={(e) => { e.stopPropagation(); toggleBom(eq.equnr); }}
+                sx={{
+                  ml: 0.5, height: 20, fontSize: '0.7rem', cursor: 'pointer',
+                  backgroundColor: alpha(theme.palette.success.main, 0.12),
+                  color: theme.palette.success.dark,
+                  '&:hover': { backgroundColor: alpha(theme.palette.success.main, 0.25) },
+                }}
+              />
+            </Tooltip>
+          )}
           <Chip
             size="small"
             label="Éqpt"
@@ -1676,6 +1703,24 @@ const IH02HierarchyPage: React.FC = () => {
             </IconButton>
           </Tooltip>
         </Box>
+
+        {/* tplnr = equnr : les routes /bom-component acceptent un equipement porteur */}
+        <Collapse in={expandedBom[eq.equnr]} timeout="auto" unmountOnExit>
+          {loadingBom[eq.equnr] ? (
+            <Box sx={{ pl: depth * 3 + 6, py: 1 }}>
+              <CircularProgress size={14} />
+            </Box>
+          ) : (
+            (loadedBom[eq.equnr] || []).map((comp) =>
+              renderBomComponent(
+                { ...comp, tplnr: eq.equnr },
+                depth,
+                `bom-${eq.equnr}-${comp.posnr}-${comp.idnrk}-${comp.stlkn}`,
+                'fl',
+              )
+            )
+          )}
+        </Collapse>
 
         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
           {eqChildren && eqChildren.map((child) => renderEquipmentNode(child, depth + 1))}

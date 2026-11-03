@@ -361,7 +361,7 @@ BEGIN
     ON CONFLICT (object_type, sap_key) DO NOTHING;
 
     -- -------------------------------------------------------------
-    -- PASSE 3 : ARTICLE (references par une BOM T ou M)
+    -- PASSE 3 : ARTICLE (references par une BOM T, M ou E)
     -- -------------------------------------------------------------
     INSERT INTO mo_stg (
         object_type, sap_key, code, designation, type_code, attributes
@@ -378,10 +378,11 @@ BEGIN
             'mbrsh', m.mbrsh, 'matkl', m.matkl, 'mandt', m.mandt
         ))
     FROM (
-        -- a) composants de nomenclature
+        -- a) composants de nomenclature ('E' : nomenclatures d'equipement,
+        --    cf. mode FULL, passes 4 et 5d)
         SELECT DISTINCT p.idnrk AS matnr, p.mandt
         FROM raw_data.stpo p
-        WHERE p.stlty IN ('T', 'M')
+        WHERE p.stlty IN ('T', 'M', 'E')
           AND p.idnrk IS NOT NULL AND TRIM(p.idnrk) <> ''
         UNION
         -- b) TETE de nomenclature designee comme TYPE DE CONSTRUCTION (IBAU)
@@ -543,6 +544,44 @@ BEGIN
                       WHERE fl.object_type = 'FUNC_LOC' AND fl.sap_key = sm.tplnr)
         ON CONFLICT (object_type, sap_key) DO NOTHING;
     END IF;
+
+    -- -------------------------------------------------------------
+    -- PASSE 4d : nomenclature d'EQUIPEMENT (stlty='E') : eqst -> stko -> stpo,
+    --   rattachee sous l'EQUIPMENT. Voir la passe 5d du mode FULL ; meme cle
+    --   'E:' (une cle differente ferait supprimer puis recreer les lignes a
+    --   chaque bascule FULL <-> MERGE).
+    -- -------------------------------------------------------------
+    INSERT INTO mo_stg (
+        object_type, sap_key, parent_type, parent_sap_key, ref_sap_key,
+        sort_order, code, designation, category, quantity, unit, attributes
+    )
+    SELECT
+        'BOM_ITEM',
+        'E:' || q.equnr || ':' || q.stlnr || ':' || COALESCE(NULLIF(TRIM(q.stlal), ''), '01')
+             || ':' || p.posnr || ':' || p.stlkn,
+        'EQUIPMENT',
+        q.equnr,
+        p.idnrk,
+        NULLIF(regexp_replace(p.posnr, '[^0-9]', '', 'g'), '')::int,
+        LTRIM(p.idnrk, '0'),
+        art.designation,
+        p.postp,
+        NULLIF(regexp_replace(TRIM(p.menge), '[^0-9.]', '', 'g'), '')::numeric,
+        p.meins,
+        jsonb_strip_nulls(jsonb_build_object(
+            'stlty', 'E', 'stlnr', q.stlnr, 'stlal', q.stlal, 'stlan', q.stlan,
+            'posnr', p.posnr, 'stlkn', p.stlkn, 'postp', p.postp,
+            'potx1', NULLIF(TRIM(p.potx1), ''), 'potx2', NULLIF(TRIM(p.potx2), ''),
+            'base_quantity', k.bmeng, 'base_unit', k.bmein, 'mandt', p.mandt
+        ))
+    FROM raw_data.eqst q
+    JOIN raw_data.stpo p ON p.stlnr = q.stlnr AND p.mandt = q.mandt AND p.stlty = 'E'
+    LEFT JOIN raw_data.stko k
+        ON k.stlnr = q.stlnr AND k.mandt = q.mandt AND k.stlty = 'E' AND k.stlal = q.stlal
+    JOIN mo_stg art ON art.object_type = 'ARTICLE' AND art.sap_key = p.idnrk
+    WHERE EXISTS (SELECT 1 FROM mo_stg eq
+                  WHERE eq.object_type = 'EQUIPMENT' AND eq.sap_key = q.equnr)
+    ON CONFLICT (object_type, sap_key) DO NOTHING;
 
     ANALYZE mo_stg;
 

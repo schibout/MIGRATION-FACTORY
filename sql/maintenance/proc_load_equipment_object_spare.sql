@@ -4,7 +4,9 @@
 --             (pièces de rechange rattachées à un objet d'équipement)
 -- Objectif  : Alimenter la table depuis la NOMENCLATURE DES POSTES TECHNIQUES
 --             (écran IH02) : tous les articles ayant un poste technique
---             comme parent.
+--             comme parent, PLUS les nomenclatures d'équipement (stlty=E,
+--             à plat, vue v_eq_nomenclature_export, validées dans
+--             equipment_serial ; depuis le 2026-11-03).
 -- Mode FULL : TRUNCATE + INSERT complet
 -- Mode DELTA: suppression + réinjection d'un poste technique précis (ou tous)
 -- Auteur    : généré automatiquement
@@ -38,6 +40,45 @@
 -- has_spare_structure / objversion : IN_SCOPE=NO dans la spec IFS -> NULL.
 -- allow_wo_mat_site = 'FALSE' ; part_ownership_db = 'COMPANY OWNED'.
 -- =============================================================
+
+-- -------------------------------------------------------------
+-- Pieces de rechange des NOMENCLATURES D'EQUIPEMENT (stlty=E, eqst ;
+-- passe 5d de load_maintenance_object, 2026-11-03), A PLAT (demande
+-- explicite) : les lignes d'une nomenclature d'equipement sont surtout des
+-- ensembles de categorie I (ex. 617546 MECANISME SUPERIEUR sous 122467),
+-- qui ne sont pas des articles IFS. On exporte donc :
+--   - les lignes L directement sous l'equipement ;
+--   - les lignes L de la nomenclature matiere d'un ensemble I, rattachees
+--     directement a l'equipement, quantite = qte ensemble x qte piece.
+-- Les postes techniques gardent leur regle (L direct seulement, via
+-- v_fl_nomenclature) : demande explicite de ne pas y toucher.
+-- ponytail: un seul niveau d'ensemble I ; un ensemble I sous un ensemble I
+--   n'est pas eclate (aucun cas au 2026-11-03), etendre en CTE recursive sinon.
+-- -------------------------------------------------------------
+CREATE OR REPLACE VIEW clean_data.v_eq_nomenclature_export AS
+SELECT eq.code AS mch_code, a.code AS spare_id, b.quantity AS quantity
+FROM clean_data.maintenance_object b
+JOIN clean_data.maintenance_object eq
+  ON eq.id = b.parent_id AND eq.object_type = 'EQUIPMENT' AND eq.is_active
+JOIN clean_data.maintenance_object a
+  ON a.id = b.ref_object_id AND a.object_type = 'ARTICLE'
+WHERE b.object_type = 'BOM_ITEM' AND b.is_active AND b.category = 'L'
+UNION ALL
+SELECT eq.code, c.code, b.quantity * cb.quantity
+FROM clean_data.maintenance_object b
+JOIN clean_data.maintenance_object eq
+  ON eq.id = b.parent_id AND eq.object_type = 'EQUIPMENT' AND eq.is_active
+JOIN clean_data.maintenance_object cb
+  ON cb.parent_id = b.ref_object_id AND cb.object_type = 'BOM_ITEM'
+ AND cb.is_active AND cb.category = 'L'
+JOIN clean_data.maintenance_object c
+  ON c.id = cb.ref_object_id AND c.object_type = 'ARTICLE'
+WHERE b.object_type = 'BOM_ITEM' AND b.is_active AND b.category = 'I';
+
+COMMENT ON VIEW clean_data.v_eq_nomenclature_export IS
+'Pieces de rechange des nomenclatures d''equipement pour equipment_object_spare :
+ lignes L directes + lignes L des ensembles I, a plat (qte ensemble x qte piece).
+ mch_code = code de l''equipement (= equipment_serial.mch_code).';
 
 CREATE OR REPLACE PROCEDURE clean_data.load_equipment_object_spare(
     p_mode        VARCHAR DEFAULT 'FULL',    -- 'FULL' | 'DELTA'
@@ -106,6 +147,12 @@ BEGIN
             WHERE v.item_category = 'L'               -- articles stock uniquement
               AND v.idnrk IS NOT NULL AND TRIM(v.idnrk) <> ''
               AND TRIM(v.quantity) <> ''
+            UNION ALL
+            -- Nomenclatures d'equipement (a plat), equipement valide dans equipment_serial
+            SELECT es.mch_code, es.contract, v.spare_id, ROUND(v.quantity, 0)
+            FROM clean_data.v_eq_nomenclature_export v
+            JOIN (SELECT DISTINCT mch_code, contract FROM clean_data.equipment_serial
+                  WHERE contract = 'SJ') es ON es.mch_code = v.mch_code
         ),
         -- 1 ligne par (poste, article) : quantités sommées
         agg AS (
@@ -156,6 +203,8 @@ BEGIN
             WHERE v.item_category = 'L'
               AND v.idnrk IS NOT NULL AND TRIM(v.idnrk) <> ''
               AND TRIM(v.quantity) <> ''
+            UNION
+            SELECT mch_code, spare_id FROM clean_data.v_eq_nomenclature_export
         ) s;
 
         v_nb_rejected := GREATEST(v_nb_src - v_nb_inserted, 0);
@@ -203,6 +252,12 @@ BEGIN
               AND v.idnrk IS NOT NULL AND TRIM(v.idnrk) <> ''
               AND TRIM(v.quantity) <> ''
               AND (p_tplnr IS NULL OR v.tplnr = p_tplnr OR v.tplnr_display = p_tplnr)
+            UNION ALL
+            SELECT es.mch_code, es.contract, v.spare_id, ROUND(v.quantity, 0)
+            FROM clean_data.v_eq_nomenclature_export v
+            JOIN (SELECT DISTINCT mch_code, contract FROM clean_data.equipment_serial
+                  WHERE contract = 'SJ') es ON es.mch_code = v.mch_code
+            WHERE (p_tplnr IS NULL OR v.mch_code = p_tplnr)
         ),
         agg AS (
             SELECT equipment_object_seq, contract, spare_id, SUM(qty) AS qty
