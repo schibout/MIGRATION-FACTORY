@@ -1666,7 +1666,9 @@ def suggerer_mapping_articles():
         return jsonify({'error': 'Fichier non trouvé ou expiré'}), 404
     df = fichier['dataframe']
     types = {c['name']: c.get('detectedType') for c in fichier.get('columns') or []}
-    sap = {c for c, _, _ in _art_colonnes()[0] if not c.startswith(ART_FICHIER)} | {'Source'}
+    # + indicateurs calcules de l'export Donnees SAP > Articles (api/sap_articles.py)
+    sap = {c for c, _, _ in _art_colonnes()[0] if not c.startswith(ART_FICHIER)} | {
+        'Source', 'Dans la structure IH02', 'Lignes de nomenclature', 'Dans part_catalog', 'Anomalies'}
 
     reconnus = {}
     for col in df.columns:
