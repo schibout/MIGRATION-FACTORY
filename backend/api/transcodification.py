@@ -283,7 +283,13 @@ def import_transcodifications():
         # Vérification de l'extension
         if file.filename.endswith('.csv'):
             # Traitement du CSV
-            stream = io.StringIO(file.stream.read().decode("utf-8"), newline='')
+            raw = file.stream.read()
+            try:
+                text = raw.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                # Fichiers enregistres par Excel (Windows) : cp1252
+                text = raw.decode("cp1252")
+            stream = io.StringIO(text, newline='')
             # Détecter automatiquement le délimiteur (virgule ou point-virgule)
             sample = stream.read(1024)
             stream.seek(0)
@@ -304,60 +310,53 @@ def import_transcodifications():
                 reader.fieldnames = [field.strip('"').strip() for field in reader.fieldnames]
                 current_app.logger.info(f"📋 Colonnes nettoyées: {reader.fieldnames}")
             
+            # Lecture complete : une categorie vide reprend celle de la ligne precedente,
+            # et une meme cle presente plusieurs fois dans le fichier est ecrasee (la derniere gagne)
+            lignes = {}
+            doublons = 0
+            derniere_categorie = ''
             for row in reader:
+                row = {k: (v or '').strip() for k, v in row.items() if k}
+                row['category'] = row.get('category') or derniere_categorie
+                derniere_categorie = row['category']
+                row['source_system'] = row.get('source_system') or 'SAP'
+                row['target_system'] = row.get('target_system') or 'IFS'
+                row['is_active'] = row.get('is_active', 'true').lower() in ('true', 'yes', '1', '')
+                if not (row['category'] and row.get('source_value') and row.get('target_value')):
+                    failed += 1
+                    errors.append(f"Ligne {reader.line_num}: Champs obligatoires manquants")
+                    continue
+                cle = (row['category'], row['source_system'], row['target_system'], row['source_value'])
+                if lignes.pop(cle, None):
+                    doublons += 1
+                lignes[cle] = (reader.line_num, row)
+
+            for line_num, row in lignes.values():
                 try:
-                    current_app.logger.debug(f"📝 Traitement ligne {reader.line_num}: {row}")
-                    # Conversion des valeurs booléennes
-                    if 'is_active' in row:
-                        row['is_active'] = row['is_active'].lower() in ('true', 'yes', '1')
-                    else:
-                        row['is_active'] = True
-                        
-                    # Validation des champs obligatoires
-                    required_fields = ['category', 'source_value', 'target_value']
-                    if not all(field in row and row[field] for field in required_fields):
-                        failed += 1
-                        errors.append(f"Ligne {reader.line_num}: Champs obligatoires manquants")
-                        continue
-                        
-                    # Vérification si la transcodification existe déjà
-                    existing = Transcodification.query.filter_by(
-                        category=row['category'],
-                        source_system=row.get('source_system', 'SAP'),
-                        target_system=row.get('target_system', 'IFS'),
-                        source_value=row['source_value']
-                    ).first()
-                    
-                    if existing:
-                        # Mise à jour
-                        current_app.logger.info(f"🔄 Mise à jour ligne {reader.line_num}: {row['category']} - {row['source_value']} -> {row['target_value']}")
+                    # Savepoint par ligne : une erreur n'annule pas les lignes deja traitees
+                    with db.session.begin_nested():
+                        existing = Transcodification.query.filter_by(
+                            category=row['category'],
+                            source_system=row['source_system'],
+                            target_system=row['target_system'],
+                            source_value=row['source_value']
+                        ).first()
                         row['updated_by'] = user_id
-                        Transcodification.from_dict(row, existing_transcodification=existing)
+                        if existing:
+                            Transcodification.from_dict(row, existing_transcodification=existing)
+                        else:
+                            row['created_by'] = user_id
+                            db.session.add(Transcodification.from_dict(row))
+                        db.session.flush()
+                    if existing:
                         updated += 1
                     else:
-                        # Création
-                        current_app.logger.info(f"➕ Création ligne {reader.line_num}: {row['category']} - {row['source_value']} -> {row['target_value']}")
-                        row['created_by'] = user_id
-                        row['updated_by'] = user_id
-                        new_transcodification = Transcodification.from_dict(row)
-                        db.session.add(new_transcodification)
                         created += 1
-                    
-                    # Flush pour vérifier que l'objet est bien ajouté
-                    db.session.flush()
-                    
-                    # Commit toutes les 50 lignes pour éviter les problèmes
-                    total_processed = created + updated
-                    if total_processed % 50 == 0:
-                        db.session.commit()
-                        current_app.logger.info(f"✅ Commit intermédiaire: {created} créées, {updated} mises à jour")
-                    
                 except Exception as e:
-                    db.session.rollback()
                     failed += 1
-                    errors.append(f"Ligne {reader.line_num}: {str(e)}")
-                    current_app.logger.error(f"❌ Erreur ligne {reader.line_num}: {str(e)}")
-                    
+                    errors.append(f"Ligne {line_num}: {str(e)}")
+                    current_app.logger.error(f"❌ Erreur ligne {line_num}: {str(e)}")
+
             # Commit final pour les lignes restantes
             db.session.commit()
             
@@ -367,7 +366,7 @@ def import_transcodifications():
             current_app.logger.info(f"📊 Total en base: {total_in_db} transcodifications")
             
             return jsonify({
-                "message": f"Import terminé: {created} créées, {updated} mises à jour, {failed} échecs",
+                "message": f"Import terminé: {created} créées, {updated} mises à jour, {doublons} doublons écrasés, {failed} échecs",
                 "errors": errors
             }), 200
             
