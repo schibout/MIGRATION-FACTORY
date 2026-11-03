@@ -103,7 +103,7 @@ BEGIN
     --   BNKA  = referentiel banques : nom (banka) et code SWIFT
     --
     -- DISTINCT ON : un fournisseur peut avoir plusieurs comptes (1065 cas),
-    -- mais address_id vaut lfa1.adrnr, donc UN identifiant par fournisseur ;
+    -- mais address_id vaut '01' (adresse propre), donc UN identifiant par fournisseur ;
     -- plusieurs comptes viseraient la meme cle ON CONFLICT et seul le dernier
     -- survivrait. On retient donc un compte, avec la meme regle deterministe
     -- que clean_data.fn_coordonnees_bancaires_sap (script 01) pour que
@@ -112,7 +112,7 @@ BEGIN
     -- Les coordonnees bancaires sont deja resolues et stockees dans
     -- ifs_fournisseurs par le script 01, via
     -- clean_data.fn_coordonnees_bancaires_sap (chaine LFBK -> TIBAN -> BNKA,
-    -- un compte par fournisseur car address_id = lfa1.adrnr en porte un seul).
+    -- un compte par fournisseur car address_id = '01' en porte un seul).
     -- On relit ces colonnes au lieu de refaire la jointure : les deux tables
     -- ne peuvent plus diverger sur le compte retenu ni sur l'IBAN.
     FOR rec IN (
@@ -178,7 +178,7 @@ BEGIN
                     public.get_default_value('clean_data.payment_address', 'party_type_db', 'BANQUE'),
                     public.get_default_value('clean_data.payment_address', 'way_id', 'BANQUE'),
                     -- address_id : le meme identifiant qu'a l'etape 1
-                    -- (ifs_fournisseurs.address_id = lfa1.adrnr). On y ecrivait
+                    -- (ifs_fournisseurs.address_id = '01'). On y ecrivait
                     -- le numero de fournisseur, qui ne correspond a aucune ligne
                     -- de supplier_info_address : la cle ON CONFLICT portant sur
                     -- address_id, l'etape 2 creait une 2e ligne au lieu de

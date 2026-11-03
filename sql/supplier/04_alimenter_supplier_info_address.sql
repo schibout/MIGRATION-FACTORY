@@ -35,28 +35,23 @@ BEGIN
         FROM clean_data.ifs_fournisseurs f
         LEFT JOIN raw_data.lfa1 l ON f.numero_compte_fournisseur = l.lifnr AND COALESCE(l.loevm, '') != 'X'
         UNION ALL
-        -- ponytail: une fonction par (fournisseur, adresse) ; vrai le 2026-10-09
-        -- (241 paires), sinon la priorite RS > BA > VA > SP l'emporte
-        (SELECT DISTINCT ON (f.numero_compte_ifs, l2.adrnr)
-               f.numero_compte_ifs, l2.adrnr, NULL, NULL, NULL, NULL, NULL,
-               l2.adrnr, l2.mandt, w.parvw
+        -- Adresses partenaires et leur N° IFS (02, 03...) : celles de l'onglet
+        -- Adresses du perimetre (script 01c), qui fait le choix de fonction
+        -- RS > BA > VA > SP ; adrnr_sap reste la cle vers adrc
+        SELECT f.numero_compte_ifs, pa.address_id, NULL, NULL, NULL, NULL, NULL,
+               pa.adrnr_sap, l.mandt, pa.fonction
         FROM clean_data.ifs_fournisseurs f
         JOIN raw_data.lfa1 l ON f.numero_compte_fournisseur = l.lifnr AND COALESCE(l.loevm, '') != 'X'
-        JOIN raw_data.wyt3 w ON w.lifnr = l.lifnr AND w.parvw IN ('RS', 'BA', 'VA', 'SP')
-        JOIN raw_data.lfa1 l2 ON l2.lifnr = w.lifn2 AND COALESCE(l2.loevm, '') != 'X'
-        WHERE NULLIF(l2.adrnr, '') IS NOT NULL
-          AND l2.adrnr IS DISTINCT FROM l.adrnr
-        ORDER BY f.numero_compte_ifs, l2.adrnr,
-                 array_position(ARRAY['RS', 'BA', 'VA', 'SP'], w.parvw::text))
+        JOIN clean_data.ifs_fournisseurs_perimetre_adresse pa
+          ON pa.numero_compte_fournisseur = f.numero_compte_fournisseur AND pa.fonction IS NOT NULL
     )
     SELECT 
         -- SUPPLIER_ID : numéro IFS du fichier de sélection (voir script 02).
         -- La jointure vers raw_data.lfa1 reste sur le LIFNR SAP.
         SUBSTRING(s.numero_compte_ifs, 1, 20) as supplier_id,
-        -- Numéro d'adresse SAP, résolu une seule fois dans ifs_fournisseurs
-        -- (lfa1.adrnr, repli sur la constante paramétrable). Les scripts 05, 07,
-        -- 08, 13 et 14 dérivent de cette colonne : la garder alignée sur
-        -- ifs_fournisseurs évite qu'ils pointent vers un identifiant absent.
+        -- N° d'adresse IFS (01 = adresse propre, ifs_fournisseurs.address_id ;
+        -- 02, 03... = partenaires), jamais le N° SAP. Les scripts 05, 07, 08, 13
+        -- et 14 dérivent de cette colonne.
         SUBSTRING(s.address_id, 1, 50) as address_id,
         SUBSTRING(COALESCE(a.name1, s.nom_1), 1, 100) as name,
         SUBSTRING(
@@ -119,12 +114,8 @@ BEGIN
     RAISE NOTICE '=== STATISTIQUES DÉTAILLÉES ===';
     RAISE NOTICE 'Total fournisseurs avec adresses: %', 
                  (SELECT COUNT(DISTINCT supplier_id) FROM clean_data.supplier_info_address);
-    RAISE NOTICE 'Adresses avec un numéro SAP (adrnr): %',
-                 (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE address_id ~ '^[0-9]{10}$');
     RAISE NOTICE 'Adresses partenaires (wyt3): %',
                  (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE fonction_partenaire IS NOT NULL);
-    RAISE NOTICE 'Adresses retombées sur la valeur par défaut: %',
-                 (SELECT COUNT(*) FROM clean_data.supplier_info_address WHERE address_id !~ '^[0-9]{10}$');
     
 EXCEPTION
     WHEN OTHERS THEN

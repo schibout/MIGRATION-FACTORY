@@ -186,7 +186,9 @@ BEGIN
       -- de selection, NULL pour un SAP_NOUVEAU
       COALESCE(val.numero_compte_ifs, sf.numero_compte_ifs),
       public.get_default_value('clean_data.ifs_fournisseurs', 'company'),
-      COALESCE(NULLIF(TRIM(a.adrnr), ''), public.get_default_value('clean_data.ifs_fournisseurs', 'address_id')),
+      -- N° d'adresse IFS, et non le N° SAP (lfa1.adrnr) : 01 = adresse propre du
+      -- fournisseur, ses partenaires suivent en 02, 03... (script 01c)
+      '01',
 
       a.name1,
       a.stras,

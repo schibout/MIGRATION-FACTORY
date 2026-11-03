@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS clean_data.ifs_fournisseurs_perimetre_adresse (
     valide_au                 DATE,
     CONSTRAINT pk_ifs_fournisseurs_perimetre_adresse PRIMARY KEY (numero_compte_fournisseur, address_id)
 );
+-- address_id = N° IFS de l'adresse dans le fournisseur (01 = adresse propre,
+-- puis 02, 03... pour les partenaires) ; le N° SAP (adrc.addrnumber) reste ici
+ALTER TABLE clean_data.ifs_fournisseurs_perimetre_adresse ADD COLUMN IF NOT EXISTS adrnr_sap VARCHAR(10);
 
 CREATE TABLE IF NOT EXISTS clean_data.ifs_fournisseurs_perimetre_communication (
     numero_compte_fournisseur VARCHAR      NOT NULL,
@@ -71,7 +74,7 @@ BEGIN
    DELETE FROM clean_data.ifs_fournisseurs_perimetre_adresse;
 
    INSERT INTO clean_data.ifs_fournisseurs_perimetre_adresse (
-      numero_compte_fournisseur, numero_compte_ifs, source, address_id, fonction,
+      numero_compte_fournisseur, numero_compte_ifs, source, address_id, adrnr_sap, fonction,
       fonction_libelle, partenaire_sap, nom, rue, complement_adresse, code_postal,
       localite, region, pays, langue, boite_postale, valide_du, valide_au
    )
@@ -98,7 +101,13 @@ BEGIN
          ORDER BY p.numero_compte_fournisseur, a2.adrnr,
                   array_position(ARRAY['RS', 'BA', 'VA', 'SP'], w.parvw::text))
    )
-   SELECT l.numero_compte_fournisseur, l.numero_compte_ifs, l.source, l.adrnr, l.fonction,
+   -- 01 = adresse propre, puis les partenaires RS > BA > VA > SP (meme ordre que
+   -- le choix de fonction ci-dessus), a egalite par N° SAP
+   SELECT l.numero_compte_fournisseur, l.numero_compte_ifs, l.source,
+          LPAD(ROW_NUMBER() OVER (PARTITION BY l.numero_compte_fournisseur
+                                  ORDER BY array_position(ARRAY['RS', 'BA', 'VA', 'SP'], l.fonction::text) NULLS FIRST,
+                                           l.adrnr)::text, 2, '0'),
+          l.adrnr, l.fonction,
           CASE l.fonction
               WHEN 'RS' THEN 'Auteur de la facture'
               WHEN 'BA' THEN 'Adresse de commande'
@@ -160,7 +169,7 @@ BEGIN
           COALESCE(m.flgdefault, '') = 'X',
           m.consnumber
      FROM clean_data.ifs_fournisseurs_perimetre_adresse ad
-     JOIN comm m ON m.addrnumber = ad.address_id
+     JOIN comm m ON m.addrnumber = ad.adrnr_sap
     WHERE COALESCE(TRIM(m.persnumber), '') = ''
       AND NULLIF(TRIM(m.valeur), '') IS NOT NULL
     -- Version la plus recente de chaque numero (versionne par date_from)
