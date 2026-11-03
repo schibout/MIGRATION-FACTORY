@@ -189,3 +189,10 @@ def test_date_derniere_execution_et_groupe_ressource():
     assert parsed.invalid_dates == ['n/a']
     # colonnes recentes : leur absence (anciens fichiers) ne declenche pas d'avertissement
     assert 'Date dernière exécution' not in parse_pe_tools_csv(_cp850('Poste technique;Plan Entretien\nT;1\n')).missing_columns
+
+
+def test_groupe_de_ressource_des_classeurs_xlsm():
+    # intitule reel des classeurs PeTool - 7.<CODE>.xlsm
+    parsed = parse_pe_tools_csv(_cp850('Poste technique;Plan Entretien;Groupe de ressource\nT410-C;35553;SJ-MATC\n'))
+    assert parsed.rows[0]['groupe_ressources'] == 'SJ-MATC'
+    assert parsed.unknown_columns == []

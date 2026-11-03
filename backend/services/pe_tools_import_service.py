@@ -61,6 +61,8 @@ COLONNES_OBLIGATOIRES = ('poste_technique', 'plan_entretien')
 _ALIAS_INTITULES = {
     "Poste technique ou N° d'équipement": 'poste_technique',   # 7.MENG
     'Groupe ressources': 'groupe_ressources',                    # libelle de l'ecran
+    'Groupe de ressource': 'groupe_ressources',                  # classeurs .xlsm (7.MATC...)
+    'Groupe de ressources': 'groupe_ressources',
     'Date derniere execution fichier': 'date_derniere_execution_fichier',
 }
 
