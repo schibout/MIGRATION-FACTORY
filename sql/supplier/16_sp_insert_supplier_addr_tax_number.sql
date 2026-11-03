@@ -2,16 +2,19 @@
 -- clean_data.supplier_addr_tax_number
 -- ----------------------------------------------------------------------------
 -- Numeros d'identification fiscale d'un fournisseur, UNE LIGNE PAR TYPE :
---   TAX_ID_TYPE = 'TVA UE'  -> ifs_fournisseurs.tva          (numero de TVA intra)
+--   TAX_ID_TYPE = 'TVA_<pays>' -> ifs_fournisseurs.tva (TVA_FR, TVA_BE, TVA_IT...) :
+--                 pays = prefixe du numero (DE123... -> TVA_DE), a defaut pays
+--                 du fournisseur (numero sans prefixe : CH, NO, CA...)
 --   TAX_ID_TYPE = 'SIREN'   -> ifs_fournisseurs.numero_siren
 --   TAX_ID_TYPE = 'SIRET'   -> ifs_fournisseurs.siret
 --
 -- Un fournisseur produit donc 0 a 3 lignes : les valeurs vides ne sont pas
 -- inserees (une ligne sans numero n'a aucun sens cote IFS).
 --
--- Les 3 libelles de type passent par public.get_default_value avec une VARIANTE
--- par type, comme comm_method le fait pour PHONE / FAX / E_MAIL : ils restent
--- modifiables depuis Configuration > Valeurs par defaut sans toucher au code.
+-- Les libelles SIREN / SIRET et l'indicateur par defaut passent par
+-- public.get_default_value avec une VARIANTE par type (TVA_UE pour la TVA),
+-- modifiables depuis Configuration > Valeurs par defaut ; le type TVA est
+-- calcule (un type par pays).
 --
 -- DEFAULT_TAX_ID_NUMBER n'est pas renseignee : sur un couple <col>/<col>_db,
 -- seule la colonne _db est alimentee (regle appliquee a tout le depot).
@@ -46,7 +49,7 @@ BEGIN
         SUBSTRING(f.numero_compte_ifs, 1, 20),
         SUBSTRING(f.address_id, 1, 50),
         public.get_default_value('clean_data.supplier_addr_tax_number', 'company'),
-        public.get_default_value('clean_data.supplier_addr_tax_number', 'tax_id_type', 'TVA_UE'),
+        'TVA_' || COALESCE(SUBSTRING(UPPER(TRIM(f.tva)) FROM '^[A-Z]{2}'), UPPER(TRIM(f.cle_pays))),
         SUBSTRING(UPPER(TRIM(f.tva)), 1, 50),
         public.get_default_value('clean_data.supplier_addr_tax_number', 'default_tax_id_number_db', 'TVA_UE')
     FROM clean_data.ifs_fournisseurs f
@@ -86,9 +89,8 @@ BEGIN
     RAISE NOTICE 'Enregistrements insérés: %', v_processed_count;
 
     RAISE NOTICE '=== RÉPARTITION PAR TYPE ===';
-    RAISE NOTICE 'TVA UE: %, SIREN: %, SIRET: %',
-        (SELECT COUNT(*) FROM clean_data.supplier_addr_tax_number
-          WHERE tax_id_type = public.get_default_value('clean_data.supplier_addr_tax_number', 'tax_id_type', 'TVA_UE')),
+    RAISE NOTICE 'TVA (tous pays): %, SIREN: %, SIRET: %',
+        (SELECT COUNT(*) FROM clean_data.supplier_addr_tax_number WHERE tax_id_type LIKE 'TVA\_%'),
         (SELECT COUNT(*) FROM clean_data.supplier_addr_tax_number
           WHERE tax_id_type = public.get_default_value('clean_data.supplier_addr_tax_number', 'tax_id_type', 'SIREN')),
         (SELECT COUNT(*) FROM clean_data.supplier_addr_tax_number
