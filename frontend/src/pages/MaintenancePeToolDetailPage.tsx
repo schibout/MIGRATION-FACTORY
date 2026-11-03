@@ -11,10 +11,10 @@ import DateExecutionEditable, { fmtDateIso, ResultatSaisieDate } from '../compon
 // date de derniere execution (saisie manuelle, 085) : les gammes se corrigent dans les
 // fichiers PE Tools, puis se reimportent.
 const BLOCS: { titre: string; champs: string[] }[] = [
-  { titre: 'Identification', champs: ['poste_technique', 'niveau_sap', 'localisation_classement', 'designation', 'type', 'criticite'] },
-  { titre: 'Planification', champs: ['plan_entretien', 'poste_entretien', 'groupe_de_gamme', 'compteur_de_gamme', 'frequence', 'parite_semaine', 'jour', 'decalage', 'date_derniere_execution', 'ifs_date_execution'] },
-  { titre: 'Charge et revue', champs: ['groupe_ressources', 'charge', 'nb_intervenants', 'date_validation', 'date_rev', 'nb_jours_depuis_derniere_rev'] },
-  { titre: 'Documents', champs: ['gamme_en_dms', 'dms_sap', 'lien_fichier_gamme_source', 'lien_fichier_dms_sap_pdf'] },
+  { titre: 'Identification', champs: ['poste_technique', 'niveau_sap', 'localisation_classement', 'designation', 'type', 'criticite', 'poste_responsable'] },
+  { titre: 'Planification', champs: ['plan_entretien', 'poste_entretien', 'groupe_de_gamme', 'compteur_de_gamme', 'module_entretien', 'frequence', 'parite_semaine', 'jour', 'decalage', 'date_derniere_execution', 'ifs_date_execution'] },
+  { titre: 'Charge et revue', champs: ['groupe_ressources', 'charge', 'nb_intervenants', 'date_validation', 'date_rev', 'nb_jours_depuis_derniere_rev', 'statut_doc', 'test_de_donnees', 'validation'] },
+  { titre: 'Documents', champs: ['gamme_en_dms', 'dms_sap', 'lien_fichier_gamme_source', 'lien_fichier_dms_sap_pdf', 'lien_document', 'modele_gamme', 'chemin_fichier_source'] },
   { titre: 'Origine', champs: ['nom_fichier', 'organisation_maintenance', 'imported_at', 'updated_at', 'updated_by'] },
 ];
 

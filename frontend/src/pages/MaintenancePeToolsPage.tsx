@@ -126,6 +126,15 @@ export const FIELDS: { key: string; label: string; inTable?: boolean; monospace?
   { key: 'dms_sap', label: 'DMS SAP' },
   { key: 'lien_fichier_gamme_source', label: 'Lien fichier gamme source' },
   { key: 'lien_fichier_dms_sap_pdf', label: 'Lien fichier DMS SAP (PDF)' },
+  // Reste du modele des classeurs .xlsm (migration 128) : detail et export seulement.
+  { key: 'poste_responsable', label: 'Poste responsable' },
+  { key: 'test_de_donnees', label: 'Test de données' },
+  { key: 'statut_doc', label: 'Statut doc' },
+  { key: 'validation', label: 'Validation' },
+  { key: 'module_entretien', label: 'Module d\'entretien' },
+  { key: 'lien_document', label: 'Lien document' },
+  { key: 'modele_gamme', label: 'Modèle gamme' },
+  { key: 'chemin_fichier_source', label: 'Chemin fichier source' },
 ];
 
 const TABLE_FIELDS = FIELDS.filter((f) => f.inTable);

@@ -42,13 +42,21 @@ PE_TOOLS_COLUMNS: List[Tuple[str, str]] = [
     ('nb_intervenants',              'Nombre intervenants'),
     ('date_rev',                     'Date rév.'),
     ('nb_jours_depuis_derniere_rev', 'Nb jours depuis la dernière rév.'),
-    # Ajoutees aux fichiers en 2026-11 (migration 127) : absentes des anciens
-    # fichiers, donc sans avertissement « colonne absente ».
+    # Reste du modele des classeurs .xlsm de 2026-11 (migrations 127 et 128) :
+    # absentes des anciens fichiers, donc sans avertissement « colonne absente ».
     ('date_derniere_execution_fichier', 'Date dernière exécution'),
-    ('groupe_ressources',               'Groupe ressource'),
+    ('groupe_ressources',               'Groupe de ressource'),
+    ('poste_responsable',               'Poste Responsable'),
+    ('test_de_donnees',                 'Test de données'),
+    ('statut_doc',                      'Statut doc'),
+    ('module_entretien',                "Module d'entretien"),   # 7.MSGX seulement
+    ('lien_document',                   'Lien document'),
+    ('validation',                      'Validation'),
+    ('modele_gamme',                    'Modèle gamme'),
+    ('chemin_fichier_source',           'Chemin fichier source'),
 ]
 
-COLONNES_OPTIONNELLES = ('date_derniere_execution_fichier', 'groupe_ressources')
+COLONNES_OPTIONNELLES = tuple(c for c, _ in PE_TOOLS_COLUMNS[23:])
 # Colonne DATE en base : convertie ici en AAAA-MM-JJ (PostgreSQL lirait
 # 03/11/2026 en mois/jour selon DateStyle).
 COLONNES_DATE = ('date_derniere_execution_fichier',)
@@ -60,8 +68,8 @@ COLONNES_OBLIGATOIRES = ('poste_technique', 'plan_entretien')
 # (cles calculees par cle(), apres sa definition).
 _ALIAS_INTITULES = {
     "Poste technique ou N° d'équipement": 'poste_technique',   # 7.MENG
+    'Groupe ressource': 'groupe_ressources',                     # 7.MNRJ
     'Groupe ressources': 'groupe_ressources',                    # libelle de l'ecran
-    'Groupe de ressource': 'groupe_ressources',                  # classeurs .xlsm (7.MATC...)
     'Groupe de ressources': 'groupe_ressources',
     'Date derniere execution fichier': 'date_derniere_execution_fichier',
 }

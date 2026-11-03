@@ -53,6 +53,15 @@ COLUMNS = [
     'nb_intervenants',
     'date_rev',
     'nb_jours_depuis_derniere_rev',
+    # migration 128 (reste du modele des classeurs .xlsm)
+    'poste_responsable',
+    'test_de_donnees',
+    'statut_doc',
+    'module_entretien',
+    'lien_document',
+    'validation',
+    'modele_gamme',
+    'chemin_fichier_source',
 ]
 
 # Colonnes renseignees par l'import de fichiers (migration 077). La table

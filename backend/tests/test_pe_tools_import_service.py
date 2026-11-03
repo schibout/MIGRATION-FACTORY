@@ -37,7 +37,7 @@ def test_cle_normalise_accents_casse_espaces_et_ponctuation_finale():
 
 
 def test_les_colonnes_sont_declarees_dans_l_ordre_de_la_table():
-    assert len(PE_TOOLS_COLUMNS) == 25
+    assert len(PE_TOOLS_COLUMNS) == 33
     assert PE_TOOLS_COLUMNS[0] == ('localisation_classement', 'Localisation / Classement')
     assert PE_TOOLS_COLUMNS[22] == ('nb_jours_depuis_derniere_rev', 'Nb jours depuis la dernière rév.')
 
@@ -163,7 +163,8 @@ def test_excel_onglet_7_code_entete_ligne_2_lignes_modele_ignorees():
     assert (r['poste_technique'], r['plan_entretien'], r['poste_entretien']) == ('T410-C', '35553', '70453')
     assert (r['date_validation'], r['charge'], r['decalage']) == ('26/01/2023', '1,75', 'O')
     assert (res.rows[1]['frequence'], res.rows[1]['charge']) == (None, '2')
-    assert 'Poste Responsable' in res.unknown_columns
+    assert res.rows[0]['poste_responsable'] == '7.MENG'
+    assert 'Poste Responsable' not in res.unknown_columns
 
 
 def test_excel_sans_onglet_pe_tools_refuse():
