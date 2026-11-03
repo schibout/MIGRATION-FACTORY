@@ -6,7 +6,8 @@
 --   FICHIER     : present dans raw_data.selection_fournisseurs_stg
 --   SAP_NOUVEAU : absent du fichier, cree dans SAP (lfa1.erdat) a partir de la
 --                 date d'arrete, non marque pour suppression
--- Du fichier on ne lit que le n° SAP, le n° IFS et les codes TVA SAP / IFS (NULL pour un SAP_NOUVEAU ;
+-- Du fichier on ne lit que le n° SAP, le n° IFS et les codes TVA SAP / IFS, plus SIRET / SIREN / n° TVA
+-- quand SAP ne les porte pas (NULL pour un SAP_NOUVEAU ;
 -- ifs_fournisseur_id_map n'est ni lue ni alimentee). Tout le reste vient de
 -- SAP (lfa1, lfb1, lfm1, adrc, adr6, coordonnees bancaires lfbk/tiban/bnka),
 -- avec les transcodifications COUNTRY, PAY_TERM (migration 125) et LANGUAGE.
@@ -149,7 +150,13 @@ BEGIN
               -- Codes TVA : arbitres par le metier, sans source SAP (codes ASCII,
               -- non touches par le probleme d'encodage du fichier)
               NULLIF(TRIM(stg.code_tva_ifs), '') AS code_tva_ifs,
-              NULLIF(TRIM(stg.code_tva_sap), '') AS code_tva_sap
+              NULLIF(TRIM(stg.code_tva_sap), '') AS code_tva_sap,
+              -- SIRET / SIREN / TVA : repli quand SAP ne les porte pas (2026-11-03,
+              -- 606 fournisseurs francais sans stcd1). Chiffres passes par Excel :
+              -- suffixe '.0' retire ; zeros de tete perdus rajoutes plus bas
+              REGEXP_REPLACE(TRIM(stg.numero_siret), '\.0$', '') AS siret,
+              REGEXP_REPLACE(TRIM(stg.numero_siren), '\.0$', '') AS siren,
+              NULLIF(UPPER(REPLACE(TRIM(stg.numero_tva_intra), ' ', '')), '') AS tva
          FROM raw_data.selection_fournisseurs_stg stg
         WHERE NULLIF(TRIM(stg.numero_compte_sap), '') IS NOT NULL
         ORDER BY LPAD(TRIM(stg.numero_compte_sap), 10, '0'),
@@ -197,10 +204,11 @@ BEGIN
       a.pstlz,
       COALESCE(public.get_transcodification('COUNTRY', a.land1), a.land1),
 
-      NULLIF(TRIM(a.stcd1), ''),
-      -- SIREN = 9 premiers chiffres d'un SIRET francais
-      CASE WHEN TRIM(a.stcd1) ~ '^[0-9]{14}$' THEN LEFT(TRIM(a.stcd1), 9) END,
-      NULLIF(TRIM(a.stceg), ''),
+      ident.siret,
+      -- SIREN = 9 premiers chiffres d'un SIRET francais, sinon celui du fichier
+      COALESCE(CASE WHEN ident.siret ~ '^[0-9]{14}$' THEN LEFT(ident.siret, 9) END,
+               CASE WHEN a.land1 = 'FR' AND sf.siren ~ '^[0-9]{8,9}$' THEN LPAD(sf.siren, 9, '0') END),
+      COALESCE(NULLIF(TRIM(a.stceg), ''), sf.tva),
       -- Codes TVA : repris du fichier (NULL pour un SAP_NOUVEAU)
       sf.code_tva_ifs,
       sf.code_tva_sap,
@@ -268,7 +276,15 @@ BEGIN
         ORDER BY (e.flgdefault = 'X') DESC, e.consnumber
         LIMIT 1
    ) mail ON TRUE
-   LEFT JOIN LATERAL clean_data.fn_coordonnees_bancaires_sap(p.lifnr) banque ON TRUE;
+   LEFT JOIN LATERAL clean_data.fn_coordonnees_bancaires_sap(p.lifnr) banque ON TRUE
+   -- SIRET : SAP (stcd1), sinon le fichier pour un fournisseur francais seulement
+   -- (la colonne du fichier porte aussi des identifiants etrangers « HRB 2910
+   -- Montabaur ») et s'il a 13 ou 14 chiffres (zero de tete perdu par Excel)
+   CROSS JOIN LATERAL (
+       SELECT COALESCE(NULLIF(TRIM(a.stcd1), ''),
+                       CASE WHEN a.land1 = 'FR' AND sf.siret ~ '^[0-9]{13,14}$'
+                            THEN LPAD(sf.siret, 14, '0') END) AS siret
+   ) ident;
 
    SELECT COUNT(*) FILTER (WHERE source = 'FICHIER'),
           COUNT(*) FILTER (WHERE source = 'SAP_NOUVEAU')
