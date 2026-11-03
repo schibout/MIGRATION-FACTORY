@@ -32,6 +32,7 @@ import { StepImport, StepMapping, StepUpload, StepValidation } from './ImportGen
 // L'étape « Cible » est passée automatiquement : le mapping est généré dès le fichier analysé.
 
 const TABLE = 'clean_data.article_perimetre_validation';
+const CLE = 'N° article';
 
 const STEPS = [
   { label: 'Upload', description: 'Sélectionner le fichier' },
@@ -53,7 +54,7 @@ const FinanceArticlesImport: React.FC = () => {
 
   // Toujours une mise à jour par N° article (pas de choix de mode)
   useEffect(() => {
-    setImportOptions({ mode: 'upsert', conflictColumns: ['numero_article'] });
+    setImportOptions({ mode: 'upsert', conflictColumns: [CLE] });
   }, [setImportOptions, state.fileId]);
 
   // Pas de choix de table : mapping généré dès l'analyse du fichier
@@ -62,7 +63,7 @@ const FinanceArticlesImport: React.FC = () => {
   }, [state.step, state.fileId, generateMapping, goToStep]);
 
   const canGoNext = () => {
-    if (state.step === 2) return state.mappings.some((m) => m.target === 'numero_article' && !m.ignored);
+    if (state.step === 2) return state.mappings.some((m) => m.target === CLE && !m.ignored);
     if (state.step === 3) return state.validationErrors.length === 0 && !!dateArrete;
     return false;
   };
@@ -91,9 +92,11 @@ const FinanceArticlesImport: React.FC = () => {
             Import du fichier articles validé
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Les fichiers validés par le métier sont la référence du périmètre. Associer la colonne du N° article
-            (obligatoire, unique) ; les autres colonnes associées sont conservées et affichées « Fichier · &lt;nom&gt; »
-            dans l'écran Articles. D'un fichier à l'autre, une case renseignée remplace l'ancienne valeur, une case vide la garde.
+            Les fichiers validés par le métier sont la référence du périmètre. Les colonnes du fichier sont associées aux
+            colonnes de la table articles (même nom = association automatique, sinon choisir la colonne cible ou laisser
+            « non mappé » pour ne pas l'importer). « N° article » est obligatoire et unique ; les autres valeurs sont affichées
+            « Fichier · &lt;colonne&gt; » dans l'écran Articles. D'un fichier à l'autre, une case renseignée remplace l'ancienne
+            valeur, une case vide la garde.
           </Typography>
         </Box>
       </Box>

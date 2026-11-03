@@ -1580,10 +1580,11 @@ def start_art_sync():
 #   POST /articles/import/suggest-mapping   {fileId}            -> {mappings, targetColumns}
 #   POST /articles/import/validate-mapping  {fileId, mappings}  -> {errors, warnings, previewData}
 #   POST /articles/import/execute           {fileId, mappings, date_arrete, truncate} -> ImportResult
-# Cibles : numero_article (cle, obligatoire) ; toute autre cible = une colonne du
-# fichier conservee dans article_perimetre_validation.donnees sous ce nom.
+# Cibles = colonnes de la table articles (v_article_sap, ecran Donnees SAP > Articles) :
+# « N° article » = cle (obligatoire), les autres sont stockees dans
+# article_perimetre_validation.donnees sous le nom de la colonne cible.
 ART_IMPORT_TABLE = 'clean_data.article_perimetre_validation'
-ART_IMPORT_CLE = 'numero_article'
+ART_IMPORT_CLE = ART_CLE
 
 
 def _art_numero(v):
@@ -1619,7 +1620,7 @@ def _art_controler(data):
     errors, warnings = [], []
     if len(cles) != 1:
         errors.append({'type': 'required', 'target': ART_IMPORT_CLE,
-                       'message': f'Associer une et une seule colonne du fichier à « {ART_IMPORT_CLE} » (N° article)'})
+                       'message': f'Associer une et une seule colonne du fichier à « {ART_IMPORT_CLE} »'})
         return None, {'errors': errors, 'warnings': warnings, 'previewData': []}
 
     articles, lignes, sans_numero, doublons = {}, [], 0, 0
@@ -1664,53 +1665,38 @@ def _art_controler(data):
 @finance_blueprint.route('/articles/import/suggest-mapping', methods=['POST'])
 @jwt_required()
 def suggerer_mapping_articles():
-    """Mapping propose : la colonne « N° article » (a defaut celle dont le plus de
-    valeurs sont des articles connus) -> numero_article ; toutes les autres conservees
-    sous leur nom d'en-tete (le fichier valide est la reference), sauf Source et les
-    indicateurs calcules de l'export Donnees SAP > Articles."""
+    """Comme l'import generique : cibles = colonnes de la table articles (v_article_sap),
+    rapprochees des colonnes du fichier par le service de mapping (meme algorithme) ;
+    une colonne sans correspondance reste non mappee, a associer a l'ecran ou a ignorer.
+    A defaut de correspondance par le nom, la cle « N° article » va a la colonne dont le
+    plus de valeurs sont des articles SAP connus."""
+    from api.import_generic import suggest_mapping
+
     fichier = _art_fichier((request.get_json(silent=True) or {}).get('fileId'))
     if fichier is None:
         return jsonify({'error': 'Fichier non trouvé ou expiré'}), 404
     df = fichier['dataframe']
-    types = {c['name']: c.get('detectedType') for c in fichier.get('columns') or []}
-    # Source + indicateurs calcules de l'export Donnees SAP > Articles (api/sap_articles.py)
-    sap = {'Source', 'Dans la structure IH02', 'Lignes de nomenclature', 'Dans part_catalog', 'Anomalies'}
+    cibles = [{'name': c, 'data_type': 'text', 'is_nullable': 'NO' if c == ART_IMPORT_CLE else 'YES',
+               'column_default': None, 'isRequired': c == ART_IMPORT_CLE,
+               'isPrimaryKey': c == ART_IMPORT_CLE, 'constraints': ['PRIMARY KEY'] if c == ART_IMPORT_CLE else []}
+              for c, _, _ in _art_colonnes()[0] if c != 'source' and not c.startswith(ART_FICHIER)]
+    mappings = suggest_mapping(fichier['columns'], cibles)
 
-    reconnus = {}
-    for col in df.columns:
-        valeurs = list({n for n in (_art_numero(v) for v in df[col].head(2000)) if n})
-        trouves = db.session.execute(text(
-            f'SELECT count(*) FROM clean_data.article_sap WHERE "{ART_CLE}" = ANY(:k)'),
-            {'k': valeurs}).scalar() if valeurs else 0
-        reconnus[str(col)] = (trouves, len(valeurs))
-    noms = [str(c) for c in df.columns]
-    cle = ART_CLE if ART_CLE in noms else max(
-        (c for c in noms if reconnus[c][0]), key=lambda c: reconnus[c][0], default=None)
-
-    def nom_cible(col):
-        return col[len(ART_FICHIER):] if col.startswith(ART_FICHIER) else col
-
-    mappings = []
-    for col in noms:
-        if col == cle:
-            trouves, total = reconnus[col]
-            cible, confiance = ART_IMPORT_CLE, 100 if col == ART_CLE else round(100 * trouves / max(total, 1))
-        elif col in sap:
-            cible, confiance = None, 0
-        else:
-            cible, confiance = nom_cible(col), 100
-        mappings.append({'source': col, 'sourceType': types.get(col) or 'text', 'target': cible,
-                         'targetType': 'text' if cible else None, 'confidence': confiance,
-                         'autoMapped': cible is not None, 'ignored': False})
-
-    def colonne(nom, cle_primaire=False):
-        return {'name': nom, 'data_type': 'text' if cle_primaire else 'text (donnees)',
-                'is_nullable': 'NO' if cle_primaire else 'YES', 'column_default': None,
-                'isRequired': cle_primaire, 'isPrimaryKey': cle_primaire,
-                'constraints': ['PRIMARY KEY'] if cle_primaire else []}
-    cibles = list(dict.fromkeys(nom_cible(c) for c in noms if c != cle))
-    return jsonify({'mappings': mappings,
-                    'targetColumns': [colonne(ART_IMPORT_CLE, True)] + [colonne(n) for n in cibles]})
+    if not any(m['target'] == ART_IMPORT_CLE for m in mappings):
+        reconnus = {}
+        for col in df.columns:
+            valeurs = list({n for n in (_art_numero(v) for v in df[col].head(2000)) if n})
+            if valeurs:
+                reconnus[str(col)] = (db.session.execute(text(
+                    f'SELECT count(*) FROM clean_data.article_sap WHERE "{ART_CLE}" = ANY(:k)'),
+                    {'k': valeurs}).scalar(), len(valeurs))
+        cle = max((c for c in reconnus if reconnus[c][0]), key=lambda c: reconnus[c][0], default=None)
+        for m in mappings:
+            if m['source'] == cle:
+                trouves, total = reconnus[cle]
+                m.update(target=ART_IMPORT_CLE, targetType='text', autoMapped=True, ignored=False,
+                         confidence=round(100 * trouves / total))
+    return jsonify({'mappings': mappings, 'targetColumns': cibles})
 
 
 @finance_blueprint.route('/articles/import/validate-mapping', methods=['POST'])
