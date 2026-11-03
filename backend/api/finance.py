@@ -1120,7 +1120,8 @@ FOURN_LIBELLE = {
     'code_tva_ifs': 'Code TVA IFS',
     'code_tva_sap': 'Code TVA SAP',
     'france_etranger': 'France / étranger',
-    'id_societe_etrangere': 'ID société étrangère',
+    # Libelle du fichier valide par le metier : l'import retrouve la colonne par ce nom
+    'id_societe_etrangere': 'Identifiant dans Pays Etranger',
     'company': 'Société IFS',
     'address_id': 'N° adresse',
     'societe': 'Sociétés SAP',

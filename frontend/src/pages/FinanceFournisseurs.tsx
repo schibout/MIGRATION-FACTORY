@@ -172,7 +172,7 @@ const FinanceFournisseurs: React.FC = () => {
       const r = res.data.import;
       setImportResult(
         `${r.fournisseurs.toLocaleString('fr-FR')} fournisseurs importés : ${r.devenus_fichier} SAP_NOUVEAU passés en FICHIER, `
-        + `${r.ifs_modifies} N° IFS et ${r.id_etranger_modifies} ID société étrangère mis à jour. `
+        + `${r.ifs_modifies} N° IFS et ${r.id_etranger_modifies} identifiants étrangers mis à jour. `
         + `Date d'arrêté fixée au ${formatCell(r.date_arrete, 'date')}, recalcul lancé.`,
       );
       setSync(res.data.sync);
@@ -245,7 +245,7 @@ const FinanceFournisseurs: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Importe le fichier exporté par l'écran, validé par le métier : seuls le N° IFS et l'ID société étrangère sont repris, les fournisseurs du fichier passent en FICHIER, puis la table est recalculée avec la date de validation comme date d'arrêté">
+          <Tooltip title="Importe le fichier exporté par l'écran, validé par le métier : seuls le N° IFS et l'Identifiant dans Pays Etranger sont repris, les fournisseurs du fichier passent en FICHIER, puis la table est recalculée avec la date de validation comme date d'arrêté">
             <span>
               <Button variant="outlined" startIcon={<ImportIcon />} onClick={() => { setImportDate(''); setImportOpen(true); }} disabled={running}>
                 Importer le fichier validé
@@ -312,7 +312,7 @@ const FinanceFournisseurs: React.FC = () => {
         <DialogTitle>Importer le fichier validé par le métier</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
           <Typography variant="body2" color="text.secondary">
-            Fichier exporté par cet écran (onglet Fournisseurs). Seules les colonnes « N° IFS » et « ID société étrangère »
+            Fichier exporté par cet écran (onglet Fournisseurs). Seules les colonnes « N° IFS » et « Identifiant dans Pays Etranger »
             sont reprises (case vide = valeur inchangée) ; les fournisseurs du fichier passent en FICHIER. Ces saisies ne sont
             plus jamais recalculées, toutes les autres colonnes le restent.
           </Typography>
