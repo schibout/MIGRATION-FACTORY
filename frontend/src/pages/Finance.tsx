@@ -6,6 +6,7 @@ import {
     Store as FournisseurIcon,
     Timeline as HistoriqueIcon,
     Euro as FinanceIcon,
+    Inventory2 as ArticleIcon,
 } from '@mui/icons-material';
 import { Box, Card, CardActionArea, Grid, Typography } from '@mui/material';
 import React from 'react';
@@ -48,6 +49,12 @@ const financeItems = [
     path: '/finance/fournisseurs',
     icon: <FournisseurIcon sx={{ fontSize: 48, color: '#6d4c41' }} />,
     description: 'Fournisseurs du fichier de sélection + créés dans SAP après la date d\'arrêté (paramétrable), synchronisables depuis SAP',
+  },
+  {
+    title: 'Articles',
+    path: '/finance/articles',
+    icon: <ArticleIcon sx={{ fontSize: 48, color: '#00838f' }} />,
+    description: 'Articles SAP (même table que Données SAP > Articles), marqués SAP_NOUVEAU si créés après la date d\'arrêté, import du fichier validé',
   },
 ];
 

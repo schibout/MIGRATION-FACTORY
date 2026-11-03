@@ -40,6 +40,11 @@ Fournisseurs (clean_data.ifs_fournisseurs_perimetre : fichier + crees dans SAP a
   GET  /api/v1/finance/fournisseurs/export.xlsx
   GET|POST /api/v1/finance/fournisseurs/sync   corps {source, date_arrete} (LFA1, LFB1,
                                          LFM1, LFBK, TIBAN, BNKA)
+Articles (clean_data.article_perimetre : article_sap, SAP_NOUVEAU = crees apres l'arrete) :
+  GET  /api/v1/finance/articles          filtres search, source ; colonnes de v_article_sap
+  GET  /api/v1/finance/articles/export.xlsx
+  GET|POST /api/v1/finance/articles/sync      corps {source, date_arrete}
+  POST /api/v1/finance/articles/import        fichier valide (N° article) + date_arrete
 """
 import io
 import json
@@ -1440,6 +1445,185 @@ def import_fournisseurs_valides():
                                     {'d': date_validation}).scalar(),
                                 extraire=False)
     return jsonify({'import': resume, 'sync': reponse.get_json()}), code
+
+
+# ---------------------------------------------------------------------------
+# Articles (clean_data.article_perimetre, sql/articleSap/article_perimetre.sql) :
+# articles de article_sap, SAP_NOUVEAU = crees dans SAP depuis la date d'arrete.
+# Colonnes affichees = clean_data.v_article_sap (ecran Donnees SAP > Articles).
+# ---------------------------------------------------------------------------
+
+ART_CLE = 'N° article'
+ART_RECHERCHE = (ART_CLE, 'Description article', 'Ancien numéro article')
+
+
+def _art_colonnes():
+    vue = [r[0] for r in db.session.execute(text(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'clean_data' "
+        "AND table_name = 'v_article_sap' ORDER BY ordinal_position"))]
+    return [('source', 'Source')] + [(c, c) for c in vue]
+
+
+def _art_from():
+    where, params = [], {}
+    search = (request.args.get('search') or '').strip()
+    if search:
+        where.append('(' + ' OR '.join(f'v."{c}" ILIKE :s' for c in ART_RECHERCHE) + ')')
+        params['s'] = f'%{search}%'
+    if request.args.get('source') in ('FICHIER', 'SAP_NOUVEAU'):
+        where.append('p.source = :source')
+        params['source'] = request.args['source']
+    clause = ('WHERE ' + ' AND '.join(where)) if where else ''
+    return (f'FROM clean_data.article_perimetre p JOIN clean_data.v_article_sap v '
+            f'ON v."{ART_CLE}" = p.numero_article {clause}'), params
+
+
+def _art_select(colonnes):
+    return ', '.join('p.source' if c == 'source' else f'v."{c}"' for c, _ in colonnes)
+
+
+def _art_charger(date_arrete):
+    return lambda conn: conn.execute(
+        text('SELECT clean_data.alimenter_article_perimetre(:d)'), {'d': date_arrete}).scalar()
+
+
+@finance_blueprint.route('/articles', methods=['GET'])
+@jwt_required()
+def list_articles():
+    """Filtres search (N°, description, ancien numero), source (FICHIER | SAP_NOUVEAU)."""
+    page = max(int(request.args.get('page', 1)), 1)
+    page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
+    colonnes = _art_colonnes()
+    sql_from, params = _art_from()
+    rows = db.session.execute(
+        text(f'SELECT {_art_select(colonnes)} {sql_from} ORDER BY p.source DESC, p.numero_article '
+             'LIMIT :limit OFFSET :offset'),
+        {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).all()
+    total = db.session.execute(text(f'SELECT count(*) {sql_from}'), params).scalar()
+    stats = db.session.execute(text(
+        "SELECT count(*) AS total, count(*) FILTER (WHERE source = 'FICHIER') AS fichier, "
+        "count(*) FILTER (WHERE source = 'SAP_NOUVEAU') AS sap_nouveau, "
+        "COALESCE(max(date_arrete), NULLIF(TRIM(public.get_default_value("
+        "'clean_data.article_perimetre', 'date_arrete')), '')::date) AS date_arrete "
+        "FROM clean_data.article_perimetre")).mappings().one()
+    return jsonify({
+        'rows': [{c: _json(v) for (c, _), v in zip(colonnes, r)} for r in rows],
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'stats': {k: _json(v) for k, v in stats.items()},
+        'colonnes': [{'key': c, 'label': l, 'kind': 'text'} for c, l in colonnes],
+        'sync': _read_status('articles_perimetre'),
+    })
+
+
+@finance_blueprint.route('/articles/export.xlsx', methods=['GET'])
+@jwt_required()
+def export_articles_excel():
+    from openpyxl import Workbook
+
+    colonnes = _art_colonnes()
+    sql_from, params = _art_from()
+    rows = db.session.execute(
+        text(f'SELECT {_art_select(colonnes)} {sql_from} ORDER BY p.source DESC, p.numero_article'),
+        params).all()
+    db.session.commit()  # liberer la transaction de lecture avant la generation
+    wb = Workbook()
+    _feuille_tableau(wb.active, 'Articles', colonnes, rows, set())
+    return _envoyer(wb, 'articles')
+
+
+@finance_blueprint.route('/articles/sync', methods=['GET'])
+@jwt_required()
+def get_art_sync_status():
+    return jsonify(_read_status('articles_perimetre') or {'status': 'never'})
+
+
+@finance_blueprint.route('/articles/sync', methods=['POST'])
+@jwt_required()
+def start_art_sync():
+    """{"source": "sap"|"mf", "date_arrete": "YYYY-MM-DD"} ; 'sap' = extraction des
+    tables articles + modules ETL articles (comme Donnees SAP > Articles) puis
+    recalcul du perimetre ; 'mf' = recalcul du perimetre seul depuis article_sap."""
+    from api.sap_articles import ARTICLE_SAP_TABLES, _charger_modules
+
+    saisie = (request.get_json(silent=True) or {}).get('date_arrete') or None
+    try:
+        date_arrete = date.fromisoformat(saisie) if saisie else None
+    except (TypeError, ValueError):
+        return jsonify({'error': f"Date d'arrêté invalide : {saisie}"}), 400
+    charger = _art_charger(date_arrete)
+    if _sync_source() == 'sap':
+        def load(conn):
+            _charger_modules(conn, 'articles_perimetre')
+            return charger(conn)
+        return _start_sync('articles_perimetre', ARTICLE_SAP_TABLES, 'articles et périmètre', load)
+    return _start_sync('articles_perimetre', [], 'clean_data.article_perimetre', charger, extraire=False)
+
+
+@finance_blueprint.route('/articles/import', methods=['POST'])
+@jwt_required()
+def import_articles_valides():
+    """Fichier valide par le metier = l'export de l'ecran, avec date_arrete (date
+    de validation, obligatoire). Seule la colonne « N° article » est lue : ces
+    articles passent en FICHIER (clean_data.article_perimetre_validation), la
+    date devient la date d'arrete par defaut, puis le perimetre est recalcule."""
+    from openpyxl import load_workbook
+
+    try:
+        date_validation = date.fromisoformat(request.form.get('date_arrete') or '')
+    except ValueError:
+        return jsonify({'error': "Date d'arrêté (date de validation du fichier) obligatoire"}), 400
+    fichier = request.files.get('file')
+    if not fichier:
+        return jsonify({'error': 'Aucun fichier'}), 400
+    current = _read_status('articles_perimetre')
+    if current and current.get('status') == 'running':
+        return jsonify({'error': 'Un calcul est deja en cours, reessayer a la fin.'}), 409
+    try:
+        wb = load_workbook(fichier, read_only=True, data_only=True)
+    except Exception:
+        return jsonify({'error': 'Fichier Excel (.xlsx) illisible'}), 400
+    ws = wb['Articles'] if 'Articles' in wb.sheetnames else wb.active
+    lignes = ws.iter_rows(values_only=True)
+    entetes = [_cellule(h) for h in next(lignes, ())]
+    if ART_CLE not in entetes:
+        return jsonify({'error': f"Colonne « {ART_CLE} » absente : importer le fichier exporté par l'écran"}), 400
+    i = entetes.index(ART_CLE)
+    articles = sorted({_cellule(r[i]) for r in lignes if i < len(r) and _cellule(r[i])})
+    if not articles:
+        return jsonify({'error': 'Aucun article dans le fichier'}), 400
+
+    inconnus = [r[0] for r in db.session.execute(text(
+        'SELECT k FROM unnest(CAST(:k AS text[])) k WHERE NOT EXISTS '
+        f'(SELECT 1 FROM clean_data.article_sap a WHERE a."{ART_CLE}" = k) ORDER BY k'), {'k': articles})]
+    if inconnus:
+        return jsonify({'error': f'{len(inconnus)} N° article inconnus de article_sap : '
+                                 + ', '.join(inconnus[:20])}), 400
+
+    user = str(get_jwt_identity() or 'finance-import')
+    devenus_fichier = db.session.execute(text(
+        "SELECT count(*) FROM clean_data.article_perimetre "
+        "WHERE source = 'SAP_NOUVEAU' AND numero_article = ANY(:k)"), {'k': articles}).scalar()
+    db.session.execute(text(
+        'INSERT INTO clean_data.article_perimetre_validation (numero_article, date_validation, importe_par) '
+        'SELECT k, :d, :u FROM unnest(CAST(:k AS text[])) k ON CONFLICT (numero_article) DO UPDATE SET '
+        'date_validation = EXCLUDED.date_validation, importe_le = CURRENT_TIMESTAMP, '
+        'importe_par = EXCLUDED.importe_par'), {'k': articles, 'd': date_validation, 'u': user})
+    db.session.execute(text(
+        "INSERT INTO public.etl_default_values (module, table_cible, colonne, variante, type_valeur, "
+        "valeur, description, created_by, updated_by) VALUES ('articleSap', 'clean_data.article_perimetre', "
+        "'date_arrete', 'STANDARD', 'CONSTANTE', :d, 'Date d''arrete du fichier articles', :u, :u) "
+        "ON CONFLICT (table_cible, colonne, variante) DO UPDATE SET valeur = EXCLUDED.valeur, "
+        "type_valeur = 'CONSTANTE', is_active = TRUE, updated_at = CURRENT_TIMESTAMP, updated_by = :u"),
+        {'d': date_validation.isoformat(), 'u': user})
+    db.session.commit()
+
+    reponse, code = _start_sync('articles_perimetre', [], 'clean_data.article_perimetre',
+                                _art_charger(date_validation), extraire=False)
+    return jsonify({'import': {'articles': len(articles), 'devenus_fichier': devenus_fichier,
+                               'date_arrete': date_validation.isoformat()},
+                    'sync': reponse.get_json()}), code
 
 
 # ---------------------------------------------------------------------------

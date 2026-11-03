@@ -261,7 +261,7 @@ ARTICLE_MODULES = ('etl_inventory_part.py', 'etl_article_sap.py',
                    'etl_phl_article.py', 'etl_composant_article.py')
 
 
-def _charger_modules(conn):
+def _charger_modules(conn, key='articles_sap'):
     import importlib.util
     import inspect
     import os
@@ -274,7 +274,7 @@ def _charger_modules(conn):
         {'m': list(ARTICLE_MODULES)}).mappings().all()
     dossier = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'etl_modules')
     for i, m in enumerate(modules, 1):
-        _write_status('articles_sap', step=f"{i}/{len(modules)} {m['display_name']}",
+        _write_status(key, step=f"{i}/{len(modules)} {m['display_name']}",
                       progress=90 + int(9 * (i - 1) / len(modules)))
         spec = importlib.util.spec_from_file_location(m['python_module'][:-3],
                                                       os.path.join(dossier, m['python_module']))
