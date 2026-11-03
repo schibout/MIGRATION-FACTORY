@@ -11,10 +11,6 @@ import {
     Box,
     Button,
     Chip,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
     FormControl,
     InputAdornment,
     InputLabel,
@@ -34,6 +30,7 @@ import {
     Typography,
 } from '@mui/material';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 // Même logique que FinanceFournisseurs : date d'arrêté, Calculer / Synchroniser SAP, import du fichier validé.
@@ -66,6 +63,7 @@ const formatDate = (v?: string | null) => (v ? new Date(v).toLocaleDateString('f
 const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : '');
 
 const FinanceArticles: React.FC = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,11 +75,6 @@ const FinanceArticles: React.FC = () => {
   const [dateArrete, setDateArrete] = useState('');
   const [sync, setSync] = useState<SyncStatus | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [importDate, setImportDate] = useState('');
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -127,32 +120,6 @@ const FinanceArticles: React.FC = () => {
     } catch (err: any) {
       if (err?.response?.status === 409) setSync(err.response.data);
       else setError(err?.response?.data?.error ?? 'Impossible de lancer le calcul');
-    }
-  };
-
-  const handleImport = async () => {
-    if (!importFile || !importDate) return;
-    const form = new FormData();
-    form.append('file', importFile);
-    form.append('date_arrete', importDate);
-    try {
-      setImporting(true);
-      setError(null);
-      const res = await api.post('/finance/articles/import', form);
-      const r = res.data.import;
-      setImportResult(
-        `${r.articles.toLocaleString('fr-FR')} articles importés, dont ${r.devenus_fichier} SAP_NOUVEAU passés en FICHIER. `
-        + `Date d'arrêté fixée au ${formatDate(r.date_arrete)}, recalcul lancé.`,
-      );
-      setSync(res.data.sync);
-      setDateArrete(importDate);
-      setImportOpen(false);
-      setImportFile(null);
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? "Erreur lors de l'import du fichier");
-      setImportOpen(false);
-    } finally {
-      setImporting(false);
     }
   };
 
@@ -214,9 +181,9 @@ const FinanceArticles: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Importe le fichier exporté par l'écran, validé par le métier : seule la colonne « N° article » est lue, ces articles passent en FICHIER, puis le périmètre est recalculé avec la date de validation comme date d'arrêté">
+          <Tooltip title="Assistant d'import (comme l'import générique) : mapping des colonnes du fichier validé, N° article obligatoire, autres colonnes conservées ; les articles du fichier passent en FICHIER puis le périmètre est recalculé avec la date de validation">
             <span>
-              <Button variant="outlined" startIcon={<ImportIcon />} onClick={() => { setImportDate(''); setImportOpen(true); }} disabled={running}>
+              <Button variant="outlined" startIcon={<ImportIcon />} onClick={() => navigate('/finance/articles/import')} disabled={running}>
                 Importer le fichier validé
               </Button>
             </span>
@@ -263,35 +230,7 @@ const FinanceArticles: React.FC = () => {
         </Alert>
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {importResult && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setImportResult(null)}>{importResult}</Alert>}
 
-      <Dialog open={importOpen} onClose={() => !importing && setImportOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Importer le fichier validé par le métier</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
-          <Typography variant="body2" color="text.secondary">
-            Fichier exporté par cet écran. Seule la colonne « N° article » est reprise : les articles du fichier passent
-            en FICHIER et le restent aux recalculs suivants.
-          </Typography>
-          <TextField
-            type="date"
-            label="Date d'arrêté (date de validation du fichier)"
-            value={importDate}
-            onChange={(e) => setImportDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            required
-          />
-          <Button variant="outlined" component="label">
-            {importFile ? importFile.name : 'Choisir le fichier Excel (.xlsx)'}
-            <input hidden type="file" accept=".xlsx" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
-          </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setImportOpen(false)} disabled={importing}>Annuler</Button>
-          <Button variant="contained" onClick={handleImport} disabled={!importFile || !importDate || importing}>
-            {importing ? 'Import…' : 'Importer'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField

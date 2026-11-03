@@ -30,6 +30,10 @@ CREATE TABLE IF NOT EXISTS clean_data.article_perimetre_validation (
     importe_le      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     importe_par     VARCHAR(100)
 );
+-- Autres colonnes du fichier, telles que mappees dans l'assistant d'import
+-- (nom de colonne -> valeur texte) ; affichees « Fichier · <nom> » dans l'ecran
+ALTER TABLE clean_data.article_perimetre_validation ADD COLUMN IF NOT EXISTS donnees JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE clean_data.article_perimetre_validation ADD COLUMN IF NOT EXISTS nom_fichier VARCHAR(255);
 
 -- p_date_arrete : saisie dans l'ecran ; NULL = valeur de l'ecran Valeurs par
 -- defaut (clean_data.article_perimetre / date_arrete), a defaut celle des

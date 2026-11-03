@@ -42,6 +42,8 @@ interface StepValidationProps {
     targetColumns: TargetColumn[];
     importOptions: ImportOptions;
     onImportOptionsChange: (options: Partial<ImportOptions>) => void;
+    // Cible imposee (ex. Finance > Articles) : options d'import masquees
+    modeFixe?: boolean;
 }
 
 const StepValidation: React.FC<StepValidationProps> = ({
@@ -53,7 +55,8 @@ const StepValidation: React.FC<StepValidationProps> = ({
     selectedTable,
     targetColumns,
     importOptions,
-    onImportOptionsChange
+    onImportOptionsChange,
+    modeFixe = false
 }) => {
     const theme = useTheme();
 
@@ -166,6 +169,7 @@ const StepValidation: React.FC<StepValidationProps> = ({
             </Grid>
 
             {/* Import options */}
+            {!modeFixe && (
             <Paper sx={{ p: 3, mb: 3, backgroundColor: alpha(theme.palette.primary.main, 0.03) }}>
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <InfoIcon color="primary" />
@@ -270,6 +274,7 @@ const StepValidation: React.FC<StepValidationProps> = ({
                     />
                 </Box>
             </Paper>
+            )}
 
             {/* Import info */}
             <Paper sx={{ p: 2, mb: 3, backgroundColor: alpha(theme.palette.info.main, 0.05) }}>

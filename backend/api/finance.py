@@ -44,7 +44,8 @@ Articles (clean_data.article_perimetre : article_sap, SAP_NOUVEAU = crees apres 
   GET  /api/v1/finance/articles          filtres search, source ; colonnes de v_article_sap
   GET  /api/v1/finance/articles/export.xlsx
   GET|POST /api/v1/finance/articles/sync      corps {source, date_arrete}
-  POST /api/v1/finance/articles/import        fichier valide (N° article) + date_arrete
+  POST /api/v1/finance/articles/import/suggest-mapping|validate-mapping|execute
+                                         import du fichier valide, formats de l'import generique
 """
 import io
 import json
@@ -1455,13 +1456,25 @@ def import_fournisseurs_valides():
 
 ART_CLE = 'N° article'
 ART_RECHERCHE = (ART_CLE, 'Description article', 'Ancien numéro article')
+# Prefixe des colonnes du fichier valide (article_perimetre_validation.donnees)
+ART_FICHIER = 'Fichier · '
 
 
 def _art_colonnes():
+    """[(cle, libelle, expression SQL)], params : Source, colonnes de v_article_sap,
+    avec les colonnes du fichier valide inserees apres la description."""
     vue = [r[0] for r in db.session.execute(text(
         "SELECT column_name FROM information_schema.columns WHERE table_schema = 'clean_data' "
         "AND table_name = 'v_article_sap' ORDER BY ordinal_position"))]
-    return [('source', 'Source')] + [(c, c) for c in vue]
+    # ponytail: ordre alphabetique (jsonb ne garde pas l'ordre du fichier)
+    fichier = [r[0] for r in db.session.execute(text(
+        'SELECT DISTINCT k FROM clean_data.article_perimetre_validation, '
+        'jsonb_object_keys(donnees) k ORDER BY 1'))]
+    cols_vue = [(c, c, f'v."{c}"') for c in vue]
+    cols_fichier = [(ART_FICHIER + n, ART_FICHIER + n, f'val.donnees ->> :f{i}') for i, n in enumerate(fichier)]
+    i = vue.index('Description article') + 1 if 'Description article' in vue else len(vue)
+    return ([('source', 'Source', 'p.source')] + cols_vue[:i] + cols_fichier + cols_vue[i:],
+            {f'f{i}': n for i, n in enumerate(fichier)})
 
 
 def _art_from():
@@ -1475,11 +1488,9 @@ def _art_from():
         params['source'] = request.args['source']
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
     return (f'FROM clean_data.article_perimetre p JOIN clean_data.v_article_sap v '
-            f'ON v."{ART_CLE}" = p.numero_article {clause}'), params
-
-
-def _art_select(colonnes):
-    return ', '.join('p.source' if c == 'source' else f'v."{c}"' for c, _ in colonnes)
+            f'ON v."{ART_CLE}" = p.numero_article '
+            f'LEFT JOIN clean_data.article_perimetre_validation val ON val.numero_article = p.numero_article '
+            f'{clause}'), params
 
 
 def _art_charger(date_arrete):
@@ -1493,12 +1504,12 @@ def list_articles():
     """Filtres search (N°, description, ancien numero), source (FICHIER | SAP_NOUVEAU)."""
     page = max(int(request.args.get('page', 1)), 1)
     page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
-    colonnes = _art_colonnes()
+    colonnes, cparams = _art_colonnes()
     sql_from, params = _art_from()
     rows = db.session.execute(
-        text(f'SELECT {_art_select(colonnes)} {sql_from} ORDER BY p.source DESC, p.numero_article '
-             'LIMIT :limit OFFSET :offset'),
-        {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).all()
+        text(f'SELECT {", ".join(e for _, _, e in colonnes)} {sql_from} '
+             'ORDER BY p.source DESC, p.numero_article LIMIT :limit OFFSET :offset'),
+        {**params, **cparams, 'limit': page_size, 'offset': (page - 1) * page_size}).all()
     total = db.session.execute(text(f'SELECT count(*) {sql_from}'), params).scalar()
     stats = db.session.execute(text(
         "SELECT count(*) AS total, count(*) FILTER (WHERE source = 'FICHIER') AS fichier, "
@@ -1507,12 +1518,12 @@ def list_articles():
         "'clean_data.article_perimetre', 'date_arrete')), '')::date) AS date_arrete "
         "FROM clean_data.article_perimetre")).mappings().one()
     return jsonify({
-        'rows': [{c: _json(v) for (c, _), v in zip(colonnes, r)} for r in rows],
+        'rows': [{c: _json(v) for (c, _, _), v in zip(colonnes, r)} for r in rows],
         'total': total,
         'page': page,
         'page_size': page_size,
         'stats': {k: _json(v) for k, v in stats.items()},
-        'colonnes': [{'key': c, 'label': l, 'kind': 'text'} for c, l in colonnes],
+        'colonnes': [{'key': c, 'label': l, 'kind': 'text'} for c, l, _ in colonnes],
         'sync': _read_status('articles_perimetre'),
     })
 
@@ -1522,14 +1533,14 @@ def list_articles():
 def export_articles_excel():
     from openpyxl import Workbook
 
-    colonnes = _art_colonnes()
+    colonnes, cparams = _art_colonnes()
     sql_from, params = _art_from()
     rows = db.session.execute(
-        text(f'SELECT {_art_select(colonnes)} {sql_from} ORDER BY p.source DESC, p.numero_article'),
-        params).all()
+        text(f'SELECT {", ".join(e for _, _, e in colonnes)} {sql_from} '
+             'ORDER BY p.source DESC, p.numero_article'), {**params, **cparams}).all()
     db.session.commit()  # liberer la transaction de lecture avant la generation
     wb = Workbook()
-    _feuille_tableau(wb.active, 'Articles', colonnes, rows, set())
+    _feuille_tableau(wb.active, 'Articles', [(c, l) for c, l, _ in colonnes], rows, set())
     return _envoyer(wb, 'articles')
 
 
@@ -1561,55 +1572,178 @@ def start_art_sync():
     return _start_sync('articles_perimetre', [], 'clean_data.article_perimetre', charger, extraire=False)
 
 
-@finance_blueprint.route('/articles/import', methods=['POST'])
-@jwt_required()
-def import_articles_valides():
-    """Fichier valide par le metier = l'export de l'ecran, avec date_arrete (date
-    de validation, obligatoire). Seule la colonne « N° article » est lue : ces
-    articles passent en FICHIER (clean_data.article_perimetre_validation), la
-    date devient la date d'arrete par defaut, puis le perimetre est recalcule."""
-    from openpyxl import load_workbook
+# Import du fichier valide (page /finance/articles/import) : memes etapes et memes
+# formats que l'import generique (api/import_generic.py), table cible imposee.
+# Le fichier est analyse et stocke par /import-generic/analyze-file (fileId), puis
+#   POST /articles/import/suggest-mapping   {fileId}            -> {mappings, targetColumns}
+#   POST /articles/import/validate-mapping  {fileId, mappings}  -> {errors, warnings, previewData}
+#   POST /articles/import/execute           {fileId, mappings, date_arrete} -> ImportResult
+# Cibles : numero_article (cle, obligatoire) ; toute autre cible = une colonne du
+# fichier conservee dans article_perimetre_validation.donnees sous ce nom.
+ART_IMPORT_TABLE = 'clean_data.article_perimetre_validation'
+ART_IMPORT_CLE = 'numero_article'
 
+
+def _art_numero(v):
+    """Cellule -> N° article tel que dans article_sap (sans zeros de tete s'il est numerique)."""
+    import pandas as pd
+    if v is None or (not isinstance(v, str) and pd.isna(v)):
+        return None
+    v = _cellule(v)
+    return (v.lstrip('0') or '0') if v and v.isdigit() else v
+
+
+def _art_fichier(file_id):
+    from api.import_generic import temp_file_storage
+    if not file_id or file_id not in temp_file_storage:
+        return None
+    return temp_file_storage[file_id]
+
+
+def _art_controler(data):
+    """Lit le fichier selon les mappings : (articles {numero: donnees}, rapport au format
+    validate-mapping + compteurs), articles = None si le mapping est inutilisable."""
+    import pandas as pd
+
+    fichier = _art_fichier(data.get('fileId'))
+    if fichier is None:
+        return None, {'errors': [{'type': 'file', 'message': "Fichier introuvable ou expiré : recommencer l'import"}],
+                      'warnings': [], 'previewData': []}
+    df = fichier['dataframe']
+    actifs = [m for m in data.get('mappings') or []
+              if m.get('target') and not m.get('ignored') and m.get('source') in df.columns]
+    cles = [m['source'] for m in actifs if m['target'] == ART_IMPORT_CLE]
+    gardees = [(m['source'], m['target']) for m in actifs if m['target'] != ART_IMPORT_CLE]
+    errors, warnings = [], []
+    if len(cles) != 1:
+        errors.append({'type': 'required', 'target': ART_IMPORT_CLE,
+                       'message': f'Associer une et une seule colonne du fichier à « {ART_IMPORT_CLE} » (N° article)'})
+        return None, {'errors': errors, 'warnings': warnings, 'previewData': []}
+
+    articles, lignes, sans_numero, doublons = {}, [], 0, 0
+    for i, (_, r) in enumerate(df.iterrows(), start=2):  # ligne 1 = en-tetes
+        numero = _art_numero(r[cles[0]])
+        if not numero:
+            sans_numero += 1
+            continue
+        doublons += numero in articles
+        # Derniere ligne gagnante ; cellule vide -> non stockee
+        articles[numero] = {n: c for s, n in gardees
+                            if (c := (None if pd.isna(r[s]) else _cellule(r[s]))) is not None}
+        lignes.append((i, numero))
+    connus = {r[0] for r in db.session.execute(text(
+        f'SELECT a."{ART_CLE}" FROM clean_data.article_sap a WHERE a."{ART_CLE}" = ANY(:k)'),
+        {'k': list(articles)})}
+    inconnus = sorted(k for k in articles if k not in connus)
+    if not articles:
+        errors.append({'type': 'empty', 'message': 'Aucun N° article dans la colonne associée'})
+    if inconnus:
+        errors.append({'type': 'reference', 'source': cles[0], 'target': ART_IMPORT_CLE, 'count': len(inconnus),
+                       'message': f'{len(inconnus)} N° article inconnus de la table des articles SAP : '
+                                  + ', '.join(inconnus[:30]) + (' …' if len(inconnus) > 30 else '')})
+    if sans_numero:
+        warnings.append({'type': 'null', 'source': cles[0], 'count': sans_numero,
+                         'message': f'{sans_numero} lignes sans N° article seront ignorées'})
+    if doublons:
+        warnings.append({'type': 'duplicate', 'source': cles[0], 'count': doublons,
+                         'message': f"{doublons} lignes répètent un article déjà lu : la dernière l'emporte"})
+    apercu = [{'rowNumber': i, 'data': {ART_IMPORT_CLE: k, **articles[k]},
+               'errors': [] if k in connus else ['N° article inconnu de la table des articles SAP']}
+              for i, k in lignes[:int(data.get('previewRows') or 10)]]
+    return articles, {'errors': errors, 'warnings': warnings, 'previewData': apercu,
+                      'nom_fichier': fichier['filename'], 'articles': len(articles)}
+
+
+@finance_blueprint.route('/articles/import/suggest-mapping', methods=['POST'])
+@jwt_required()
+def suggerer_mapping_articles():
+    """Mapping propose : la colonne « N° article » (a defaut celle dont le plus de
+    valeurs sont des articles connus) -> numero_article ; les colonnes reprises de SAP
+    par l'export de l'ecran (Source + v_article_sap) non mappees ; toutes les autres
+    conservees sous leur nom d'en-tete."""
+    fichier = _art_fichier((request.get_json(silent=True) or {}).get('fileId'))
+    if fichier is None:
+        return jsonify({'error': 'Fichier non trouvé ou expiré'}), 404
+    df = fichier['dataframe']
+    types = {c['name']: c.get('detectedType') for c in fichier.get('columns') or []}
+    sap = {c for c, _, _ in _art_colonnes()[0] if not c.startswith(ART_FICHIER)} | {'Source'}
+
+    reconnus = {}
+    for col in df.columns:
+        valeurs = list({n for n in (_art_numero(v) for v in df[col].head(2000)) if n})
+        trouves = db.session.execute(text(
+            f'SELECT count(*) FROM clean_data.article_sap WHERE "{ART_CLE}" = ANY(:k)'),
+            {'k': valeurs}).scalar() if valeurs else 0
+        reconnus[str(col)] = (trouves, len(valeurs))
+    noms = [str(c) for c in df.columns]
+    cle = ART_CLE if ART_CLE in noms else max(
+        (c for c in noms if reconnus[c][0]), key=lambda c: reconnus[c][0], default=None)
+
+    def nom_cible(col):
+        return col[len(ART_FICHIER):] if col.startswith(ART_FICHIER) else col
+
+    mappings = []
+    for col in noms:
+        if col == cle:
+            trouves, total = reconnus[col]
+            cible, confiance = ART_IMPORT_CLE, 100 if col == ART_CLE else round(100 * trouves / max(total, 1))
+        elif col in sap:
+            cible, confiance = None, 0
+        else:
+            cible, confiance = nom_cible(col), 100
+        mappings.append({'source': col, 'sourceType': types.get(col) or 'text', 'target': cible,
+                         'targetType': 'text' if cible else None, 'confidence': confiance,
+                         'autoMapped': cible is not None, 'ignored': False})
+
+    def colonne(nom, cle_primaire=False):
+        return {'name': nom, 'data_type': 'text' if cle_primaire else 'text (donnees)',
+                'is_nullable': 'NO' if cle_primaire else 'YES', 'column_default': None,
+                'isRequired': cle_primaire, 'isPrimaryKey': cle_primaire,
+                'constraints': ['PRIMARY KEY'] if cle_primaire else []}
+    cibles = list(dict.fromkeys(nom_cible(c) for c in noms if c != cle))
+    return jsonify({'mappings': mappings,
+                    'targetColumns': [colonne(ART_IMPORT_CLE, True)] + [colonne(n) for n in cibles]})
+
+
+@finance_blueprint.route('/articles/import/validate-mapping', methods=['POST'])
+@jwt_required()
+def valider_mapping_articles():
+    _, rapport = _art_controler(request.get_json(silent=True) or {})
+    return jsonify(rapport)
+
+
+@finance_blueprint.route('/articles/import/execute', methods=['POST'])
+@jwt_required()
+def executer_import_articles():
+    """Articles du fichier -> FICHIER (article_perimetre_validation, colonnes conservees
+    fusionnees dans donnees), date de validation = date d'arrete par defaut, recalcul."""
+    data = request.get_json(silent=True) or {}
     try:
-        date_validation = date.fromisoformat(request.form.get('date_arrete') or '')
+        date_validation = date.fromisoformat(data.get('date_arrete') or '')
     except ValueError:
         return jsonify({'error': "Date d'arrêté (date de validation du fichier) obligatoire"}), 400
-    fichier = request.files.get('file')
-    if not fichier:
-        return jsonify({'error': 'Aucun fichier'}), 400
     current = _read_status('articles_perimetre')
     if current and current.get('status') == 'running':
         return jsonify({'error': 'Un calcul est deja en cours, reessayer a la fin.'}), 409
-    try:
-        wb = load_workbook(fichier, read_only=True, data_only=True)
-    except Exception:
-        return jsonify({'error': 'Fichier Excel (.xlsx) illisible'}), 400
-    ws = wb['Articles'] if 'Articles' in wb.sheetnames else wb.active
-    lignes = ws.iter_rows(values_only=True)
-    entetes = [_cellule(h) for h in next(lignes, ())]
-    if ART_CLE not in entetes:
-        return jsonify({'error': f"Colonne « {ART_CLE} » absente : importer le fichier exporté par l'écran"}), 400
-    i = entetes.index(ART_CLE)
-    articles = sorted({_cellule(r[i]) for r in lignes if i < len(r) and _cellule(r[i])})
-    if not articles:
-        return jsonify({'error': 'Aucun article dans le fichier'}), 400
-
-    inconnus = [r[0] for r in db.session.execute(text(
-        'SELECT k FROM unnest(CAST(:k AS text[])) k WHERE NOT EXISTS '
-        f'(SELECT 1 FROM clean_data.article_sap a WHERE a."{ART_CLE}" = k) ORDER BY k'), {'k': articles})]
-    if inconnus:
-        return jsonify({'error': f'{len(inconnus)} N° article inconnus de article_sap : '
-                                 + ', '.join(inconnus[:20])}), 400
+    articles, rapport = _art_controler(data)
+    if rapport['errors']:
+        return jsonify({'error': ' ; '.join(e['message'] for e in rapport['errors'])}), 400
 
     user = str(get_jwt_identity() or 'finance-import')
+    existants = db.session.execute(text(
+        f'SELECT count(*) FROM {ART_IMPORT_TABLE} WHERE numero_article = ANY(:k)'), {'k': list(articles)}).scalar()
     devenus_fichier = db.session.execute(text(
         "SELECT count(*) FROM clean_data.article_perimetre "
-        "WHERE source = 'SAP_NOUVEAU' AND numero_article = ANY(:k)"), {'k': articles}).scalar()
+        "WHERE source = 'SAP_NOUVEAU' AND numero_article = ANY(:k)"), {'k': list(articles)}).scalar()
     db.session.execute(text(
-        'INSERT INTO clean_data.article_perimetre_validation (numero_article, date_validation, importe_par) '
-        'SELECT k, :d, :u FROM unnest(CAST(:k AS text[])) k ON CONFLICT (numero_article) DO UPDATE SET '
-        'date_validation = EXCLUDED.date_validation, importe_le = CURRENT_TIMESTAMP, '
-        'importe_par = EXCLUDED.importe_par'), {'k': articles, 'd': date_validation, 'u': user})
+        f'INSERT INTO {ART_IMPORT_TABLE} AS v '
+        '(numero_article, donnees, nom_fichier, date_validation, importe_par) '
+        'SELECT k, d::jsonb, :f, :dv, :u FROM unnest(CAST(:k AS text[]), CAST(:d AS text[])) AS t(k, d) '
+        'ON CONFLICT (numero_article) DO UPDATE SET donnees = v.donnees || EXCLUDED.donnees, '
+        'nom_fichier = EXCLUDED.nom_fichier, date_validation = EXCLUDED.date_validation, '
+        'importe_le = CURRENT_TIMESTAMP, importe_par = EXCLUDED.importe_par'),
+        {'k': list(articles), 'd': [json.dumps(d, ensure_ascii=False) for d in articles.values()],
+         'f': rapport['nom_fichier'], 'dv': date_validation, 'u': user})
     db.session.execute(text(
         "INSERT INTO public.etl_default_values (module, table_cible, colonne, variante, type_valeur, "
         "valeur, description, created_by, updated_by) VALUES ('articleSap', 'clean_data.article_perimetre', "
@@ -1619,11 +1753,23 @@ def import_articles_valides():
         {'d': date_validation.isoformat(), 'u': user})
     db.session.commit()
 
-    reponse, code = _start_sync('articles_perimetre', [], 'clean_data.article_perimetre',
-                                _art_charger(date_validation), extraire=False)
-    return jsonify({'import': {'articles': len(articles), 'devenus_fichier': devenus_fichier,
-                               'date_arrete': date_validation.isoformat()},
-                    'sync': reponse.get_json()}), code
+    from api.import_generic import temp_file_storage
+    del temp_file_storage[data['fileId']]
+    reponse, _ = _start_sync('articles_perimetre', [], 'clean_data.article_perimetre',
+                             _art_charger(date_validation), extraire=False)
+    return jsonify({
+        'success': True,
+        'message': (f"{len(articles)} articles importés ({devenus_fichier} SAP_NOUVEAU passés en FICHIER). "
+                    f"Date d'arrêté fixée au {date_validation:%d/%m/%Y}, recalcul du périmètre lancé."),
+        'successCount': len(articles),
+        'insertedCount': len(articles) - existants,
+        'updatedCount': existants,
+        'errorCount': 0,
+        'errors': [],
+        'targetTable': ART_IMPORT_TABLE,
+        'mode': 'upsert',
+        'sync': reponse.get_json(),
+    })
 
 
 # ---------------------------------------------------------------------------

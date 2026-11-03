@@ -52,8 +52,19 @@ export interface UseGenericImportReturn {
     setError: (error: string | null) => void;
 }
 
-export function useGenericImport(): UseGenericImportReturn {
-    const [state, setState] = useState<ImportState>(initialState);
+// Ecran d'import a cible imposee (ex. Finance > Articles) : memes etapes, mais les
+// routes suggest-mapping / validate-mapping / execute sont celles de baseUrl, la
+// table est fixe et `extra` est ajoute au corps de l'execution.
+export interface GenericImportConfig {
+    baseUrl?: string;
+    fixedTable?: string;
+    extra?: Record<string, unknown>;
+}
+
+export function useGenericImport(config: GenericImportConfig = {}): UseGenericImportReturn {
+    const { baseUrl = '/import-generic', fixedTable, extra } = config;
+    const depart: ImportState = fixedTable ? { ...initialState, selectedTable: fixedTable } : initialState;
+    const [state, setState] = useState<ImportState>(depart);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -154,7 +165,7 @@ export function useGenericImport(): UseGenericImportReturn {
         setError(null);
 
         try {
-            const response = await api.post('/import-generic/suggest-mapping', {
+            const response = await api.post(`${baseUrl}/suggest-mapping`, {
                 fileId: state.fileId,
                 targetTable: state.selectedTable,
                 schema: state.selectedSchema
@@ -172,7 +183,7 @@ export function useGenericImport(): UseGenericImportReturn {
         } finally {
             setLoading(false);
         }
-    }, [state.fileId, state.selectedTable, state.selectedSchema]);
+    }, [baseUrl, state.fileId, state.selectedTable, state.selectedSchema]);
 
     // Update a single mapping
     const updateMapping = useCallback((sourceCol: string, targetCol: string | null) => {
@@ -206,7 +217,7 @@ export function useGenericImport(): UseGenericImportReturn {
         setError(null);
 
         try {
-            const response = await api.post('/import-generic/validate-mapping', {
+            const response = await api.post(`${baseUrl}/validate-mapping`, {
                 fileId: state.fileId,
                 targetTable: state.selectedTable,
                 mappings: state.mappings,
@@ -227,7 +238,7 @@ export function useGenericImport(): UseGenericImportReturn {
         } finally {
             setLoading(false);
         }
-    }, [state.fileId, state.selectedTable, state.mappings, state.selectedSchema]);
+    }, [baseUrl, state.fileId, state.selectedTable, state.mappings, state.selectedSchema]);
 
     // Set import options
     const setImportOptions = useCallback((options: Partial<ImportOptions>) => {
@@ -245,7 +256,8 @@ export function useGenericImport(): UseGenericImportReturn {
         setError(null);
 
         try {
-            const response = await api.post('/import-generic/execute', {
+            const response = await api.post(`${baseUrl}/execute`, {
+                ...extra,
                 fileId: state.fileId,
                 targetTable: state.selectedTable,
                 mappings: state.mappings,
@@ -269,7 +281,7 @@ export function useGenericImport(): UseGenericImportReturn {
             setState(prev => ({ ...prev, importing: false }));
             throw err;
         }
-    }, [state.fileId, state.selectedTable, state.mappings, state.selectedSchema, state.importOptions]);
+    }, [baseUrl, extra, state.fileId, state.selectedTable, state.mappings, state.selectedSchema, state.importOptions]);
 
     // Navigate to a specific step
     const goToStep = useCallback((step: number) => {
@@ -278,9 +290,9 @@ export function useGenericImport(): UseGenericImportReturn {
 
     // Reset the wizard
     const reset = useCallback(() => {
-        setState(initialState);
+        setState(fixedTable ? { ...initialState, selectedTable: fixedTable } : initialState);
         setError(null);
-    }, []);
+    }, [fixedTable]);
 
     return {
         state,
