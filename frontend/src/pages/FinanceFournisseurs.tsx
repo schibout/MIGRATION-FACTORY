@@ -1,6 +1,7 @@
 import {
     Calculate as CalculIcon,
     FileDownload as ExcelIcon,
+    FileUpload as ImportIcon,
     Search as SearchIcon,
     Store as FournisseurIcon,
     Sync as SyncIcon,
@@ -10,6 +11,10 @@ import {
     Box,
     Button,
     Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     FormControl,
     InputAdornment,
     InputLabel,
@@ -97,6 +102,12 @@ const FinanceFournisseurs: React.FC = () => {
   const [dateArrete, setDateArrete] = useState('');
   const [sync, setSync] = useState<SyncStatus | null>(null);
   const [exporting, setExporting] = useState(false);
+  // Import du fichier validé par le métier : date de validation obligatoire, saisie dans la fenêtre
+  const [importOpen, setImportOpen] = useState(false);
+  const [importDate, setImportDate] = useState('');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (vue === 'mode_emploi') return;
@@ -146,6 +157,33 @@ const FinanceFournisseurs: React.FC = () => {
     } catch (err: any) {
       if (err?.response?.status === 409) setSync(err.response.data);
       else setError(err?.response?.data?.error ?? 'Impossible de lancer le calcul');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile || !importDate) return;
+    const form = new FormData();
+    form.append('file', importFile);
+    form.append('date_arrete', importDate);
+    try {
+      setImporting(true);
+      setError(null);
+      const res = await api.post('/finance/fournisseurs/import', form);
+      const r = res.data.import;
+      setImportResult(
+        `${r.fournisseurs.toLocaleString('fr-FR')} fournisseurs importés : ${r.devenus_fichier} SAP_NOUVEAU passés en FICHIER, `
+        + `${r.ifs_modifies} N° IFS et ${r.id_etranger_modifies} ID société étrangère mis à jour. `
+        + `Date d'arrêté fixée au ${formatCell(r.date_arrete, 'date')}, recalcul lancé.`,
+      );
+      setSync(res.data.sync);
+      setDateArrete(importDate);
+      setImportOpen(false);
+      setImportFile(null);
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? "Erreur lors de l'import du fichier");
+      setImportOpen(false);
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -207,6 +245,13 @@ const FinanceFournisseurs: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
+          <Tooltip title="Importe le fichier exporté par l'écran, validé par le métier : seuls le N° IFS et l'ID société étrangère sont repris, les fournisseurs du fichier passent en FICHIER, puis la table est recalculée avec la date de validation comme date d'arrêté">
+            <span>
+              <Button variant="outlined" startIcon={<ImportIcon />} onClick={() => { setImportDate(''); setImportOpen(true); }} disabled={running}>
+                Importer le fichier validé
+              </Button>
+            </span>
+          </Tooltip>
           <Tooltip title="Classeur Excel à 3 onglets (Fournisseurs, Adresses, Méthodes de communication) : les fournisseurs filtrés (recherche, source) et leurs adresses et moyens de communication (filtre méthode)">
             <span>
               <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !data?.total}>
@@ -261,6 +306,36 @@ const FinanceFournisseurs: React.FC = () => {
         </Alert>
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {importResult && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setImportResult(null)}>{importResult}</Alert>}
+
+      <Dialog open={importOpen} onClose={() => !importing && setImportOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Importer le fichier validé par le métier</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+          <Typography variant="body2" color="text.secondary">
+            Fichier exporté par cet écran (onglet Fournisseurs). Seules les colonnes « N° IFS » et « ID société étrangère »
+            sont reprises (case vide = valeur inchangée) ; les fournisseurs du fichier passent en FICHIER. Ces saisies ne sont
+            plus jamais recalculées, toutes les autres colonnes le restent.
+          </Typography>
+          <TextField
+            type="date"
+            label="Date d'arrêté (date de validation du fichier)"
+            value={importDate}
+            onChange={(e) => setImportDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            required
+          />
+          <Button variant="outlined" component="label">
+            {importFile ? importFile.name : 'Choisir le fichier Excel (.xlsx)'}
+            <input hidden type="file" accept=".xlsx" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
+          </Button>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportOpen(false)} disabled={importing}>Annuler</Button>
+          <Button variant="contained" onClick={handleImport} disabled={!importFile || !importDate || importing}>
+            {importing ? 'Import…' : 'Importer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {vue === 'mode_emploi' ? (
         <Box

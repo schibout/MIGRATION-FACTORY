@@ -1317,6 +1317,129 @@ def start_fourn_sync():
                        extraire=_sync_source() == 'sap')
 
 
+def _cellule(v):
+    """Valeur Excel -> texte nettoye (Excel convertit 600001 en 600001.0)."""
+    if v is None:
+        return None
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
+    return str(v).strip() or None
+
+
+@finance_blueprint.route('/fournisseurs/import', methods=['POST'])
+@jwt_required()
+def import_fournisseurs_valides():
+    """Fichier valide par le metier = l'export de l'ecran (onglet Fournisseurs),
+    avec date_arrete (date de validation, obligatoire). Chaque fournisseur du
+    fichier passe dans clean_data.ifs_fournisseurs_validation : il devient
+    FICHIER, et son N° IFS / ID societe etrangere sont mis a jour quand la case
+    est renseignee (case vide = valeur inchangee). Seules ces colonnes viennent
+    du fichier. La date devient la date d'arrete par defaut, puis le perimetre
+    est recalcule (comme le bouton Calculer)."""
+    from openpyxl import load_workbook
+
+    try:
+        date_validation = date.fromisoformat(request.form.get('date_arrete') or '')
+    except ValueError:
+        return jsonify({'error': "Date d'arrêté (date de validation du fichier) obligatoire"}), 400
+    fichier = request.files.get('file')
+    if not fichier:
+        return jsonify({'error': 'Aucun fichier'}), 400
+    current = _read_status('fournisseurs')
+    if current and current.get('status') == 'running':
+        return jsonify({'error': 'Un calcul est deja en cours, reessayer a la fin.'}), 409
+
+    try:
+        wb = load_workbook(fichier, read_only=True, data_only=True)
+    except Exception:
+        return jsonify({'error': 'Fichier Excel (.xlsx) illisible'}), 400
+    ws = wb['Fournisseurs'] if 'Fournisseurs' in wb.sheetnames else wb.active
+    lignes = ws.iter_rows(values_only=True)
+    entetes = [_cellule(h) for h in next(lignes, ())]
+    index = {lib: entetes.index(lib) for lib in
+             (FOURN_LIBELLE[c] for c in ('numero_compte_fournisseur', 'numero_compte_ifs', 'id_societe_etrangere'))
+             if lib in entetes}
+    cle = FOURN_LIBELLE['numero_compte_fournisseur']
+    if cle not in index:
+        return jsonify({'error': f"Colonne « {cle} » absente : importer le fichier exporté par l'écran"}), 400
+
+    def lire(r, col):
+        i = index.get(FOURN_LIBELLE[col])
+        return _cellule(r[i]) if i is not None and i < len(r) else None
+
+    saisies = {}
+    for r in lignes:
+        lifnr = lire(r, 'numero_compte_fournisseur')
+        if lifnr:
+            saisies[lifnr.zfill(10)] = {'ifs': lire(r, 'numero_compte_ifs'), 'etr': lire(r, 'id_societe_etrangere')}
+    if not saisies:
+        return jsonify({'error': 'Aucun fournisseur dans le fichier'}), 400
+
+    inconnus = [r[0] for r in db.session.execute(
+        text('SELECT k FROM unnest(CAST(:k AS text[])) k '
+             'WHERE NOT EXISTS (SELECT 1 FROM raw_data.lfa1 a WHERE a.lifnr::text = k) ORDER BY k'),
+        {'k': list(saisies)})]
+    if inconnus:
+        return jsonify({'error': f'{len(inconnus)} N° fournisseur SAP inconnus de SAP (LFA1) : '
+                                 + ', '.join(inconnus[:20])}), 400
+
+    user = str(get_jwt_identity() or 'finance-import')
+    # Avant la mise a jour : ce que l'import change reellement (pour le compte rendu)
+    avant = {r.numero_compte_fournisseur: r for r in db.session.execute(text(
+        'SELECT numero_compte_fournisseur, source, numero_compte_ifs, id_societe_etrangere '
+        'FROM clean_data.ifs_fournisseurs_perimetre WHERE numero_compte_fournisseur = ANY(:k)'),
+        {'k': list(saisies)})}
+    for lifnr, s in saisies.items():
+        db.session.execute(text(
+            'INSERT INTO clean_data.ifs_fournisseurs_validation AS v (numero_compte_fournisseur, '
+            'numero_compte_ifs, id_societe_etrangere, date_validation, importe_par) '
+            'VALUES (:k, :ifs, :etr, :d, :u) ON CONFLICT (numero_compte_fournisseur) DO UPDATE SET '
+            'numero_compte_ifs = COALESCE(EXCLUDED.numero_compte_ifs, v.numero_compte_ifs), '
+            'id_societe_etrangere = COALESCE(EXCLUDED.id_societe_etrangere, v.id_societe_etrangere), '
+            'date_validation = EXCLUDED.date_validation, importe_le = CURRENT_TIMESTAMP, '
+            'importe_par = EXCLUDED.importe_par'),
+            {'k': lifnr, 'ifs': s['ifs'], 'etr': s['etr'], 'd': date_validation, 'u': user})
+
+    # Un N° IFS ne designe qu'un fournisseur : refus (rien n'est ecrit) sinon
+    doublons = db.session.execute(text(
+        "SELECT ifs, string_agg(k, ', ' ORDER BY k) AS fournisseurs FROM ("
+        " SELECT COALESCE(v.numero_compte_ifs, p.numero_compte_ifs) AS ifs,"
+        "        COALESCE(v.numero_compte_fournisseur, p.numero_compte_fournisseur) AS k"
+        "   FROM clean_data.ifs_fournisseurs_validation v"
+        "   FULL JOIN clean_data.ifs_fournisseurs_perimetre p USING (numero_compte_fournisseur)) x"
+        " WHERE ifs IS NOT NULL GROUP BY ifs HAVING count(*) > 1 ORDER BY ifs LIMIT 20")).all()
+    if doublons:
+        db.session.rollback()
+        return jsonify({'error': 'Import refusé, N° IFS attribués à plusieurs fournisseurs : '
+                                 + ' ; '.join(f'{d.ifs} ({d.fournisseurs})' for d in doublons)}), 400
+
+    # La date de validation devient la date d'arrete par defaut (aussi lue par le script 01)
+    db.session.execute(text(
+        "INSERT INTO public.etl_default_values (module, table_cible, colonne, variante, type_valeur, "
+        "valeur, description, created_by, updated_by) VALUES ('supplier', 'clean_data.ifs_fournisseurs', "
+        "'date_arrete', 'STANDARD', 'CONSTANTE', :d, 'Date d''arrete du fichier fournisseurs', :u, :u) "
+        "ON CONFLICT (table_cible, colonne, variante) DO UPDATE SET valeur = EXCLUDED.valeur, "
+        "type_valeur = 'CONSTANTE', is_active = TRUE, updated_at = CURRENT_TIMESTAMP, updated_by = :u"),
+        {'d': date_validation.isoformat(), 'u': user})
+    db.session.commit()
+
+    resume = {
+        'fournisseurs': len(saisies),
+        'devenus_fichier': sum(1 for k in saisies if k in avant and avant[k].source == 'SAP_NOUVEAU'),
+        'ifs_modifies': sum(1 for k, s in saisies.items()
+                            if s['ifs'] and (k not in avant or avant[k].numero_compte_ifs != s['ifs'])),
+        'id_etranger_modifies': sum(1 for k, s in saisies.items()
+                                    if s['etr'] and (k not in avant or avant[k].id_societe_etrangere != s['etr'])),
+        'date_arrete': date_validation.isoformat(),
+    }
+    reponse, code = _start_sync('fournisseurs', FOURN_SAP_TABLES, 'clean_data.ifs_fournisseurs_perimetre',
+                                lambda conn: conn.execute(
+                                    text('SELECT clean_data.alimenter_ifs_fournisseurs_perimetre(:d)'),
+                                    {'d': date_validation}).scalar(),
+                                extraire=False)
+    return jsonify({'import': resume, 'sync': reponse.get_json()}), code
+
+
 # ---------------------------------------------------------------------------
 # Communs : export Excel, synchronisation SAP
 # ---------------------------------------------------------------------------

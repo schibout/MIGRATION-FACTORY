@@ -63,8 +63,23 @@ CREATE TABLE IF NOT EXISTS clean_data.ifs_fournisseurs_perimetre (
 -- Date d'arrete utilisee au dernier chargement (ecran Finance > Fournisseurs)
 ALTER TABLE clean_data.ifs_fournisseurs_perimetre ADD COLUMN IF NOT EXISTS date_arrete DATE;
 -- ID des societes etrangeres : saisi par le metier (import du fichier
--- valide), jamais lu dans SAP ; conserve d'un rechargement a l'autre
+-- valide), jamais lu dans SAP ; recopie de ifs_fournisseurs_validation
 ALTER TABLE clean_data.ifs_fournisseurs_perimetre ADD COLUMN IF NOT EXISTS id_societe_etrangere VARCHAR(100);
+
+-- Saisies du metier, alimentees par l'import du fichier valide (ecran Finance >
+-- Fournisseurs, bouton Importer) et jamais par le recalcul : un fournisseur
+-- present ici est FICHIER, son N° IFS et son ID societe etrangere priment sur
+-- le fichier de selection. Toutes les autres colonnes restent recalculees.
+CREATE TABLE IF NOT EXISTS clean_data.ifs_fournisseurs_validation (
+    numero_compte_fournisseur VARCHAR      NOT NULL PRIMARY KEY,
+    numero_compte_ifs         VARCHAR(20),
+    id_societe_etrangere      VARCHAR(100),
+    date_validation           DATE         NOT NULL,
+    importe_le                TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    importe_par               VARCHAR(100)
+);
+COMMENT ON TABLE clean_data.ifs_fournisseurs_validation IS
+    'Fournisseurs du fichier valide par le metier (import ecran Finance > Fournisseurs) : source FICHIER, N° IFS et ID societe etrangere imposes au recalcul de ifs_fournisseurs_perimetre';
 
 COMMENT ON TABLE clean_data.ifs_fournisseurs_perimetre IS
     'Perimetre fournisseurs IFS : fichier de selection + fournisseurs crees dans SAP apres la date d''arrete. Rechargee en entier par clean_data.alimenter_ifs_fournisseurs_perimetre().';
@@ -73,7 +88,7 @@ COMMENT ON COLUMN clean_data.ifs_fournisseurs_perimetre.source IS
 COMMENT ON COLUMN clean_data.ifs_fournisseurs_perimetre.numero_compte_fournisseur IS
     'LIFNR SAP complete a 10 caracteres';
 COMMENT ON COLUMN clean_data.ifs_fournisseurs_perimetre.id_societe_etrangere IS
-    'ID de la societe etrangere, saisi par le metier (fichier valide) ; preserve par alimenter_ifs_fournisseurs_perimetre()';
+    'ID de la societe etrangere, saisi par le metier (ifs_fournisseurs_validation)';
 
 -- lfa1.erdat est du texte, au format SAP (YYYYMMDD) ou ISO selon l'extraction
 CREATE OR REPLACE FUNCTION clean_data.fn_date_sap(p_valeur TEXT)
@@ -106,15 +121,7 @@ DECLARE
        DATE '2025-10-07');
    v_nb_fichier INTEGER;
    v_nb_sap INTEGER;
-   v_saisie JSONB;
 BEGIN
-   -- Saisies metier (id_societe_etrangere) : relues avant la purge et remises
-   -- sur le meme fournisseur, sinon chaque rechargement les effacerait
-   SELECT COALESCE(jsonb_object_agg(numero_compte_fournisseur, id_societe_etrangere), '{}')
-     INTO v_saisie
-     FROM clean_data.ifs_fournisseurs_perimetre
-    WHERE id_societe_etrangere IS NOT NULL;
-
    -- DELETE et non TRUNCATE (verrou exclusif) : l'ecran Finance > Fournisseurs
    -- lit les tables pendant le calcul, TRUNCATE provoquait un interblocage
    -- (deadlock du 30/10/2026) ; les lecteurs voient l'ancien contenu jusqu'au COMMIT
@@ -152,6 +159,11 @@ BEGIN
    perimetre AS (
        SELECT f.cle_lifnr AS lifnr, 'FICHIER' AS source FROM fichier f
        UNION ALL
+       -- Fichier valide par le metier : un ancien SAP_NOUVEAU devient FICHIER
+       SELECT v.numero_compte_fournisseur, 'FICHIER'
+         FROM clean_data.ifs_fournisseurs_validation v
+        WHERE NOT EXISTS (SELECT 1 FROM fichier f WHERE f.cle_lifnr = v.numero_compte_fournisseur)
+       UNION ALL
        SELECT a.lifnr::text, 'SAP_NOUVEAU'
          FROM raw_data.lfa1 a
         WHERE clean_data.fn_date_sap(a.erdat) >= v_date_arrete
@@ -160,6 +172,8 @@ BEGIN
           -- ZPER / ZPE1 « Personnel (AGORA) gere en fourn », P001 « Fournisseurs personnel »)
           AND COALESCE(a.ktokk, '') NOT IN ('ZPER', 'ZPE1', 'P001')
           AND NOT EXISTS (SELECT 1 FROM fichier f WHERE f.cle_lifnr = a.lifnr::text)
+          AND NOT EXISTS (SELECT 1 FROM clean_data.ifs_fournisseurs_validation v
+                           WHERE v.numero_compte_fournisseur = a.lifnr::text)
    )
    -- Toutes les donnees viennent de SAP, pour les deux sources ; transcodifications
    -- COUNTRY (pays), PAY_TERM (conditions de paiement), LANGUAGE (langue). Code
@@ -168,8 +182,9 @@ BEGIN
    SELECT
       p.lifnr,
       p.source,
-      -- Numero IFS : uniquement celui du fichier, NULL pour un SAP_NOUVEAU
-      sf.numero_compte_ifs,
+      -- Numero IFS : jamais calcule ; fichier valide par le metier, sinon fichier
+      -- de selection, NULL pour un SAP_NOUVEAU
+      COALESCE(val.numero_compte_ifs, sf.numero_compte_ifs),
       public.get_default_value('clean_data.ifs_fournisseurs', 'company'),
       COALESCE(NULLIF(TRIM(a.adrnr), ''), public.get_default_value('clean_data.ifs_fournisseurs', 'address_id')),
 
@@ -217,9 +232,10 @@ BEGIN
       banque.pays_banque,
       banque.titulaire,
       v_date_arrete,
-      v_saisie ->> p.lifnr
+      val.id_societe_etrangere
    FROM perimetre p
    LEFT JOIN fichier sf ON sf.cle_lifnr = p.lifnr
+   LEFT JOIN clean_data.ifs_fournisseurs_validation val ON val.numero_compte_fournisseur = p.lifnr
    LEFT JOIN raw_data.lfa1 a ON a.lifnr::text = p.lifnr
    -- Donnees comptables : societe STJN en priorite, toutes les societes listees
    LEFT JOIN LATERAL (
