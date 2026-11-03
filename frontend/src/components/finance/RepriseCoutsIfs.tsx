@@ -79,6 +79,8 @@ const RepriseCoutsIfs: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filtre, setFiltre] = useState<Filtre>('anomalies');
+  const [filtreNature, setFiltreNature] = useState('');      // '' = toutes, 'A_QUALIFIER' = sans nature
+  const [filtreAnomalie, setFiltreAnomalie] = useState('');  // '' = toutes, sinon code d'anomalie
   const [saisie, setSaisie] = useState<Saisie | null>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -104,7 +106,11 @@ const RepriseCoutsIfs: React.FC = () => {
 
   const rows = data?.rows ?? [];
   const enAnomalie = rows.filter((r) => r.anomalies.length > 0);
-  const affichees = filtre === 'anomalies' ? enAnomalie : filtre === 'pretes' ? rows.filter((r) => r.exporte) : rows;
+  const affichees = (filtre === 'anomalies' ? enAnomalie : filtre === 'pretes' ? rows.filter((r) => r.exporte) : rows)
+    .filter((r) => !filtreNature || (r.nature ?? 'A_QUALIFIER') === filtreNature)
+    .filter((r) => !filtreAnomalie || r.anomalies.includes(filtreAnomalie));
+  const compte = (pred: (r: Ligne) => boolean) => rows.filter(pred).length;
+  const codesAnomalies = Array.from(new Set(rows.flatMap((r) => r.anomalies))).sort();
   const totaux = useMemo(() => {
     const t = { CAPEX: 0, OPEX: 0, aQualifier: 0, exporte: 0 };
     rows.forEach((r) => {
@@ -194,6 +200,22 @@ const RepriseCoutsIfs: React.FC = () => {
           <ToggleButton value="pretes">Prêtes à exporter ({rows.filter((r) => r.exporte).length})</ToggleButton>
           <ToggleButton value="toutes">Toutes ({rows.length})</ToggleButton>
         </ToggleButtonGroup>
+        <TextField select size="small" label="Nature" value={filtreNature} sx={{ minWidth: 160 }}
+          onChange={(e) => setFiltreNature(e.target.value)}>
+          <MenuItem value="">Toutes</MenuItem>
+          <MenuItem value="CAPEX">CAPEX ({compte((r) => r.nature === 'CAPEX')})</MenuItem>
+          <MenuItem value="OPEX">OPEX ({compte((r) => r.nature === 'OPEX')})</MenuItem>
+          <MenuItem value="A_QUALIFIER">À qualifier ({compte((r) => !r.nature)})</MenuItem>
+        </TextField>
+        <TextField select size="small" label="Anomalies" value={filtreAnomalie} sx={{ minWidth: 220 }}
+          onChange={(e) => setFiltreAnomalie(e.target.value)}>
+          <MenuItem value="">Toutes</MenuItem>
+          {codesAnomalies.map((a) => (
+            <MenuItem key={a} value={a}>
+              {data?.libelles_anomalies[a] ?? a} ({compte((r) => r.anomalies.includes(a))})
+            </MenuItem>
+          ))}
+        </TextField>
         <Tooltip title={enAnomalie.length ? 'Corriger les anomalies avant export' : 'Fichier OD : crédit, ID projet IFS, montant, séquence'}>
           <span>
             <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport}
