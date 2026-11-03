@@ -1,13 +1,14 @@
 -- ============================================================================
 -- Alimentation de clean_data.article_perimetre (ecran Finance > Articles)
--- Meme logique que clean_data.ifs_fournisseurs_perimetre (sql/supplier/01b_*),
--- sur les articles de clean_data.article_sap (ecran Donnees SAP > Articles) :
---   FICHIER     : article cree dans SAP avant la date d'arrete, ou present dans
---                 le fichier valide par le metier (article_perimetre_validation)
---   SAP_NOUVEAU : article cree dans SAP (mara.ersda) a partir de la date
---                 d'arrete, absent du fichier valide
--- Les colonnes affichees sont lues dans clean_data.v_article_sap : la table ne
--- porte que la cle, la source et la date d'arrete.
+-- Meme logique que clean_data.ifs_fournisseurs_perimetre (sql/supplier/01b_*) :
+-- la reference est le fichier valide par le metier (demande du 2026-11-04).
+--   FICHIER     : article des fichiers valides importes (article_perimetre_validation),
+--                 qu'il existe ou non dans SAP
+--   SAP_NOUVEAU : article de clean_data.article_sap (Donnees SAP > Articles) cree
+--                 dans SAP (mara.ersda) a partir de la date d'arrete, absent des fichiers
+-- Les colonnes affichees viennent de clean_data.v_article_sap (vides pour un
+-- article absent de SAP) et des fichiers (donnees) : la table ne porte que la
+-- cle, la source et la date d'arrete.
 -- Prerequis : article_sap charge (module ETL Article SAP).
 -- ============================================================================
 
@@ -55,20 +56,23 @@ BEGIN
    DELETE FROM clean_data.article_perimetre;
 
    INSERT INTO clean_data.article_perimetre (numero_article, source, date_creation_sap, date_arrete)
-   SELECT a."N° article",
-          CASE WHEN val.numero_article IS NULL AND d.creation >= v_date_arrete
-               THEN 'SAP_NOUVEAU' ELSE 'FICHIER' END,
-          d.creation,
-          v_date_arrete
-     FROM clean_data.article_sap a
-     -- "Date de création" = mara.ersda au format JJ/MM/AAAA (texte)
-     CROSS JOIN LATERAL (
-         SELECT CASE WHEN a."Date de création" ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'
-                     THEN TO_DATE(a."Date de création", 'DD/MM/YYYY') END AS creation
-     ) d
-     LEFT JOIN clean_data.article_perimetre_validation val ON val.numero_article = a."N° article"
-    WHERE a."N° article" IS NOT NULL
-   ON CONFLICT (numero_article) DO NOTHING;
+   WITH sap AS (
+       SELECT a."N° article" AS numero_article,
+              -- "Date de création" = mara.ersda au format JJ/MM/AAAA (texte)
+              CASE WHEN a."Date de création" ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'
+                   THEN TO_DATE(a."Date de création", 'DD/MM/YYYY') END AS creation
+         FROM clean_data.article_sap a
+        WHERE a."N° article" IS NOT NULL
+   )
+   SELECT val.numero_article, 'FICHIER', sap.creation, v_date_arrete
+     FROM clean_data.article_perimetre_validation val
+     LEFT JOIN sap USING (numero_article)
+   UNION ALL
+   SELECT sap.numero_article, 'SAP_NOUVEAU', sap.creation, v_date_arrete
+     FROM sap
+    WHERE sap.creation >= v_date_arrete
+      AND NOT EXISTS (SELECT 1 FROM clean_data.article_perimetre_validation val
+                       WHERE val.numero_article = sap.numero_article);
 
    SELECT COUNT(*) FILTER (WHERE source = 'FICHIER'),
           COUNT(*) FILTER (WHERE source = 'SAP_NOUVEAU')

@@ -10,8 +10,10 @@ import {
     Button,
     Card,
     CardContent,
+    Checkbox,
     CircularProgress,
     Container,
+    FormControlLabel,
     IconButton,
     Step,
     StepLabel,
@@ -42,7 +44,8 @@ const STEPS = [
 const FinanceArticlesImport: React.FC = () => {
   const navigate = useNavigate();
   const [dateArrete, setDateArrete] = useState('');
-  const extra = useMemo(() => ({ date_arrete: dateArrete }), [dateArrete]);
+  const [vider, setVider] = useState(false);
+  const extra = useMemo(() => ({ date_arrete: dateArrete, truncate: vider }), [dateArrete, vider]);
   const {
     state, loading, error, analyzeFile, generateMapping, updateMapping, toggleIgnore,
     validateMapping, setImportOptions, executeImport, goToStep, reset, setError,
@@ -88,8 +91,9 @@ const FinanceArticlesImport: React.FC = () => {
             Import du fichier articles validé
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Associer la colonne du N° article (obligatoire) ; les autres colonnes associées sont conservées et affichées
-            « Fichier · &lt;nom&gt; » dans l'écran Articles. Les articles du fichier passent en FICHIER.
+            Les fichiers validés par le métier sont la référence du périmètre. Associer la colonne du N° article
+            (obligatoire, unique) ; les autres colonnes associées sont conservées et affichées « Fichier · &lt;nom&gt; »
+            dans l'écran Articles. D'un fichier à l'autre, une case renseignée remplace l'ancienne valeur, une case vide la garde.
           </Typography>
         </Box>
       </Box>
@@ -132,8 +136,14 @@ const FinanceArticlesImport: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
                 required
                 helperText="Devient la date d'arrêté par défaut de l'écran Articles ; le périmètre est recalculé avec cette date."
-                sx={{ mb: 3, minWidth: 360 }}
+                sx={{ mb: 1, minWidth: 360 }}
               />
+              <Box sx={{ mb: 3 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={vider} onChange={(e) => setVider(e.target.checked)} color="warning" />}
+                  label="Vider la table avant l'import (supprime les articles et colonnes de tous les fichiers déjà importés)"
+                />
+              </Box>
               <StepValidation
                 validationErrors={state.validationErrors}
                 validationWarnings={state.validationWarnings}

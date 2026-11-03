@@ -1481,13 +1481,15 @@ def _art_from():
     where, params = [], {}
     search = (request.args.get('search') or '').strip()
     if search:
-        where.append('(' + ' OR '.join(f'v."{c}" ILIKE :s' for c in ART_RECHERCHE) + ')')
+        where.append('(p.numero_article ILIKE :s OR '
+                     + ' OR '.join(f'v."{c}" ILIKE :s' for c in ART_RECHERCHE) + ')')
         params['s'] = f'%{search}%'
     if request.args.get('source') in ('FICHIER', 'SAP_NOUVEAU'):
         where.append('p.source = :source')
         params['source'] = request.args['source']
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
-    return (f'FROM clean_data.article_perimetre p JOIN clean_data.v_article_sap v '
+    # LEFT JOIN : un article des fichiers valides peut etre absent de SAP
+    return (f'FROM clean_data.article_perimetre p LEFT JOIN clean_data.v_article_sap v '
             f'ON v."{ART_CLE}" = p.numero_article '
             f'LEFT JOIN clean_data.article_perimetre_validation val ON val.numero_article = p.numero_article '
             f'{clause}'), params
@@ -1577,7 +1579,7 @@ def start_art_sync():
 # Le fichier est analyse et stocke par /import-generic/analyze-file (fileId), puis
 #   POST /articles/import/suggest-mapping   {fileId}            -> {mappings, targetColumns}
 #   POST /articles/import/validate-mapping  {fileId, mappings}  -> {errors, warnings, previewData}
-#   POST /articles/import/execute           {fileId, mappings, date_arrete} -> ImportResult
+#   POST /articles/import/execute           {fileId, mappings, date_arrete, truncate} -> ImportResult
 # Cibles : numero_article (cle, obligatoire) ; toute autre cible = une colonne du
 # fichier conservee dans article_perimetre_validation.donnees sous ce nom.
 ART_IMPORT_TABLE = 'clean_data.article_perimetre_validation'
@@ -1627,9 +1629,10 @@ def _art_controler(data):
             sans_numero += 1
             continue
         doublons += numero in articles
-        # Derniere ligne gagnante ; cellule vide -> non stockee
-        articles[numero] = {n: c for s, n in gardees
-                            if (c := (None if pd.isna(r[s]) else _cellule(r[s]))) is not None}
+        # Cellule vide -> non stockee : a la fusion (lignes repetees, puis donnees deja
+        # importees) une case renseignee remplace l'ancienne valeur, une case vide la garde
+        articles.setdefault(numero, {}).update(
+            {n: c for s, n in gardees if (c := (None if pd.isna(r[s]) else _cellule(r[s]))) is not None})
         lignes.append((i, numero))
     connus = {r[0] for r in db.session.execute(text(
         f'SELECT a."{ART_CLE}" FROM clean_data.article_sap a WHERE a."{ART_CLE}" = ANY(:k)'),
@@ -1637,18 +1640,22 @@ def _art_controler(data):
     inconnus = sorted(k for k in articles if k not in connus)
     if not articles:
         errors.append({'type': 'empty', 'message': 'Aucun N° article dans la colonne associée'})
+    # Le fichier valide est la reference (2026-11-04) : un article absent de SAP est
+    # importe quand meme, colonnes SAP vides a l'ecran
     if inconnus:
-        errors.append({'type': 'reference', 'source': cles[0], 'target': ART_IMPORT_CLE, 'count': len(inconnus),
-                       'message': f'{len(inconnus)} N° article inconnus de la table des articles SAP : '
-                                  + ', '.join(inconnus[:30]) + (' …' if len(inconnus) > 30 else '')})
+        warnings.append({'type': 'reference', 'source': cles[0], 'target': ART_IMPORT_CLE, 'count': len(inconnus),
+                         'message': f'{len(inconnus)} N° article absents de la table des articles SAP '
+                                    '(importés quand même) : '
+                                    + ', '.join(inconnus[:30]) + (' …' if len(inconnus) > 30 else '')})
     if sans_numero:
         warnings.append({'type': 'null', 'source': cles[0], 'count': sans_numero,
                          'message': f'{sans_numero} lignes sans N° article seront ignorées'})
     if doublons:
         warnings.append({'type': 'duplicate', 'source': cles[0], 'count': doublons,
-                         'message': f"{doublons} lignes répètent un article déjà lu : la dernière l'emporte"})
+                         'message': f'{doublons} lignes répètent un article déjà lu : fusionnées, '
+                                    'une case renseignée remplace la précédente'})
     apercu = [{'rowNumber': i, 'data': {ART_IMPORT_CLE: k, **articles[k]},
-               'errors': [] if k in connus else ['N° article inconnu de la table des articles SAP']}
+               'errors': []}
               for i, k in lignes[:int(data.get('previewRows') or 10)]]
     return articles, {'errors': errors, 'warnings': warnings, 'previewData': apercu,
                       'nom_fichier': fichier['filename'], 'articles': len(articles)}
@@ -1658,17 +1665,16 @@ def _art_controler(data):
 @jwt_required()
 def suggerer_mapping_articles():
     """Mapping propose : la colonne « N° article » (a defaut celle dont le plus de
-    valeurs sont des articles connus) -> numero_article ; les colonnes reprises de SAP
-    par l'export de l'ecran (Source + v_article_sap) non mappees ; toutes les autres
-    conservees sous leur nom d'en-tete."""
+    valeurs sont des articles connus) -> numero_article ; toutes les autres conservees
+    sous leur nom d'en-tete (le fichier valide est la reference), sauf Source et les
+    indicateurs calcules de l'export Donnees SAP > Articles."""
     fichier = _art_fichier((request.get_json(silent=True) or {}).get('fileId'))
     if fichier is None:
         return jsonify({'error': 'Fichier non trouvé ou expiré'}), 404
     df = fichier['dataframe']
     types = {c['name']: c.get('detectedType') for c in fichier.get('columns') or []}
-    # + indicateurs calcules de l'export Donnees SAP > Articles (api/sap_articles.py)
-    sap = {c for c, _, _ in _art_colonnes()[0] if not c.startswith(ART_FICHIER)} | {
-        'Source', 'Dans la structure IH02', 'Lignes de nomenclature', 'Dans part_catalog', 'Anomalies'}
+    # Source + indicateurs calcules de l'export Donnees SAP > Articles (api/sap_articles.py)
+    sap = {'Source', 'Dans la structure IH02', 'Lignes de nomenclature', 'Dans part_catalog', 'Anomalies'}
 
     reconnus = {}
     for col in df.columns:
@@ -1718,7 +1724,9 @@ def valider_mapping_articles():
 @jwt_required()
 def executer_import_articles():
     """Articles du fichier -> FICHIER (article_perimetre_validation, colonnes conservees
-    fusionnees dans donnees), date de validation = date d'arrete par defaut, recalcul."""
+    fusionnees dans donnees : une case renseignee remplace, une case vide garde l'ancienne
+    valeur), date de validation = date d'arrete par defaut, recalcul.
+    {"truncate": true} vide d'abord la table (tous les fichiers deja importes)."""
     data = request.get_json(silent=True) or {}
     try:
         date_validation = date.fromisoformat(data.get('date_arrete') or '')
@@ -1732,11 +1740,15 @@ def executer_import_articles():
         return jsonify({'error': ' ; '.join(e['message'] for e in rapport['errors'])}), 400
 
     user = str(get_jwt_identity() or 'finance-import')
-    existants = db.session.execute(text(
-        f'SELECT count(*) FROM {ART_IMPORT_TABLE} WHERE numero_article = ANY(:k)'), {'k': list(articles)}).scalar()
+    vide = bool(data.get('truncate'))
     devenus_fichier = db.session.execute(text(
         "SELECT count(*) FROM clean_data.article_perimetre "
         "WHERE source = 'SAP_NOUVEAU' AND numero_article = ANY(:k)"), {'k': list(articles)}).scalar()
+    if vide:
+        # DELETE et non TRUNCATE : l'ecran lit la table pendant l'import (cf. fournisseurs)
+        db.session.execute(text(f'DELETE FROM {ART_IMPORT_TABLE}'))
+    existants = db.session.execute(text(
+        f'SELECT count(*) FROM {ART_IMPORT_TABLE} WHERE numero_article = ANY(:k)'), {'k': list(articles)}).scalar()
     db.session.execute(text(
         f'INSERT INTO {ART_IMPORT_TABLE} AS v '
         '(numero_article, donnees, nom_fichier, date_validation, importe_par) '
@@ -1761,7 +1773,8 @@ def executer_import_articles():
                              _art_charger(date_validation), extraire=False)
     return jsonify({
         'success': True,
-        'message': (f"{len(articles)} articles importés ({devenus_fichier} SAP_NOUVEAU passés en FICHIER). "
+        'message': (('Table vidée avant import. ' if vide else '')
+                    + f"{len(articles)} articles importés ({devenus_fichier} SAP_NOUVEAU passés en FICHIER). "
                     f"Date d'arrêté fixée au {date_validation:%d/%m/%Y}, recalcul du périmètre lancé."),
         'successCount': len(articles),
         'insertedCount': len(articles) - existants,

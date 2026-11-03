@@ -157,7 +157,7 @@ const FinanceArticles: React.FC = () => {
           Articles
         </Typography>
         <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Tooltip title="Les articles créés dans SAP à partir de cette date, absents du fichier validé, sont marqués SAP_NOUVEAU">
+          <Tooltip title="Les articles créés dans SAP à partir de cette date, absents des fichiers validés, sont ajoutés au périmètre (SAP_NOUVEAU)">
             <TextField
               size="small"
               type="date"
@@ -167,7 +167,7 @@ const FinanceArticles: React.FC = () => {
               InputLabelProps={{ shrink: true }}
             />
           </Tooltip>
-          <Tooltip title="Recalcule le périmètre depuis la table des articles SAP déjà chargée, avec la date d'arrêté saisie, sans appeler SAP">
+          <Tooltip title="Recalcule le périmètre depuis les fichiers validés et la table des articles SAP déjà chargée, avec la date d'arrêté saisie, sans appeler SAP">
             <span>
               <Button variant="outlined" startIcon={<CalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
                 Calculer
@@ -199,9 +199,9 @@ const FinanceArticles: React.FC = () => {
       </Box>
 
       <Alert severity="info" sx={{ mb: 2 }}>
-        Articles de l'écran Données SAP &gt; Articles. FICHIER = article créé dans SAP avant la date d'arrêté, ou présent
-        dans le fichier validé importé ; SAP_NOUVEAU = article créé dans SAP (date de création MARA) à partir de la date
-        d'arrêté et absent du fichier validé.
+        FICHIER = article des fichiers validés par le métier (la référence, même absent de SAP : ses colonnes SAP restent
+        vides) ; SAP_NOUVEAU = article de Données SAP &gt; Articles créé dans SAP (date de création MARA) à partir de la
+        date d'arrêté et absent des fichiers validés. Les colonnes « Fichier · … » viennent des fichiers importés.
       </Alert>
 
       {stats && (
