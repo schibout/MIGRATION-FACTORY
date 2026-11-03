@@ -79,11 +79,13 @@ class ImportMappingService:
         if normalized in self._synonym_lookup:
             return self._synonym_lookup[normalized]
         
-        # Check if name contains a known synonym
-        for syn, base in self._synonym_lookup.items():
-            if syn in normalized or normalized in syn:
-                return base
-        
+        # Check if one of the words of the name is a known synonym. Whole words only:
+        # a substring search matched short synonyms anywhere ('id' in "delaid'achat",
+        # 'no' in 'noteinterne') and produced bogus 90 % mappings.
+        for word in re.split(r'[^0-9a-zà-ÿ]+', name.lower()):
+            if word in self._synonym_lookup:
+                return self._synonym_lookup[word]
+
         return None
 
     def are_types_compatible(self, source_type: str, target_type: str) -> bool:
