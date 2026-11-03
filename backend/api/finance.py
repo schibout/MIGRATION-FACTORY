@@ -1120,6 +1120,7 @@ FOURN_LIBELLE = {
     'code_tva_ifs': 'Code TVA IFS',
     'code_tva_sap': 'Code TVA SAP',
     'france_etranger': 'France / étranger',
+    'id_societe_etrangere': 'ID société étrangère',
     'company': 'Société IFS',
     'address_id': 'N° adresse',
     'societe': 'Sociétés SAP',
@@ -1184,7 +1185,7 @@ FOURN_COMM_LIBELLE = {
 FOURN_VUES = {
     'fournisseurs': ('clean_data.ifs_fournisseurs_perimetre', FOURN_LIBELLE,
                      ('numero_compte_fournisseur', 'numero_compte_ifs', 'nom_1', 'localite',
-                      'siret', 'tva', 'critere_recherche'),
+                      'siret', 'tva', 'id_societe_etrangere', 'critere_recherche'),
                      'source, numero_compte_fournisseur', 'Fournisseurs'),
     'adresses': ('clean_data.ifs_fournisseurs_perimetre_adresse', FOURN_ADRESSE_LIBELLE,
                  ('numero_compte_fournisseur', 'numero_compte_ifs', 'nom', 'rue', 'localite',

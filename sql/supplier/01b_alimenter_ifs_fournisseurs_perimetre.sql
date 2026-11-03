@@ -62,6 +62,9 @@ CREATE TABLE IF NOT EXISTS clean_data.ifs_fournisseurs_perimetre (
 
 -- Date d'arrete utilisee au dernier chargement (ecran Finance > Fournisseurs)
 ALTER TABLE clean_data.ifs_fournisseurs_perimetre ADD COLUMN IF NOT EXISTS date_arrete DATE;
+-- ID des societes etrangeres : saisi par le metier (import du fichier
+-- valide), jamais lu dans SAP ; conserve d'un rechargement a l'autre
+ALTER TABLE clean_data.ifs_fournisseurs_perimetre ADD COLUMN IF NOT EXISTS id_societe_etrangere VARCHAR(100);
 
 COMMENT ON TABLE clean_data.ifs_fournisseurs_perimetre IS
     'Perimetre fournisseurs IFS : fichier de selection + fournisseurs crees dans SAP apres la date d''arrete. Rechargee en entier par clean_data.alimenter_ifs_fournisseurs_perimetre().';
@@ -69,6 +72,8 @@ COMMENT ON COLUMN clean_data.ifs_fournisseurs_perimetre.source IS
     'FICHIER (selection_fournisseurs_stg) ou SAP_NOUVEAU (cree dans SAP depuis la date d''arrete, absent du fichier)';
 COMMENT ON COLUMN clean_data.ifs_fournisseurs_perimetre.numero_compte_fournisseur IS
     'LIFNR SAP complete a 10 caracteres';
+COMMENT ON COLUMN clean_data.ifs_fournisseurs_perimetre.id_societe_etrangere IS
+    'ID de la societe etrangere, saisi par le metier (fichier valide) ; preserve par alimenter_ifs_fournisseurs_perimetre()';
 
 -- lfa1.erdat est du texte, au format SAP (YYYYMMDD) ou ISO selon l'extraction
 CREATE OR REPLACE FUNCTION clean_data.fn_date_sap(p_valeur TEXT)
@@ -101,7 +106,15 @@ DECLARE
        DATE '2025-10-07');
    v_nb_fichier INTEGER;
    v_nb_sap INTEGER;
+   v_saisie JSONB;
 BEGIN
+   -- Saisies metier (id_societe_etrangere) : relues avant la purge et remises
+   -- sur le meme fournisseur, sinon chaque rechargement les effacerait
+   SELECT COALESCE(jsonb_object_agg(numero_compte_fournisseur, id_societe_etrangere), '{}')
+     INTO v_saisie
+     FROM clean_data.ifs_fournisseurs_perimetre
+    WHERE id_societe_etrangere IS NOT NULL;
+
    -- DELETE et non TRUNCATE (verrou exclusif) : l'ecran Finance > Fournisseurs
    -- lit les tables pendant le calcul, TRUNCATE provoquait un interblocage
    -- (deadlock du 30/10/2026) ; les lecteurs voient l'ancien contenu jusqu'au COMMIT
@@ -116,7 +129,7 @@ BEGIN
       telephone_1, telephone_2, telephone_3, email, critere_recherche, langue, language_sap,
       destinataire_paiement, date_creation_sap,
       iban_paiement, swift_bic, nom_banque, numero_compte_bancaire, code_banque, pays_banque, titulaire_compte,
-      date_arrete
+      date_arrete, id_societe_etrangere
    )
    WITH fichier AS (
        -- Du fichier on ne garde QUE le n° SAP, le n° IFS et les codes TVA (demande du
@@ -203,7 +216,8 @@ BEGIN
       banque.code_banque,
       banque.pays_banque,
       banque.titulaire,
-      v_date_arrete
+      v_date_arrete,
+      v_saisie ->> p.lifnr
    FROM perimetre p
    LEFT JOIN fichier sf ON sf.cle_lifnr = p.lifnr
    LEFT JOIN raw_data.lfa1 a ON a.lifnr::text = p.lifnr
