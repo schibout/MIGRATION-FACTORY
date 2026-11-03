@@ -42,7 +42,16 @@ PE_TOOLS_COLUMNS: List[Tuple[str, str]] = [
     ('nb_intervenants',              'Nombre intervenants'),
     ('date_rev',                     'Date rév.'),
     ('nb_jours_depuis_derniere_rev', 'Nb jours depuis la dernière rév.'),
+    # Ajoutees aux fichiers en 2026-11 (migration 127) : absentes des anciens
+    # fichiers, donc sans avertissement « colonne absente ».
+    ('date_derniere_execution_fichier', 'Date dernière exécution'),
+    ('groupe_ressources',               'Groupe ressource'),
 ]
+
+COLONNES_OPTIONNELLES = ('date_derniere_execution_fichier', 'groupe_ressources')
+# Colonne DATE en base : convertie ici en AAAA-MM-JJ (PostgreSQL lirait
+# 03/11/2026 en mois/jour selon DateStyle).
+COLONNES_DATE = ('date_derniere_execution_fichier',)
 
 # Sans ces deux colonnes (noms SQL) le fichier n'est pas un export PE Tools.
 COLONNES_OBLIGATOIRES = ('poste_technique', 'plan_entretien')
@@ -51,6 +60,8 @@ COLONNES_OBLIGATOIRES = ('poste_technique', 'plan_entretien')
 # (cles calculees par cle(), apres sa definition).
 _ALIAS_INTITULES = {
     "Poste technique ou N° d'équipement": 'poste_technique',   # 7.MENG
+    'Groupe ressources': 'groupe_ressources',                    # libelle de l'ecran
+    'Date derniere execution fichier': 'date_derniere_execution_fichier',
 }
 
 SEPARATEUR = ';'
@@ -63,6 +74,7 @@ class ParsedFile:
     missing_columns: List[str] = field(default_factory=list)
     unknown_columns: List[str] = field(default_factory=list)
     repaired_lines: int = 0
+    invalid_dates: List[str] = field(default_factory=list)
 
 
 def cle(nom: str) -> str:
@@ -75,6 +87,18 @@ def cle(nom: str) -> str:
 
 
 ALIAS = {cle(k): v for k, v in _ALIAS_INTITULES.items()}
+
+
+def _date_iso(valeur: str) -> Optional[str]:
+    """'03/11/2026', '03/11/26', '2026-11-03' (heure eventuelle ignoree) -> '2026-11-03' ;
+    None si illisible."""
+    texte = valeur.split()[0] if valeur.split() else ''
+    for fmt in ('%d/%m/%Y', '%Y-%m-%d', '%d/%m/%y', '%d.%m.%Y'):
+        try:
+            return datetime.datetime.strptime(texte, fmt).date().isoformat()
+        except ValueError:
+            pass
+    return None
 
 
 def _choisir_encodage_8bits(content: bytes) -> str:
@@ -171,7 +195,8 @@ def _construire(lignes: List[List[str]], reparees: int = 0) -> ParsedFile:
             )
 
     result = ParsedFile(repaired_lines=reparees)
-    result.missing_columns = [intitule for col_sql, intitule in PE_TOOLS_COLUMNS if col_sql not in colonnes_resolues]
+    result.missing_columns = [intitule for col_sql, intitule in PE_TOOLS_COLUMNS
+                              if col_sql not in colonnes_resolues and col_sql not in COLONNES_OPTIONNELLES]
     result.unknown_columns = [
         nom.strip() for nom in lignes[0] if cle(nom) not in attendues and nom.strip()
     ]
@@ -186,6 +211,12 @@ def _construire(lignes: List[List[str]], reparees: int = 0) -> ParsedFile:
                 continue
             valeur = valeur.strip()
             ligne[col_sql] = valeur if valeur else None
+        for col_sql in COLONNES_DATE:
+            if ligne[col_sql]:
+                iso = _date_iso(ligne[col_sql])
+                if iso is None:
+                    result.invalid_dates.append(ligne[col_sql])
+                ligne[col_sql] = iso
         result.rows.append(ligne)
 
     return result

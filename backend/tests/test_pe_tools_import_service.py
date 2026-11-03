@@ -36,10 +36,10 @@ def test_cle_normalise_accents_casse_espaces_et_ponctuation_finale():
     assert cle('Nb jours depuis la dernière rév.') == 'nb jours depuis la derniere rev'
 
 
-def test_les_23_colonnes_sont_declarees_dans_l_ordre_de_la_table():
-    assert len(PE_TOOLS_COLUMNS) == 23
+def test_les_colonnes_sont_declarees_dans_l_ordre_de_la_table():
+    assert len(PE_TOOLS_COLUMNS) == 25
     assert PE_TOOLS_COLUMNS[0] == ('localisation_classement', 'Localisation / Classement')
-    assert PE_TOOLS_COLUMNS[-1] == ('nb_jours_depuis_derniere_rev', 'Nb jours depuis la dernière rév.')
+    assert PE_TOOLS_COLUMNS[22] == ('nb_jours_depuis_derniere_rev', 'Nb jours depuis la dernière rév.')
 
 
 def test_fichier_reel_cp850_mappe_les_23_colonnes():
@@ -178,3 +178,14 @@ def test_excel_sans_onglet_pe_tools_refuse():
 
     with pytest.raises(ValueError, match='Plan Entretien'):
         parse_pe_tools_excel(tampon.getvalue())
+
+
+def test_date_derniere_execution_et_groupe_ressource():
+    entete = 'Poste technique;Plan Entretien;Date dernière exécution;Groupe ressource'
+    contenu = _cp850(entete + '\nT410-C;35553;03/11/2026;MM\nT410-D;35554;2026-01-05 00:00:00;\nT410-E;35555;n/a;ME\n')
+    parsed = parse_pe_tools_csv(contenu)
+    assert [r['date_derniere_execution_fichier'] for r in parsed.rows] == ['2026-11-03', '2026-01-05', None]
+    assert [r['groupe_ressources'] for r in parsed.rows] == ['MM', None, 'ME']
+    assert parsed.invalid_dates == ['n/a']
+    # colonnes recentes : leur absence (anciens fichiers) ne declenche pas d'avertissement
+    assert 'Date dernière exécution' not in parse_pe_tools_csv(_cp850('Poste technique;Plan Entretien\nT;1\n')).missing_columns

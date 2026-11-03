@@ -165,7 +165,7 @@ def _has_import_columns(cursor) -> bool:
 # depuis raw_data.plan_entretien_derniere_exec) et 083 (ifs_date_execution = derniere
 # execution + frequence, colonne generee). Chacune n'est lue qu'une fois sa migration jouee.
 DATE_COLUMNS = ['date_derniere_execution', 'ifs_date_execution']
-# Colonne generee (087) : groupe de ressources IFS deduit du type, lecture seule.
+# Groupe de ressources IFS, colonne « Groupe ressource » du fichier (migration 127).
 DERIVED_COLUMNS = ['groupe_ressources']
 _columns_present = {}
 
@@ -488,6 +488,10 @@ def _import_one_file(conn, nom_fichier: str, content: bytes, user: str) -> dict:
         if parsed.unknown_columns:
             resultat['avertissements'].append(
                 'Colonne(s) ignorée(s), sans équivalent dans pe_tools : ' + ', '.join(parsed.unknown_columns))
+        if parsed.invalid_dates:
+            resultat['avertissements'].append(
+                f'{len(parsed.invalid_dates)} date(s) de dernière exécution illisible(s), ignorée(s) : '
+                + ', '.join(sorted(set(parsed.invalid_dates))[:5]))
         if parsed.repaired_lines:
             resultat['avertissements'].append(
                 f'{parsed.repaired_lines} ligne(s) aux guillemets non fermés réparée(s)')
@@ -679,9 +683,11 @@ def sync_plans_derniere_execution():
             cursor.execute("""
                 UPDATE raw_data.pe_tools t
                    SET date_derniere_execution =
-                       raw_data.pe_tools_date_derniere_execution(t.plan_entretien, t.poste_entretien)
+                       raw_data.pe_tools_date_derniere_execution(t.plan_entretien, t.poste_entretien,
+                                                               t.date_derniere_execution_fichier)
                  WHERE t.date_derniere_execution IS DISTINCT FROM
-                       raw_data.pe_tools_date_derniere_execution(t.plan_entretien, t.poste_entretien)
+                       raw_data.pe_tools_date_derniere_execution(t.plan_entretien, t.poste_entretien,
+                                                               t.date_derniere_execution_fichier)
             """)
             maj = cursor.rowcount
             cursor.execute("SELECT count(date_derniere_execution) AS datees, count(*) AS total FROM raw_data.pe_tools")
