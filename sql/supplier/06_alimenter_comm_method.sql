@@ -41,14 +41,20 @@ BEGIN
         is_deleted
     )
     WITH src AS (
-        SELECT f.numero_compte_ifs, f.nom_1, f.date_creation_sap, c.address_id, c.valeur, c.par_defaut,
-               -- Variante des valeurs par defaut = methode IFS (portable -> telephone)
-               CASE c.methode WHEN 'EMAIL' THEN 'E_MAIL' WHEN 'FAX' THEN 'FAX' ELSE 'PHONE' END AS v
+        -- Meme valeur saisie plusieurs fois dans SAP sur la meme adresse (225 le
+        -- 2026-11-03) : une seule ligne, celle marquee par defaut si elle existe
+        SELECT DISTINCT ON (f.numero_compte_ifs, c.address_id, v.v, c.valeur)
+               f.numero_compte_ifs, f.nom_1, f.date_creation_sap, c.address_id, c.valeur, c.par_defaut, v.v
           FROM clean_data.ifs_fournisseurs f
           JOIN clean_data.ifs_fournisseurs_perimetre_communication c
             ON c.numero_compte_fournisseur = f.numero_compte_fournisseur
+          -- Variante des valeurs par defaut = methode IFS (portable -> telephone)
+          CROSS JOIN LATERAL (SELECT CASE c.methode WHEN 'EMAIL' THEN 'E_MAIL' WHEN 'FAX' THEN 'FAX'
+                                                    ELSE 'PHONE' END AS v) v
          WHERE c.methode IN ('TELEPHONE', 'PORTABLE', 'FAX', 'EMAIL')
-           AND (c.methode <> 'EMAIL' OR c.valeur ILIKE '%@%')
+           -- E-mail sans @, numero sans chiffre significatif ('0', '00 00 00 00 00') : ecartes
+           AND CASE WHEN c.methode = 'EMAIL' THEN c.valeur ILIKE '%@%' ELSE c.valeur ~ '[1-9]' END
+         ORDER BY f.numero_compte_ifs, c.address_id, v.v, c.valeur, c.par_defaut DESC
     )
     SELECT
         public.get_default_value('clean_data.comm_method', 'party_type_db', s.v) as party_type_db,
