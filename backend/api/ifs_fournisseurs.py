@@ -50,7 +50,7 @@ TABLES = {
 
 # Un fournisseur charge doit figurer dans ces tables (contacts et articles restent facultatifs)
 _ATTENDUES = [t for t in TABLES if t not in ('supplier_info_general', 'supplier_info_contact', 'purchase_part_supplier')]
-CONTROLES = ['non_charge', 'hors_perimetre'] + [f'sans_{t}' for t in _ATTENDUES]
+CONTROLES = ['perimetre_sans_ifs', 'non_charge', 'hors_perimetre'] + [f'sans_{t}' for t in _ATTENDUES]
 
 ONGLETS = {
     'synthese': ['synthese'],
@@ -136,6 +136,19 @@ def _source_table(table):
 
 
 def _source_controle(code):
+    if code == 'perimetre_sans_ifs':
+        # Exclus par alimenter_ifs_fournisseurs() : absents de ifs_fournisseurs, donc de non_charge
+        return {
+            'label': 'Périmètre sans N° IFS',
+            'from': 'clean_data.ifs_fournisseurs_perimetre p',
+            'where': "COALESCE(p.numero_compte_ifs, '') = ''",
+            'colonnes': [('p.numero_compte_fournisseur', 'fournisseur_sap', 'N° SAP'),
+                         ('p.nom_1', 'fournisseur_nom', 'Nom fournisseur'),
+                         ('p.source', 'source', 'Source du périmètre')],
+            'recherche': ['p.numero_compte_fournisseur', 'p.nom_1'],
+            'cle': 'p.numero_compte_fournisseur',
+            'ordre': 'p.numero_compte_fournisseur',
+        }
     if code == 'non_charge':
         return {
             'label': 'Périmètre non chargé',
