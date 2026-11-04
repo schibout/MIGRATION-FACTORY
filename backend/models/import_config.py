@@ -16,9 +16,12 @@ class ImportFileTypesConfig(db.Model):
     processor_class = db.Column(db.String(100))
     
     # Configuration colonnes
-    required_columns = db.Column(JSONB, nullable=False)
-    validation_rules = db.Column(JSONB, default={})
     column_mapping = db.Column(JSONB, default={})
+
+    # Colonnes supprimees par la migration 005 (imports bruts) : plus aucune regle a verifier.
+    # Valeurs vides conservees pour l'API : le frontend lit required_columns.length.
+    required_columns = ()
+    validation_rules = {}
     
     # Métadonnées
     is_active = db.Column(db.Boolean, default=True, index=True)
