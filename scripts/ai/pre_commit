@@ -1,0 +1,8 @@
+#!/bin/sh
+# Invoked by Git; preserve exit codes and do not install dependencies.
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+if command -v python3 >/dev/null 2>&1; then
+    exec python3 scripts/ai/verify_change.py --staged
+fi
+exec python scripts/ai/verify_change.py --staged

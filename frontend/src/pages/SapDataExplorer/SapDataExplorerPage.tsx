@@ -88,6 +88,7 @@ const SapDataExplorerPage: React.FC = () => {
 
     // Filters & Sort
     const [globalSearch, setGlobalSearch] = useState('');
+    const [appliedGlobalSearch, setAppliedGlobalSearch] = useState('');
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [pageSize, setPageSize] = useState(50);
@@ -102,29 +103,7 @@ const SapDataExplorerPage: React.FC = () => {
     }, []);
 
     // Load data when table or filters change
-    useEffect(() => {
-        if (selectedTable) {
-            loadTableData();
-        }
-    }, [selectedTable, currentPage, pageSize, sortColumn, sortDirection]);
-
-    const loadTables = async (search = '') => {
-        try {
-            const response = await api.get(`/sap-data-explorer/tables?search=${encodeURIComponent(search)}`);
-            const list = response.data?.tables ?? [];
-            setTables(list);
-            if (list.length === 0) {
-                setMessage('Aucune table dans les métadonnées (public.sap_table_properties). Alimentez les métadonnées SAP pour utiliser l’explorateur.');
-            } else {
-                setMessage(null);
-            }
-        } catch (err: any) {
-            console.error('Erreur chargement tables SAP:', err);
-            setError(err.response?.data?.error || 'Impossible de charger la liste des tables SAP');
-        }
-    };
-
-    const loadTableData = async () => {
+    const loadTableData = useCallback(async () => {
         if (!selectedTable) return;
 
         setLoading(true);
@@ -135,7 +114,7 @@ const SapDataExplorerPage: React.FC = () => {
             const params = new URLSearchParams({
                 page: currentPage.toString(),
                 pageSize: pageSize.toString(),
-                search: globalSearch
+                search: appliedGlobalSearch
             });
 
             if (sortColumn) {
@@ -155,6 +134,28 @@ const SapDataExplorerPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    }, [selectedTable, currentPage, pageSize, sortColumn, sortDirection, appliedGlobalSearch]);
+
+    useEffect(() => {
+        if (selectedTable) {
+            loadTableData();
+        }
+    }, [selectedTable, loadTableData]);
+
+    const loadTables = async (search = '') => {
+        try {
+            const response = await api.get(`/sap-data-explorer/tables?search=${encodeURIComponent(search)}`);
+            const list = response.data?.tables ?? [];
+            setTables(list);
+            if (list.length === 0) {
+                setMessage('Aucune table dans les métadonnées (public.sap_table_properties). Alimentez les métadonnées SAP pour utiliser l’explorateur.');
+            } else {
+                setMessage(null);
+            }
+        } catch (err: any) {
+            console.error('Erreur chargement tables SAP:', err);
+            setError(err.response?.data?.error || 'Impossible de charger la liste des tables SAP');
+        }
     };
 
     const handleTableSelect = useCallback(
@@ -163,6 +164,7 @@ const SapDataExplorerPage: React.FC = () => {
             setCurrentPage(1);
             setSortColumn(null);
             setGlobalSearch('');
+        setAppliedGlobalSearch('');
             setMessage(null);
             setSearchParams(
                 (prev) => {
@@ -199,8 +201,12 @@ const SapDataExplorerPage: React.FC = () => {
     };
 
     const handleSearch = () => {
-        setCurrentPage(1);
-        loadTableData();
+        if (currentPage === 1 && appliedGlobalSearch === globalSearch) {
+            loadTableData();
+        } else {
+            setCurrentPage(1);
+            setAppliedGlobalSearch(globalSearch);
+        }
     };
 
     const handleExport = async () => {

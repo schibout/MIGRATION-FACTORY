@@ -18,7 +18,7 @@ import StoreIcon from '@mui/icons-material/Store';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import DatasetIcon from '@mui/icons-material/Dataset';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import SapDataTable from '../components/sap/SapDataTable';
 import sapViewsService, { SapView, ViewData } from '../services/sapViewsService';
@@ -63,13 +63,7 @@ const SapDataFournisseurs = () => {
     loadViews();
   }, []);
 
-  useEffect(() => {
-    if (selectedView) {
-      loadViewData();
-    }
-  }, [selectedView, page, rowsPerPage, sortField, sortDirection, searchTerm, filters]);
-
-  const loadViewData = async () => {
+  const loadViewData = useCallback(async () => {
     try {
       setLoading(true);
       const data = await sapViewsService.getViewData(
@@ -87,7 +81,13 @@ const SapDataFournisseurs = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedView, page, rowsPerPage, sortField, sortDirection, searchTerm, filters]);
+
+  useEffect(() => {
+    if (selectedView) {
+      loadViewData();
+    }
+  }, [selectedView, loadViewData]);
 
   const handleViewChange = (_: unknown, value: SapView | null) => {
     if (!value) return;

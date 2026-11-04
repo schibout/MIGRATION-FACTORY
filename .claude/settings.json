@@ -1,0 +1,12 @@
+{
+  "enabledPlugins": {
+    "ui-ux-pro-max@ui-ux-pro-max-skill": false,
+    "ralph-loop@claude-plugins-official": false,
+    "feature-dev@claude-plugins-official": false,
+    "playground@claude-plugins-official": false,
+    "firecrawl@claude-plugins-official": false,
+    "playwright@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "context7@claude-plugins-official": true
+  }
+}

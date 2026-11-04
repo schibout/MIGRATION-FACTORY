@@ -42,8 +42,8 @@ const SapRawData = () => {
         setViews(fetchedViews);
         
         // Sélectionner la première vue par défaut si aucune n'est déjà sélectionnée
-        if (fetchedViews.length > 0 && !selectedView) {
-          setSelectedView(fetchedViews[0].id);
+        if (fetchedViews.length > 0) {
+          setSelectedView((current) => current || fetchedViews[0].id);
         }
       } catch (error) {
         console.error('Erreur lors de la récupération des vues SAP:', error);

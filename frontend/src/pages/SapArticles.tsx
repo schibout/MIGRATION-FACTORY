@@ -372,9 +372,9 @@ const SapArticles: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [mode, params, page, pageSize, sort, dir, rafraichir]);
+  }, [mode, params, page, pageSize, sort, dir]);
 
-  useEffect(() => { charger(); }, [charger]);
+  useEffect(() => { charger(); }, [charger, rafraichir]);
 
   // Synchronisation SAP / recalcul : état au chargement, puis suivi toutes les 5 s
   useEffect(() => {

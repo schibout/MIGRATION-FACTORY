@@ -106,7 +106,7 @@ const RepriseCoutsIfs: React.FC = () => {
     load();
   }, [load]);
 
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const enAnomalie = rows.filter((r) => r.anomalies.length > 0);
   const affichees = (filtre === 'anomalies' ? enAnomalie : filtre === 'pretes' ? rows.filter((r) => r.exporte) : rows)
     .filter((r) => !filtreNature || (r.nature ?? 'A_QUALIFIER') === filtreNature)

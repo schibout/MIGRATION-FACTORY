@@ -28,7 +28,7 @@ import {
     Tooltip,
     Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import IfsPersonAutocomplete from '../components/IfsPersonAutocomplete';
 import api from '../services/api';
@@ -57,6 +57,7 @@ const SharePointUsersPage: React.FC = () => {
     const [rowsPerPage, setRowsPerPage] = useState(50);
     const [totalUsers, setTotalUsers] = useState(0);
     const [search, setSearch] = useState('');
+    const [appliedSearch, setAppliedSearch] = useState('');
     const [importing, setImporting] = useState(false);
     const [associating, setAssociating] = useState(false);
     const [sortBy, setSortBy] = useState<string>('title');
@@ -102,7 +103,7 @@ const SharePointUsersPage: React.FC = () => {
     };
 
     // Charger les utilisateurs
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -110,7 +111,7 @@ const SharePointUsersPage: React.FC = () => {
                 params: {
                     page: page + 1,
                     per_page: rowsPerPage,
-                    search: search,
+                    search: appliedSearch,
                     sort_by: sortBy,
                     sort_order: sortOrder
                 }
@@ -128,7 +129,11 @@ const SharePointUsersPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, rowsPerPage, appliedSearch, sortBy, sortOrder]);
+
+    useEffect(() => {
+        loadUsers();
+    }, [loadUsers]);
 
     // Importer les utilisateurs depuis SharePoint
     const importUsers = async () => {
@@ -180,13 +185,13 @@ const SharePointUsersPage: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        loadUsers();
-    }, [page, rowsPerPage, sortBy, sortOrder]);
-
-    const handleSearch = () => {
-        setPage(0);
-        loadUsers();
+    const handleSearch = (nextSearch = search) => {
+        if (page === 0 && appliedSearch === nextSearch) {
+            loadUsers();
+        } else {
+            setPage(0);
+            setAppliedSearch(nextSearch);
+        }
     };
 
     // Tri : clic sur un en-tête → bascule asc/desc, ou change de colonne
@@ -265,7 +270,7 @@ const SharePointUsersPage: React.FC = () => {
                         ),
                         endAdornment: search && (
                             <InputAdornment position="end">
-                                <IconButton onClick={() => { setSearch(''); handleSearch(); }} size="small">
+                                <IconButton onClick={() => { setSearch(''); handleSearch(''); }} size="small">
                                     <CancelIcon />
                                 </IconButton>
                             </InputAdornment>

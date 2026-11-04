@@ -288,8 +288,7 @@ const ImportDetailsPage: React.FC = () => {
                 render: (d) => (d.processed_at ? formatDateTime(d.processed_at) : '—'),
             },
         ],
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [],
+            [],
     );
 
     // Formatage de la durée
@@ -678,4 +677,4 @@ const ImportDetailsPage: React.FC = () => {
     );
 };
 
-export default ImportDetailsPage; 
+export default ImportDetailsPage;

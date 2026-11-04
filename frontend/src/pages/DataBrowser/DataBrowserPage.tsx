@@ -85,6 +85,7 @@ const DataBrowserPage: React.FC = () => {
     
     // Filters & Sort
     const [globalSearch, setGlobalSearch] = useState('');
+    const [appliedGlobalSearch, setAppliedGlobalSearch] = useState('');
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [pageSize, setPageSize] = useState(50);
@@ -96,50 +97,25 @@ const DataBrowserPage: React.FC = () => {
     }, []);
     
     // Load tables when schema changes
-    useEffect(() => {
-        if (selectedSchema) {
-            loadTables();
-            setSelectedTable(null);
-            setData([]);
-            setColumns([]);
-        }
-    }, [selectedSchema]);
-    
-    // Load data when table or filters change
-    useEffect(() => {
-        if (selectedTable) {
-            loadTableData();
-        }
-    }, [selectedTable, currentPage, pageSize, sortColumn, sortDirection]);
-    
-    const loadSchemas = async () => {
-        try {
-            const response = await api.get('/data-browser/schemas');
-            setSchemas(response.data.schemas || []);
-        } catch (err: any) {
-            console.error('Erreur chargement schémas:', err);
-        }
-    };
-    
-    const loadTables = async () => {
+    const loadTables = useCallback(async () => {
         try {
             const response = await api.get(`/data-browser/tables?schema=${selectedSchema}&search=${tableSearch}`);
             setTables(response.data.tables || []);
         } catch (err: any) {
             console.error('Erreur chargement tables:', err);
         }
-    };
+    }, [selectedSchema, tableSearch]);
     
-    const loadTableColumns = async (tableName: string) => {
+    const loadTableColumns = useCallback(async (tableName: string) => {
         try {
             const response = await api.get(`/data-browser/tables/${tableName}/columns?schema=${selectedSchema}`);
             setColumns(response.data.columns || []);
         } catch (err: any) {
             console.error('Erreur chargement colonnes:', err);
         }
-    };
+    }, [selectedSchema]);
     
-    const loadTableData = async () => {
+    const loadTableData = useCallback(async () => {
         if (!selectedTable) return;
         
         setLoading(true);
@@ -150,7 +126,7 @@ const DataBrowserPage: React.FC = () => {
                 schema: selectedSchema,
                 page: currentPage.toString(),
                 pageSize: pageSize.toString(),
-                search: globalSearch
+                search: appliedGlobalSearch
             });
             
             if (sortColumn) {
@@ -166,6 +142,32 @@ const DataBrowserPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    }, [selectedTable, selectedSchema, currentPage, pageSize, sortColumn, sortDirection, appliedGlobalSearch]);
+
+    useEffect(() => {
+        if (selectedSchema) {
+            loadTables();
+            setSelectedTable(null);
+            setData([]);
+            setColumns([]);
+        }
+    }, [selectedSchema, loadTables]);
+
+    useEffect(() => {
+        if (selectedTable) {
+            loadTableData();
+        }
+    }, [selectedTable, loadTableData]);
+
+    // Load data when table or filters change
+
+    const loadSchemas = async () => {
+        try {
+            const response = await api.get('/data-browser/schemas');
+            setSchemas(response.data.schemas || []);
+        } catch (err: any) {
+            console.error('Erreur chargement schémas:', err);
+        }
     };
     
     const handleTableSelect = useCallback(async (tableName: string) => {
@@ -173,8 +175,9 @@ const DataBrowserPage: React.FC = () => {
         setCurrentPage(1);
         setSortColumn(null);
         setGlobalSearch('');
+        setAppliedGlobalSearch('');
         await loadTableColumns(tableName);
-    }, [selectedSchema]);
+    }, [loadTableColumns]);
     
     const handleSort = (column: string) => {
         if (sortColumn === column) {
@@ -187,8 +190,12 @@ const DataBrowserPage: React.FC = () => {
     };
     
     const handleSearch = () => {
-        setCurrentPage(1);
-        loadTableData();
+        if (currentPage === 1 && appliedGlobalSearch === globalSearch) {
+            loadTableData();
+        } else {
+            setCurrentPage(1);
+            setAppliedGlobalSearch(globalSearch);
+        }
     };
     
     const handleExport = async () => {

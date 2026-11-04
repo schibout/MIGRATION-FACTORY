@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Table,
   TableBody,
@@ -106,24 +106,33 @@ const SapDataTable = ({
     onRowsPerPageChange(parseInt(event.target.value, 10));
   };
   
+  // Les callbacks du parent peuvent changer d'identite sans changer la recherche.
+  const callbacksRef = useRef({ onSearchChange, onFilterChange });
+  useEffect(() => {
+    callbacksRef.current = { onSearchChange, onFilterChange };
+  }, [onSearchChange, onFilterChange]);
+  const hasSearchHandler = Boolean(onSearchChange);
+  const lastToolbarResetKey = useRef<string | undefined>();
+
   // Debounce recherche vers le parent
   useEffect(() => {
-    if (!debounceSearchMs || debounceSearchMs <= 0 || !onSearchChange) return;
-    const t = window.setTimeout(() => onSearchChange(localQuery), debounceSearchMs);
+    if (!debounceSearchMs || debounceSearchMs <= 0 || !hasSearchHandler) return;
+    const t = window.setTimeout(() => callbacksRef.current.onSearchChange?.(localQuery), debounceSearchMs);
     return () => clearTimeout(t);
-  }, [localQuery, debounceSearchMs, onSearchChange]);
+  }, [localQuery, debounceSearchMs, hasSearchHandler]);
 
   useEffect(() => {
-    if (toolbarResetKey === undefined || toolbarResetKey === '') return;
+    if (toolbarResetKey === undefined || toolbarResetKey === '' || lastToolbarResetKey.current === toolbarResetKey) return;
+    lastToolbarResetKey.current = toolbarResetKey;
     setLocalQuery('');
     setActiveFilters({});
     setSelectedColumn('');
     setFilterValue('');
     if (!debounceSearchMs || debounceSearchMs <= 0) {
-      onSearchChange?.('');
+      callbacksRef.current.onSearchChange?.('');
     }
-    onFilterChange?.({});
-  }, [toolbarResetKey]);
+    callbacksRef.current.onFilterChange?.({});
+  }, [toolbarResetKey, debounceSearchMs]);
 
   // Fonctions pour la recherche et les filtres
   const handleSearchChange = (event: any) => {
@@ -207,7 +216,7 @@ const SapDataTable = ({
   };
 
   // Fonction pour appliquer les filtres et la recherche localement
-  const applyFiltersAndSearch = (search: string, filters: { [key: string]: string }) => {
+  const applyFiltersAndSearch = useCallback((search: string, filters: { [key: string]: string }) => {
     let result = [...data.rows];
 
     if (search.trim() !== '') {
@@ -237,7 +246,7 @@ const SapDataTable = ({
     });
 
     setFilteredRows(result);
-  };
+  }, [data.rows]);
 
   // Recalculer les lignes filtrées quand les données changent
   useEffect(() => {
@@ -246,7 +255,7 @@ const SapDataTable = ({
     } else {
       applyFiltersAndSearch(localQuery, activeFilters);
     }
-  }, [data.rows]);
+  }, [data.rows, localQuery, activeFilters, onSearchChange, onFilterChange, applyFiltersAndSearch]);
 
   // Déterminer les lignes à afficher
   const displayedRows = onSearchChange && onFilterChange ? data.rows : filteredRows;
@@ -259,9 +268,12 @@ const SapDataTable = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
+  const previousColumnSignature = useRef(columnSignature);
   useEffect(() => {
+    if (previousColumnSignature.current === columnSignature) return;
+    previousColumnSignature.current = columnSignature;
     setVisibleColumns(data.columns.map((col) => col.name));
-  }, [columnSignature]);
+  }, [columnSignature, data.columns]);
 
   const handleOpenMenu = (event: React.MouseEvent<HTMLButtonElement>) => setAnchorEl(event.currentTarget);
   const handleCloseMenu = () => setAnchorEl(null);
@@ -695,4 +707,4 @@ const SapDataTable = ({
   );
 };
 
-export default SapDataTable; 
+export default SapDataTable;

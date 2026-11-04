@@ -30,7 +30,7 @@ import {
     Tabs,
     Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import { projectService } from '../services/projectService';
@@ -67,11 +67,7 @@ const ProjectDetailPage: React.FC = () => {
     const [cfvLoading, setCfvLoading] = useState(false);
     const [jalons, setJalons] = useState<any[]>([]);
 
-    useEffect(() => {
-        loadProjectDetail();
-    }, [projectId]);
-
-    const loadProjectDetail = async () => {
+    const loadProjectDetail = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -86,9 +82,9 @@ const ProjectDetailPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [projectId]);
 
-    const loadEtatsAvancement = async () => {
+    const loadEtatsAvancement = useCallback(async () => {
         try {
             setEtatsLoading(true);
             const response = await api.get(`/data/sharepoint-projets/${projectId}/etats-avancement`);
@@ -100,9 +96,9 @@ const ProjectDetailPage: React.FC = () => {
         } finally {
             setEtatsLoading(false);
         }
-    };
+    }, [projectId]);
 
-    const loadCommissionsCfv = async () => {
+    const loadCommissionsCfv = useCallback(async () => {
         try {
             setCfvLoading(true);
             const response = await api.get(`/data/projets/${projectId}/commissions-cfv`);
@@ -112,16 +108,20 @@ const ProjectDetailPage: React.FC = () => {
         } finally {
             setCfvLoading(false);
         }
-    };
+    }, [projectId]);
 
-    const loadJalons = async () => {
+    const loadJalons = useCallback(async () => {
         try {
             const response = await api.get(`/data/projets/${projectId}/jalons`);
             if (response.data.success) setJalons(response.data.data);
         } catch (err) {
             console.error('Erreur chargement jalons:', err);
         }
-    };
+    }, [projectId]);
+
+    useEffect(() => {
+        loadProjectDetail();
+    }, [loadProjectDetail]);
 
     useEffect(() => {
         if (tabValue === 2) {
@@ -133,7 +133,7 @@ const ProjectDetailPage: React.FC = () => {
         if (tabValue === 5) {
             loadCommissionsCfv();
         }
-    }, [tabValue]);
+    }, [tabValue, loadJalons, loadEtatsAvancement, loadCommissionsCfv]);
 
     const formatCurrency = (value: number | null) => {
         if (value === null || value === undefined) return '-';
@@ -754,5 +754,4 @@ const ProjectDetailPage: React.FC = () => {
 };
 
 export default ProjectDetailPage;
-
 

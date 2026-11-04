@@ -119,7 +119,7 @@ const ConfigurationIA: React.FC = () => {
 
   // ----- Édition -----
   const [snack, setSnack] = useState<{ msg: string; sev: 'success' | 'error' } | null>(null);
-  const notifier = (msg: string, sev: 'success' | 'error' = 'success') => setSnack({ msg, sev });
+  const notifier = useCallback((msg: string, sev: 'success' | 'error' = 'success') => setSnack({ msg, sev }), []);
   const rechargerDomaines = () => aiConfigService.domains().then(setDomains).catch(() => {});
   const rechargerPacks = () => {
     aiConfigService.packs().then(setPacks).catch(() => {});
@@ -553,7 +553,7 @@ const ModeleExterneTab: React.FC<{ notifier: (m: string, s?: 'success' | 'error'
   const [testing, setTesting] = useState(false);
   const [health, setHealth] = useState<AiHealth | null>(null);
 
-  const charger = async () => {
+  const charger = useCallback(async () => {
     setLoading(true);
     try {
       const cats = await settingsService.getAll();
@@ -567,9 +567,9 @@ const ModeleExterneTab: React.FC<{ notifier: (m: string, s?: 'success' | 'error'
       setLoading(false);
     }
     aiService.getHealth().then(setHealth).catch(() => setHealth(null));
-  };
+  }, [notifier]);
 
-  useEffect(() => { charger(); }, []);
+  useEffect(() => { charger(); }, [charger]);
 
   const provider = (values['AI_PROVIDER'] || 'ollama').toLowerCase();
   const setVal = (key: string, v: string) => setValues((s) => ({ ...s, [key]: v }));

@@ -69,11 +69,24 @@ backend/exports/
 *.pid
 
 # --- Outils IA / IDE / dev ------------------------------------------------
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/agents/
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/migration-factory/
+!.claude/skills/verify-change/
+.codex/*
+!.codex/config.toml
+!.codex/agents/
+.ai-backups/
 .cursor/
 .taskmaster/
 .playwright-mcp/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 .devcontainer/
 graphify-out/

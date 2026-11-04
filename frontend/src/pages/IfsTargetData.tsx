@@ -69,9 +69,9 @@ const IfsTargetData = () => {
         setTables(fetchedTables);
         
         // Sélectionner la première table par défaut si aucune n'est déjà sélectionnée
-        if (fetchedTables.length > 0 && !selectedTable) {
-          setSelectedTable(fetchedTables[0].id);
-          setSelectedTableLabel(fetchedTables[0].label);
+        if (fetchedTables.length > 0) {
+          setSelectedTable((current) => current || fetchedTables[0].id);
+          setSelectedTableLabel((current) => current || fetchedTables[0].label);
         }
       } catch (error) {
         console.error('Erreur lors de la récupération des tables IFS:', error);
@@ -387,4 +387,4 @@ const IfsTargetData = () => {
   );
 };
 
-export default IfsTargetData; 
+export default IfsTargetData;

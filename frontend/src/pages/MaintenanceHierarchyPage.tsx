@@ -279,7 +279,7 @@ const MaintenanceHierarchyPage: React.FC = () => {
   };
 
   // Recherche
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (searchQuery.length < 2) {
       setSearchResults(null);
       return;
@@ -299,7 +299,7 @@ const MaintenanceHierarchyPage: React.FC = () => {
     } finally {
       setSearchLoading(false);
     }
-  };
+  }, [searchQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -310,7 +310,7 @@ const MaintenanceHierarchyPage: React.FC = () => {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, handleSearch]);
 
   // Sélectionner un nœud
   const selectNode = (node: TreeNode) => {

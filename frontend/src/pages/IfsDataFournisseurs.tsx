@@ -1,64 +1,10 @@
-import {
-    Cached as RecalculIcon,
-    FileDownload as ExcelIcon,
-    LocalShipping as FournisseurIcon,
-    Search as SearchIcon,
-    Sync as SyncIcon,
-} from '@mui/icons-material';
-import {
-    Alert,
-    Box,
-    Button,
-    Chip,
-    InputAdornment,
-    LinearProgress,
-    Paper,
-    Tab,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TablePagination,
-    TableRow,
-    Tabs,
-    TextField,
-    Tooltip,
-    Typography,
-} from '@mui/material';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import api from '../services/api';
+import { LocalShipping as FournisseurIcon } from '@mui/icons-material';
+import React from 'react';
+import IfsConsultationPage, { OngletConsultation } from '../components/ifs/IfsConsultationPage';
 
-// Même logique que FinanceHistoriqueCouts : onglets, liste paginée, export Excel, Recalculer / Synchroniser SAP.
-// Source : tables clean_data du module ETL fournisseurs (api/ifs_fournisseurs.py), en lecture seule.
+// Tables clean_data du module ETL fournisseurs (api/ifs_fournisseurs.py), en lecture seule.
 
-type Row = Record<string, string | number | boolean | null>;
-type Onglet = 'synthese' | 'general' | 'achats' | 'adresses' | 'communication' | 'fiscalite' | 'paiement' | 'articles' | 'controles' | 'mode_emploi';
-
-interface SyncStatus {
-  status: 'never' | 'running' | 'completed' | 'failed';
-  step?: string;
-  progress?: number;
-  error?: string | null;
-  rows?: number | null;
-  started_at?: string;
-  finished_at?: string | null;
-}
-
-interface Colonne { key: string; label: string; kind: 'bool' | 'text' }
-interface SourceInfo { key: string; label: string; lignes: number }
-
-interface ListResponse {
-  table: string;
-  tables: SourceInfo[];
-  rows: Row[];
-  total: number;
-  fournisseurs: number;
-  colonnes: Colonne[];
-  sync: SyncStatus | null;
-}
-
-const ONGLETS: { value: Onglet; label: string; description: string }[] = [
+const ONGLETS: OngletConsultation[] = [
   { value: 'synthese', label: 'Synthèse',
     description: "Une ligne par fournisseur chargé, avec ses principales informations et le nombre d'adresses, de communications, de numéros fiscaux et d'articles." },
   { value: 'general', label: 'Général',
@@ -73,265 +19,29 @@ const ONGLETS: { value: Onglet; label: string; description: string }[] = [
     description: 'Informations fiscales, codes de taxe de livraison et numéros fiscaux (SIREN, SIRET, TVA).' },
   { value: 'paiement', label: 'Facturation et paiement',
     description: 'Facturation, paiement, modes de paiement et adresses de paiement (coordonnées bancaires).' },
-  { value: 'articles', label: 'Articles',
+  { value: 'articles', label: 'Articles', placeholder: 'N° IFS, N° SAP, nom, article…',
     description: "Liens article / fournisseur d'achat. Cette table dépend du module ETL Articles : Recalculer et Synchroniser SAP ne la rechargent pas." },
   { value: 'controles', label: 'Contrôles',
-    description: 'Écarts entre le périmètre (clean_data.ifs_fournisseurs) et les tables chargées, et fournisseurs absents d\'une table attendue. Choisir un contrôle pour voir les fournisseurs concernés.' },
+    description: "Écarts entre le périmètre (clean_data.ifs_fournisseurs) et les tables chargées, et fournisseurs absents d'une table attendue. Choisir un contrôle pour voir les fournisseurs concernés." },
   { value: 'mode_emploi', label: "Mode d'emploi",
     description: "Tables affichées, fonctionnement des boutons et limites de l'écran." },
 ];
 
-// Guide HTML autonome (frontend/public/guides/, copie dans docs/guides/), aussi listé dans Mode d'emploi.
-const GUIDE = '/guides/ifs-fournisseurs.html';
-
-const nombre = (v: number) => v.toLocaleString('fr-FR');
-const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : '');
-const formatCell = (v: Row[string], kind: Colonne['kind']) => {
-  if (kind === 'bool') return v ? 'Oui' : 'Non';
-  return v == null ? '' : String(v);
-};
-
-const IfsDataFournisseurs: React.FC = () => {
-  const [onglet, setOnglet] = useState<Onglet>('synthese');
-  const [table, setTable] = useState('');
-  const [data, setData] = useState<ListResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [sync, setSync] = useState<SyncStatus | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const derniereRequete = useRef(0); // une réponse lente ne doit pas écraser l'onglet affiché
-
-  const load = useCallback(async () => {
-    if (onglet === 'mode_emploi') return;
-    const requete = ++derniereRequete.current;
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await api.get<ListResponse>('/ifs-data/fournisseurs', {
-        params: { onglet, table, search, page: page + 1, page_size: pageSize },
-      });
-      if (requete !== derniereRequete.current) return;
-      setData(res.data);
-      setSync(res.data.sync);
-    } catch (err) {
-      if (requete !== derniereRequete.current) return;
-      console.error('Erreur chargement fournisseurs IFS:', err);
-      setError('Erreur lors du chargement des fournisseurs');
-    } finally {
-      if (requete === derniereRequete.current) setLoading(false);
-    }
-  }, [onglet, table, search, page, pageSize]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Suivi de la synchronisation en cours (rechargement de la liste à la fin)
-  useEffect(() => {
-    if (sync?.status !== 'running') return undefined;
-    const timer = setInterval(async () => {
-      try {
-        const res = await api.get<SyncStatus>('/ifs-data/fournisseurs/sync');
-        setSync(res.data);
-        if (res.data.status !== 'running') load();
-      } catch (err) {
-        console.error('Erreur statut synchronisation:', err);
-      }
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [sync?.status, load]);
-
-  // 'sap' : extraction SAP, périmètre puis module ETL ; 'mf' : module ETL seul
-  const handleSync = async (source: 'sap' | 'mf') => {
-    try {
-      setError(null);
-      const res = await api.post<SyncStatus>('/ifs-data/fournisseurs/sync', { source });
-      setSync(res.data);
-    } catch (err: any) {
-      if (err?.response?.status === 409) setSync(err.response.data);
-      else setError('Impossible de lancer la synchronisation');
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      setExporting(true);
-      setError(null);
-      const res = await api.get('/ifs-data/fournisseurs/export.xlsx', { params: { onglet, search }, responseType: 'blob' });
-      const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
-      const url = window.URL.createObjectURL(res.data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = match?.[1] ?? 'fournisseurs_ifs.xlsx';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Erreur export Excel fournisseurs IFS:', err);
-      setError("Erreur lors de l'export Excel");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const changerOnglet = (v: Onglet) => {
-    setOnglet(v);
-    setTable('');
-    setPage(0);
-    setData(null);
-  };
-
-  const running = sync?.status === 'running';
-  const colonnes = data?.colonnes ?? [];
-  const tables = data?.tables ?? [];
-  const consultation = onglet !== 'mode_emploi';
-
-  return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
-        <FournisseurIcon sx={{ fontSize: 32, color: '#3f51b5' }} />
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-          Fournisseurs IFS
-        </Typography>
-        <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
-          <Tooltip title="Classeur Excel de l'onglet affiché : une feuille par table, recherche appliquée">
-            <span>
-              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !consultation || !data}>
-                {exporting ? 'Export…' : 'Exporter Excel'}
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title="Recharge les tables fournisseurs depuis le périmètre en place (Finance > Fournisseurs), sans appeler SAP">
-            <span>
-              <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
-                Recalculer
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title="Ré-extrait les tables fournisseurs de SAP, recalcule le périmètre à la même date d'arrêté, puis recharge les tables">
-            <span>
-              <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
-                {running ? 'Synchronisation…' : 'Synchroniser SAP'}
-              </Button>
-            </span>
-          </Tooltip>
-        </Box>
-      </Box>
-
-      <Tabs value={onglet} onChange={(_, v: Onglet) => changerOnglet(v)} variant="scrollable" scrollButtons="auto" sx={{ mb: 2 }}>
-        {ONGLETS.map((o) => <Tab key={o.value} value={o.value} label={o.label} />)}
-      </Tabs>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {ONGLETS.find((o) => o.value === onglet)?.description}
-      </Typography>
-
-      {running && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {sync?.step} — démarrée le {formatDateTime(sync?.started_at)}. La liste reste en attente tant que le rechargement n'est pas terminé.
-          <LinearProgress variant="determinate" value={sync?.progress ?? 0} sx={{ mt: 1 }} />
-        </Alert>
-      )}
-      {sync?.status === 'completed' && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          Dernier rechargement le {formatDateTime(sync.finished_at)} : {nombre(sync.rows ?? 0)} fournisseurs chargés.
-        </Alert>
-      )}
-      {sync?.status === 'failed' && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Rechargement en échec le {formatDateTime(sync.finished_at)} : {sync.error}. Les tables n'ont pas été modifiées par le module ETL.
-        </Alert>
-      )}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-      {!consultation ? (
-        <Box
-          component="iframe"
-          src={GUIDE}
-          title="Mode d'emploi : fournisseurs IFS"
-          sx={{ width: '100%', height: 'calc(100vh - 300px)', minHeight: 500, border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}
-        />
-      ) : (<>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-        <TextField
-          size="small"
-          placeholder={onglet === 'articles' ? 'N° IFS, N° SAP, nom, article…' : 'N° IFS, N° SAP, nom…'}
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setPage(0);
-              setSearch(searchInput);
-            }
-          }}
-          sx={{ minWidth: 340 }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-        />
-        {data && (<>
-          <Chip label={`${nombre(data.fournisseurs)} fournisseurs`} color="primary" />
-          <Chip label={`${nombre(data.total)} lignes`} />
-        </>)}
-      </Box>
-
-      {tables.length > 1 && (
-        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-          {tables.map((t) => (
-            <Chip
-              key={t.key}
-              label={`${t.label} (${nombre(t.lignes)})`}
-              color={t.key === data?.table ? 'primary' : onglet === 'controles' && t.lignes > 0 ? 'warning' : 'default'}
-              variant={t.key === data?.table ? 'filled' : 'outlined'}
-              onClick={() => { setTable(t.key); setPage(0); }}
-            />
-          ))}
-        </Box>
-      )}
-
-      <Paper>
-        {loading && <LinearProgress />}
-        <TableContainer sx={{ maxHeight: 'calc(100vh - 460px)', minHeight: 300 }}>
-          <Table size="small" stickyHeader>
-            <TableHead>
-              <TableRow>
-                {colonnes.map((c) => (
-                  <TableCell key={c.key} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.label}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data?.rows.map((r, i) => (
-                <TableRow key={i} hover>
-                  {colonnes.map((c) => (
-                    <TableCell key={c.key} sx={{ whiteSpace: 'nowrap' }}>{formatCell(r[c.key], c.kind)}</TableCell>
-                  ))}
-                </TableRow>
-              ))}
-              {data?.rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={colonnes.length || 1} align="center">Aucune ligne</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          component="div"
-          count={data?.total ?? 0}
-          page={page}
-          rowsPerPage={pageSize}
-          rowsPerPageOptions={[25, 50, 100, 250]}
-          onPageChange={(_, p) => setPage(p)}
-          onRowsPerPageChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setPage(0); }}
-          labelRowsPerPage="Lignes par page"
-        />
-      </Paper>
-      </>)}
-    </Box>
-  );
-};
+const IfsDataFournisseurs: React.FC = () => (
+  <IfsConsultationPage
+    titre="Fournisseurs IFS"
+    icone={<FournisseurIcon sx={{ fontSize: 32, color: '#3f51b5' }} />}
+    apiUrl="/ifs-data/fournisseurs"
+    guide="/guides/ifs-fournisseurs.html"
+    onglets={ONGLETS}
+    placeholder="N° IFS, N° SAP, nom…"
+    entite="fournisseurs"
+    fichierExport="fournisseurs_ifs.xlsx"
+    aideRecalculer="Recharge les tables fournisseurs depuis le périmètre en place (Finance > Fournisseurs), sans appeler SAP"
+    aideSynchroniser="Ré-extrait les tables fournisseurs de SAP, recalcule le périmètre à la même date d'arrêté, puis recharge les tables"
+    libelleRecharge="fournisseurs chargés"
+    noteEchec="Les tables n'ont pas été modifiées par le module ETL."
+  />
+);
 
 export default IfsDataFournisseurs;

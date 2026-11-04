@@ -79,8 +79,8 @@ const DataExplorer = () => {
             // Sinon, sélectionner la première table disponible si aucune n'est déjà sélectionnée
             if (tableName) {
               setSelectedTable(tableName);
-            } else if (response.data.tables?.length > 0 && !selectedTable) {
-              setSelectedTable(response.data.tables[0].name);
+            } else if (response.data.tables?.length > 0) {
+              setSelectedTable((current) => current || response.data.tables[0].name);
             }
           }
         } catch (error) {
@@ -115,8 +115,8 @@ const DataExplorer = () => {
           
           if (tableName) {
             setSelectedTable(tableName);
-          } else if (filteredTables.length > 0 && !selectedTable) {
-            setSelectedTable(filteredTables[0].name);
+          } else if (filteredTables.length > 0) {
+            setSelectedTable((current) => current || filteredTables[0].name);
           }
         }
       } finally {

@@ -34,7 +34,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DataTable } from '../../components/table';
 import type { DataTableColumn, SortDirection } from '../../components/table';
 import type { ExportQuery } from '../../services/exportService';
@@ -90,11 +90,11 @@ const ExportQueriesManagement: React.FC = () => {
     [queries]
   );
 
-  useEffect(() => {
-    loadQueries();
+  const showSnackbar = useCallback((message: string, severity: 'success' | 'error') => {
+    setSnackbar({ open: true, message, severity });
   }, []);
 
-  const loadQueries = async () => {
+  const loadQueries = useCallback(async () => {
     try {
       setLoading(true);
       const data = await exportService.getAllExportQueries();
@@ -105,11 +105,11 @@ const ExportQueriesManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showSnackbar]);
 
-  const showSnackbar = (message: string, severity: 'success' | 'error') => {
-    setSnackbar({ open: true, message, severity });
-  };
+  useEffect(() => {
+    loadQueries();
+  }, [loadQueries]);
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
@@ -746,4 +746,4 @@ const ExportQueriesManagement: React.FC = () => {
   );
 };
 
-export default ExportQueriesManagement; 
+export default ExportQueriesManagement;

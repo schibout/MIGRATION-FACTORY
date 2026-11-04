@@ -20,7 +20,7 @@ import {
     TextField,
     Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Services
@@ -53,6 +53,8 @@ interface ImportStatus {
     status: string;
 }
 
+const DEFAULT_SITE_ID = '863';
+
 const ImportEtatsAvancementPage: React.FC = () => {
     const navigate = useNavigate();
     const [activeStep, setActiveStep] = useState(0);
@@ -62,7 +64,7 @@ const ImportEtatsAvancementPage: React.FC = () => {
     const [importResult, setImportResult] = useState<ImportResult | null>(null);
     const [status, setStatus] = useState<ImportStatus | null>(null);
     const [includeRelated, setIncludeRelated] = useState<boolean>(true);
-    const [siteId, setSiteId] = useState<string>('863');
+    const [siteId, setSiteId] = useState<string>(DEFAULT_SITE_ID);
     const [importMode, setImportMode] = useState<'single' | 'all'>('all');
 
     // Étapes du processus d'import
@@ -82,16 +84,10 @@ const ImportEtatsAvancementPage: React.FC = () => {
     ];
 
     // Charger le statut au démarrage
-    useEffect(() => {
-        loadStatus();
-        testConnection();
-    }, []);
-
-    // Test de connexion SharePoint via le backend
-    const testConnection = async () => {
+    const testConnection = useCallback(async (targetSiteId: string) => {
         try {
             console.log('🔍 Test de connexion SharePoint États d\'avancement...');
-            const response = await api.get(`/import/etats-avancement/test-connection?site_id=${siteId}`);
+            const response = await api.get(`/import/etats-avancement/test-connection?site_id=${targetSiteId}`);
             
             if (response.data.success) {
                 setConnectionStatus('success');
@@ -106,7 +102,14 @@ const ImportEtatsAvancementPage: React.FC = () => {
             setError(err.response?.data?.error || err.message || 'Erreur de connexion SharePoint');
             console.error('❌ Exception connexion SharePoint:', err);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadStatus();
+        testConnection(DEFAULT_SITE_ID);
+    }, [testConnection]);
+
+    // Test de connexion SharePoint via le backend
 
     // Charger le statut des imports
     const loadStatus = async () => {
@@ -275,7 +278,7 @@ const ImportEtatsAvancementPage: React.FC = () => {
                                         <Button
                                             size="small"
                                             startIcon={<RefreshIcon />}
-                                            onClick={testConnection}
+                                            onClick={() => testConnection(siteId)}
                                             disabled={loading}
                                         >
                                             Retester

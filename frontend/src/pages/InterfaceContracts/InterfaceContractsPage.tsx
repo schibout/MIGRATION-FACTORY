@@ -100,14 +100,15 @@ const InterfaceContractsPage: React.FC = () => {
     });
   }, [charger, tableCible]);
 
+  const selectedContractTableId = selectionnee?.contract_table_id;
   useEffect(() => {
     setCouverture(null);
-    if (!selectionnee) return;
+    if (selectedContractTableId === undefined) return;
     interfaceContractService
-      .getCoverage(selectionnee.contract_table_id)
+      .getCoverage(selectedContractTableId)
       .then(setCouverture)
       .catch(() => setCouverture(null));
-  }, [selectionnee?.contract_table_id]);
+  }, [selectedContractTableId]);
 
   const selectionner = (table: ContractTableSummary) => {
     setSelectionnee(table);

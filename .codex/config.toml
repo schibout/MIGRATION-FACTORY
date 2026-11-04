@@ -1,0 +1,22 @@
+# Configuration partagee de Migration Factory. Aucun secret ni modele impose.
+[agents]
+max_concurrent_threads_per_session = 2
+
+# Les outils specialises restent disponibles par activation explicite.
+[plugins."ralph-loop@claude-plugins-official"]
+enabled = false
+[plugins."feature-dev@claude-plugins-official"]
+enabled = false
+[plugins."playground@claude-plugins-official"]
+enabled = false
+[plugins."firecrawl@claude-plugins-official"]
+enabled = false
+[plugins."ui-ux-pro-max@ui-ux-pro-max-skill"]
+enabled = false
+
+# L'ancien MCP postgres global est archive et utilise un compte administrateur.
+# Le nouveau serveur optionnel s'appelle postgres-dev ; voir README.md.
+[mcp_servers.postgres]
+enabled = false
+command = "python"
+args = ["scripts/ai/postgres_mcp.py"]

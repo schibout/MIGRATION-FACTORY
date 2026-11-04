@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Grid,
@@ -60,11 +60,6 @@ const MappingFilter: React.FC<MappingFilterProps> = ({
       search: ''
     });
   };
-
-  // Appliquer les filtres lorsque le statut change
-  useEffect(() => {
-    applyFilters();
-  }, [status]);
 
   return (
     <Box 
@@ -128,7 +123,11 @@ const MappingFilter: React.FC<MappingFilterProps> = ({
               labelId="status-select-label"
               id="status-select"
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onChange={(e) => {
+                const nextStatus = e.target.value;
+                setStatus(nextStatus);
+                onFilter({ sourceTable, targetTable, status: nextStatus, search: searchTerm });
+              }}
               label="Statut"
               disabled={loading}
               fullWidth

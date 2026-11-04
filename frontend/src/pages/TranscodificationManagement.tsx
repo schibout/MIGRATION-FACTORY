@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 // Import Material-UI components individually
 import Alert from '@mui/material/Alert';
 import Backdrop from '@mui/material/Backdrop';
@@ -90,7 +90,28 @@ const TranscodificationManagement: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Récupérer les transcodifications
-  const fetchTranscodifications = async () => {
+  const showSnackbar = useCallback((message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      const categoryList = await transcodificationService.getCategories();
+      setCategories(categoryList);
+    } catch (error) {
+      showSnackbar('Erreur lors de la récupération des catégories', 'error');
+      console.error('Error fetching categories:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [showSnackbar]);
+
+  const fetchTranscodifications = useCallback(async () => {
     try {
       setLoading(true);
       const response = await transcodificationService.getTranscodifications(
@@ -110,31 +131,21 @@ const TranscodificationManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-  
-  // Récupérer les catégories disponibles
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      const categoryList = await transcodificationService.getCategories();
-      setCategories(categoryList);
-    } catch (error) {
-      showSnackbar('Erreur lors de la récupération des catégories', 'error');
-      console.error('Error fetching categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Charger les données initiales
+  }, [page, rowsPerPage, filters, showSnackbar]);
+
   useEffect(() => {
     fetchCategories();
-  }, []);
-  
-  // Rafraîchir les transcodifications quand les filtres ou la pagination changent
+  }, [fetchCategories]);
+
   useEffect(() => {
     fetchTranscodifications();
-  }, [page, rowsPerPage, filters]);
+  }, [fetchTranscodifications]);
+  
+  // Récupérer les catégories disponibles
+  
+  // Charger les données initiales
+  
+  // Rafraîchir les transcodifications quand les filtres ou la pagination changent
   
   // Gérer le changement de filtres
   const handleFilterChange = (newFilters: typeof filters) => {
@@ -433,13 +444,6 @@ const TranscodificationManagement: React.FC = () => {
   };
   
   // Afficher une notification
-  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity
-    });
-  };
   
   // Fermer la notification
   const handleCloseSnackbar = () => {

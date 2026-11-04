@@ -27,7 +27,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import sapCatalogService, { SapTable, SapTableField } from '../services/sapCatalogService';
 
@@ -53,18 +53,7 @@ const SapTableCatalog: React.FC = () => {
   const [tableFields, setTableFields] = useState<Record<string, SapTableField[]>>({});
   const [loadingFields, setLoadingFields] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    loadTables();
-  }, [scope]);
-
-  useEffect(() => {
-    setPage(0);
-    setExpandedTable(null);
-    setTableFields({});
-    setSearchTerm('');
-  }, [scope]);
-
-  const loadTables = async () => {
+  const loadTables = useCallback(async () => {
     try {
       setLoading(true);
       const data = await sapCatalogService.getTables(scope || undefined);
@@ -74,7 +63,18 @@ const SapTableCatalog: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [scope]);
+
+  useEffect(() => {
+    loadTables();
+  }, [loadTables]);
+
+  useEffect(() => {
+    setPage(0);
+    setExpandedTable(null);
+    setTableFields({});
+    setSearchTerm('');
+  }, [scope]);
 
   const loadTableFields = async (tableName: string) => {
     if (tableFields[tableName]) return;
@@ -344,7 +344,4 @@ const SapTableCatalog: React.FC = () => {
 };
 
 export default SapTableCatalog;
-
-
-
 

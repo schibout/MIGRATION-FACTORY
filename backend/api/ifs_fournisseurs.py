@@ -11,21 +11,20 @@ clean_data chargees par le module ETL fournisseurs, regroupees par theme.
 Lecture seule : un rechargement ecraserait toute modification faite dans ces tables.
 Les noms de tables viennent de TABLES / CONTROLES, jamais de la requete.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 from sqlalchemy import text
 
 from models import db
 
-from .finance import (FOURN_SAP_TABLES, _envoyer, _feuille_tableau, _json, _read_status, _start_sync,
-                      _sync_source, _write_status)
+from .finance import FOURN_SAP_TABLES, _read_status, _start_sync, _sync_source, _write_status
+from .ifs_consultation import colonnes_table, exporter, lister
 from .sap_articles import _charger_modules, q
 
 ifs_fournisseurs_blueprint = Blueprint('ifs_fournisseurs', __name__)
 
 SYNC_KEY = 'ifs_fournisseurs'
 MODULE_ETL = 'etl_supplier_base.py'
-AUDIT = {'created_timestamp', 'updated_timestamp', 'created_by', 'updated_by', 'is_deleted'}
 
 # table -> (colonne portant le N° IFS du fournisseur, libelle de l'ecran d'export)
 TABLES = {
@@ -108,10 +107,7 @@ def _source_synthese():
 
 def _source_table(table):
     cle, label = TABLES[table]
-    colonnes = [r[0] for r in db.session.execute(text(
-        "SELECT column_name FROM information_schema.columns "
-        "WHERE table_schema = 'clean_data' AND table_name = :t ORDER BY ordinal_position"), {'t': table})
-                if r[0] not in AUDIT and r[0] != cle]
+    colonnes = colonnes_table(table, cle)
     if table == 'supplier_info_general':
         return {
             'label': label,
@@ -186,87 +182,16 @@ def _source(key):
     return _source_table(key) if key in TABLES else _source_controle(key)
 
 
-def _filtre(src, search):
-    """(FROM + WHERE, parametres) ; la recherche porte sur le N° IFS, le N° SAP et le nom."""
-    clauses = [src['where']] if src.get('where') else []
-    params = {}
-    if search:
-        clauses.append('(' + ' OR '.join(f'{e} ILIKE :search' for e in src['recherche']) + ')')
-        params['search'] = f'%{search}%'
-    return src['from'] + (' WHERE ' + ' AND '.join(clauses) if clauses else ''), params
-
-
-def _colonnes_sql(src):
-    return ', '.join(f'{e} AS {q(k)}' for e, k, _ in src['colonnes'])
-
-
-def _onglet():
-    onglet = request.args.get('onglet')
-    return onglet if onglet in ONGLETS else 'synthese'
-
-
-def _kind(cle):
-    return 'bool' if cle == 'dans_perimetre' else 'text'
-
-
 @ifs_fournisseurs_blueprint.route('', methods=['GET'])
 @jwt_required()
-def lister():
-    page = max(int(request.args.get('page', 1)), 1)
-    page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
-    onglet = _onglet()
-    search = (request.args.get('search') or '').strip()
-    table = request.args.get('table')
-    if table not in ONGLETS[onglet]:
-        table = ONGLETS[onglet][0]
-
-    sources = {k: _source(k) for k in ONGLETS[onglet]}
-    tables = []
-    for k, s in sources.items():
-        corps, params = _filtre(s, search)
-        tables.append({'key': k, 'label': s['label'],
-                       'lignes': db.session.execute(text(f'SELECT count(*) FROM {corps}'), params).scalar()})
-
-    src = sources[table]
-    corps, params = _filtre(src, search)
-    fournisseurs = db.session.execute(text(f"SELECT count(DISTINCT {src['cle']}) FROM {corps}"), params).scalar()
-    rows = db.session.execute(
-        text(f"SELECT {_colonnes_sql(src)} FROM {corps} ORDER BY {src['ordre']} LIMIT :limit OFFSET :offset"),
-        {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
-
-    return jsonify({
-        'onglet': onglet,
-        'table': table,
-        'tables': tables,
-        'rows': [{k: _json(v) for k, v in r.items()} for r in rows],
-        'total': next(t['lignes'] for t in tables if t['key'] == table),
-        'fournisseurs': fournisseurs,
-        'colonnes': [{'key': k, 'label': l, 'kind': _kind(k)} for _, k, l in src['colonnes']],
-        'sync': _read_status(SYNC_KEY),
-    })
+def liste():
+    return lister(ONGLETS, _source, SYNC_KEY)
 
 
 @ifs_fournisseurs_blueprint.route('/export.xlsx', methods=['GET'])
 @jwt_required()
-def exporter():
-    from openpyxl import Workbook
-
-    onglet = _onglet()
-    search = (request.args.get('search') or '').strip()
-    feuilles = []
-    for key in ONGLETS[onglet]:
-        src = _source(key)
-        corps, params = _filtre(src, search)
-        rows = db.session.execute(
-            text(f"SELECT {_colonnes_sql(src)} FROM {corps} ORDER BY {src['ordre']}"), params).all()
-        feuilles.append((key, [(k, l) for _, k, l in src['colonnes']], rows))
-    db.session.commit()  # liberer la transaction de lecture avant la generation
-
-    wb = Workbook()
-    for i, (key, libelles, rows) in enumerate(feuilles):
-        # La cle tient en 31 caracteres et reste unique, contrairement aux libelles
-        _feuille_tableau(wb.active if i == 0 else wb.create_sheet(), key, libelles, rows, set())
-    return _envoyer(wb, f'fournisseurs_ifs_{onglet}')
+def export():
+    return exporter(ONGLETS, _source, 'fournisseurs_ifs')
 
 
 @ifs_fournisseurs_blueprint.route('/sync', methods=['GET'])

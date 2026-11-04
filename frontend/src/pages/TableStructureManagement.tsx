@@ -30,7 +30,7 @@ import {
     TextField,
     Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import api from '../services/api';
 
 interface TableStructureMetadata {
@@ -72,6 +72,7 @@ const TableStructureManagement: React.FC = () => {
     const [rowsPerPage, setRowsPerPage] = useState(25);
     const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState('');
+    const [appliedSearch, setAppliedSearch] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
     const [jobName, setJobName] = useState('');
@@ -84,11 +85,7 @@ const TableStructureManagement: React.FC = () => {
     const [selectedJob, setSelectedJob] = useState<string | null>(null);
     const [tableSummaries, setTableSummaries] = useState<TableSummary[]>([]);
 
-    useEffect(() => {
-        loadStructures();
-    }, [page, rowsPerPage]);
-
-    const loadStructures = async () => {
+    const loadStructures = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -96,7 +93,7 @@ const TableStructureManagement: React.FC = () => {
                 params: {
                     page: page + 1,
                     per_page: rowsPerPage,
-                    search: search
+                    search: appliedSearch
                 }
             });
 
@@ -112,7 +109,11 @@ const TableStructureManagement: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, rowsPerPage, appliedSearch]);
+
+    useEffect(() => {
+        loadStructures();
+    }, [loadStructures]);
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -181,9 +182,13 @@ const TableStructureManagement: React.FC = () => {
         }
     };
 
-    const handleSearch = () => {
-        setPage(0);
-        loadStructures();
+    const handleSearch = (nextSearch = search) => {
+        if (page === 0 && appliedSearch === nextSearch) {
+            loadStructures();
+        } else {
+            setPage(0);
+            setAppliedSearch(nextSearch);
+        }
     };
 
     const handleChangePage = (_event: unknown, newPage: number) => {

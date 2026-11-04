@@ -19,7 +19,7 @@ import {
   Grid,
   Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import importConfigService, { ImportTypeConfig } from '../../services/importConfigService';
@@ -50,18 +50,7 @@ const ClientFileTypeSelector: React.FC<ClientFileTypeSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Vérifier l'authentification avant de charger les données
-    if (!isAuthenticated || !token) {
-      console.warn('Utilisateur non authentifié, redirection vers login');
-      navigate('/login', { state: { from: '/import/clients' } });
-      return;
-    }
-
-    loadClientTypes();
-  }, [isAuthenticated, token, navigate]);
-
-  const loadClientTypes = async () => {
+  const loadClientTypes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -88,7 +77,18 @@ const ClientFileTypeSelector: React.FC<ClientFileTypeSelectorProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, token, navigate]);
+
+  useEffect(() => {
+    // Vérifier l'authentification avant de charger les données
+    if (!isAuthenticated || !token) {
+      console.warn('Utilisateur non authentifié, redirection vers login');
+      navigate('/login', { state: { from: '/import/clients' } });
+      return;
+    }
+
+    loadClientTypes();
+  }, [isAuthenticated, token, navigate, loadClientTypes]);
 
   const getIconComponent = (iconName: string) => {
     const IconComponent = iconMap[iconName as keyof typeof iconMap] || DescriptionIcon;
@@ -265,4 +265,4 @@ const ClientFileTypeSelector: React.FC<ClientFileTypeSelectorProps> = ({
   );
 };
 
-export default ClientFileTypeSelector; 
+export default ClientFileTypeSelector;

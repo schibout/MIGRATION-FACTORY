@@ -27,7 +27,7 @@ import {
     Tooltip,
     Typography
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resourceService, SharePointResource } from '../services/resourceService';
 
@@ -40,14 +40,15 @@ const SharePointResourcesPage: React.FC = () => {
     const [rowsPerPage, setRowsPerPage] = useState(50);
     const [totalResources, setTotalResources] = useState(0);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [importing, setImporting] = useState(false);
 
     // Charger les ressources
-    const loadResources = async () => {
+    const loadResources = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await resourceService.getResources(page + 1, rowsPerPage, search);
+            const response = await resourceService.getResources(page + 1, rowsPerPage, debouncedSearch);
             
             if (response.success) {
                 setResources(response.data);
@@ -61,7 +62,11 @@ const SharePointResourcesPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, rowsPerPage, debouncedSearch]);
+
+    useEffect(() => {
+        loadResources();
+    }, [loadResources]);
 
     // Importer les ressources depuis SharePoint
     const handleImport = async () => {
@@ -86,22 +91,16 @@ const SharePointResourcesPage: React.FC = () => {
     };
 
     // Charger les ressources au montage et quand la page change
-    useEffect(() => {
-        loadResources();
-    }, [page, rowsPerPage]);
 
     // Recherche avec debounce
     useEffect(() => {
+        if (search === debouncedSearch) return;
         const timer = setTimeout(() => {
-            if (page === 0) {
-                loadResources();
-            } else {
-                setPage(0); // Reset page quand on recherche
-            }
-        }, 500); // 500ms de délai
-
+            setPage(0);
+            setDebouncedSearch(search);
+        }, 500);
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [search, debouncedSearch]);
 
     // Gestion du changement de page
     const handleChangePage = (event: unknown, newPage: number) => {

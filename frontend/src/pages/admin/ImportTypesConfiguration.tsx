@@ -90,16 +90,7 @@ const iconMap = {
   'description': <DescriptionIcon />
 };
 
-const ImportTypesConfiguration: React.FC = () => {
-  const [configs, setConfigs] = useState<ImportTypeConfig[]>([]);
-  const [selectedConfig, setSelectedConfig] = useState<ImportTypeConfig | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(0);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-
-  // Données exemple (à remplacer par appels API)
-  const sampleConfigs: ImportTypeConfig[] = [
+const sampleConfigs: ImportTypeConfig[] = [
     {
       id: 1,
       type_code: 'customer_info',
@@ -135,6 +126,16 @@ const ImportTypesConfiguration: React.FC = () => {
       icon: 'location_on'
     }
   ];
+
+const ImportTypesConfiguration: React.FC = () => {
+  const [configs, setConfigs] = useState<ImportTypeConfig[]>([]);
+  const [selectedConfig, setSelectedConfig] = useState<ImportTypeConfig | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(0);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+
+  // Données exemple (à remplacer par appels API)
 
   useEffect(() => {
     // Simuler chargement des données

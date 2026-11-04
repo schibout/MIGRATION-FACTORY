@@ -17,7 +17,7 @@ import {
     Tooltip,
     Typography
 } from '@mui/material';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DataTable } from '../components/table';
 import type { DataTableColumn } from '../components/table';
 import { useNavigate } from 'react-router-dom';
@@ -32,14 +32,15 @@ const SharePointProjectsPage: React.FC = () => {
     const [rowsPerPage, setRowsPerPage] = useState(50);
     const [totalProjects, setTotalProjects] = useState(0);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [importing, setImporting] = useState(false);
 
     // Charger les projets
-    const loadProjects = async () => {
+    const loadProjects = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await projectService.getProjects(page + 1, rowsPerPage, search);
+            const response = await projectService.getProjects(page + 1, rowsPerPage, debouncedSearch);
             
             if (response.success) {
                 setProjects(response.data);
@@ -53,7 +54,11 @@ const SharePointProjectsPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, rowsPerPage, debouncedSearch]);
+
+    useEffect(() => {
+        loadProjects();
+    }, [loadProjects]);
 
     // Importer les projets depuis SharePoint
     const handleImport = async () => {
@@ -78,22 +83,16 @@ const SharePointProjectsPage: React.FC = () => {
     };
 
     // Charger les projets au montage et quand la page change
-    useEffect(() => {
-        loadProjects();
-    }, [page, rowsPerPage]);
 
     // Recherche avec debounce
     useEffect(() => {
+        if (search === debouncedSearch) return;
         const timer = setTimeout(() => {
-            if (page === 0) {
-                loadProjects();
-            } else {
-                setPage(0); // Reset page quand on recherche
-            }
-        }, 500); // 500ms de délai
-
+            setPage(0);
+            setDebouncedSearch(search);
+        }, 500);
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [search, debouncedSearch]);
 
     // (pagination pilotee directement par la DataTable via setPage/setRowsPerPage)
 

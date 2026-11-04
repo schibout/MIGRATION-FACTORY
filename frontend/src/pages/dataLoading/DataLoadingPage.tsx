@@ -21,7 +21,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import etlService, { ETLTargetTable } from '../../services/etlService';
 
 // Type pour les messages de log
@@ -49,11 +49,53 @@ const DataLoadingPage: React.FC = () => {
   const lastMessageCountRef = useRef(0);
 
   // Charger les tables cibles au chargement de la page
-  useEffect(() => {
-    fetchTargetTables();
+  const addLogMessage = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error') => {
+    const newMessage: LogMessage = {
+      id: Date.now(),
+      message,
+      type,
+      timestamp: new Date().toLocaleTimeString()
+    };
+    setLogs(prevLogs => [...prevLogs, newMessage]);
   }, []);
 
-  // Effet pour vérifier périodiquement le statut de l'ETL
+  const fetchTargetTables = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      addLogMessage('Chargement des tables cibles ETL...', 'info');
+
+      const data = await etlService.getTargetTables();
+
+      // Tri d'affichage : modules actifs d'abord, inactifs relégués à la fin,
+      // chaque groupe classé par ordre alphabétique sur le libellé.
+      const sorted = [...data].sort((a, b) => {
+        if (!!a.is_active !== !!b.is_active) return a.is_active ? -1 : 1;
+        return (a.display_name || '').localeCompare(b.display_name || '', 'fr', { sensitivity: 'base' });
+      });
+
+      setTables(sorted);
+      if (sorted.length > 0) {
+        // Sélectionner par défaut la première table active
+        const activeTable = sorted.find(t => t.is_active) || sorted[0];
+        setSelectedTable(activeTable);
+        addLogMessage(`${sorted.length} tables cibles chargées avec succès`, 'success');
+      } else {
+        addLogMessage('Aucune table cible trouvée dans la base de données', 'warning');
+      }
+    } catch (err: any) {
+      console.error('Erreur lors du chargement des tables cibles:', err);
+      setError('Impossible de charger les tables cibles. Veuillez réessayer.');
+      addLogMessage(`Erreur: ${err?.response?.data?.error || err.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [addLogMessage]);
+
+  useEffect(() => {
+    fetchTargetTables();
+  }, [fetchTargetTables]);
+
   useEffect(() => {
     let interval: number | null = null;
     
@@ -90,41 +132,11 @@ const DataLoadingPage: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [executionId, loading]);
+  }, [executionId, loading, addLogMessage]);
+
+  // Effet pour vérifier périodiquement le statut de l'ETL
 
   // Fonction pour récupérer la liste des tables cibles
-  const fetchTargetTables = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      addLogMessage('Chargement des tables cibles ETL...', 'info');
-      
-      const data = await etlService.getTargetTables();
-
-      // Tri d'affichage : modules actifs d'abord, inactifs relégués à la fin,
-      // chaque groupe classé par ordre alphabétique sur le libellé.
-      const sorted = [...data].sort((a, b) => {
-        if (!!a.is_active !== !!b.is_active) return a.is_active ? -1 : 1;
-        return (a.display_name || '').localeCompare(b.display_name || '', 'fr', { sensitivity: 'base' });
-      });
-
-      setTables(sorted);
-      if (sorted.length > 0) {
-        // Sélectionner par défaut la première table active
-        const activeTable = sorted.find(t => t.is_active) || sorted[0];
-        setSelectedTable(activeTable);
-        addLogMessage(`${sorted.length} tables cibles chargées avec succès`, 'success');
-      } else {
-        addLogMessage('Aucune table cible trouvée dans la base de données', 'warning');
-      }
-    } catch (err: any) {
-      console.error('Erreur lors du chargement des tables cibles:', err);
-      setError('Impossible de charger les tables cibles. Veuillez réessayer.');
-      addLogMessage(`Erreur: ${err?.response?.data?.error || err.message}`, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Gestionnaire de changement pour le select
   const handleTableChange = (event: any) => {
@@ -170,15 +182,6 @@ const DataLoadingPage: React.FC = () => {
   };
 
   // Ajouter un message au journal
-  const addLogMessage = (message: string, type: 'info' | 'success' | 'warning' | 'error') => {
-    const newMessage: LogMessage = {
-      id: Date.now(),
-      message,
-      type,
-      timestamp: new Date().toLocaleTimeString()
-    };
-    setLogs(prevLogs => [...prevLogs, newMessage]);
-  };
 
   return (
     <Box sx={{ p: 3, overflow: 'visible' }}>
@@ -371,4 +374,4 @@ const DataLoadingPage: React.FC = () => {
   );
 };
 
-export default DataLoadingPage; 
+export default DataLoadingPage;

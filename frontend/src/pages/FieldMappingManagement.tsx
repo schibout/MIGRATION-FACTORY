@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -87,7 +87,29 @@ const FieldMappingManagement: React.FC = () => {
   });
   
   // Récupérer les mappings
-  const fetchMappings = async () => {
+  const showSnackbar = useCallback((message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  }, []);
+
+  const fetchTablesInfo = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fieldMappingService.getTablesInfo();
+      setSourceTables(response.source_tables);
+      setTargetTables(response.target_tables);
+    } catch (error) {
+      showSnackbar('Erreur lors de la récupération des tables', 'error');
+      console.error('Error fetching tables info:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [showSnackbar]);
+
+  const fetchMappings = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fieldMappingService.getMappings(
@@ -106,32 +128,21 @@ const FieldMappingManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-  
-  // Récupérer les tables source et cible
-  const fetchTablesInfo = async () => {
-    try {
-      setLoading(true);
-      const response = await fieldMappingService.getTablesInfo();
-      setSourceTables(response.source_tables);
-      setTargetTables(response.target_tables);
-    } catch (error) {
-      showSnackbar('Erreur lors de la récupération des tables', 'error');
-      console.error('Error fetching tables info:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Charger les données initiales
+  }, [page, rowsPerPage, filters, showSnackbar]);
+
   useEffect(() => {
     fetchTablesInfo();
-  }, []);
-  
-  // Rafraîchir les mappings quand les filtres ou la pagination changent
+  }, [fetchTablesInfo]);
+
   useEffect(() => {
     fetchMappings();
-  }, [page, rowsPerPage, filters]);
+  }, [fetchMappings]);
+  
+  // Récupérer les tables source et cible
+  
+  // Charger les données initiales
+  
+  // Rafraîchir les mappings quand les filtres ou la pagination changent
   
   // Gérer la sélection d'un mapping
   const handleSelectMapping = (id: number, selected: boolean) => {
@@ -344,13 +355,6 @@ const FieldMappingManagement: React.FC = () => {
   };
   
   // Afficher un message toast
-  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity
-    });
-  };
   
   // Fermer le message toast
   const handleCloseSnackbar = () => {
