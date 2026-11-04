@@ -820,6 +820,7 @@ HCP_LIBELLE = {
     'responsable': 'Responsable',
     'numero_projet': 'N° projet',
     'a_migrer': 'À migrer',
+    'abreviation_activite': 'Abréviation activité',
     'element_otp': 'Élément OTP',
     'otp_libelle': 'Désignation OTP',
     'annee': 'Année',
@@ -841,7 +842,7 @@ def _hcp_vue():
 
 
 def _hcp_colonnes(vue):
-    return HCP_CLES[vue] + ['annee', 'periode'] + HCP_MESURES
+    return HCP_CLES[vue] + ['abreviation_activite', 'annee', 'periode'] + HCP_MESURES
 
 
 def _hcp_requete(vue):
@@ -871,7 +872,9 @@ def _hcp_requete(vue):
 
     sql = (
         f'WITH agg AS ('
-        f' SELECT {cles}, annee, periode, SUM(reel) AS reel,'
+        # Vue projet : les deux abreviations si le projet a du CAPEX et de l'OPEX sur la periode
+        f" SELECT {cles}, annee, periode, SUM(reel) AS reel,"
+        f" string_agg(DISTINCT abreviation_activite, ' / ') AS abreviation_activite,"
         f' SUM(reel_capex) AS reel_capex, SUM(reel_opex) AS reel_opex,'
         f' SUM(reel_a_qualifier) AS reel_a_qualifier,'
         f' SUM(SUM(reel)) OVER (PARTITION BY {cles} ORDER BY annee, periode) AS reel_cumule,'
@@ -973,14 +976,16 @@ def start_hcp_sync():
 # sql/historiqueCoutProjet/03_reprise_cout_projet.sql, saisies de la migration 126.
 REPRISE_COLONNES = ['numero_projet', 'projet', 'projet_libelle', 'element_otp', 'otp_libelle',
                     'nature', 'nature_source', 'montant', 'project_id_ifs', 'project_id_source',
-                    'activity_seq', 'anomalies', 'exporte']
+                    'activity_seq', 'activity_seq_source', 'abreviation_activite', 'anomalies', 'exporte']
 # Fichier attendu par IFS. ponytail: le credit = element d'OTP SAP tel quel ('SN26052IM'),
 # format a confirmer avec le modele d'import de l'OD.
 REPRISE_OD = [('element_otp', 'Centre de coûts/crédit'), ('project_id_ifs', 'ID projet IFS'),
-              ('montant', 'Montant'), ('activity_seq', "Séquence d'activité")]
+              ('montant', 'Montant'), ('activity_seq', "Séquence d'activité"),
+              ('abreviation_activite', 'Abréviation activité')]
 REPRISE_ANOMALIES = {
     'NATURE_A_QUALIFIER': "OTP sans suffixe IM / EX ni qualification manuelle",
-    'SEQUENCE_MANQUANTE': "Séquence d'activité IFS de reprise non saisie pour cette nature",
+    'SEQUENCE_MANQUANTE': "Ni séquence saisie, ni activité du projet portant l'abréviation de reprise",
+    'SEQUENCE_AMBIGUE': "Plusieurs activités du projet portent l'abréviation de reprise",
     'PROJET_IFS_INCONNU': 'ID projet IFS absent des projets IFS (project_base)',
     'SEQUENCE_INCONNUE': "Séquence d'activité absente des activités IFS du projet",
     'OTP_EN_DOUBLE': "Même élément d'OTP rattaché à plusieurs projets",
@@ -1044,6 +1049,7 @@ def put_reprise_nature(otp):
             {'o': otp, 'n': nature, 'c': body.get('commentaire'), 'u': str(get_jwt_identity())})
     else:
         return jsonify({'error': 'nature attendue : CAPEX, OPEX ou null'}), 400
+    db.session.execute(text('SELECT clean_data.maj_abreviation_activite()'))
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -1067,6 +1073,7 @@ def put_reprise_projet(numero_projet):
         {'p': numero_projet, 'i': (body.get('project_id_ifs') or '').strip() or None,
          'sc': seqs['activity_seq_capex'], 'so': seqs['activity_seq_opex'],
          'c': body.get('commentaire'), 'u': str(get_jwt_identity())})
+    db.session.execute(text('SELECT clean_data.maj_abreviation_activite()'))
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -1093,7 +1100,8 @@ def export_reprise_couts():
                      [[r[c] for c, _ in REPRISE_OD] for r in od], {'montant'})
     detail = [('numero_projet', 'N° projet'), ('projet', 'Projet SAP'), ('element_otp', 'Élément OTP'),
               ('otp_libelle', 'Désignation OTP'), ('nature', 'Nature'), ('montant', 'Montant'),
-              ('project_id_ifs', 'ID projet IFS'), ('activity_seq', "Séquence d'activité")]
+              ('project_id_ifs', 'ID projet IFS'), ('activity_seq', "Séquence d'activité"),
+              ('abreviation_activite', 'Abréviation activité')]
     _feuille_tableau(wb.create_sheet(), f'Détail arrêté {d:%d-%m-%Y}', detail,
                      [[r[c] for c, _ in detail] for r in od], {'montant'})
     return _envoyer(wb, f'reprise_couts_projet_{d:%Y%m%d}')

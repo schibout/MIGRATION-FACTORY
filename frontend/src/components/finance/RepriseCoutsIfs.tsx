@@ -43,6 +43,8 @@ interface Ligne {
   project_id_ifs: string;
   project_id_source: 'SAISIE' | 'N_PROJET';
   activity_seq: number | null;
+  activity_seq_source: 'SAISIE' | 'ABREVIATION' | null;
+  abreviation_activite: string | null;
   anomalies: string[];
   exporte: boolean;
 }
@@ -181,7 +183,7 @@ const RepriseCoutsIfs: React.FC = () => {
         l'arrêté, par élément d'OTP : ni cumul, ni plan, ni budget, ni demandes d'achat, ni commandes non
         réceptionnées (reprises séparément). <b>Arrêté mensuel uniquement</b> : SAP ne fournit que des montants par
         période (exercice juillet → juin, juillet = période 1). Nature : CAPEX si l'OTP finit par IM, OPEX par EX,
-        sinon à qualifier. ID projet IFS = n° projet, sauf saisie. Les séquences d'activité ne sont jamais déduites.
+        sinon à qualifier. ID projet IFS = n° projet, sauf saisie. Séquence d'activité = saisie, sinon celle de l'activité du projet portant l'abréviation de reprise.
       </Alert>
 
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -244,7 +246,7 @@ const RepriseCoutsIfs: React.FC = () => {
             <TableHead>
               <TableRow>
                 {['N° projet', 'Projet SAP', 'Élément OTP (crédit)', 'Désignation OTP', 'Nature', 'Montant',
-                  'ID projet IFS', "Séquence d'activité", 'Anomalies', ''].map((h) => (
+                  'ID projet IFS', "Séquence d'activité", 'Abréviation activité', 'Anomalies', ''].map((h) => (
                   <TableCell key={h} align={h === 'Montant' ? 'right' : 'left'} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</TableCell>
                 ))}
               </TableRow>
@@ -272,7 +274,11 @@ const RepriseCoutsIfs: React.FC = () => {
                     {r.project_id_ifs}
                     {r.project_id_source === 'SAISIE' && <Typography component="span" variant="caption" color="text.secondary"> (saisi)</Typography>}
                   </TableCell>
-                  <TableCell>{r.activity_seq ?? ''}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    {r.activity_seq ?? ''}
+                    {r.activity_seq_source === 'SAISIE' && <Typography component="span" variant="caption" color="text.secondary"> (saisie)</Typography>}
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{r.abreviation_activite ?? ''}</TableCell>
                   <TableCell>
                     {r.anomalies.map((a) => (
                       <Tooltip key={a} title={data?.libelles_anomalies[a] ?? a}>
@@ -288,7 +294,7 @@ const RepriseCoutsIfs: React.FC = () => {
                 </TableRow>
               ))}
               {!loading && affichees.length === 0 && (
-                <TableRow><TableCell colSpan={10} align="center">Aucune ligne</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} align="center">Aucune ligne</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -306,9 +312,9 @@ const RepriseCoutsIfs: React.FC = () => {
           )}
           <TextField label="ID projet IFS" helperText="Vide = n° projet" value={saisie?.project_id_ifs ?? ''}
             onChange={(e) => saisie && setSaisie({ ...saisie, project_id_ifs: e.target.value })} />
-          <TextField label="Séquence d'activité CAPEX" type="number" value={saisie?.activity_seq_capex ?? ''}
+          <TextField label="Séquence d'activité CAPEX" helperText="Vide = activité portant l'abréviation .20.REP" type="number" value={saisie?.activity_seq_capex ?? ''}
             onChange={(e) => saisie && setSaisie({ ...saisie, activity_seq_capex: e.target.value })} />
-          <TextField label="Séquence d'activité OPEX" type="number" value={saisie?.activity_seq_opex ?? ''}
+          <TextField label="Séquence d'activité OPEX" helperText="Vide = activité portant l'abréviation .30.REP" type="number" value={saisie?.activity_seq_opex ?? ''}
             onChange={(e) => saisie && setSaisie({ ...saisie, activity_seq_opex: e.target.value })} />
         </DialogContent>
         <DialogActions>

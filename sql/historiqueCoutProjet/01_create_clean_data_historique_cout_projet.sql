@@ -30,3 +30,8 @@ ALTER TABLE clean_data.historique_cout_projet ADD COLUMN IF NOT EXISTS numero_pr
 -- Indicateur de migration (2026-10-26) : TRUE si le n° projet est repris dans
 -- IFS, c'est-a-dire present dans clean_data.project_base (project_id).
 ALTER TABLE clean_data.historique_cout_projet ADD COLUMN IF NOT EXISTS a_migrer boolean NOT NULL DEFAULT false;
+
+-- Abreviation de l'activite de reprise IFS (2026-11-04) : <ID projet IFS>.20.REP (CAPEX)
+-- ou .30.REP (OPEX), sert a retrouver l'activite dans IFS. Stockee ici, recalculee par
+-- clean_data.maj_abreviation_activite() (03_reprise_cout_projet.sql).
+ALTER TABLE clean_data.historique_cout_projet ADD COLUMN IF NOT EXISTS abreviation_activite text;

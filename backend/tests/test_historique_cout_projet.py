@@ -168,14 +168,16 @@ def test_aucun_cumul_parent_enfant_ni_doublon(cur):
 
 
 def test_qualification_et_sequences_levent_les_anomalies(cur):
+    cur.execute('DELETE FROM clean_data.reprise_cout_otp_nature')
+    cur.execute('DELETE FROM clean_data.reprise_cout_projet_ifs')
     cur.execute("""SELECT * FROM clean_data.reprise_cout_projet('2099-06-30')
                    WHERE 'NATURE_A_QUALIFIER' = ANY(anomalies) AND EXISTS (
-                       SELECT 1 FROM clean_data.activity a WHERE a.project_id = project_id_ifs) LIMIT 1""")
+                       SELECT 1 FROM clean_data.project_activity a WHERE a.project_id = project_id_ifs) LIMIT 1""")
     r = cur.fetchone()
     assert r is not None and r['nature'] is None and not r['exporte']
     cur.execute("""INSERT INTO clean_data.reprise_cout_otp_nature (element_otp, nature, qualifie_par)
                    VALUES (%s, 'CAPEX', 'test')""", (r['element_otp'],))
-    cur.execute("""SELECT activity_seq FROM clean_data.activity WHERE project_id = %s LIMIT 1""",
+    cur.execute("""SELECT activity_seq FROM clean_data.project_activity WHERE project_id = %s LIMIT 1""",
                 (r['project_id_ifs'],))
     seq = cur.fetchone()['activity_seq']
     cur.execute("""INSERT INTO clean_data.reprise_cout_projet_ifs (numero_projet, activity_seq_capex, saisi_par)
@@ -190,3 +192,71 @@ def test_qualification_et_sequences_levent_les_anomalies(cur):
     cur.execute("""SELECT anomalies FROM clean_data.reprise_cout_projet('2099-06-30')
                    WHERE numero_projet = %s AND element_otp = %s""", (r['numero_projet'], r['element_otp']))
     assert 'SEQUENCE_INCONNUE' in cur.fetchone()['anomalies']
+
+
+def test_abreviation_activite(cur):
+    """<ID projet IFS>.20.REP si CAPEX, .30.REP si OPEX, vide si a qualifier."""
+    cur.execute("""SELECT count(*) AS n FROM clean_data.reprise_cout_projet('2099-06-30')
+                   WHERE abreviation_activite IS DISTINCT FROM CASE nature
+                       WHEN 'CAPEX' THEN project_id_ifs || '.20.REP'
+                       WHEN 'OPEX' THEN project_id_ifs || '.30.REP' END""")
+    assert cur.fetchone()['n'] == 0
+    cur.execute("""SELECT count(*) FILTER (WHERE nature = 'CAPEX') AS capex, count(*) FILTER (WHERE nature = 'OPEX') AS opex
+                   FROM clean_data.reprise_cout_projet('2099-06-30')""")
+    r = cur.fetchone()
+    assert r['capex'] > 0 and r['opex'] > 0
+
+
+def test_sequence_retrouvee_par_abreviation(cur):
+    """Activite unique a l'abreviation -> sa sequence ; deux -> ambigue ; la saisie prime."""
+    cur.execute('DELETE FROM clean_data.reprise_cout_projet_ifs')
+    cur.execute("""SELECT r.numero_projet, r.element_otp, r.abreviation_activite, r.project_id_ifs
+                   FROM clean_data.reprise_cout_projet('2099-06-30') r
+                   WHERE r.nature IS NOT NULL AND r.montant <> 0 AND (
+                       SELECT count(*) FROM clean_data.project_activity a WHERE a.project_id = r.project_id_ifs) >= 2
+                   LIMIT 1""")
+    r = cur.fetchone()
+    cur.execute('SELECT activity_seq FROM clean_data.project_activity WHERE project_id = %s ORDER BY activity_seq LIMIT 2',
+                (r['project_id_ifs'],))
+    seq1, seq2 = [x['activity_seq'] for x in cur.fetchall()]
+
+    def ligne():
+        cur.execute("""SELECT * FROM clean_data.reprise_cout_projet('2099-06-30')
+                       WHERE numero_projet = %s AND element_otp = %s""", (r['numero_projet'], r['element_otp']))
+        return cur.fetchone()
+
+    assert 'SEQUENCE_MANQUANTE' in ligne()['anomalies']
+    maj = 'UPDATE clean_data.project_activity SET short_name = %s WHERE project_id = %s AND activity_seq = %s'
+    cur.execute(maj, (r['abreviation_activite'], r['project_id_ifs'], seq1))
+    l = ligne()
+    assert l['activity_seq'] == seq1 and l['activity_seq_source'] == 'ABREVIATION'
+    assert not {'SEQUENCE_MANQUANTE', 'SEQUENCE_INCONNUE'} & set(l['anomalies'])
+    cur.execute(maj, (r['abreviation_activite'], r['project_id_ifs'], seq2))
+    l = ligne()
+    assert l['activity_seq'] is None and 'SEQUENCE_AMBIGUE' in l['anomalies'] and 'SEQUENCE_MANQUANTE' not in l['anomalies']
+    cur.execute("""INSERT INTO clean_data.reprise_cout_projet_ifs
+                   (numero_projet, activity_seq_capex, activity_seq_opex, saisi_par) VALUES (%s, %s, %s, 'test')""",
+                (r['numero_projet'], seq2, seq2))
+    l = ligne()
+    assert l['activity_seq'] == seq2 and l['activity_seq_source'] == 'SAISIE' and 'SEQUENCE_AMBIGUE' not in l['anomalies']
+
+
+def test_abreviation_dans_la_vue_de_l_historique(cur):
+    """Colonne stockee (historique_cout_projet) : projets a migrer seulement, ID saisi prioritaire."""
+    cur.execute("""SELECT count(*) FILTER (WHERE NOT a_migrer AND abreviation_activite IS NOT NULL) AS hors_perimetre,
+                          count(*) FILTER (WHERE a_migrer AND nature = 'CAPEX'
+                                           AND abreviation_activite <> numero_projet || '.20.REP') AS capex_ko,
+                          count(*) FILTER (WHERE a_migrer AND nature = 'OPEX'
+                                           AND abreviation_activite <> numero_projet || '.30.REP') AS opex_ko
+                   FROM clean_data.v_historique_cout_projet""")
+    r = cur.fetchone()
+    assert (r['hors_perimetre'], r['capex_ko'], r['opex_ko']) == (0, 0, 0)
+    cur.execute("""SELECT numero_projet FROM clean_data.v_historique_cout_projet
+                   WHERE a_migrer AND nature = 'CAPEX' LIMIT 1""")
+    p = cur.fetchone()['numero_projet']
+    cur.execute("""INSERT INTO clean_data.reprise_cout_projet_ifs (numero_projet, project_id_ifs, saisi_par)
+                   VALUES (%s, 'X.1', 'test') ON CONFLICT (numero_projet) DO UPDATE SET project_id_ifs = 'X.1'""", (p,))
+    cur.execute('SELECT clean_data.maj_abreviation_activite()')
+    cur.execute("""SELECT DISTINCT abreviation_activite AS a FROM clean_data.v_historique_cout_projet
+                   WHERE numero_projet = %s AND nature = 'CAPEX'""", (p,))
+    assert [x['a'] for x in cur.fetchall()] == ['X.1.20.REP']

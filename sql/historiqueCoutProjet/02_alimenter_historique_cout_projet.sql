@@ -95,6 +95,7 @@ BEGIN
         OR COALESCE(SUM(v.mt) FILTER (WHERE v.wrttp = '21'), 0) <> 0;
 
     GET DIAGNOSTICS v_n = ROW_COUNT;
+    PERFORM clean_data.maj_abreviation_activite();
     RAISE NOTICE 'historique_cout_projet : % lignes chargees (societe %)', v_n, p_bukrs;
     RETURN v_n;
 END;
