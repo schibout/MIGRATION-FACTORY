@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fournisseurs IFS</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #F6F7FA; --surface: #FFFFFF; --surface-sunken: #EEF1F6;
+    --ink: #17202B; --ink-soft: #4C5666; --ink-faint: #7C8698; --line: #DDE2EA;
+    --accent: #2454C7; --accent-ink: #17347A; --accent-soft: #E7EDFB; --accent-soft-line: #C6D4F5;
+    --success: #187A57; --success-soft: #E3F5EC; --success-line: #BFE6D3;
+    --amber: #9C6B0B; --amber-soft: #FBF0DB; --amber-line: #EFD6A0;
+    --shadow: 0 1px 2px rgba(23,32,43,0.04), 0 8px 24px -12px rgba(23,32,43,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10141C; --surface: #171D28; --surface-sunken: #131822;
+      --ink: #E8ECF3; --ink-soft: #A7B0C0; --ink-faint: #737E91; --line: #262E3C;
+      --accent: #7CA0FF; --accent-ink: #C4D4FF; --accent-soft: #1B2947; --accent-soft-line: #2C3F6C;
+      --success: #4FCB9B; --success-soft: #143327; --success-line: #1F5A44;
+      --amber: #E3B255; --amber-soft: #34290F; --amber-line: #5A4517;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10141C; --surface: #171D28; --surface-sunken: #131822;
+    --ink: #E8ECF3; --ink-soft: #A7B0C0; --ink-faint: #737E91; --line: #262E3C;
+    --accent: #7CA0FF; --accent-ink: #C4D4FF; --accent-soft: #1B2947; --accent-soft-line: #2C3F6C;
+    --success: #4FCB9B; --success-soft: #143327; --success-line: #1F5A44;
+    --amber: #E3B255; --amber-soft: #34290F; --amber-line: #5A4517;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.85em; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.45em; color: var(--accent-ink); white-space: nowrap; }
+  a { color: var(--accent); }
+  .masthead { padding: 3.2rem 1.5rem 2.4rem; border-bottom: 1px solid var(--line); background: radial-gradient(1100px 420px at 12% -10%, var(--accent-soft) 0%, transparent 60%); }
+  .masthead-inner { max-width: 920px; margin: 0 auto; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-soft-line); padding: 0.35rem 0.7rem; border-radius: 999px; margin-bottom: 1.2rem; }
+  h1 { font-size: clamp(2rem, 4vw, 2.7rem); line-height: 1.1; letter-spacing: -0.015em; margin: 0 0 0.9rem; font-weight: 700; text-wrap: balance; }
+  .subtitle { font-size: 1.05rem; color: var(--ink-soft); max-width: 66ch; margin: 0 0 1.6rem; }
+  .flow-strip { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .flow-strip .node { font-family: "IBM Plex Mono", monospace; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); padding: 0.4rem 0.75rem; border-radius: 7px; box-shadow: var(--shadow); }
+  .flow-strip .arrow { color: var(--ink-faint); }
+  .layout { max-width: 920px; margin: 0 auto; padding: 2.6rem 1.5rem 5rem; }
+  .toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; margin-bottom: 3rem; }
+  .toc a { text-decoration: none; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem 0.7rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .toc a:hover { border-color: var(--accent-soft-line); }
+  .toc .n { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); }
+  .toc .t { font-size: 0.82rem; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  section.step { padding-bottom: 2.6rem; margin-bottom: 2.6rem; border-bottom: 1px solid var(--line); scroll-margin-top: 1.5rem; }
+  section.step:last-of-type { border-bottom: none; }
+  .step-head { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+  .step-num { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: "IBM Plex Mono", monospace; font-weight: 600; box-shadow: var(--shadow); }
+  .step-kicker { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.2rem; }
+  h2 { font-size: 1.45rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 0.6rem; font-weight: 600; }
+  p { margin: 0.6rem 0; }
+  .intro { color: var(--ink-soft); max-width: 70ch; }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1.2rem; font-size: 0.92rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--surface-sunken); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-soft); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+  .callout { display: flex; gap: 0.8rem; padding: 0.9rem 1.1rem; border-radius: 10px; border: 1px solid var(--accent-soft-line); background: var(--accent-soft); margin: 1rem 0; font-size: 0.95rem; }
+  .callout.warn { border-color: var(--amber-line); background: var(--amber-soft); }
+  .callout.ok { border-color: var(--success-line); background: var(--success-soft); }
+  .callout .ic { flex: none; font-weight: 700; }
+  ul { padding-left: 1.3rem; margin: 0.5rem 0; }
+  li { margin: 0.25rem 0; }
+  .btn { display: inline-block; font-size: 0.82rem; font-weight: 600; padding: 0.1rem 0.55rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pill { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; font-weight: 600; border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
+  .pill.warn { color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber-line); }
+  .pill.ok { color: var(--success); background: var(--success-soft); border: 1px solid var(--success-line); }
+  .back { display: inline-block; margin-bottom: 1.2rem; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <span class="eyebrow">Migration Factory &middot; Données IFS</span>
+    <h1>Fournisseurs IFS</h1>
+    <p class="subtitle">
+      Les tables fournisseurs telles qu'elles partiront vers IFS. Ce guide explique ce que montre chaque onglet,
+      comment recharger les tables et comment lire les contrôles.
+    </p>
+    <div class="flow-strip">
+      <span class="node">SAP</span><span class="arrow">&rarr;</span>
+      <span class="node">Finance &gt; Fournisseurs (périmètre)</span><span class="arrow">&rarr;</span>
+      <span class="node">Module ETL fournisseurs</span><span class="arrow">&rarr;</span>
+      <span class="node">Tables clean_data</span><span class="arrow">&rarr;</span>
+      <span class="node">Écran / Excel</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <a class="back" href="index.html">&larr; Sommaire des modes d'emploi</a>
+
+  <nav class="toc">
+    <a href="#s1"><span class="n">01</span><span class="t">Les onglets</span></a>
+    <a href="#s2"><span class="n">02</span><span class="t">Recharger les tables</span></a>
+    <a href="#s3"><span class="n">03</span><span class="t">Lire les contrôles</span></a>
+    <a href="#s4"><span class="n">04</span><span class="t">Recherche et export</span></a>
+    <a href="#s5"><span class="n">05</span><span class="t">Limites connues</span></a>
+  </nav>
+
+  <section class="step" id="s1">
+    <div class="step-head"><div class="step-num">1</div><div><div class="step-kicker">Consultation</div><h2>Les onglets</h2></div></div>
+    <p class="intro">Quand un onglet regroupe plusieurs tables, cliquez sur une pastille pour changer de table. Le nombre entre parenthèses est son nombre de lignes.</p>
+    <table>
+      <tr><th>Onglet</th><th>Contenu</th><th>Tables</th></tr>
+      <tr><td>Synthèse</td><td>Une ligne par fournisseur chargé, avec des compteurs</td><td>Calculée</td></tr>
+      <tr><td>Général</td><td>Identité et identifiants internes</td><td><code>supplier_info_general</code>, <code>supplier_info_our_id</code></td></tr>
+      <tr><td>Achats</td><td>Paramètres d'achat</td><td><code>supplier</code></td></tr>
+      <tr><td>Adresses</td><td>Adresses, types d'adresse, livraison</td><td><code>supplier_info_address</code>, <code>supplier_info_address_type</code>, <code>supplier_address</code></td></tr>
+      <tr><td>Communication</td><td>Téléphones, fax, e-mails, contacts</td><td><code>comm_method</code>, <code>supplier_info_contact</code></td></tr>
+      <tr><td>Fiscalité</td><td>Informations fiscales et numéros SIREN, SIRET, TVA</td><td><code>supplier_document_tax_info</code>, <code>supplier_tax_info</code>, <code>supplier_delivery_tax_code</code>, <code>supplier_addr_tax_number</code></td></tr>
+      <tr><td>Facturation et paiement</td><td>Facturation, paiement, coordonnées bancaires</td><td><code>identity_invoice_info</code>, <code>identity_pay_info</code>, <code>payment_way_per_identity</code>, <code>payment_address</code></td></tr>
+      <tr><td>Articles</td><td>Fournisseurs de chaque article d'achat</td><td><code>purchase_part_supplier</code></td></tr>
+      <tr><td>Contrôles</td><td>Écarts et fournisseurs incomplets</td><td>Calculée</td></tr>
+    </table>
+    <div class="callout"><span class="ic">i</span><div>L'écran est en lecture seule : un rechargement écraserait toute modification faite dans ces tables. Le périmètre se corrige dans Finance &gt; Fournisseurs.</div></div>
+  </section>
+
+  <section class="step" id="s2">
+    <div class="step-head"><div class="step-num">2</div><div><div class="step-kicker">Boutons</div><h2>Recharger les tables</h2></div></div>
+    <table>
+      <tr><th>Bouton</th><th>Extraction SAP</th><th>Périmètre</th><th>Module ETL fournisseurs</th></tr>
+      <tr><td><span class="btn">Recalculer</span></td><td>Non</td><td>Repris tel quel</td><td>Oui</td></tr>
+      <tr><td><span class="btn primary">Synchroniser SAP</span></td><td>Oui</td><td>Recalculé, même date d'arrêté</td><td>Oui</td></tr>
+    </table>
+    <ul>
+      <li>Utilisez <span class="btn">Recalculer</span> après avoir calculé le périmètre ou importé le fichier validé dans Finance &gt; Fournisseurs.</li>
+      <li>La liste reste en attente pendant le rechargement. Elle se met à jour à la fin.</li>
+      <li>En cas d'échec du module ETL, les tables restent dans leur état précédent et l'erreur s'affiche.</li>
+      <li>Ces boutons remplacent les données chargées : les exports IFS suivants reprendront le nouveau contenu.</li>
+    </ul>
+  </section>
+
+  <section class="step" id="s3">
+    <div class="step-head"><div class="step-num">3</div><div><div class="step-kicker">Qualité</div><h2>Lire les contrôles</h2></div></div>
+    <table>
+      <tr><th>Contrôle</th><th>Signification</th><th>Que faire</th></tr>
+      <tr><td>Périmètre non chargé</td><td>Fournisseur du périmètre absent des tables chargées</td><td>Recalculer</td></tr>
+      <tr><td>Chargé hors périmètre</td><td>Fournisseur chargé qui n'est plus dans le périmètre</td><td>Recalculer</td></tr>
+      <tr><td>Absent : &hellip;</td><td>Fournisseur chargé sans ligne dans cette table</td><td>Vérifier ses données SAP, puis le module ETL</td></tr>
+    </table>
+    <p>Une pastille orange signale un contrôle avec au moins un fournisseur concerné. Certains cas peuvent être normaux, par exemple un fournisseur sans méthode de communication dans SAP.</p>
+  </section>
+
+  <section class="step" id="s4">
+    <div class="step-head"><div class="step-num">4</div><div><div class="step-kicker">Utilisation</div><h2>Recherche et export</h2></div></div>
+    <ul>
+      <li>La recherche porte sur le N° IFS, le N° SAP et le nom, ainsi que sur le code article dans l'onglet Articles. Validez avec Entrée.</li>
+      <li><span class="btn">Exporter Excel</span> produit une feuille par table de l'onglet affiché, avec la recherche appliquée et toutes les lignes.</li>
+      <li>Les colonnes gardent leur nom technique IFS. Les colonnes d'audit ne sont pas affichées.</li>
+    </ul>
+  </section>
+
+  <section class="step" id="s5">
+    <div class="step-head"><div class="step-num">5</div><div><div class="step-kicker">À savoir</div><h2>Limites connues</h2></div></div>
+    <ul>
+      <li><code>purchase_part_supplier</code> dépend du module ETL Articles : ces boutons ne la rechargent pas.</li>
+      <li>Un fournisseur sans N° IFS n'est pas chargé. Importez d'abord le fichier validé dans Finance &gt; Fournisseurs.</li>
+      <li>Un périmètre vide arrête le rechargement avec une erreur.</li>
+      <li>Une seule synchronisation à la fois depuis cet écran. Évitez de lancer en même temps le module depuis l'écran ETL.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

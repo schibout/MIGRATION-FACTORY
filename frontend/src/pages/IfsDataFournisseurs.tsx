@@ -1,1074 +1,337 @@
 import {
-    Close as CloseIcon,
-    FileDownload as DownloadIcon,
-    ExpandLess as ExpandLessIcon,
-    ExpandMore as ExpandMoreIcon,
-    Description as FileIcon,
+    Cached as RecalculIcon,
+    FileDownload as ExcelIcon,
+    LocalShipping as FournisseurIcon,
     Search as SearchIcon,
-    TableChart as TableIcon
+    Sync as SyncIcon,
 } from '@mui/icons-material';
 import {
+    Alert,
     Box,
     Button,
-    Card,
-    CardContent,
     Chip,
-    CircularProgress,
-    Collapse,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Divider,
-    FormControl,
-    Grid,
-    IconButton,
     InputAdornment,
-    InputLabel,
-    ListItemIcon,
-    ListItemText,
-    Menu,
-    MenuItem,
+    LinearProgress,
     Paper,
-    Select,
-    SelectChangeEvent,
+    Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TablePagination,
+    TableRow,
+    Tabs,
     TextField,
-    Typography
+    Tooltip,
+    Typography,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
-import IfsDataTable from '../components/ifs/IfsDataTable';
-import ifsTablesService, { ExportOptions, IfsTable, TableData } from '../services/ifsTablesService';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import api from '../services/api';
 
-const IfsDataFournisseurs = () => {
-  // Données principales
-  const [tables, setTables] = useState<IfsTable[]>([]);
-  const [selectedTable, setSelectedTable] = useState<string>('');
-  const [tableData, setTableData] = useState<TableData | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  
-  // État de pagination et tri
-  const [page, setPage] = useState<number>(0);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
-  const [sortField, setSortField] = useState<string>('');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  
-  // États pour la recherche avancée
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [advancedFilterOpen, setAdvancedFilterOpen] = useState<boolean>(false);
-  const [filters, setFilters] = useState<Record<string, {value: string, operator: string}>>({});
-  const [availableColumns, setAvailableColumns] = useState<string[]>([]);
-  const [selectedFilterColumn, setSelectedFilterColumn] = useState<string>('');
-  const [filterValue, setFilterValue] = useState<string>('');
-  const [selectedOperator, setSelectedOperator] = useState<string>('contains');
-  
-  // État pour l'export
-  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
-  const [exporting, setExporting] = useState<boolean>(false);
-  
-  // État pour les dialogues
-  const [viewDialogOpen, setViewDialogOpen] = useState<boolean>(false);
-  const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
-  const [currentRow, setCurrentRow] = useState<any>(null);
-  const [editedValues, setEditedValues] = useState<Record<string, any>>({});
+// Même logique que FinanceHistoriqueCouts : onglets, liste paginée, export Excel, Recalculer / Synchroniser SAP.
+// Source : tables clean_data du module ETL fournisseurs (api/ifs_fournisseurs.py), en lecture seule.
 
-  // Opérateurs disponibles
-  const filterOperators = [
-    { value: 'contains', label: 'Contient' },
-    { value: 'equals', label: '=' },
-    { value: 'not_equals', label: '≠' },
-    { value: 'greater_than', label: '>' },
-    { value: 'greater_equal', label: '>=' },
-    { value: 'less_than', label: '<' },
-    { value: 'less_equal', label: '<=' },
-    { value: 'starts_with', label: 'Commence par' },
-    { value: 'ends_with', label: 'Finit par' },
-    { value: 'is_null', label: 'Est vide' },
-    { value: 'is_not_null', label: 'N\'est pas vide' }
-  ];
+type Row = Record<string, string | number | boolean | null>;
+type Onglet = 'synthese' | 'general' | 'achats' | 'adresses' | 'communication' | 'fiscalite' | 'paiement' | 'articles' | 'controles' | 'mode_emploi';
 
-  // Chargement initial des tables
-  useEffect(() => {
-    const loadTables = async () => {
-      try {
-        const tablesData = await ifsTablesService.getTables();
-        setTables(tablesData);
-        if (tablesData.length > 0) {
-          setSelectedTable(tablesData[0].id);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des tables:', error);
-      }
-    };
-    
-    loadTables();
-  }, []);
-  
-  // Mise à jour des colonnes disponibles pour les filtres
-  useEffect(() => {
-    if (tableData && tableData.columns) {
-      const columns = tableData.columns.map(col => col.name);
-      setAvailableColumns(columns);
-      
-      // Sélectionner la première colonne par défaut si aucune n'est sélectionnée
-      if (columns.length > 0 && !selectedFilterColumn) {
-        setSelectedFilterColumn(columns[0]);
-      }
-    }
-  }, [tableData, selectedFilterColumn]);
-  
-  // Chargement des données de la table
-  useEffect(() => {
-    if (!selectedTable) return;
-    
-    const loadTableData = async () => {
+interface SyncStatus {
+  status: 'never' | 'running' | 'completed' | 'failed';
+  step?: string;
+  progress?: number;
+  error?: string | null;
+  rows?: number | null;
+  started_at?: string;
+  finished_at?: string | null;
+}
+
+interface Colonne { key: string; label: string; kind: 'bool' | 'text' }
+interface SourceInfo { key: string; label: string; lignes: number }
+
+interface ListResponse {
+  table: string;
+  tables: SourceInfo[];
+  rows: Row[];
+  total: number;
+  fournisseurs: number;
+  colonnes: Colonne[];
+  sync: SyncStatus | null;
+}
+
+const ONGLETS: { value: Onglet; label: string; description: string }[] = [
+  { value: 'synthese', label: 'Synthèse',
+    description: "Une ligne par fournisseur chargé, avec ses principales informations et le nombre d'adresses, de communications, de numéros fiscaux et d'articles." },
+  { value: 'general', label: 'Général',
+    description: 'Identité du fournisseur dans IFS et identifiants internes.' },
+  { value: 'achats', label: 'Achats',
+    description: "Paramètres d'achat du fournisseur (clean_data.supplier)." },
+  { value: 'adresses', label: 'Adresses',
+    description: 'Adresses du fournisseur, types de chaque adresse et adresses de livraison.' },
+  { value: 'communication', label: 'Communication',
+    description: 'Téléphones, fax et e-mails, et contacts du fournisseur.' },
+  { value: 'fiscalite', label: 'Fiscalité',
+    description: 'Informations fiscales, codes de taxe de livraison et numéros fiscaux (SIREN, SIRET, TVA).' },
+  { value: 'paiement', label: 'Facturation et paiement',
+    description: 'Facturation, paiement, modes de paiement et adresses de paiement (coordonnées bancaires).' },
+  { value: 'articles', label: 'Articles',
+    description: "Liens article / fournisseur d'achat. Cette table dépend du module ETL Articles : Recalculer et Synchroniser SAP ne la rechargent pas." },
+  { value: 'controles', label: 'Contrôles',
+    description: 'Écarts entre le périmètre (clean_data.ifs_fournisseurs) et les tables chargées, et fournisseurs absents d\'une table attendue. Choisir un contrôle pour voir les fournisseurs concernés.' },
+  { value: 'mode_emploi', label: "Mode d'emploi",
+    description: "Tables affichées, fonctionnement des boutons et limites de l'écran." },
+];
+
+// Guide HTML autonome (frontend/public/guides/, copie dans docs/guides/), aussi listé dans Mode d'emploi.
+const GUIDE = '/guides/ifs-fournisseurs.html';
+
+const nombre = (v: number) => v.toLocaleString('fr-FR');
+const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : '');
+const formatCell = (v: Row[string], kind: Colonne['kind']) => {
+  if (kind === 'bool') return v ? 'Oui' : 'Non';
+  return v == null ? '' : String(v);
+};
+
+const IfsDataFournisseurs: React.FC = () => {
+  const [onglet, setOnglet] = useState<Onglet>('synthese');
+  const [table, setTable] = useState('');
+  const [data, setData] = useState<ListResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [sync, setSync] = useState<SyncStatus | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const derniereRequete = useRef(0); // une réponse lente ne doit pas écraser l'onglet affiché
+
+  const load = useCallback(async () => {
+    if (onglet === 'mode_emploi') return;
+    const requete = ++derniereRequete.current;
+    try {
       setLoading(true);
-      try {
-        const data = await ifsTablesService.getTableData(
-          selectedTable,
-          page,
-          rowsPerPage,
-          sortField,
-          sortDirection,
-          searchTerm,
-          filters
-        );
-        setTableData(data);
-      } catch (error) {
-        console.error('Erreur lors du chargement des données:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadTableData();
-  }, [selectedTable, page, rowsPerPage, sortField, sortDirection, searchTerm, filters]);
-  
-  // Gestion du changement de table
-  const handleTableChange = (event: SelectChangeEvent) => {
-    const tableId = event.target.value;
-    setSelectedTable(tableId);
-    setPage(0);
-    setSortField('');
-    setSortDirection('asc');
-    setSearchTerm('');
-    setFilters({});
-    setAdvancedFilterOpen(false);
-  };
-  
-  // Gestion de la pagination
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
-  
-  const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setRowsPerPage(newRowsPerPage);
-    setPage(0);
-  };
-  
-  // Gestion du tri
-  const handleSortChange = (field: string, direction: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(direction);
-  };
-  
-  // Gestion de la recherche
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
-    setPage(0); // Réinitialiser la pagination lors de la recherche
-  };
-  
-  const handleSearchSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    // La recherche est déjà déclenchée par l'effet useEffect
-  };
-  
-  // Gestion des filtres avancés
-  const toggleAdvancedFilter = () => {
-    setAdvancedFilterOpen(!advancedFilterOpen);
-  };
-  
-  const handleFilterColumnChange = (event: SelectChangeEvent) => {
-    setSelectedFilterColumn(event.target.value);
-  };
-  
-  const handleFilterValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilterValue(event.target.value);
-  };
+      setError(null);
+      const res = await api.get<ListResponse>('/ifs-data/fournisseurs', {
+        params: { onglet, table, search, page: page + 1, page_size: pageSize },
+      });
+      if (requete !== derniereRequete.current) return;
+      setData(res.data);
+      setSync(res.data.sync);
+    } catch (err) {
+      if (requete !== derniereRequete.current) return;
+      console.error('Erreur chargement fournisseurs IFS:', err);
+      setError('Erreur lors du chargement des fournisseurs');
+    } finally {
+      if (requete === derniereRequete.current) setLoading(false);
+    }
+  }, [onglet, table, search, page, pageSize]);
 
-  const handleOperatorChange = (event: SelectChangeEvent) => {
-    setSelectedOperator(event.target.value);
-  };
-  
-  const addFilter = () => {
-    if (selectedFilterColumn && (filterValue || ['is_null', 'is_not_null'].includes(selectedOperator))) {
-      setFilters(prev => ({
-        ...prev,
-        [selectedFilterColumn]: { value: filterValue, operator: selectedOperator }
-      }));
-      setFilterValue('');
-      setPage(0); // Réinitialiser la pagination lors de l'ajout d'un filtre
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Suivi de la synchronisation en cours (rechargement de la liste à la fin)
+  useEffect(() => {
+    if (sync?.status !== 'running') return undefined;
+    const timer = setInterval(async () => {
+      try {
+        const res = await api.get<SyncStatus>('/ifs-data/fournisseurs/sync');
+        setSync(res.data);
+        if (res.data.status !== 'running') load();
+      } catch (err) {
+        console.error('Erreur statut synchronisation:', err);
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [sync?.status, load]);
+
+  // 'sap' : extraction SAP, périmètre puis module ETL ; 'mf' : module ETL seul
+  const handleSync = async (source: 'sap' | 'mf') => {
+    try {
+      setError(null);
+      const res = await api.post<SyncStatus>('/ifs-data/fournisseurs/sync', { source });
+      setSync(res.data);
+    } catch (err: any) {
+      if (err?.response?.status === 409) setSync(err.response.data);
+      else setError('Impossible de lancer la synchronisation');
     }
   };
-  
-  const removeFilter = (columnName: string) => {
-    const newFilters = { ...filters };
-    delete newFilters[columnName];
-    setFilters(newFilters);
-    setPage(0);
-  };
-  
-  const clearAllFilters = () => {
-    setFilters({});
-    setSearchTerm('');
-    setPage(0);
-  };
-  
-  // Gestion de l'export
-  const handleExportClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setExportMenuAnchor(event.currentTarget);
-  };
-  
-  const handleExportClose = () => {
-    setExportMenuAnchor(null);
-  };
-  
-  const handleExport = async (format: 'csv' | 'excel') => {
-    if (!selectedTable || !tableData) return;
-    
+
+  const handleExport = async () => {
     try {
       setExporting(true);
-      
-      // Préparer les colonnes à exporter (filtrer les colonnes système)
-      const fields = tableData.columns
-        .filter(col => !['created_timestamp', 'updated_timestamp', 'created_by', 'updated_by', 'is_deleted'].includes(col.name))
-        .map(column => column.name);
-      
-      // Options d'export avec les filtres actuels
-      const options: ExportOptions = {
-        format,
-        filename: `${selectedTable}_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
-        includeHeaders: true,
-        useColumnNames: true,  // Utiliser les noms de colonnes plutôt que les descriptions
-        searchTerm,
-        filters
-      };
-      
-      // Exécuter l'export
-      const blob = await ifsTablesService.exportTableData(selectedTable, fields, options);
-      
-      // Télécharger le fichier
-      ifsTablesService.downloadExport(blob, options.filename || 'export.csv');
-      
-    } catch (error) {
-      console.error('Erreur lors de l\'export des données:', error);
-      alert('Une erreur est survenue lors de l\'export des données.');
+      setError(null);
+      const res = await api.get('/ifs-data/fournisseurs/export.xlsx', { params: { onglet, search }, responseType: 'blob' });
+      const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
+      const url = window.URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = match?.[1] ?? 'fournisseurs_ifs.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erreur export Excel fournisseurs IFS:', err);
+      setError("Erreur lors de l'export Excel");
     } finally {
       setExporting(false);
-      handleExportClose();
-    }
-  };
-  
-  // Gestion des actions sur les lignes
-  const handleViewRow = (row: any) => {
-    setCurrentRow(row);
-    setViewDialogOpen(true);
-  };
-  
-  const handleEditRow = (row: any) => {
-    setCurrentRow(row);
-    setEditedValues(row);
-    setEditDialogOpen(true);
-  };
-  
-  const handleDeleteRow = (row: any) => {
-    setCurrentRow(row);
-    setDeleteDialogOpen(true);
-  };
-  
-  const handleViewDialogClose = () => {
-    setViewDialogOpen(false);
-  };
-  
-  const handleEditDialogClose = () => {
-    setEditDialogOpen(false);
-  };
-  
-  const handleDeleteDialogClose = () => {
-    setDeleteDialogOpen(false);
-  };
-  
-  // Mise à jour des valeurs éditées
-  const handleInputChange = (fieldName: string, value: any) => {
-    setEditedValues((prev) => ({
-      ...prev,
-      [fieldName]: value
-    }));
-  };
-  
-  // Sauvegarde des modifications
-  const handleSaveEdit = async () => {
-    try {
-      if (!currentRow || !tableData) return;
-      
-      await ifsTablesService.updateRecord(
-        selectedTable, 
-        currentRow.id || Object.values(currentRow)[0], 
-        editedValues
-      );
-      
-      const data = await ifsTablesService.getTableData(
-        selectedTable,
-        page,
-        rowsPerPage,
-        sortField,
-        sortDirection,
-        searchTerm,
-        filters
-      );
-      setTableData(data);
-      
-      setEditDialogOpen(false);
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour:', error);
-      alert('Une erreur est survenue lors de la mise à jour des données.');
-    }
-  };
-  
-  // Suppression d'une ligne
-  const handleConfirmDelete = async () => {
-    try {
-      if (!currentRow) {
-        alert('Aucune ligne sélectionnée pour suppression.');
-        return;
-      }
-      
-      // Déterminer l'identifiant à utiliser pour la suppression
-      let recordId;
-      
-      // Si c'est la table supplier, on utilise spécifiquement vendor_no
-      if (selectedTable === 'public.supplier' && currentRow.vendor_no) {
-        recordId = currentRow.vendor_no;
-      } 
-      // Si un champ id est disponible, l'utiliser
-      else if (currentRow.id) {
-        recordId = currentRow.id;
-      }
-      // Pour les autres tables, essayer de trouver un identifiant approprié
-      else {
-        // Rechercher dans l'ordre: champ *_id, vendor_no, premier champ
-        const idFields = Object.keys(currentRow).filter(
-          key => key.toLowerCase().includes('_id') || 
-                 key.toLowerCase() === 'id' ||
-                 key.toLowerCase() === 'vendor_no' ||
-                 key.toLowerCase().includes('_no')
-        );
-        
-        if (idFields.length > 0) {
-          // Trier pour privilégier id, puis *_id, puis vendor_no
-          const sortedFields = idFields.sort((a, b) => {
-            if (a.toLowerCase() === 'id') return -1;
-            if (b.toLowerCase() === 'id') return 1;
-            if (a.toLowerCase().includes('_id')) return -1;
-            if (b.toLowerCase().includes('_id')) return 1;
-            if (a.toLowerCase() === 'vendor_no') return -1;
-            if (b.toLowerCase() === 'vendor_no') return 1;
-            return 0;
-          });
-          
-          recordId = currentRow[sortedFields[0]];
-        } else {
-          // Fallback: prendre la première valeur
-          recordId = Object.values(currentRow)[0];
-        }
-      }
-      
-      if (!recordId) {
-        alert('Impossible de déterminer l\'identifiant de l\'enregistrement à supprimer.');
-        return;
-      }
-      
-      console.log(`Suppression de l'enregistrement avec ID: ${recordId} dans la table ${selectedTable}`);
-      
-      const result = await ifsTablesService.deleteRecord(selectedTable, recordId);
-      
-      if (!result.success) {
-        throw new Error(result.message);
-      }
-      
-      // Rafraîchir les données
-      const data = await ifsTablesService.getTableData(
-        selectedTable,
-        page,
-        rowsPerPage,
-        sortField,
-        sortDirection,
-        searchTerm,
-        filters
-      );
-      setTableData(data);
-      
-      // Fermer le dialogue et afficher un message de succès
-      setDeleteDialogOpen(false);
-      
-      // Option: afficher un message Toast de succès
-      // showToast('Enregistrement supprimé avec succès', 'success');
-      
-    } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      alert(`Erreur lors de la suppression: ${errorMessage}`);
     }
   };
 
-  // Suppression multiple d'enregistrements
-  const handleDeleteMultiple = async (rowsToDelete: any[]) => {
-    try {
-      if (!rowsToDelete.length) {
-        return;
-      }
-      
-      // Confirmation avant suppression
-      const confirmDelete = window.confirm(
-        `Êtes-vous sûr de vouloir supprimer ${rowsToDelete.length} enregistrement(s) ? Cette action est irréversible.`
-      );
-      
-      if (!confirmDelete) {
-        return;
-      }
-      
-      // Afficher un indicateur de chargement ou désactiver l'interface pendant le traitement
-      setLoading(true);
-      
-      // Compteurs pour les statistiques
-      let successCount = 0;
-      let errorCount = 0;
-      let errorMessages: string[] = [];
-      
-      // Fonction pour obtenir l'identifiant d'un enregistrement
-      const getRecordId = (row: any) => {
-        // Si c'est la table supplier, on utilise spécifiquement vendor_no
-        if (selectedTable === 'public.supplier' && row.vendor_no) {
-          return row.vendor_no;
-        } 
-        // Si un champ id est disponible, l'utiliser
-        else if (row.id) {
-          return row.id;
-        }
-        // Pour les autres tables, essayer de trouver un identifiant approprié
-        else {
-          // Rechercher dans l'ordre: champ *_id, vendor_no, premier champ
-          const idFields = Object.keys(row).filter(
-            key => key.toLowerCase().includes('_id') || 
-                   key.toLowerCase() === 'id' ||
-                   key.toLowerCase() === 'vendor_no' ||
-                   key.toLowerCase().includes('_no')
-          );
-          
-          if (idFields.length > 0) {
-            // Trier pour privilégier id, puis *_id, puis vendor_no
-            const sortedFields = idFields.sort((a, b) => {
-              if (a.toLowerCase() === 'id') return -1;
-              if (b.toLowerCase() === 'id') return 1;
-              if (a.toLowerCase().includes('_id')) return -1;
-              if (b.toLowerCase().includes('_id')) return 1;
-              if (a.toLowerCase() === 'vendor_no') return -1;
-              if (b.toLowerCase() === 'vendor_no') return 1;
-              return 0;
-            });
-            
-            return row[sortedFields[0]];
-          } else {
-            // Fallback: prendre la première valeur
-            return Object.values(row)[0];
-          }
-        }
-      };
-      
-      // Traiter les suppressions en série pour éviter de surcharger le serveur
-      for (const row of rowsToDelete) {
-        try {
-          const recordId = getRecordId(row);
-          
-          if (!recordId) {
-            errorCount++;
-            errorMessages.push(`Impossible de déterminer l'identifiant d'un enregistrement`);
-            continue;
-          }
-          
-          console.log(`Suppression de l'enregistrement avec ID: ${recordId} dans la table ${selectedTable}`);
-          
-          const result = await ifsTablesService.deleteRecord(selectedTable, recordId);
-          
-          if (result.success) {
-            successCount++;
-          } else {
-            errorCount++;
-            errorMessages.push(result.message || 'Erreur inconnue');
-          }
-        } catch (error) {
-          errorCount++;
-          const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-          errorMessages.push(errorMessage);
-        }
-      }
-      
-      // Rafraîchir les données après les suppressions
-      const data = await ifsTablesService.getTableData(
-        selectedTable,
-        page,
-        rowsPerPage,
-        sortField,
-        sortDirection,
-        searchTerm,
-        filters
-      );
-      setTableData(data);
-      
-      // Afficher un résumé des résultats
-      const message = `${successCount} enregistrement(s) supprimé(s) avec succès. ` +
-                      (errorCount > 0 ? `${errorCount} erreur(s) rencontrée(s).` : '');
-      
-      alert(message);
-      
-      if (errorCount > 0 && errorMessages.length > 0) {
-        console.error('Erreurs lors de la suppression multiple:', errorMessages);
-      }
-      
-    } catch (error) {
-      console.error('Erreur globale lors de la suppression multiple:', error);
-      alert('Une erreur est survenue lors de la suppression multiple des enregistrements.');
-    } finally {
-      setLoading(false);
-    }
+  const changerOnglet = (v: Onglet) => {
+    setOnglet(v);
+    setTable('');
+    setPage(0);
+    setData(null);
   };
+
+  const running = sync?.status === 'running';
+  const colonnes = data?.colonnes ?? [];
+  const tables = data?.tables ?? [];
+  const consultation = onglet !== 'mode_emploi';
 
   return (
-    <Box sx={{ width: '100%', height: '100%', overflow: 'hidden', p: 0.5 }}>
-      <Box sx={{ 
-        mb: 0.5, 
-        backgroundColor: '#1a237e',
-        borderRadius: '4px',
-        p: 1,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <Typography variant="h5" component="h1" sx={{ 
-          color: 'white', 
-          fontWeight: 'bold',
-          fontSize: '1.2rem',
-          m: 0
-        }}>
-          DONNÉES FOURNISSEURS IFS
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
+        <FournisseurIcon sx={{ fontSize: 32, color: '#3f51b5' }} />
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+          Fournisseurs IFS
         </Typography>
-        
-        {selectedTable && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2" sx={{ color: 'white', fontWeight: 'medium' }}>
-              Table cible :
-            </Typography>
-            <Chip 
-              label={selectedTable} 
-              size="small"
-              sx={{ 
-                bgcolor: 'white', 
-                color: '#1a237e', 
-                fontWeight: 'bold',
-                fontSize: '0.75rem'
-              }} 
-            />
-          </Box>
-        )}
-      </Box>
-      
-      <Card sx={{ mb: 0.5, bgcolor: '#f5f8ff', border: '1px solid #1a237e' }}>
-        <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-          <Grid container spacing={1} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="table-select-label" sx={{ 
-                  color: '#1a237e', 
-                  fontWeight: 'bold',
-                  '&.Mui-focused': { color: '#1a237e' }
-                }}>
-                  Sélectionner une table
-                </InputLabel>
-                <Select
-                  labelId="table-select-label"
-                  id="table-select"
-                  value={selectedTable}
-                  label="Sélectionner une table"
-                  onChange={handleTableChange}
-                  size="small"
-                  sx={{ 
-                    bgcolor: 'white',
-                    color: '#1a237e',
-                    fontWeight: 'medium',
-                    border: '1px solid #1a237e',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#1a237e',
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#1a237e',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#1a237e',
-                    }
-                  }}
-                >
-                  {tables.map((table) => (
-                    <MenuItem key={table.id} value={table.id}>
-                      {table.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-              <Button
-                variant="contained"
-                startIcon={<TableIcon />}
-                size="small"
-                sx={{ 
-                  bgcolor: '#1a237e', 
-                  '&:hover': { bgcolor: '#303f9f' },
-                  textTransform: 'none',
-                  fontWeight: 'bold'
-                }}
-              >
-                Infos générales fournisseurs
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
+          <Tooltip title="Classeur Excel de l'onglet affiché : une feuille par table, recherche appliquée">
+            <span>
+              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !consultation || !data}>
+                {exporting ? 'Export…' : 'Exporter Excel'}
               </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+            </span>
+          </Tooltip>
+          <Tooltip title="Recharge les tables fournisseurs depuis le périmètre en place (Finance > Fournisseurs), sans appeler SAP">
+            <span>
+              <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
+                Recalculer
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="Ré-extrait les tables fournisseurs de SAP, recalcule le périmètre à la même date d'arrêté, puis recharge les tables">
+            <span>
+              <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
+                {running ? 'Synchronisation…' : 'Synchroniser SAP'}
+              </Button>
+            </span>
+          </Tooltip>
+        </Box>
+      </Box>
 
-      <Card sx={{ mb: 0.5, p: 1, bgcolor: '#f5f8ff', border: '1px solid #1a237e' }}>
-        <form onSubmit={handleSearchSubmit}>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <TextField
-              fullWidth
-              placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              variant="outlined"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon color="primary" sx={{ color: '#1a237e' }} />
-                  </InputAdornment>
-                )
-              }}
-              sx={{ 
-                bgcolor: 'white',
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: '#1a237e',
-                    borderWidth: '2px',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: '#1a237e',
-                    borderWidth: '2px',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#1a237e',
-                    borderWidth: '2px',
-                  },
-                },
-                '& .MuiInputBase-input': {
-                  color: '#1a237e',
-                  fontWeight: 'medium',
-                }
-              }}
+      <Tabs value={onglet} onChange={(_, v: Onglet) => changerOnglet(v)} variant="scrollable" scrollButtons="auto" sx={{ mb: 2 }}>
+        {ONGLETS.map((o) => <Tab key={o.value} value={o.value} label={o.label} />)}
+      </Tabs>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {ONGLETS.find((o) => o.value === onglet)?.description}
+      </Typography>
+
+      {running && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {sync?.step} — démarrée le {formatDateTime(sync?.started_at)}. La liste reste en attente tant que le rechargement n'est pas terminé.
+          <LinearProgress variant="determinate" value={sync?.progress ?? 0} sx={{ mt: 1 }} />
+        </Alert>
+      )}
+      {sync?.status === 'completed' && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          Dernier rechargement le {formatDateTime(sync.finished_at)} : {nombre(sync.rows ?? 0)} fournisseurs chargés.
+        </Alert>
+      )}
+      {sync?.status === 'failed' && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Rechargement en échec le {formatDateTime(sync.finished_at)} : {sync.error}. Les tables n'ont pas été modifiées par le module ETL.
+        </Alert>
+      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      {!consultation ? (
+        <Box
+          component="iframe"
+          src={GUIDE}
+          title="Mode d'emploi : fournisseurs IFS"
+          sx={{ width: '100%', height: 'calc(100vh - 300px)', minHeight: 500, border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}
+        />
+      ) : (<>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        <TextField
+          size="small"
+          placeholder={onglet === 'articles' ? 'N° IFS, N° SAP, nom, article…' : 'N° IFS, N° SAP, nom…'}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              setPage(0);
+              setSearch(searchInput);
+            }
+          }}
+          sx={{ minWidth: 340 }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+        />
+        {data && (<>
+          <Chip label={`${nombre(data.fournisseurs)} fournisseurs`} color="primary" />
+          <Chip label={`${nombre(data.total)} lignes`} />
+        </>)}
+      </Box>
+
+      {tables.length > 1 && (
+        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+          {tables.map((t) => (
+            <Chip
+              key={t.key}
+              label={`${t.label} (${nombre(t.lignes)})`}
+              color={t.key === data?.table ? 'primary' : onglet === 'controles' && t.lignes > 0 ? 'warning' : 'default'}
+              variant={t.key === data?.table ? 'filled' : 'outlined'}
+              onClick={() => { setTable(t.key); setPage(0); }}
             />
-            
-            <Button
-              variant="contained"
-              onClick={toggleAdvancedFilter}
-              startIcon={advancedFilterOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              size="small"
-              sx={{ 
-                minWidth: '120px', 
-                bgcolor: '#1a237e', 
-                '&:hover': { bgcolor: '#303f9f' },
-                height: '32px',
-                fontWeight: 'bold',
-                color: 'white',
-                textTransform: 'none',
-                fontSize: '0.8rem'
-              }}
-            >
-              FILTRES
-            </Button>
-            
-            <Button
-              variant="contained"
-              color="error"
-              onClick={clearAllFilters}
-              disabled={!searchTerm && Object.keys(filters).length === 0}
-              size="small"
-              sx={{ 
-                minWidth: '80px', 
-                height: '32px',
-                fontWeight: 'bold',
-                textTransform: 'none',
-                fontSize: '0.8rem'
-              }}
-            >
-              Reset
-            </Button>
-            
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<DownloadIcon />}
-              onClick={handleExportClick}
-              disabled={!tableData || loading || exporting}
-              size="small"
-              sx={{ 
-                minWidth: '100px', 
-                bgcolor: '#1a237e', 
-                '&:hover': { bgcolor: '#303f9f' },
-                height: '32px',
-                fontWeight: 'bold',
-                color: 'white',
-                textTransform: 'none',
-                fontSize: '0.8rem'
-              }}
-            >
-              EXPORTER
-            </Button>
-          </Box>
-          
-          {/* Menu d'export */}
-          <Menu
-            anchorEl={exportMenuAnchor}
-            open={Boolean(exportMenuAnchor)}
-            onClose={handleExportClose}
-          >
-            <MenuItem onClick={() => handleExport('csv')} disabled={exporting}>
-              <ListItemIcon>
-                <TableIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Exporter en CSV</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleExport('excel')} disabled={exporting}>
-              <ListItemIcon>
-                <FileIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Exporter en Excel</ListItemText>
-            </MenuItem>
-          </Menu>
-          
-          {/* Filtres avancés */}
-          <Collapse in={advancedFilterOpen}>
-            <Box sx={{ 
-              mt: 1, 
-              p: 2, 
-              bgcolor: '#e3f2fd', 
-              borderRadius: 1, 
-              border: '1px solid #1a237e',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
-            }}>
-              <Typography variant="subtitle1" gutterBottom fontWeight="bold" sx={{ 
-                color: '#1a237e', 
-                fontSize: '1.1rem',
-                borderBottom: '2px solid #1a237e',
-                paddingBottom: '8px',
-                marginBottom: '16px'
-              }}>
-                FILTRES AVANCÉS
-              </Typography>
-              
-              <Grid container spacing={2} alignItems="flex-end">
-                <Grid item xs={12} md={3}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="filter-column-label" sx={{ 
-                      color: '#1a237e',
-                      fontWeight: 'bold',
-                      '&.Mui-focused': { color: '#1a237e' }
-                    }}>Colonne</InputLabel>
-                    <Select
-                      labelId="filter-column-label"
-                      value={selectedFilterColumn}
-                      label="Colonne"
-                      onChange={handleFilterColumnChange}
-                      sx={{ 
-                        bgcolor: 'white', 
-                        '& .MuiSelect-select': { color: '#1a237e', fontWeight: 'bold' },
-                        border: '1px solid #1a237e',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#1a237e',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#1a237e',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#1a237e',
-                        }
-                      }}
-                    >
-                      {availableColumns.map((column) => (
-                        <MenuItem key={column} value={column}>
-                          {tableData?.columns.find(c => c.name === column)?.label || column}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                
-                <Grid item xs={12} md={2.5}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="operator-label" sx={{ 
-                      color: '#1a237e',
-                      fontWeight: 'bold',
-                      '&.Mui-focused': { color: '#1a237e' }
-                    }}>Opérateur</InputLabel>
-                    <Select
-                      labelId="operator-label"
-                      value={selectedOperator}
-                      label="Opérateur"
-                      onChange={handleOperatorChange}
-                      sx={{ 
-                        bgcolor: 'white', 
-                        '& .MuiSelect-select': { color: '#1a237e', fontWeight: 'bold' },
-                        border: '1px solid #1a237e',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#1a237e',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#1a237e',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#1a237e',
-                        }
-                      }}
-                    >
-                      {filterOperators.map((operator) => (
-                        <MenuItem key={operator.value} value={operator.value}>
-                          {operator.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                
-                <Grid item xs={12} md={4.5}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Valeur"
-                    value={filterValue}
-                    onChange={handleFilterValueChange}
-                    disabled={['is_null', 'is_not_null'].includes(selectedOperator)}
-                    placeholder={['is_null', 'is_not_null'].includes(selectedOperator) ? 'Non requis' : 'Entrez une valeur'}
-                    sx={{ 
-                      bgcolor: 'white',
-                      '& .MuiInputBase-input': { color: '#1a237e', fontWeight: 'medium' },
-                      '& .MuiInputLabel-root': { color: '#1a237e', fontWeight: 'bold' },
-                      '& .MuiOutlinedInput-root': {
-                        '& fieldset': {
-                          borderColor: '#1a237e',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#1a237e',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#1a237e',
-                        }
-                      }
-                    }}
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={2}>
-                  <Button
-                    variant="contained"
-                    onClick={addFilter}
-                    disabled={!selectedFilterColumn || (!filterValue && !['is_null', 'is_not_null'].includes(selectedOperator))}
-                    fullWidth
-                    sx={{ 
-                      bgcolor: '#1a237e', 
-                      '&:hover': { bgcolor: '#303f9f' },
-                      fontWeight: 'bold',
-                      color: 'white',
-                      textTransform: 'uppercase'
-                    }}
-                  >
-                    Ajouter
-                  </Button>
-                </Grid>
-              </Grid>
-              
-              {/* Affichage des filtres actifs */}
-              {Object.keys(filters).length > 0 && (
-                <Box sx={{ mt: 3 }}>
-                  <Divider sx={{ mb: 2, borderColor: '#1a237e' }} />
-                  <Typography variant="subtitle2" gutterBottom sx={{ 
-                    color: '#1a237e', 
-                    fontWeight: 'bold',
-                    fontSize: '1rem',
-                    marginBottom: '12px'
-                  }}>
-                    FILTRES ACTIFS:
-                  </Typography>
-                  <Grid container spacing={1}>
-                    {Object.entries(filters).map(([column, filterData]) => {
-                      const { value, operator } = filterData as { value: string, operator: string };
-                      const operatorLabel = filterOperators.find(op => op.value === operator)?.label || operator;
-                      return (
-                        <Grid item key={column}>
-                          <Chip 
-                            label={`${tableData?.columns.find(c => c.name === column)?.label || column} ${operatorLabel} ${value || ''}`}
-                            onDelete={() => removeFilter(column)}
-                            color="primary"
-                            variant="outlined"
-                            sx={{ 
-                              bgcolor: '#e8eaf6', 
-                              color: '#1a237e', 
-                              fontWeight: 'bold',
-                              border: '1px solid #1a237e',
-                              '& .MuiChip-deleteIcon': {
-                                color: '#f44336',
-                                '&:hover': {
-                                  color: '#d32f2f'
-                                }
-                              }
-                            }}
-                          />
-                        </Grid>
-                      );
-                    })}
-                  </Grid>
-                </Box>
-              )}
-            </Box>
-          </Collapse>
-        </form>
-      </Card>
+          ))}
+        </Box>
+      )}
 
-      <Paper elevation={3} sx={{ p: 1, mb: 2, borderRadius: 2, backgroundColor: '#f5f5f5' }}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
-          </Box>
-        ) : tableData ? (
-          <IfsDataTable 
-            data={tableData}
-            onPageChange={handlePageChange}
-            onRowsPerPageChange={handleRowsPerPageChange}
-            onSortChange={handleSortChange}
-            currentPage={page}
-            currentRowsPerPage={rowsPerPage}
-            currentSortField={sortField}
-            currentSortDirection={sortDirection}
-            loading={loading}
-            onEdit={handleEditRow}
-            onDelete={handleDeleteRow}
-            onView={handleViewRow}
-            onDeleteMultiple={handleDeleteMultiple}
-          />
-        ) : (
-          <Typography variant="body1" align="center" sx={{ p: 3 }}>
-            Sélectionnez une table pour afficher les données.
-          </Typography>
-        )}
+      <Paper>
+        {loading && <LinearProgress />}
+        <TableContainer sx={{ maxHeight: 'calc(100vh - 460px)', minHeight: 300 }}>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                {colonnes.map((c) => (
+                  <TableCell key={c.key} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.label}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data?.rows.map((r, i) => (
+                <TableRow key={i} hover>
+                  {colonnes.map((c) => (
+                    <TableCell key={c.key} sx={{ whiteSpace: 'nowrap' }}>{formatCell(r[c.key], c.kind)}</TableCell>
+                  ))}
+                </TableRow>
+              ))}
+              {data?.rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={colonnes.length || 1} align="center">Aucune ligne</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          component="div"
+          count={data?.total ?? 0}
+          page={page}
+          rowsPerPage={pageSize}
+          rowsPerPageOptions={[25, 50, 100, 250]}
+          onPageChange={(_, p) => setPage(p)}
+          onRowsPerPageChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setPage(0); }}
+          labelRowsPerPage="Lignes par page"
+        />
       </Paper>
-      
-      {/* Dialogue de visualisation */}
-      <Dialog open={viewDialogOpen} onClose={handleViewDialogClose} maxWidth="md" fullWidth disableRestoreFocus>
-        <DialogTitle>
-          Détails de l'enregistrement
-          <IconButton
-            aria-label="close"
-            onClick={handleViewDialogClose}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          {currentRow && tableData && (
-            <Grid container spacing={2}>
-              {tableData.columns.map((column) => (
-                <Grid item xs={12} sm={6} key={column.name}>
-                  <TextField
-                    label={column.label}
-                    value={currentRow[column.name] || ''}
-                    fullWidth
-                    InputProps={{
-                      readOnly: true,
-                    }}
-                    variant="outlined"
-                    margin="normal"
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* Dialogue d'édition */}
-      <Dialog open={editDialogOpen} onClose={handleEditDialogClose} maxWidth="md" fullWidth disableRestoreFocus>
-        <DialogTitle>
-          Modifier l'enregistrement
-          <IconButton
-            aria-label="close"
-            onClick={handleEditDialogClose}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          {currentRow && tableData && (
-            <Grid container spacing={2}>
-              {tableData.columns.map((column) => (
-                <Grid item xs={12} sm={6} key={column.name}>
-                  <TextField
-                    label={column.label}
-                    value={editedValues[column.name] || ''}
-                    onChange={(e) => handleInputChange(column.name, e.target.value)}
-                    fullWidth
-                    variant="outlined"
-                    margin="normal"
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleEditDialogClose} color="primary">
-            Annuler
-          </Button>
-          <Button onClick={handleSaveEdit} color="primary" variant="contained">
-            Enregistrer
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Dialogue de suppression */}
-      <Dialog open={deleteDialogOpen} onClose={handleDeleteDialogClose} disableRestoreFocus>
-        <DialogTitle>Confirmer la suppression</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Êtes-vous sûr de vouloir supprimer cet enregistrement ? Cette action est irréversible.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteDialogClose} color="primary">
-            Annuler
-          </Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">
-            Supprimer
-          </Button>
-        </DialogActions>
-      </Dialog>
+      </>)}
     </Box>
   );
 };
 
-export default IfsDataFournisseurs; 
+export default IfsDataFournisseurs;

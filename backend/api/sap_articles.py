@@ -261,7 +261,7 @@ ARTICLE_MODULES = ('etl_inventory_part.py', 'etl_article_sap.py',
                    'etl_phl_article.py', 'etl_composant_article.py')
 
 
-def _charger_modules(conn, key='articles_sap'):
+def _charger_modules(conn, key='articles_sap', noms=ARTICLE_MODULES):
     import importlib.util
     import inspect
     import os
@@ -271,7 +271,7 @@ def _charger_modules(conn, key='articles_sap'):
     modules = conn.execute(text(
         'SELECT display_name, python_module, module_params FROM public.etl_target_tables '
         'WHERE python_module = ANY(:m) AND is_active ORDER BY execution_order, id'),
-        {'m': list(ARTICLE_MODULES)}).mappings().all()
+        {'m': list(noms)}).mappings().all()
     dossier = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'etl_modules')
     for i, m in enumerate(modules, 1):
         _write_status(key, step=f"{i}/{len(modules)} {m['display_name']}",
