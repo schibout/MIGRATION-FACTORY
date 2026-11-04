@@ -39,7 +39,7 @@ VIDE = '__vide__'
 BASE = """
 WITH z AS MATERIALIZED (
     SELECT DISTINCT ON (equnr) equnr, NULLIF(TRIM(iwerk), '') AS iwerk, NULLIF(TRIM(gewrk), '') AS gewrk,
-           NULLIF(LTRIM(TRIM(submt), '0'), '') AS construction
+           NULLIF(LTRIM(TRIM(submt), '0'), '') AS construction, iloan
       FROM raw_data.equz WHERE mandt = '700'
      ORDER BY equnr, datbi DESC
 ), d AS MATERIALIZED (
@@ -126,6 +126,7 @@ WITH z AS MATERIALIZED (
            w.name1 AS division_description,
            c.arbpl AS poste_travail,
            ct.ktext AS poste_travail_description,
+           NULLIF(TRIM(lo.eqfnr), '') AS zone_tri,
            COALESCE(st.statuts, '{}') AS statuts,
            CASE WHEN mo.sap_key IS NULL THEN 'HORS_STRUCTURE'
                 WHEN mo.parent_type IS NULL THEN 'SANS_PARENT'
@@ -140,6 +141,8 @@ WITH z AS MATERIALIZED (
       LEFT JOIN ref rc ON rc.k = z.construction
       LEFT JOIN raw_data.t001w w ON w.mandt = '700' AND w.werks = z.iwerk
       LEFT JOIN raw_data.crhd c ON c.mandt = '700' AND c.objty = 'A' AND c.objid = z.gewrk
+      -- Zone de tri (onglet Localisation de IE03) : ILOA-EQFNR
+      LEFT JOIN raw_data.iloa lo ON lo.mandt = '700' AND lo.iloan = z.iloan
       LEFT JOIN raw_data.crtx ct ON ct.mandt = '700' AND ct.objty = 'A' AND ct.objid = z.gewrk AND ct.spras = 'F'
      WHERE e.mandt = '700'
 )
@@ -192,7 +195,7 @@ ANOMALIES = {
 EN_FIN = "(CASE WHEN tsup THEN 2 WHEN position = 'SANS_PARENT' THEN 1 ELSE 0 END)"
 
 COLONNES = ['numero', 'description', 'article_lie', 'article', 'construction', 'categorie', 'type_objet',
-            'position', 'parent_code', 'division', 'poste_travail', 'fabricant', 'modele',
+            'position', 'parent_code', 'division', 'poste_travail', 'zone_tri', 'fabricant', 'modele',
             'numero_serie', 'numero_inventaire']
 
 
@@ -207,7 +210,7 @@ def _filtres(sauf=None):
     if search:
         where.append('(numero ILIKE :s OR description ILIKE :s OR article ILIKE :s '
                      'OR construction ILIKE :s OR modele ILIKE :s OR numero_serie ILIKE :s '
-                     'OR numero_inventaire ILIKE :s OR parent_code ILIKE :s)')
+                     'OR numero_inventaire ILIKE :s OR parent_code ILIKE :s OR zone_tri ILIKE :s)')
         params['s'] = f'%{search}%'
     for cle, (col, _, _) in FACETTES.items():
         brut = request.args.get(cle)
@@ -341,6 +344,7 @@ def export_excel():
                ('position', 'Position dans la structure'), ('parent_code', 'Parent'),
                ('parent_designation', 'Désignation parent'), ('division', 'Division'),
                ('poste_travail', 'Poste de travail'), ('poste_travail_description', 'Libellé poste de travail'),
+               ('zone_tri', 'Zone de tri'),
                ('statuts', 'Statuts SAP'), ('fabricant', 'Fabricant'), ('modele', 'Modèle'),
                ('numero_serie', 'N° de série'), ('numero_inventaire', "N° d'inventaire"),
                ('anomalies', 'Anomalies')]

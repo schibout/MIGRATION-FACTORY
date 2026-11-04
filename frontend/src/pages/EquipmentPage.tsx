@@ -80,6 +80,7 @@ const FIELDS: Field[] = [
   { col: 'parent_code', lib: 'parent_designation', label: 'Parent', theme: 'Structure', mono: true, tri: true },
   { col: 'division', lib: 'division_description', label: 'Division', theme: 'Organisation', tri: true },
   { col: 'poste_travail', lib: 'poste_travail_description', label: 'Poste de travail', theme: 'Organisation', tri: true },
+  { col: 'zone_tri', label: 'Zone de tri', theme: 'Organisation', mono: true, tri: true },
   { col: 'fabricant', label: 'Fabricant', theme: 'Technique', tri: true },
   { col: 'modele', label: 'Modèle', theme: 'Technique', tri: true },
   { col: 'numero_serie', label: 'N° de série', theme: 'Technique', mono: true, tri: true },
@@ -88,8 +89,8 @@ const FIELDS: Field[] = [
 const THEMES = Array.from(new Set(FIELDS.map((f) => f.theme)));
 
 const PRESETS: Record<string, string[]> = {
-  Essentiel: ['numero', 'description', 'article_lie', 'numero_serie', 'position', 'parent_code', 'poste_travail', 'statuts'],
-  Structure: ['numero', 'description', 'position', 'parent_code', 'division', 'poste_travail'],
+  Essentiel: ['numero', 'description', 'article_lie', 'numero_serie', 'position', 'parent_code', 'poste_travail', 'zone_tri', 'statuts'],
+  Structure: ['numero', 'description', 'position', 'parent_code', 'division', 'poste_travail', 'zone_tri'],
   Technique: ['numero', 'description', 'categorie', 'fabricant', 'modele', 'numero_serie', 'numero_inventaire'],
   Tout: FIELDS.map((f) => f.col),
 };
@@ -428,6 +429,7 @@ const FicheEquipement: React.FC<{ numero: string | null; onClose: () => void; on
             <Box sx={{ display: 'grid', gridTemplateColumns: '170px 1fr', rowGap: 0.75, columnGap: 2, mb: 1.5 }}>
               <Info label="Division" value={e.division ? `${e.division}${e.division_description ? ` — ${e.division_description}` : ''}` : null} />
               <Info label="Poste de travail" value={e.poste_travail ? `${e.poste_travail}${e.poste_travail_description ? ` — ${e.poste_travail_description}` : ''}` : null} />
+              <Info label="Zone de tri" value={e.zone_tri} mono />
               <Info label="Groupe de planification" value={details?.planner_group} />
               <Info label="Centre de coûts" value={details?.cost_center} mono />
               <Info label="Société" value={details?.company_code} />
