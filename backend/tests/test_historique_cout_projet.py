@@ -225,15 +225,16 @@ def test_sequence_retrouvee_par_abreviation(cur):
                        WHERE numero_projet = %s AND element_otp = %s""", (r['numero_projet'], r['element_otp']))
         return cur.fetchone()
 
-    assert 'SEQUENCE_MANQUANTE' in ligne()['anomalies']
+    l = ligne()  # sequence introuvable : vide, mais exportable
+    assert l['activity_seq'] is None and l['anomalies'] == [] and l['exporte']
     maj = 'UPDATE clean_data.project_activity SET short_name = %s WHERE project_id = %s AND activity_seq = %s'
     cur.execute(maj, (r['abreviation_activite'], r['project_id_ifs'], seq1))
     l = ligne()
     assert l['activity_seq'] == seq1 and l['activity_seq_source'] == 'ABREVIATION'
-    assert not {'SEQUENCE_MANQUANTE', 'SEQUENCE_INCONNUE'} & set(l['anomalies'])
+    assert 'SEQUENCE_INCONNUE' not in l['anomalies']
     cur.execute(maj, (r['abreviation_activite'], r['project_id_ifs'], seq2))
     l = ligne()
-    assert l['activity_seq'] is None and 'SEQUENCE_AMBIGUE' in l['anomalies'] and 'SEQUENCE_MANQUANTE' not in l['anomalies']
+    assert l['activity_seq'] is None and 'SEQUENCE_AMBIGUE' in l['anomalies'] and not l['exporte']
     cur.execute("""INSERT INTO clean_data.reprise_cout_projet_ifs
                    (numero_projet, activity_seq_capex, activity_seq_opex, saisi_par) VALUES (%s, %s, %s, 'test')""",
                 (r['numero_projet'], seq2, seq2))

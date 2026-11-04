@@ -183,7 +183,7 @@ const RepriseCoutsIfs: React.FC = () => {
         l'arrêté, par élément d'OTP : ni cumul, ni plan, ni budget, ni demandes d'achat, ni commandes non
         réceptionnées (reprises séparément). <b>Arrêté mensuel uniquement</b> : SAP ne fournit que des montants par
         période (exercice juillet → juin, juillet = période 1). Nature : CAPEX si l'OTP finit par IM, OPEX par EX,
-        sinon à qualifier. ID projet IFS = n° projet, sauf saisie. Séquence d'activité = saisie, sinon celle de l'activité du projet portant l'abréviation de reprise.
+        sinon à qualifier. ID projet IFS = n° projet, sauf saisie. Séquence d'activité = saisie, sinon celle de l'activité du projet portant l'abréviation de reprise ; vide si aucune (non bloquant : l'abréviation permet de retrouver l'activité dans IFS).
       </Alert>
 
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -984,7 +984,6 @@ REPRISE_OD = [('element_otp', 'Centre de coûts/crédit'), ('project_id_ifs', 'I
               ('abreviation_activite', 'Abréviation activité')]
 REPRISE_ANOMALIES = {
     'NATURE_A_QUALIFIER': "OTP sans suffixe IM / EX ni qualification manuelle",
-    'SEQUENCE_MANQUANTE': "Ni séquence saisie, ni activité du projet portant l'abréviation de reprise",
     'SEQUENCE_AMBIGUE': "Plusieurs activités du projet portent l'abréviation de reprise",
     'PROJET_IFS_INCONNU': 'ID projet IFS absent des projets IFS (project_base)',
     'SEQUENCE_INCONNUE': "Séquence d'activité absente des activités IFS du projet",

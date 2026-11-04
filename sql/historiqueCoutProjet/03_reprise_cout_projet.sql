@@ -87,13 +87,15 @@ $$;
 --                  table exportee vers IFS) ; plusieurs activites -> SEQUENCE_AMBIGUE, pas de choix.
 --                  activity_seq est renumerotee a chaque chargement du module projet : une sequence
 --                  saisie peut devenir SEQUENCE_INCONNUE.
--- anomalies      : NATURE_A_QUALIFIER, SEQUENCE_MANQUANTE (montant non nul),
+-- anomalies      : NATURE_A_QUALIFIER (montant non nul),
 --                  PROJET_IFS_INCONNU, SEQUENCE_INCONNUE (absente de
 --                  clean_data.project_activity pour ce projet), SEQUENCE_AMBIGUE, OTP_EN_DOUBLE (meme OTP sous
 --                  deux projets), PROJET_IFS_PARTAGE (meme ID IFS pour deux n° projet),
 --                  CUMUL_PARENT_ENFANTS (OTP parent dont le montant egale la somme de
 --                  ses enfants : cumul stocke, double comptage). RPSCO etant tenu par
 --                  objet, un parent porte normalement 0 quand ses enfants sont imputes.
+-- Sequence vide = pas une anomalie (2026-11-04, demande explicite) : l'abreviation sert a
+-- retrouver l'activite dans IFS.
 -- exporte = montant non nul et aucune anomalie.
 -- ============================================================================
 DROP FUNCTION IF EXISTS clean_data.reprise_cout_projet(date);  -- type de retour modifie
@@ -164,7 +166,6 @@ BEGIN
     ano AS (
         SELECT r.*, array_remove(ARRAY[
             CASE WHEN r.nature IS NULL AND r.montant <> 0 THEN 'NATURE_A_QUALIFIER' END,
-            CASE WHEN r.nature IS NOT NULL AND r.seq IS NULL AND r.n_rep IS NULL AND r.montant <> 0 THEN 'SEQUENCE_MANQUANTE' END,
             CASE WHEN r.seq IS NULL AND r.n_rep > 1 AND r.montant <> 0 THEN 'SEQUENCE_AMBIGUE' END,
             CASE WHEN NOT EXISTS (SELECT 1 FROM clean_data.project_base pb WHERE pb.project_id = r.pid)
                  THEN 'PROJET_IFS_INCONNU' END,
