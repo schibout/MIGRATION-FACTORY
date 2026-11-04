@@ -51,5 +51,6 @@
     "**/graphify-out": true,
     "**/.ai-backups": true
   },
-  "typescript.preferences.includePackageJsonAutoImports": "auto"
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  "python.terminal.useEnvFile": true
 }

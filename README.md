@@ -297,6 +297,21 @@ avec sauvegarde ; huit entrées personnelles de skills exactement dupliquées
 ont été sauvegardées puis retirées de la découverte. La référence globale
 Graphify côté Codex a été corrigée vers `.agents/skills/graphify/SKILL.md`.
 
+Graphify est installé pour Claude et Codex et le graphe courant est conservé
+dans `graphify-out/graph.json`. Les assistants reçoivent dans `AGENTS.md` la
+consigne de l'interroger en priorité pour les questions d'architecture, de flux,
+de dépendances et de localisation, avec un budget court pour limiter les tokens :
+
+```bash
+graphify query "Où est géré le chargement IH02 ?" --budget 1500
+graphify path "IH02" "maintenance_object"
+graphify explain "maintenance_object"
+```
+
+Une requête ne reconstruit pas le graphe. La mise à jour reste explicite avec
+`/graphify --update`. Le graphe accélère la navigation ; le code et les migrations
+actuels restent la source de vérité avant toute modification.
+
 Relancer VS Code et les assistants pour charger les nouvelles configurations.
 Le nouveau rôle PostgreSQL reste à provisionner sur une base de développement
 et son secret à fournir avant l'activation de `postgres-dev`.

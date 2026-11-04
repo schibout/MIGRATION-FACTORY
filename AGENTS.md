@@ -73,8 +73,18 @@ Pipeline question FR -> RAG (`ai_prompt_builder`, `ai_schema_retriever`) -> LLM
   generees par `python scripts/ai/sync_skills.py` et controlees avec `--check`.
 - Reviewers : `reviewer-sap-ifs` et `reviewer-fullstack` ; fournir le diff et les
   fichiers utiles. Ils produisent une revue, l'assistant principal fait les changements.
-- Graphify est optionnel : utiliser le skill `graphify` seulement s'il est
-  disponible dans le catalogue de la session. Ne pas appeler un outil Skill absent.
+- Graphify est installe et le graphe du projet est disponible dans
+  `graphify-out/graph.json`. Claude et Codex doivent le consulter en priorite pour
+  les questions d'architecture, de dependances, de flux et de localisation afin
+  de reduire le contexte charge et le nombre de tokens :
+  `graphify query "<question precise>" --budget 1500`.
+- Utiliser `graphify path` pour relier deux concepts et `graphify explain` pour
+  expliquer un noeud. Ne pas reconstruire le graphe pour une simple question ;
+  `/graphify --update` est reserve aux demandes explicites de mise a jour.
+- Graphify sert d'index de navigation. Avant toute modification, verifier les
+  faits importants dans le code et les migrations actuels, qui restent la source
+  de verite. Si Graphify n'est pas accessible dans une session, continuer avec
+  `rg` et la lecture ciblee des fichiers sans bloquer la tache.
 
 ## Deployment et documentation metier
 
