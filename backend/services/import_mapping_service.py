@@ -334,3 +334,34 @@ def get_mapping_service() -> ImportMappingService:
     if _mapping_service is None:
         _mapping_service = ImportMappingService()
     return _mapping_service
+
+
+def message_erreur_ligne(erreur, source_cols, target_cols, valeurs, target_types) -> str:
+    """Premiere ligne de l'erreur PostgreSQL (les suivantes recopient la requete et ses donnees,
+    IBAN compris), completee par la colonne fautive quand le message permet de la retrouver."""
+    message = str(erreur).split(chr(10))[0]
+    trouve = re.search(r'for type ([a-z ]+): "(.*)"', message)
+    if trouve:
+        type_pg, valeur = trouve.groups()
+        for source, cible, v in zip(source_cols, target_cols, valeurs):
+            if v == valeur and target_types.get(cible, '').startswith(type_pg):
+                return f'{message} (colonne du fichier "{source}", colonne cible "{cible}")'
+    return message
+
+
+SCHEMAS_VIDABLES = {'raw_data', 'clean_data'}
+
+
+def refus_vidage(schema, table_sap_extraite, table_existe):
+    """Motif de refus du vidage d'une table avant import, None s'il est autorise.
+    public (utilisateurs, configurations) est exclu, et les tables SAP de raw_data ne se modifient
+    jamais directement : seules celles alimentees par fichier restent vidables."""
+    # ponytail: repere les tables SAP via public.sap_table_fields ; une table extraite absente du
+    # registre (ex. afpo, cdpos, konv) reste vidable. Ajouter un registre d'extraction si cela gene.
+    if schema not in SCHEMAS_VIDABLES:
+        return f'Vidage refusé : le schéma {schema} ne peut pas être vidé par un import'
+    if not table_existe:
+        return 'Vidage refusé : table introuvable'
+    if schema == 'raw_data' and table_sap_extraite:
+        return 'Vidage refusé : les tables SAP de raw_data ne se modifient pas directement'
+    return None

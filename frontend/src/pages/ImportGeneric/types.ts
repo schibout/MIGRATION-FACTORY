@@ -72,6 +72,7 @@ export interface ImportOptions {
     updateColumns: string[];
     commitOnSuccess: boolean;
     commitPartial: boolean;
+    truncate: boolean;
 }
 
 export interface FileAnalysis {

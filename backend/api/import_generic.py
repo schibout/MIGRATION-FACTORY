@@ -4,7 +4,7 @@ Permet d'importer des fichiers CSV/Excel vers n'importe quelle table
 """
 
 from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from werkzeug.utils import secure_filename
 import pandas as pd
 import io
@@ -16,6 +16,7 @@ import pickle
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from difflib import SequenceMatcher
+from services.import_mapping_service import message_erreur_ligne, refus_vidage
 import psycopg2.extras
 
 from config.database import get_db_connection
@@ -627,7 +628,12 @@ def execute_import():
     - updateColumns: colonnes à mettre à jour en cas de conflit (défaut: toutes sauf conflictColumns)
     - commitOnSuccess: commit seulement si aucune erreur (défaut: True)
     - commitPartial: commit même avec erreurs (défaut: False)
+    - truncate: vide la table dans la transaction de l'import (session JWT exigee, cf. refus_vidage)
     """
+    # Hors du try : le 401 ne doit pas devenir un 500. Le reste de la route reste sans JWT comme avant.
+    if ((request.get_json(silent=True) or {}).get('options') or {}).get('truncate'):
+        verify_jwt_in_request()
+
     try:
         data = request.get_json()
         file_id = data.get('fileId')
@@ -660,6 +666,8 @@ def execute_import():
         conflict_columns = options.get('conflictColumns', [])
         update_columns = options.get('updateColumns', [])
         
+        truncate = bool(options.get('truncate'))
+        lignes_supprimees = 0
         success_count = 0
         updated_count = 0
         inserted_count = 0
@@ -726,6 +734,22 @@ def execute_import():
             """, (schema, target_table))
             target_types = {row[0]: row[1] for row in cursor.fetchall()}
             
+            if truncate:
+                cursor.execute(
+                    "SELECT EXISTS (SELECT 1 FROM public.sap_table_fields WHERE lower(table_name) = lower(%s))",
+                    (target_table,))
+                refus = refus_vidage(schema, cursor.fetchone()[0], bool(target_types))
+                if refus:
+                    return jsonify({'success': False, 'error': refus}), 400
+                # Meme transaction que l'import : un rollback restaure les lignes. Pas de CASCADE : une
+                # table referencee par une cle etrangere est refusee par PostgreSQL au lieu de vider ses voisines.
+                table_sql = '"' + schema + '"."' + target_table.replace('"', '""') + '"'
+                cursor.execute(f'SELECT count(*) FROM {table_sql}')
+                lignes_supprimees = cursor.fetchone()[0]
+                cursor.execute(f'TRUNCATE TABLE {table_sql}')
+                current_app.logger.warning(
+                    f"Import : {table_sql} videe ({lignes_supprimees} lignes) par {get_jwt_identity()}")
+
             for idx, row in df.iterrows():
                 # SAVEPOINT par ligne : une ligne en erreur n'abandonne pas
                 # toute la transaction (évite la cascade "current transaction is aborted")
@@ -795,9 +819,20 @@ def execute_import():
                     if len(errors_detail) < 100:
                         errors_detail.append({
                             'row': int(idx) + 1,
-                            'error': str(e)
+                            'error': message_erreur_ligne(e, source_cols, target_cols, values, target_types)
                         })
             
+            # Jamais de table videe sans rien a la place, meme en commit partiel
+            if truncate and success_count == 0:
+                conn.rollback()
+                return jsonify({
+                    'success': False,
+                    'message': "Import annulé : aucune ligne importée, la table n'a pas été vidée",
+                    'successCount': 0,
+                    'errorCount': error_count,
+                    'errors': errors_detail
+                }), 400
+
             if options.get('commitOnSuccess', True) and error_count == 0:
                 conn.commit()
             elif options.get('commitPartial', False):
@@ -825,6 +860,8 @@ def execute_import():
         
         if skipped_count:
             message += f' ({skipped_count} ligne(s) vide(s) ignoree(s))'
+        if truncate:
+            message += f' ; table videe au prealable ({lignes_supprimees} ligne(s) supprimee(s))'
         
         current_app.logger.info(
             f"Import terminé: {success_count} succès, {skipped_count} lignes vides ignorées, "

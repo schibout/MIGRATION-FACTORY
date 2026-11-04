@@ -25,7 +25,8 @@ const initialState: ImportState = {
         conflictColumns: [],
         updateColumns: [],
         commitOnSuccess: true,
-        commitPartial: false
+        commitPartial: false,
+        truncate: false
     },
     importing: false,
     importResult: null
@@ -267,7 +268,8 @@ export function useGenericImport(config: GenericImportConfig = {}): UseGenericIm
                     conflictColumns: state.importOptions.conflictColumns,
                     updateColumns: state.importOptions.updateColumns,
                     commitOnSuccess: state.importOptions.commitOnSuccess,
-                    commitPartial: state.importOptions.commitPartial
+                    commitPartial: state.importOptions.commitPartial,
+                    truncate: state.importOptions.truncate && state.importOptions.mode !== 'update_only'
                 }
             });
 
@@ -277,7 +279,12 @@ export function useGenericImport(config: GenericImportConfig = {}): UseGenericIm
                 importResult: response.data
             }));
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erreur lors de l\'import');
+            // 400 de /execute : { message, errorCount, errors: [{ row, error }] }, sans champ error
+            const data = err.response?.data;
+            const premiere = data?.errors?.[0];
+            setError(data?.error || (premiere
+                ? `${data.message} : ${data.errorCount} ligne(s) en erreur. Ligne ${premiere.row} : ${premiere.error}`
+                : data?.message || 'Erreur lors de l\'import'));
             setState(prev => ({ ...prev, importing: false }));
             throw err;
         }

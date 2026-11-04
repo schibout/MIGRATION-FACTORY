@@ -87,6 +87,8 @@ const StepValidation: React.FC<StepValidationProps> = ({
         onImportOptionsChange({ conflictColumns: newCols });
     };
 
+    const videAvantImport = importOptions.truncate && importOptions.mode !== 'update_only';
+
     return (
         <Box>
             {/* Summary cards */}
@@ -272,6 +274,30 @@ const StepValidation: React.FC<StepValidationProps> = ({
                             </Typography>
                         }
                     />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={videAvantImport}
+                                disabled={importOptions.mode === 'update_only'}
+                                onChange={(e) => onImportOptionsChange({ truncate: e.target.checked })}
+                                size="small"
+                                color="warning"
+                            />
+                        }
+                        label={
+                            <Typography variant="body2">
+                                Vider la table avant l'import (TRUNCATE)
+                            </Typography>
+                        }
+                    />
+                    {videAvantImport && (
+                        <Alert severity="warning" sx={{ mt: 1 }}>
+                            Toutes les lignes de {selectedTable} seront supprimées avant l'import. Si l'import échoue, la table
+                            est restaurée{importOptions.commitPartial
+                                ? " ; avec le commit partiel, seules les lignes réussies resteront dès qu'une ligne est importée."
+                                : '.'}
+                        </Alert>
+                    )}
                 </Box>
             </Paper>
             )}
