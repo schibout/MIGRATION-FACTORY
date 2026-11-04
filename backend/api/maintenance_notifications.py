@@ -92,6 +92,12 @@ def list_notifications():
         # Poste et toute sa descendance (le code SAP est hierarchique).
         where.append('l.tplnr LIKE %(poste_technique)s')
         params['poste_technique'] = args['poste_technique'].strip().replace('%', '') + '%'
+    # Ordre : 'sans' = avis sans n° d'ordre (aufnr vide ou que des zeros), 'avec' = l'inverse.
+    sans_ordre = "COALESCE(LTRIM(q.aufnr, '0'), '') = ''"
+    if args.get('ordre') == 'sans':
+        where.append(sans_ordre)
+    elif args.get('ordre') == 'avec':
+        where.append('NOT ' + sans_ordre)
     if (args.get('avis') or '').strip():
         where.append('q.qmnum = %(avis)s')
         params['avis'] = _qmnum(args['avis'])

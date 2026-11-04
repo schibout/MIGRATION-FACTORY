@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, CircularProgress, Collapse, Paper, Table,
   TableBody, TableCell, TableContainer,
-  IconButton, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Tooltip, Typography,
+  IconButton, MenuItem, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Tooltip, Typography,
 } from '@mui/material';
 import {
   ExpandLess as ReplierIcon, ExpandMore as DeplierIcon, PlayArrow as ExecuterIcon, Visibility as DetailIcon,
@@ -64,9 +64,10 @@ interface Selection {
   poste_responsable: string;
   poste_technique: string;
   avis: string;
+  ordre: '' | 'avec' | 'sans';
 }
 const SELECTION_DEFAUT: Selection = {
-  date_debut: '', date_fin: '', division: '', type_avis: '', poste_responsable: '', poste_technique: '', avis: '',
+  date_debut: '', date_fin: '', division: '', type_avis: '', poste_responsable: '', poste_technique: '', avis: '', ordre: '',
 };
 // La selection est gardee pour la session : revenir du detail d'un avis relance la meme.
 const CLE_SELECTION = 'maintenance.avis.selection';
@@ -191,6 +192,14 @@ const MaintenanceNotificationsPage: React.FC = () => {
                 size="small" label="N° d'avis" sx={{ width: 150 }}
                 value={selection.avis} onChange={(e) => maj('avis', e.target.value)}
               />
+              <TextField
+                select size="small" label="Ordre" sx={{ width: 150 }}
+                value={selection.ordre} onChange={(e) => maj('ordre', e.target.value)}
+              >
+                <MenuItem value="">Tous</MenuItem>
+                <MenuItem value="sans">Sans ordre</MenuItem>
+                <MenuItem value="avec">Avec ordre</MenuItem>
+              </TextField>
               <Button type="submit" variant="contained" startIcon={<ExecuterIcon />} disabled={loading}>
                 Exécuter
               </Button>
