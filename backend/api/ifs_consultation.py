@@ -41,13 +41,13 @@ ENTITES_CATALOGUE = {
 
 def libelles_catalogue(table):
     """{colonne: libelle francais} de public.ifs_field_catalog : celui de l'entite de la table, sinon (spec sans
-    libelle, comme ACTIVITY) le plus frequent du meme champ dans tout le catalogue. Le lot 11 porte des libelles
-    parasites purement numeriques ('0'), ecartes."""
+    libelle, comme ACTIVITY) le plus frequent du meme champ dans tout le catalogue. Les specs portent des libelles
+    parasites (0, 93, #N/A, #REF!, *), ecartes : nombres, erreurs Excel et caracteres isoles."""
     return dict(db.session.execute(text(
         "SELECT DISTINCT ON (f) f, l FROM ("
         "  SELECT lower(field_name) AS f, trim(field_label_fr) AS l, upper(entity) AS e, lot_id, "
         "         count(*) OVER (PARTITION BY lower(field_name), trim(field_label_fr)) AS n "
-        "  FROM public.ifs_field_catalog WHERE trim(field_label_fr) !~ '^[0-9]*$') c "
+        "  FROM public.ifs_field_catalog WHERE trim(field_label_fr) !~ '^([0-9]*|#.*|.)$') c "
         "ORDER BY f, (e = :e) DESC, n DESC, lot_id, l"),
         {'e': ENTITES_CATALOGUE.get(table, table).upper()}).all())
 
