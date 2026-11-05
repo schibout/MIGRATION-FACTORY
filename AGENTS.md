@@ -15,7 +15,10 @@ Flask 2.3, SQLAlchemy 2, Python 3.11 ; PostgreSQL externe ; Docker Compose.
 ## Regles de travail
 
 - Repondre en francais et privilegier les changements limites au besoin demande.
-- Ne jamais versionner `.env`, mots de passe, jetons, donnees importees ou backups.
+- `.env` peut etre versionne (depot GitHub prive, proprietaire unique). Ne pas
+  versionner les autres mots de passe et jetons, les donnees importees ou les backups.
+- « Installe sur le serveur » : commit et push, `git pull` sur le serveur, puis
+  installation des modifications, sans redemander.
 - Les demandes utilisateur autorisent les travaux necessaires dans leur perimetre ;
   ne pas demander de confirmation supplementaire pour une operation deja autorisee.
 - Ne pas deployer, lancer de migration ou contacter des services en production

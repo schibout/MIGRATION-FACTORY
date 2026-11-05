@@ -4,9 +4,6 @@
 # ===========================================================================
 
 # --- Secrets & environnement (NE JAMAIS COMMITER) -------------------------
-.env
-.env.*
-!.env.example
 *.pem
 *.key
 secrets.json
