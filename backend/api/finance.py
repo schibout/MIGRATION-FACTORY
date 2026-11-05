@@ -41,7 +41,9 @@ Fournisseurs (clean_data.ifs_fournisseurs_perimetre : fichier + crees dans SAP a
   GET|POST /api/v1/finance/fournisseurs/sync   corps {source, date_arrete} (LFA1, LFB1,
                                          LFM1, LFBK, TIBAN, BNKA)
 Articles (clean_data.article_perimetre : article_sap, SAP_NOUVEAU = crees apres l'arrete) :
-  GET  /api/v1/finance/articles          filtres search, source ; colonnes de v_article_sap
+  GET  /api/v1/finance/articles          filtres search, source, types, dest, conds (JSON), logique,
+                                         tri sort, dir ; colonnes de v_article_sap + destinations IFS
+  GET  /api/v1/finance/articles/destinations  segments type x destination, vues, fichiers
   GET  /api/v1/finance/articles/export.xlsx
   GET|POST /api/v1/finance/articles/sync      corps {source, date_arrete}
   POST /api/v1/finance/articles/import/suggest-mapping|validate-mapping|execute
@@ -58,7 +60,7 @@ import time
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from flask import Blueprint, current_app, jsonify, request, send_file
+from flask import Blueprint, abort, current_app, jsonify, request, send_file
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import text
 
@@ -1472,6 +1474,71 @@ ART_GROUPES = {
     "Groupe d'achat": "val.donnees ->> 'Groupe d''achat'",
     "Groupe d'achat Description": "val.donnees ->> 'Groupe d''achat Description'",
 }
+# Colonnes de destination IFS (clean_data.v_article_destination_ifs), hors cibles d'import
+ART_COLONNES_DEST = [
+    ('catalogue', 'Catalogue', "CASE WHEN d.catalogue THEN 'Oui' ELSE 'Non' END"),
+    ('inventory', 'Inventory', "CASE WHEN d.inventory THEN 'Oui' ELSE 'Non' END"),
+    ('sales', 'Sales', "CASE WHEN d.sales IS NULL THEN 'À définir' WHEN d.sales THEN 'Oui' ELSE 'Non' END"),
+    ('piece_detachee', 'Pièce détachée',
+     "CASE d.piece_detachee WHEN 'RATTACHEE' THEN 'Rattachée' WHEN 'DECONNECTEE' THEN 'Déconnectée' ELSE 'Non' END"),
+    ('en_nomenclature', 'Nomenclature', "CASE WHEN d.en_nomenclature THEN 'Oui' ELSE 'Non' END"),
+]
+# Filtre avancé : liste blanche des champs, les valeurs libres passent en parametres
+ART_DEST = {
+    'catalogue': 'd.catalogue',
+    'inventory': 'd.inventory',
+    'sales': 'd.sales',
+    'piece': 'd.piece_detachee IS NOT NULL',
+    'rattachee': "d.piece_detachee = 'RATTACHEE'",
+    'deconnectee': "d.piece_detachee = 'DECONNECTEE'",
+}
+ART_OUI_NON = {'stock': 'd.avec_stock', 'magasin': 'd.en_magasin', 'nomenclature': 'd.en_nomenclature'}
+ART_TEXTE = {'type': 'd.type_sap', 'fichier': 'd.fichier'}
+ART_MAX_CONDITIONS = 20
+ART_TRI_NUMERIQUE = {'Qté en stock', "Délai d'achat", 'Point de commande'}
+ART_VUES = [
+    ('deconnectees', 'Déconnectées', [{'champ': 'destination', 'op': 'est', 'valeur': 'deconnectee'}]),
+    ('rattachees', 'Rattachées à un équipement', [{'champ': 'destination', 'op': 'est', 'valeur': 'rattachee'}]),
+    ('stock_sans_inventory', 'Stock sans Inventory', [{'champ': 'stock', 'op': 'est', 'valeur': 'oui'},
+                                                      {'champ': 'destination', 'op': 'nest', 'valeur': 'inventory'}]),
+    ('stock_nomenclature', 'Stockés et en nomenclature', [{'champ': 'stock', 'op': 'est', 'valeur': 'oui'},
+                                                          {'champ': 'nomenclature', 'op': 'est', 'valeur': 'oui'}]),
+    ('absents', 'Absents de SAP', [{'champ': 'type', 'op': 'est', 'valeur': 'ABSENT'}]),
+]
+
+
+def _art_condition(c, nom):
+    """Une condition {champ, op, valeur} -> (SQL, parametres) ; ValueError si elle n'est pas reconnue."""
+    if not isinstance(c, dict) or c.get('op') not in ('est', 'nest'):
+        raise ValueError(f'Condition invalide : {c}')
+    champ, valeur = c.get('champ'), c.get('valeur')
+    params = {}
+    if champ == 'destination' and valeur in ART_DEST:
+        sql = f'({ART_DEST[valeur]}) IS TRUE'
+    elif champ in ART_OUI_NON and valeur in ('oui', 'non'):
+        sql = f"{ART_OUI_NON[champ]} IS {'TRUE' if valeur == 'oui' else 'FALSE'}"
+    elif champ in ART_TEXTE and isinstance(valeur, str):
+        sql = f'{ART_TEXTE[champ]} IS NOT DISTINCT FROM :{nom}'
+        params[nom] = valeur
+    else:
+        raise ValueError(f'Condition invalide : {c}')
+    return (sql if c['op'] == 'est' else f'NOT ({sql})'), params
+
+
+def _art_conditions(conds, logique='ET', prefixe='c'):
+    """Liste de conditions -> (SQL ou None, parametres), combinees en ET ou en OU."""
+    if not isinstance(conds, list) or len(conds) > ART_MAX_CONDITIONS:
+        raise ValueError('Liste de conditions invalide')
+    if logique not in ('ET', 'OU'):
+        raise ValueError(f'Combinaison invalide : {logique}')
+    morceaux, params = [], {}
+    for i, c in enumerate(conds):
+        sql, p = _art_condition(c, f'{prefixe}{i}')
+        morceaux.append(sql)
+        params.update(p)
+    if not morceaux:
+        return None, params
+    return '(' + f' {"AND" if logique == "ET" else "OR"} '.join(morceaux) + ')', params
 
 
 def _art_colonnes():
@@ -1487,12 +1554,32 @@ def _art_colonnes():
     cols_vue = [(c, c, ART_GROUPES.get(c, f'v."{c}"')) for c in vue]
     cols_fichier = [(ART_FICHIER + n, ART_FICHIER + n, f'val.donnees ->> :f{i}') for i, n in enumerate(fichier)]
     i = vue.index('Description article') + 1 if 'Description article' in vue else len(vue)
-    return ([('source', 'Source', 'p.source')] + cols_vue[:i] + cols_fichier + cols_vue[i:],
+    return ([('source', 'Source', 'p.source')] + ART_COLONNES_DEST + cols_vue[:i] + cols_fichier + cols_vue[i:],
             {f'f{i}': n for i, n in enumerate(fichier)})
 
 
-def _art_from():
+def _art_from(conditions=True, facettes=True):
+    """conditions = filtre avance ; facettes = types et destination. Les compteurs de
+    l'ecran les retirent pour montrer ce qu'un clic donnerait."""
     where, params = [], {}
+    if conditions and request.args.get('conds'):
+        try:
+            sql, p = _art_conditions(json.loads(request.args['conds']), request.args.get('logique', 'ET'))
+        except ValueError as e:
+            abort(400, description=str(e))
+        if sql:
+            where.append(sql)
+            params.update(p)
+    if facettes:
+        types = [t for t in (request.args.get('types') or '').split(',') if t]
+        if types:
+            where.append('d.type_sap = ANY(:types)')
+            params['types'] = types
+        dest = request.args.get('dest')
+        if dest:
+            if dest not in ART_DEST:
+                abort(400, description=f'Destination invalide : {dest}')
+            where.append(f'({ART_DEST[dest]}) IS TRUE')
     search = (request.args.get('search') or '').strip()
     if search:
         where.append('(p.numero_article ILIKE :s OR '
@@ -1506,7 +1593,19 @@ def _art_from():
     return (f'FROM clean_data.article_perimetre p LEFT JOIN clean_data.v_article_sap v '
             f'ON v."{ART_CLE}" = p.numero_article '
             f'LEFT JOIN clean_data.article_perimetre_validation val ON val.numero_article = p.numero_article '
+            f'JOIN clean_data.v_article_destination_ifs d ON d.numero_article = p.numero_article '
             f'{clause}'), params
+
+
+def _art_ordre(colonnes):
+    """Tri sur une colonne affichee (liste blanche), sinon l'ordre historique."""
+    expr = next((e for c, _, e in colonnes if c == request.args.get('sort')), None)
+    if expr is None:
+        return 'ORDER BY p.source DESC, p.numero_article'
+    if request.args['sort'] in ART_TRI_NUMERIQUE:
+        expr = f"NULLIF({expr}, '')::numeric"
+    sens = 'DESC' if request.args.get('dir') == 'desc' else 'ASC'
+    return f'ORDER BY {expr} {sens} NULLS LAST, p.numero_article'
 
 
 def _art_charger(date_arrete):
@@ -1524,7 +1623,7 @@ def list_articles():
     sql_from, params = _art_from()
     rows = db.session.execute(
         text(f'SELECT {", ".join(e for _, _, e in colonnes)} {sql_from} '
-             'ORDER BY p.source DESC, p.numero_article LIMIT :limit OFFSET :offset'),
+             f'{_art_ordre(colonnes)} LIMIT :limit OFFSET :offset'),
         {**params, **cparams, 'limit': page_size, 'offset': (page - 1) * page_size}).all()
     total = db.session.execute(text(f'SELECT count(*) {sql_from}'), params).scalar()
     stats = db.session.execute(text(
@@ -1544,6 +1643,36 @@ def list_articles():
     })
 
 
+@finance_blueprint.route('/articles/destinations', methods=['GET'])
+@jwt_required()
+def destinations_articles():
+    """Compteurs de la vue Destinations IFS : segments type x destination (sans les filtres
+    types et destination, que l'ecran applique lui-meme), vues pretes a l'emploi, valeurs
+    proposees par le filtre avance."""
+    sql_from, params = _art_from(facettes=False)
+    segments = db.session.execute(text(
+        'SELECT d.type_sap, d.catalogue, d.inventory, d.sales, d.piece_detachee, '
+        f'count(*) AS articles, count(*) FILTER (WHERE d.avec_stock) AS stock {sql_from} '
+        'GROUP BY 1, 2, 3, 4, 5 ORDER BY 6 DESC'), params).mappings().all()
+
+    sql_base, params_base = _art_from(conditions=False, facettes=False)
+    filtres, params_vues = [], dict(params_base)
+    for i, (cle, _, conds) in enumerate(ART_VUES):
+        sql, p = _art_conditions(conds, prefixe=f'v{i}_')
+        filtres.append(f'count(*) FILTER (WHERE {sql}) AS {cle}')
+        params_vues.update(p)
+    nb_vues = db.session.execute(
+        text(f'SELECT {", ".join(filtres)} {sql_base}'), params_vues).mappings().one()
+    fichiers = [r[0] for r in db.session.execute(text(
+        'SELECT DISTINCT fichier FROM clean_data.v_article_destination_ifs '
+        'WHERE fichier IS NOT NULL ORDER BY 1'))]
+    return jsonify({
+        'segments': [dict(s) for s in segments],
+        'vues': [{'cle': c, 'libelle': l, 'conds': conds, 'nb': nb_vues[c]} for c, l, conds in ART_VUES],
+        'fichiers': fichiers,
+    })
+
+
 @finance_blueprint.route('/articles/export.xlsx', methods=['GET'])
 @jwt_required()
 def export_articles_excel():
@@ -1552,8 +1681,8 @@ def export_articles_excel():
     colonnes, cparams = _art_colonnes()
     sql_from, params = _art_from()
     rows = db.session.execute(
-        text(f'SELECT {", ".join(e for _, _, e in colonnes)} {sql_from} '
-             'ORDER BY p.source DESC, p.numero_article'), {**params, **cparams}).all()
+        text(f'SELECT {", ".join(e for _, _, e in colonnes)} {sql_from} {_art_ordre(colonnes)}'),
+        {**params, **cparams}).all()
     db.session.commit()  # liberer la transaction de lecture avant la generation
     wb = Workbook()
     _feuille_tableau(wb.active, 'Articles', [(c, l) for c, l, _ in colonnes], rows, set())
@@ -1698,7 +1827,8 @@ def suggerer_mapping_articles():
     cibles = [{'name': c, 'data_type': 'text', 'is_nullable': 'NO' if c == ART_IMPORT_CLE else 'YES',
                'column_default': None, 'isRequired': c == ART_IMPORT_CLE,
                'isPrimaryKey': c == ART_IMPORT_CLE, 'constraints': ['PRIMARY KEY'] if c == ART_IMPORT_CLE else []}
-              for c, _, _ in _art_colonnes()[0] if c != 'source' and not c.startswith(ART_FICHIER)]
+              for c, _, _ in _art_colonnes()[0]
+              if c != 'source' and c not in {k for k, _, _ in ART_COLONNES_DEST} and not c.startswith(ART_FICHIER)]
     mappings = suggest_mapping(fichier['columns'], cibles)
 
     if not any(m['target'] == ART_IMPORT_CLE for m in mappings):
