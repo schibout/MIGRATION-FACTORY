@@ -102,6 +102,8 @@ files=(
     "create_alimenter_all_operation.sql"
     # Echantillon de test : CALL clean_data.sp_keep_jt_task_recent(10);
     "sp_keep_jt_task_recent.sql"
+    # Purge raw_data : CALL clean_data.sp_purge_ordres_hors_perimetre('date');
+    "sp_purge_ordres_hors_perimetre.sql"
 )
 
 # Exécution de chaque fichier
