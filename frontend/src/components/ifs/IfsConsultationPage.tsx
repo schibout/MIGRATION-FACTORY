@@ -26,6 +26,7 @@ import {
     Typography,
 } from '@mui/material';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 
 // Écran de consultation Données IFS (api/ifs_consultation.py), même logique que FinanceHistoriqueCouts :
@@ -85,7 +86,10 @@ const IfsConsultationPage: React.FC<Props> = ({
   titre, icone, apiUrl, guide, onglets, placeholder, entite, fichierExport,
   aideRecalculer, aideSynchroniser, libelleRecharge, noteEchec,
 }) => {
-  const [onglet, setOnglet] = useState(onglets[0].value);
+  const [searchParams] = useSearchParams(); // ?onglet=controles depuis le tableau de bord
+  const [onglet, setOnglet] = useState(
+    () => onglets.find((o) => o.value === searchParams.get('onglet'))?.value ?? onglets[0].value,
+  );
   const [table, setTable] = useState('');
   const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(false);

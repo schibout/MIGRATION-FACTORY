@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import text
 from models import db
+from services.etl_journal import run_etl_journalise
 import uuid
 import time
 import threading
@@ -249,7 +250,7 @@ def run_etl_process(execution_id, table_data):
                         'message': f'Paramètres du module: {accepted}',
                         'type': 'info'
                     })
-                etl_result = module.run_etl(**accepted)
+                etl_result = run_etl_journalise(module, table_data.python_module, **accepted)
                 
                 # Récupérer les logs du module si disponibles
                 if 'log_messages' in etl_result and isinstance(etl_result['log_messages'], list):

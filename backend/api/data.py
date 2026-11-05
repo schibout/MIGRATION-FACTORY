@@ -389,40 +389,6 @@ def export_general_data():
         current_app.logger.error(f"Erreur lors de l'export des données: {str(e)}")
         return jsonify({'error': 'Erreur lors de l\'export des données'}), 500
 
-# Route pour les métriques du dashboard (Admin et Operator)
-@data_blueprint.route('/metrics', methods=['GET'])
-@require_permission('view_dashboards')
-def get_metrics():
-    """Récupère les métriques pour le dashboard (Admin et Operator)"""
-    try:
-        # TODO: Implémenter la récupération des métriques
-        sample_metrics = {
-            'sap_data': {
-                'total_tables': 15,
-                'total_records': 25000,
-                'last_sync': '2024-01-15T10:30:00Z'
-            },
-            'ifs_data': {
-                'total_datasets': 8,
-                'total_records': 12000,
-                'last_sync': '2024-01-15T11:00:00Z'
-            },
-            'system': {
-                'status': 'healthy',
-                'uptime': '99.9%',
-                'last_backup': '2024-01-15T02:00:00Z'
-            }
-        }
-        
-        return jsonify({
-            'metrics': sample_metrics,
-            'message': 'Métriques récupérées avec succès'
-        }), 200
-        
-    except Exception as e:
-        current_app.logger.error(f"Erreur lors de la récupération des métriques: {str(e)}")
-        return jsonify({'error': 'Erreur lors de la récupération des métriques'}), 500
-
 @data_blueprint.route('/users/<user_id>/password', methods=['PUT'])
 @admin_required
 def reset_user_password(user_id):

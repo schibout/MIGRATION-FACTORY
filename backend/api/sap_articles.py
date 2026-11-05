@@ -267,6 +267,7 @@ def _charger_modules(conn, key='articles_sap', noms=ARTICLE_MODULES):
     import os
 
     from api.finance import _write_status
+    from services.etl_journal import run_etl_journalise
 
     modules = conn.execute(text(
         'SELECT display_name, python_module, module_params FROM public.etl_target_tables '
@@ -282,7 +283,7 @@ def _charger_modules(conn, key='articles_sap', noms=ARTICLE_MODULES):
         spec.loader.exec_module(module)
         params = m['module_params'] or {}
         accepte = inspect.signature(module.run_etl).parameters
-        resultat = module.run_etl(**{k: v for k, v in params.items() if k in accepte})
+        resultat = run_etl_journalise(module, m['python_module'], **{k: v for k, v in params.items() if k in accepte})
         if not resultat.get('success'):
             raise RuntimeError(f"{m['display_name']} : {resultat.get('error', 'erreur inconnue')}")
     return conn.execute(text('SELECT count(*) FROM clean_data.article_sap')).scalar()

@@ -50,7 +50,7 @@ def build_plan(files: list[str]) -> list[Check]:
             checks.append(Check(kind, paths))
     if any(path.startswith("backend/") for path in files):
         # Deliberately explicit: discovery would include integration tests using the real DB.
-        checks.append(Check("backend-tests", command=(sys.executable, "-m", "pytest", "tests/test_sql_guard.py", "tests/test_sql_filters.py", "-q"), cwd="backend"))
+        checks.append(Check("backend-tests", command=(sys.executable, "-m", "pytest", "tests/test_sql_guard.py", "tests/test_sql_filters.py", "tests/test_dashboard_synthese.py", "-q"), cwd="backend"))
     if any(path.startswith(("scripts/ai/", "tests/")) for path in files):
         checks.append(Check("tooling-tests", command=(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py")))
     if any(path.startswith((".agents/skills/", ".claude/skills/")) or path == "scripts/ai/sync_skills.py" for path in files):
