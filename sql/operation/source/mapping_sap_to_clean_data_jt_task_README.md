@@ -18,11 +18,12 @@ Tables SAP disponibles vérifiées dans raw_data:
 - afvc, afvv, afko, afru, crhd, crtx, jest, jcds sont présentes.
 - afih, aufk, qmel, qmfe, resb ne sont pas présentes actuellement dans raw_data au moment de l'analyse.
 
-Périmètre chargé (2026-09-18) :
-- Opérations EN COURS OU FUTURES uniquement = ordre SAP non clos : pas de statut
-  actif I0045 (TECO) / I0046 (CLSD) / I0076 (DLFL) dans JEST sur AUFK.OBJNR
-  (vue clean_data.v_sap_ordre_clos, sql/operation/00_operation_helpers.sql).
-- Aucun filtre de date. Même règle pour jt_task_resource et maint_material_req_line.
+Périmètre chargé :
+- Voir sql/operation/repriseOperation.md, qui fait référence (vue
+  clean_data.v_sap_ordre_repris, sql/operation/00_operation_helpers.sql).
+- Ordre créé depuis le 01/01/2026 (AUFK.ERDAT), poste responsable de la division
+  9200 et d'un des 9 secteurs, statut REL actif et aucun statut actif TECO/CLSD/DLFL.
+- jt_task_resource et maint_material_req_line ne reprennent que les opérations de jt_task.
 
 Jointures proposées:
 - AFKO.AUFPL = AFVC.AUFPL
