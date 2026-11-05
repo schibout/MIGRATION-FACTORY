@@ -143,7 +143,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
                 setState(prev => ({ 
                     ...prev, 
                     validationErrors: response.errors || [],
-                    error: response.message
+                    error: response.message ?? null
                 }));
                 return false;
             }

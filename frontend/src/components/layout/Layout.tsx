@@ -43,7 +43,7 @@ import {
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { RootState } from '../../store';
+import { AppDispatch, RootState } from '../../store';
 import { logout } from '../../store/slices/authSlice';
 
 // Drawer width
@@ -85,7 +85,7 @@ const Layout = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);

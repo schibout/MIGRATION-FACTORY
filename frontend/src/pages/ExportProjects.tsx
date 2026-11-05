@@ -9,7 +9,6 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import ExportButton from '../components/export/ExportButton';
 import ExportConfiguration from '../components/export/ExportConfiguration';
-import ExportPreview from '../components/export/ExportPreview';
 import TableSelector from '../components/export/TableSelector';
 import {
   ExportQuery,
@@ -27,9 +26,6 @@ const ExportProjects: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Chargement des tables disponibles
   const loadTables = useCallback(async () => {
@@ -95,7 +91,7 @@ const ExportProjects: React.FC = () => {
 
       console.log('🚀 Début de l\'export projets avec la configuration:', config);
 
-      const response = await exportProjectsData(config);
+      await exportProjectsData(config);
       console.log('✅ Export terminé avec succès');
       
       setSuccess('Export terminé avec succès! Le fichier a été téléchargé.');
@@ -105,24 +101,6 @@ const ExportProjects: React.FC = () => {
       setError('Erreur lors de l\'export des données');
     } finally {
       setExporting(false);
-    }
-  };
-
-  // Fonction de prévisualisation
-  const handlePreview = async (tableName: string) => {
-    try {
-      setPreviewLoading(true);
-      setPreviewError(null);
-      
-      // Ici vous pouvez implémenter la prévisualisation si nécessaire
-      console.log(`Prévisualisation de la table: ${tableName}`);
-      setPreviewData([]);
-      
-    } catch (err) {
-      console.error('Erreur lors de la prévisualisation:', err);
-      setPreviewError('Erreur lors de la prévisualisation');
-    } finally {
-      setPreviewLoading(false);
     }
   };
 
@@ -215,13 +193,6 @@ const ExportProjects: React.FC = () => {
       )}
 
       {/* Prévisualisation des données */}
-      {previewData.length > 0 && (
-        <ExportPreview
-          data={previewData}
-          loading={previewLoading}
-          error={previewError}
-        />
-      )}
     </Box>
   );
 };

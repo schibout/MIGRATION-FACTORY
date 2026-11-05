@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SetStateAction, useCallback, useEffect, useMemo, useState } from 'react';
 import { importService } from '../services/importService';
 import {
     ImportFilters,
     ImportJob,
     ImportJobsResponse,
+    ImportStatus,
     PaginationParams
 } from '../types/import.types';
 
@@ -28,7 +29,7 @@ export interface UseImportHistoryResult {
     setPagination: (pagination: PaginationParams) => void;
     refresh: () => Promise<void>;
     clearFilters: () => void;
-    applyQuickFilter: (status: string) => void;
+    applyQuickFilter: (status: ImportStatus | 'all') => void;
     searchJobs: (query: string) => void;
     
     // Statistiques calculées
@@ -90,7 +91,7 @@ export const useImportHistory = (options: UseImportHistoryOptions = {}): UseImpo
     }, [loadJobs]);
 
     // Gestion des filtres
-    const setFilters = useCallback((newFilters: ImportFilters) => {
+    const setFilters = useCallback((newFilters: SetStateAction<ImportFilters>) => {
         setFiltersState(newFilters);
         // Reset à la première page lors d'un changement de filtre
         setPaginationState(prev => ({ ...prev, page: 0 }));
@@ -107,7 +108,7 @@ export const useImportHistory = (options: UseImportHistoryOptions = {}): UseImpo
     }, [setFilters]);
 
     // Filtre rapide par statut
-    const applyQuickFilter = useCallback((status: string) => {
+    const applyQuickFilter = useCallback((status: ImportStatus | 'all') => {
         setFilters(status === 'all' ? {} : { status });
     }, [setFilters]);
 

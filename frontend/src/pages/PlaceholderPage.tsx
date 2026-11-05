@@ -8,8 +8,8 @@ interface PlaceholderPageProps {
 
 const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title }) => {
   const location = useLocation();
-  const pageName = title || location.pathname.split('/').pop()?.replace(/-/g, ' ');
-  const capitalizedPageName = pageName?.charAt(0).toUpperCase() + pageName?.slice(1);
+  const pageName = title || location.pathname.split('/').pop()?.replace(/-/g, ' ') || '';
+  const capitalizedPageName = pageName.charAt(0).toUpperCase() + pageName.slice(1);
 
   return (
     <Box sx={{ width: '100%', height: '100%', overflow: 'hidden', p: 3 }}>

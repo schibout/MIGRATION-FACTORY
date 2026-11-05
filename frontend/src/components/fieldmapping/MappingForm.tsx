@@ -14,7 +14,8 @@ import {
   Switch,
   FormControlLabel,
   Divider,
-  Stack
+  Stack,
+  SelectChangeEvent
 } from '@mui/material';
 import { FieldMapping, TableInfo } from '../../services/fieldMappingService';
 
@@ -71,7 +72,7 @@ const MappingForm: React.FC<MappingFormProps> = ({
   
   // Gérer les changements de champs
   const handleChange = (field: keyof FieldMapping) => (
-    e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>
   ) => {
     const value = 
       field === 'is_active' || field === 'is_key'

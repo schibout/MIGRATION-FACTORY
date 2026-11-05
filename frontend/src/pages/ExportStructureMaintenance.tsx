@@ -9,7 +9,6 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import ExportButton from '../components/export/ExportButton';
 import ExportConfiguration from '../components/export/ExportConfiguration';
-import ExportPreview from '../components/export/ExportPreview';
 import TableSelector from '../components/export/TableSelector';
 import {
     ExportQuery,
@@ -27,9 +26,6 @@ const ExportStructureMaintenance: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const loadTables = useCallback(async () => {
     try {
@@ -77,7 +73,6 @@ const ExportStructureMaintenance: React.FC = () => {
 
       await exportStructureMaintenanceData({
         selectedTables,
-        format: 'zip',
         includeHeaders,
         includeInactive
       });
@@ -87,18 +82,6 @@ const ExportStructureMaintenance: React.FC = () => {
       setError('Erreur lors de l\'export des données');
     } finally {
       setExporting(false);
-    }
-  };
-
-  const handlePreview = async (tableName: string) => {
-    try {
-      setPreviewLoading(true);
-      setPreviewError(null);
-      setPreviewData([]);
-    } catch (err) {
-      setPreviewError('Erreur lors de la prévisualisation');
-    } finally {
-      setPreviewLoading(false);
     }
   };
 
@@ -161,13 +144,6 @@ const ExportStructureMaintenance: React.FC = () => {
             exporting={exporting}
             onExport={handleExport}
           />
-          {previewData.length > 0 && (
-            <ExportPreview
-              data={previewData}
-              loading={previewLoading}
-              error={previewError}
-            />
-          )}
         </>
       )}
     </Box>

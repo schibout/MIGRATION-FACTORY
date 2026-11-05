@@ -10,7 +10,6 @@ import {
     Alert,
     Box,
     Button,
-    Chip,
     CircularProgress,
     IconButton,
     InputAdornment,
@@ -103,7 +102,7 @@ const SharePointResourcesPage: React.FC = () => {
     }, [search, debouncedSearch]);
 
     // Gestion du changement de page
-    const handleChangePage = (event: unknown, newPage: number) => {
+    const handleChangePage = (_event: unknown, newPage: number) => {
         setPage(newPage);
     };
 

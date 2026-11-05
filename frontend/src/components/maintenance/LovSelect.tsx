@@ -20,6 +20,8 @@ import { getLovValues, LovValue } from '../../services/lovService';
  * plutot que d'etre ignoree. Sans cela, ouvrir la fiche en modification puis
  * enregistrer effacerait silencieusement la valeur existante.
  */
+type LovOption = Pick<LovValue, 'code' | 'libelle' | 'contract'>;
+
 interface LovSelectProps {
   listCode: string;
   /** Site ; omis = toutes les valeurs actives de la liste. */
@@ -28,7 +30,7 @@ interface LovSelectProps {
   /** Recoit le CODE ; la valeur complete est fournie en 2e argument pour les
    *  appelants qui veulent afficher le libelle (recapitulatif de modification
    *  en masse, par exemple). */
-  onChange: (code: string, valeur?: LovValue | null) => void;
+  onChange: (code: string, valeur?: LovOption | null) => void;
   label: string;
   disabled?: boolean;
 }
@@ -60,7 +62,7 @@ const LovSelect: React.FC<LovSelectProps> = ({
   }, [listCode, contract]);
 
   // La valeur courante doit toujours etre selectionnable, meme absente de la liste.
-  const optionsAffichees = useMemo(() => {
+  const optionsAffichees = useMemo<LovOption[]>(() => {
     const courante = (value ?? '').trim();
     if (!courante || options.some((o) => o.code === courante)) return options;
     return [...options, { code: courante, libelle: '(hors liste)', contract: null }];

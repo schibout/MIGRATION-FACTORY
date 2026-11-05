@@ -19,7 +19,7 @@ import React, { useCallback, useRef, useState } from 'react';
 
 interface FileUploadProps {
     fileType: string;
-    onFileSelect: (file: File) => void;
+    onFileSelect?: (file: File) => void;
     onUpload: (file: File, fileType: string) => void;
     uploading?: boolean;
     uploadProgress?: number;
@@ -90,7 +90,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
         if (validationErrors.length === 0) {
             setSelectedFile(file);
-            onFileSelect(file);
+            onFileSelect?.(file);
         } else {
             setSelectedFile(null);
         }

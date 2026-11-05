@@ -13,8 +13,7 @@ import {
   Alert,
   Chip,
   Stack,
-  IconButton,
-  useTheme
+  IconButton
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -33,8 +32,6 @@ interface ApiEndpoint {
 }
 
 const ApiConfiguration: React.FC = () => {
-  const theme = useTheme();
-  
   // État pour les configurations API
   const [apiConfig, setApiConfig] = useState({
     // L'API est servie sur la meme origine que le frontend (reverse proxy nginx).

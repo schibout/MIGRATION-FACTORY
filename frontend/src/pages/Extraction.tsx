@@ -70,7 +70,6 @@ import {
   fetchAvailableTables,
   setSelectedTables,
   setBatchSize,
-  setLimit,
   setMode,
   setWorkers,
   setPageSize,
@@ -432,14 +431,6 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
     }
   };
 
-  // Handle limit change
-  const handleLimitChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value === '' ? null : parseInt(event.target.value, 10);
-    if (value === null || (!isNaN(value) && value > 0)) {
-      dispatch(setLimit(value));
-    }
-  };
-
   // Handle mode change
   const handleModeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     dispatch(setMode(event.target.value as 'standard' | 'debug'));
@@ -503,11 +494,6 @@ const Extraction = ({ mode = 'overview' }: { mode?: string }) => {
     !['completed', 'completed_with_errors', 'failed', 'cancelled'].includes(
       (runJob?.status || '').toLowerCase()
     );
-
-  // Filter jobs
-  const filteredJobs = showRunningOnly
-    ? extractionJobs.filter((job) => job.status === 'running')
-    : extractionJobs;
 
   return (
     <Box>

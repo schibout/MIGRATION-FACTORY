@@ -30,12 +30,10 @@ import { useImport } from '../hooks/useImport';
 const ImportArticlesPage: React.FC = () => {
     const navigate = useNavigate();
     const [activeStep, setActiveStep] = useState(0);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [currentJob, setCurrentJob] = useState<ImportJob | null>(null);
 
     // Hook personnalisé pour les imports
     const {
-        loading,
         error,
         uploadFile,
         cancelJob,
@@ -60,7 +58,6 @@ const ImportArticlesPage: React.FC = () => {
 
     // Gérer l'upload du fichier
     const handleFileUpload = async (file: File) => {
-        setSelectedFile(file);
         setActiveStep(1);
 
         try {
@@ -103,17 +100,9 @@ const ImportArticlesPage: React.FC = () => {
         }
     };
 
-    // Revenir à l'étape précédente
-    const handleBack = () => {
-        if (activeStep > 0) {
-            setActiveStep(activeStep - 1);
-        }
-    };
-
     // Recommencer le processus
     const handleRestart = () => {
         setActiveStep(0);
-        setSelectedFile(null);
         setCurrentJob(null);
     };
 
@@ -151,7 +140,7 @@ const ImportArticlesPage: React.FC = () => {
             <Paper sx={{ p: 4 }}>
                 {/* Stepper */}
                 <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-                    {steps.map((step, index) => (
+                    {steps.map((step) => (
                         <Step key={step.label}>
                             <StepLabel>
                                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -195,7 +184,6 @@ const ImportArticlesPage: React.FC = () => {
                             <FileUpload
                                 fileType="products"
                                 onUpload={handleFileUpload}
-                                loading={loading}
                             />
                         </Box>
                     )}
@@ -205,7 +193,6 @@ const ImportArticlesPage: React.FC = () => {
                             job={currentJob}
                             onCancel={() => handleCancelJob(currentJob.job_uuid)}
                             onRetry={() => handleRetryJob(currentJob.job_uuid)}
-                            onBack={handleBack}
                         />
                     )}
 

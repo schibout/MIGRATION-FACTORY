@@ -1,10 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '../../services/api';
-import extractionService, { 
-  ExtractionOptions, 
-  ExtractionHistory, 
-  ExtractionStatus 
-} from '../../services/extractionService';
+import extractionService from '../../services/extractionService';
 
 // Types
 export interface ExtractionJob {
@@ -139,7 +135,7 @@ export const startExtraction = createAsyncThunk(
     tables: string[],
     options: {
       batchSize?: number;
-      limit?: number;
+      limit?: number | null;
       mode?: 'standard' | 'debug';
       workers?: number;
       pageSize?: number;
@@ -229,8 +225,8 @@ const extractionSlice = createSlice({
         
         // Mettre à jour la liste des extractions actives
         state.activeExtractions = action.payload
-          .filter(job => job.status === 'pending' || job.status === 'running')
-          .map(job => job.id);
+          .filter((job: ExtractionJob) => job.status === 'pending' || job.status === 'running')
+          .map((job: ExtractionJob) => job.id);
       })
       .addCase(fetchExtractionHistory.rejected, (state, action) => {
         state.status = 'failed';

@@ -9,8 +9,7 @@ import {
     Snackbar,
     Tab,
     Tabs,
-    Typography,
-    useTheme
+    Typography
 } from '@mui/material';
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
@@ -50,12 +49,11 @@ function a11yProps(index: number) {
 }
 
 const SecurityPage: React.FC = () => {
-  const theme = useTheme();
   const { isAdmin } = useAuth();
   const [value, setValue] = useState(0);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
 
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
   };
 
@@ -158,11 +156,11 @@ const SecurityPage: React.FC = () => {
         onClose={handleCloseNotification}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        {notification && (
+        {notification ? (
           <Alert onClose={handleCloseNotification} severity={notification.type} sx={{ width: '100%' }}>
             {notification.message}
           </Alert>
-        )}
+        ) : undefined}
       </Snackbar>
     </Box>
   );

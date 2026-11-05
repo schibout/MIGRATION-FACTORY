@@ -16,7 +16,7 @@ import {
     Typography
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 // Composants d'import
 import ImportDashboard from '../components/import/ImportDashboard';
@@ -26,19 +26,16 @@ import ImportHistory from '../components/import/ImportHistory';
 import { useImport } from '../hooks/useImport';
 import {
     FileTypeStats,
-    ImportFilters,
     ImportStats,
     TopError
 } from '../types/import.types';
 
 const ImportHistoryPage: React.FC = () => {
     const navigate = useNavigate();
-    const location = useLocation();
     
     // États pour la pagination et les filtres
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
-    const [filters, setFilters] = useState<ImportFilters>({});
     const [showStats, setShowStats] = useState(true);
 
     // Hook d'import

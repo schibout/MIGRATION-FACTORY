@@ -11,10 +11,8 @@ import {
   Checkbox,
   IconButton,
   Tooltip,
-  Chip,
   TablePagination,
   Typography,
-  TableSortLabel,
   Menu,
   MenuItem,
   Divider
@@ -103,7 +101,7 @@ const MappingTable: React.FC<MappingTableProps> = ({
   const isAllSelected = mappings.length > 0 && selectedMappings.length === mappings.length;
   
   // Gérer le changement de page de la pagination
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_event: unknown, newPage: number) => {
     onPageChange(newPage);
   };
   

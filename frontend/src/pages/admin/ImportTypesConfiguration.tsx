@@ -80,7 +80,7 @@ const defaultConfig: ImportTypeConfig = {
   icon: 'description'
 };
 
-const iconMap = {
+const iconMap: Record<string, JSX.Element> = {
   'person': <PersonIcon />,
   'location_on': <LocationOnIcon />,
   'category': <CategoryIcon />,

@@ -40,7 +40,7 @@ import {
     Tooltip,
     Typography,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import aiConfigService, {
     AiConfigDomain,
     AiConfigExample,

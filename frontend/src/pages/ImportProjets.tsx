@@ -154,13 +154,6 @@ const ImportProjetsPage: React.FC = () => {
         loadStatus();
     };
 
-    // Revenir à l'étape précédente
-    const handleBack = () => {
-        if (activeStep > 0) {
-            setActiveStep(activeStep - 1);
-        }
-    };
-
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
             {/* En-tête avec retour */}
@@ -195,7 +188,7 @@ const ImportProjetsPage: React.FC = () => {
             <Paper sx={{ p: 4 }}>
                 {/* Stepper */}
                 <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-                    {steps.map((step, index) => (
+                    {steps.map((step) => (
                         <Step key={step.label}>
                             <StepLabel>
                                 <Typography variant="body2" sx={{ fontWeight: 600 }}>

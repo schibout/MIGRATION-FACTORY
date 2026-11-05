@@ -28,12 +28,10 @@ import {
     Select,
     Snackbar,
     Stack,
-    TextField,
     Tooltip,
     Typography,
 } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import interfaceContractService, {
@@ -41,7 +39,6 @@ import interfaceContractService, {
     ContractMeta,
     ContractTableSummary,
 } from '../../services/interfaceContractService';
-import { RootState } from '../../store';
 import ContractTable from './ContractTable';
 
 /** Pastille verte / orange / rouge du panneau de gauche. */
@@ -54,7 +51,6 @@ const couleurAvancement = (table: ContractTableSummary): 'success' | 'warning' |
 const InterfaceContractsPage: React.FC = () => {
   const { tableCible } = useParams<{ tableCible?: string }>();
   const navigate = useNavigate();
-  const utilisateur = useSelector((state: RootState) => state.auth.user);
 
   const [meta, setMeta] = useState<ContractMeta | null>(null);
   const [tables, setTables] = useState<ContractTableSummary[]>([]);

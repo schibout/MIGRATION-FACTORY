@@ -5,7 +5,7 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
@@ -60,7 +60,7 @@ const TranscodificationFilter: React.FC<FilterProps> = ({ onFilterChange }) => {
   }, []);
   
   // Handler pour les changements de filtres
-  const handleFilterChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+  const handleFilterChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
     const newFilters = {
       ...filters,
       [field]: e.target.value

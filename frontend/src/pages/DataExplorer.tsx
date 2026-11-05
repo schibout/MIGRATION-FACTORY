@@ -26,9 +26,7 @@ import {
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  FileDownload as ExportIcon,
-  Refresh as RefreshIcon,
-  FilterList as FilterIcon
+  FileDownload as ExportIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -49,7 +47,6 @@ const DataExplorer = () => {
   const [selectedTable, setSelectedTable] = useState<string>(tableName || '');
   const [tableData, setTableData] = useState<TableData>({ columns: [], rows: [], total: 0 });
   const [loading, setLoading] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalTables, setTotalTables] = useState<number>(0);

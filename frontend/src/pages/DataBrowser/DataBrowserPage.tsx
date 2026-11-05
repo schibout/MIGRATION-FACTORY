@@ -76,7 +76,7 @@ const DataBrowserPage: React.FC = () => {
     const [selectedSchema, setSelectedSchema] = useState<string>('clean_data');
     const [tables, setTables] = useState<TableInfo[]>([]);
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
-    const [tableSearch, setTableSearch] = useState('');
+    const [tableSearch] = useState('');
     const [columns, setColumns] = useState<Column[]>([]);
     const [data, setData] = useState<Record<string, any>[]>([]);
     const [pagination, setPagination] = useState<PaginationInfo | null>(null);

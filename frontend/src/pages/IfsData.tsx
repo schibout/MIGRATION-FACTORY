@@ -4,10 +4,8 @@ import {
     Card,
     Grid,
     Typography,
-    useMediaQuery,
     useTheme
 } from '@mui/material';
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Import des icônes
@@ -35,7 +33,6 @@ interface IfsMenuItem {
 const IfsData = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   // Menu des données IFS avec items organisés en catégories
   const ifsMenuItems: IfsMenuItem[] = [

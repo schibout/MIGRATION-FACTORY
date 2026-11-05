@@ -29,6 +29,7 @@ import {
   Checkbox,
   ListItemText,
   LinearProgress,
+  SelectChangeEvent,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -172,7 +173,7 @@ const SapDataTable = ({
   };
 
   // Nouvelle fonction pour gérer la sélection de colonne pour le filtre
-  const handleColumnChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handleColumnChange = (event: SelectChangeEvent<string>) => {
     const column = event.target.value as string;
     setSelectedColumn(column);
   };

@@ -27,7 +27,6 @@ import {
   TableSortLabel,
   Tooltip,
   Typography,
-  useMediaQuery,
   useTheme
 } from '@mui/material';
 import React, { useState } from 'react';
@@ -59,15 +58,12 @@ const IfsDataTable = ({
   currentRowsPerPage,
   currentSortField,
   currentSortDirection,
-  loading,
   onEdit,
   onDelete,
   onView,
-  onExport,
   onDeleteMultiple
 }: IfsDataTableProps) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [selectAll, setSelectAll] = useState(false);

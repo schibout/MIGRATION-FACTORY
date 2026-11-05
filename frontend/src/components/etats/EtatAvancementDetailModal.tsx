@@ -9,7 +9,6 @@ import {
     DialogTitle,
     Divider,
     IconButton,
-    Paper,
     Table,
     TableBody,
     TableCell,
@@ -37,6 +36,7 @@ interface EtatRaw {
     end_project_mark: string | null;
     site_id: string;
     guid: string;
+    raw_data?: Record<string, unknown> | null;
 }
 
 interface JalonRow {

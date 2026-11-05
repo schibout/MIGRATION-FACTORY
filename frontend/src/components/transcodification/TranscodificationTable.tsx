@@ -288,7 +288,7 @@ const TranscodificationTable: React.FC<TranscodificationTableProps> = ({
         count={totalItems}
         rowsPerPage={rowsPerPage}
         page={page}
-        onPageChange={(e, newPage) => onPageChange(newPage)}
+        onPageChange={(_e, newPage) => onPageChange(newPage)}
         onRowsPerPageChange={(e) => onRowsPerPageChange(parseInt(e.target.value, 10))}
         labelRowsPerPage="Lignes par page:"
         labelDisplayedRows={({ from, to, count }) => `${from}-${to} sur ${count}`}

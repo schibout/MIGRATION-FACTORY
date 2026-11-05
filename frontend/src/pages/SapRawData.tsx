@@ -9,17 +9,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  LinearProgress,
-  useTheme,
-  useMediaQuery
+  LinearProgress
 } from '@mui/material';
 import sapViewsService, { SapView, ViewData } from '../services/sapViewsService';
 import SapDataTable from '../components/sap/SapDataTable';
 
 const SapRawData = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
   // États
   const [views, setViews] = useState<SapView[]>([]);
   const [selectedView, setSelectedView] = useState<string>('');

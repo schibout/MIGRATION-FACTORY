@@ -63,11 +63,6 @@ const StepValidation: React.FC<StepValidationProps> = ({
     const activeMappings = mappings.filter(m => m.target && !m.ignored);
     const isValid = validationErrors.length === 0;
 
-    // Get columns that can be used as conflict keys (primary keys or unique)
-    const conflictCandidates = (targetColumns || []).filter(
-        col => col?.isPrimaryKey || (col?.constraints || []).includes('UNIQUE')
-    );
-
     // Get mapped target column names
     const mappedTargetCols = activeMappings.map(m => m.target).filter(Boolean) as string[];
 

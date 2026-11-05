@@ -300,7 +300,7 @@ const TranscodificationManagement: React.FC = () => {
         transcodification_ids: selectedTranscodifications
       };
       
-      const response = await transcodificationService.bulkAction(bulkRequest);
+      await transcodificationService.bulkAction(bulkRequest);
       
       let message = '';
       switch (action) {

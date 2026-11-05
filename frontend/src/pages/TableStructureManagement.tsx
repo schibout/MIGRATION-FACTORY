@@ -53,15 +53,6 @@ interface TableStructureMetadata {
     source_file: string;
 }
 
-interface TableSummary {
-    table_name: string;
-    job_name: string;
-    column_count: number;
-    key_count: number;
-    mandatory_count: number;
-    imported_at: string;
-}
-
 const TableStructureManagement: React.FC = () => {
     const [structures, setStructures] = useState<TableStructureMetadata[]>([]);
     const [loading, setLoading] = useState(false);
@@ -79,11 +70,6 @@ const TableStructureManagement: React.FC = () => {
     const [tableName, setTableName] = useState('');
     const [schemaName, setSchemaName] = useState('clean_data');
     
-    // Nouveaux états pour la vue par table
-    const [viewMode, setViewMode] = useState<'tables' | 'columns'>('tables');
-    const [selectedTable, setSelectedTable] = useState<string | null>(null);
-    const [selectedJob, setSelectedJob] = useState<string | null>(null);
-    const [tableSummaries, setTableSummaries] = useState<TableSummary[]>([]);
 
     const loadStructures = useCallback(async () => {
         try {

@@ -13,7 +13,6 @@ import {
   useTheme,
   useMediaQuery,
   Button,
-  Tooltip,
   IconButton,
   Menu,
   Dialog,

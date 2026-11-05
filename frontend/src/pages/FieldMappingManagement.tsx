@@ -9,7 +9,6 @@ import {
   Alert,
   Backdrop,
   CircularProgress,
-  Divider,
   SpeedDial,
   SpeedDialIcon,
   SpeedDialAction,
@@ -77,7 +76,7 @@ const FieldMappingManagement: React.FC = () => {
     severity: 'info'
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
-  const [showImportDialog, setShowImportDialog] = useState<boolean>(false);
+  const [, setShowImportDialog] = useState<boolean>(false);
   const [dialogAction, setDialogAction] = useState<{
     type: 'delete' | 'activate' | 'deactivate';
     ids: number[];
@@ -317,12 +316,6 @@ const FieldMappingManagement: React.FC = () => {
     }
   };
   
-  // Gérer l'import des mappings
-  const handleImport = (file: File) => {
-    // Implémentation à venir pour l'upload de fichier
-    console.log('Import file:', file);
-  };
-
   // Sauvegarder un mapping (création ou mise à jour)
   const handleSaveMapping = async (data: FieldMapping) => {
     try {

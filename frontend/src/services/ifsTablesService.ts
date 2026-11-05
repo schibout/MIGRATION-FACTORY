@@ -257,9 +257,6 @@ const ifsTablesService = {
     data: Record<string, any>
   ): Promise<UpdateRecordResult> => {
     try {
-      // Déterminer la clé primaire à partir du premier champ "id" trouvé
-      const primaryKeyField = Object.keys(data).find(key => key.toLowerCase().includes('id')) || 'id';
-      
       // Vérifier que l'identifiant est bien présent dans les données
       if (!recordId) {
         return {
@@ -336,14 +333,6 @@ const ifsTablesService = {
     options: ExportOptions
   ): Promise<Blob> => {
     try {
-      // Récupération du type de contenu en fonction du format
-      let contentType = '';
-      if (options.format === 'csv') {
-        contentType = 'text/csv';
-      } else if (options.format === 'excel') {
-        contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      }
-
       // Mise à jour du nom de fichier
       if (!options.filename) {
         const now = new Date().toISOString().replace(/[:.]/g, '-');

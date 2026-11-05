@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import {
   Box,
   Grid,
@@ -23,8 +23,7 @@ import {
   Paper,
   Chip,
 } from '@mui/material';
-import { ArrowUpward, ArrowDownward, MoreVert as MoreVertIcon } from '@mui/icons-material';
-import { RootState } from '../store';
+import { ArrowUpward, MoreVert as MoreVertIcon } from '@mui/icons-material';
 import { fetchExtractionHistory } from '../store/slices/extractionSlice';
 import ExtractionStatusChart from '../components/dashboard/ExtractionStatusChart';
 import DataQualityChart from '../components/dashboard/DataQualityChart';
@@ -44,13 +43,6 @@ const Dashboard = () => {
   const dispatch = useDispatch();
   const [period, setPeriod] = useState('this_month');
   
-  const extractionJobs = useSelector(
-    (state: RootState) => state.extraction.extractionJobs
-  );
-  
-  const isLoading = useSelector(
-    (state: RootState) => state.extraction.status === 'loading'
-  );
 
   // Données fictives pour les KPI
   const metrics = {

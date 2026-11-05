@@ -9,7 +9,6 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import ExportButton from '../components/export/ExportButton';
 import ExportConfiguration from '../components/export/ExportConfiguration';
-import ExportPreview from '../components/export/ExportPreview';
 import TableSelector from '../components/export/TableSelector';
 import {
     ExportQuery,
@@ -27,9 +26,6 @@ const ExportPmAction: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Chargement des tables disponibles (catégorie PM Action)
   const loadTables = useCallback(async () => {
@@ -103,23 +99,6 @@ const ExportPmAction: React.FC = () => {
       setError('Erreur lors de l\'export des données');
     } finally {
       setExporting(false);
-    }
-  };
-
-  // Fonction de prévisualisation
-  const handlePreview = async (tableName: string) => {
-    try {
-      setPreviewLoading(true);
-      setPreviewError(null);
-
-      console.log(`Prévisualisation de la table: ${tableName}`);
-      setPreviewData([]);
-
-    } catch (err) {
-      console.error('Erreur lors de la prévisualisation:', err);
-      setPreviewError('Erreur lors de la prévisualisation');
-    } finally {
-      setPreviewLoading(false);
     }
   };
 
@@ -201,13 +180,6 @@ const ExportPmAction: React.FC = () => {
             onExport={handleExport}
           />
 
-          {previewData.length > 0 && (
-            <ExportPreview
-              data={previewData}
-              loading={previewLoading}
-              error={previewError}
-            />
-          )}
         </>
       )}
     </Box>

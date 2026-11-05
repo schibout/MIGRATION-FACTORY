@@ -124,11 +124,6 @@ const ImportProgress: React.FC<ImportProgressProps> = ({
     // Calcul du pourcentage de progression
     const progressPercent = job.progress_percent || 0;
 
-    // Calcul du taux de succès
-    const successRate = job.total_rows && job.total_rows > 0 
-        ? Math.round((job.success_rows || 0) / job.total_rows * 100)
-        : 0;
-
     // Formater la durée
     const formatDuration = (startDate?: string, endDate?: string) => {
         if (!startDate) return null;

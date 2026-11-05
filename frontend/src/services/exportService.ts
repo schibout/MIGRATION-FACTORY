@@ -140,8 +140,6 @@ export const exportSupplierData = async (config: ExportConfig) => {
     console.log('🚀 Démarrage de l\'export ZIP via l\'API backend');
     console.log('📋 Configuration:', config);
     
-    const separatorToSend = config.csvSeparator || ';';
-    console.log('🔧 Séparateur CSV à envoyer:', `"${separatorToSend}"`, 'Type:', typeof separatorToSend);
 
     // Appeler l'API backend pour générer le fichier ZIP
     const response = await api.post('/export/suppliers', {

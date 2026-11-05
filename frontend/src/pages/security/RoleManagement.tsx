@@ -33,7 +33,7 @@ import {
   Check as CheckIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
-import roleService, { Role, RoleCreateData, RoleUpdateData } from '../../services/roleService';
+import { Role, RoleCreateData, RoleUpdateData } from '../../services/roleService';
 
 // Liste des permissions disponibles dans le système
 const availablePermissions = [
