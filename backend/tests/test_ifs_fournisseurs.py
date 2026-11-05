@@ -2,10 +2,10 @@
 import pytest
 
 from api import (ifs_consultation, ifs_data_articles, ifs_data_clients, ifs_data_operations, ifs_data_pm_actions,
-                 ifs_data_projets, ifs_data_structure, ifs_fournisseurs)
+                 ifs_data_projets, ifs_data_ressources, ifs_data_structure, ifs_fournisseurs)
 
 ECRANS = [ifs_fournisseurs, ifs_data_articles, ifs_data_structure, ifs_data_projets, ifs_data_clients,
-          ifs_data_pm_actions, ifs_data_operations]
+          ifs_data_pm_actions, ifs_data_operations, ifs_data_ressources]
 
 
 def test_libelle_du_catalogue():

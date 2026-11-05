@@ -87,10 +87,10 @@ const IfsData = () => {
       color: '#ff9800' // Orange
     },
     {
-      id: 'maintenance',
-      title: 'Maintenance',
-      description: 'Données de maintenance IFS',
-      path: '/ifs-data/maintenance',
+      id: 'maintenance-ressources',
+      title: 'Maintenance Ressource',
+      description: 'Ressources, connexions, disponibilités, hiérarchie et personnes exportées vers IFS',
+      path: '/ifs-data/maintenance-ressources',
       icon: <MaintenanceIcon sx={{ fontSize: 36 }} />,
       color: '#9c27b0' // Violet
     },

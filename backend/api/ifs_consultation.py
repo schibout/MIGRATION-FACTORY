@@ -34,6 +34,7 @@ ENTITES_CATALOGUE = {
     'invent_part_plan': 'INVENTORY_PART_PLANNING',
     'project_activity': 'ACTIVITY',
     'project_activity_class': 'ACTIVITY',
+    'resource_detail_file': 'RESOURCE_DETAIL',
     'supplier_addr_tax_number': 'CUSTOMER_ADDR_TAX_NUMBER',
 }
 
