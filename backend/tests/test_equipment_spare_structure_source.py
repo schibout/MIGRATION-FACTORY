@@ -57,12 +57,16 @@ def racine(cur):
         JOIN {MO} a ON a.object_type = 'ARTICLE' AND a.is_active AND a.code = s.spare_id
         JOIN {MO} b ON b.parent_id = a.id AND b.object_type = 'BOM_ITEM' AND b.is_active AND b.category = 'L'
         JOIN {MO} c ON c.id = b.ref_object_id
+        JOIN clean_data.article_perimetre p1 ON p1.numero_article = a.code
+        JOIN clean_data.article_perimetre p2 ON p2.numero_article = c.code
         GROUP BY a.id, a.code LIMIT 1""")
     assert r, 'aucune racine avec nomenclature matiere dans IH02'
     return r
 
 
 def _composant_test(cur):
+    # Parent et composant doivent etre dans le perimetre Finance > Articles
+    cur.execute("INSERT INTO clean_data.article_perimetre (numero_article, source) VALUES ('ZZS-COMP', 'FICHIER')")
     return _one(cur, f"""
         INSERT INTO {MO} (object_type, sap_key, code, designation, type_code, source)
         VALUES ('ARTICLE', 'ZZS-COMP', 'ZZS-COMP', 'composant de test', 'ERSA', 'MANUAL') RETURNING id""")['id']
@@ -107,6 +111,22 @@ def test_le_contrat_est_celui_de_la_racine(cur, racine):
                         UNION SELECT component_spare_contract FROM {ESS}) x
                     WHERE c NOT IN (SELECT DISTINCT contract FROM clean_data.equipment_object_spare)""")
     assert cur.fetchall() == [], 'contrat inconnu des racines'
+
+
+def test_tout_ibau_ou_ersa_du_perimetre_avec_nomenclature_est_charge(cur):
+    cur.execute("CALL clean_data.load_equipment_spare_structure('FULL')")
+    r = _one(cur, f"""
+        SELECT count(DISTINCT a.code) AS manquants
+        FROM clean_data.article_perimetre p
+        JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
+        JOIN {MO} a ON a.object_type = 'ARTICLE' AND a.is_active AND a.code = p.numero_article
+        JOIN {MO} b ON b.parent_id = a.id AND b.object_type = 'BOM_ITEM' AND b.is_active
+                   AND b.category = 'L' AND b.quantity >= 0.5
+        JOIN {MO} c ON c.id = b.ref_object_id
+        JOIN clean_data.article_perimetre pc ON pc.numero_article = c.code
+        WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
+          AND NOT EXISTS (SELECT 1 FROM {ESS} e WHERE e.spare_id = a.code)""")
+    assert r['manquants'] == 0
 
 
 def test_le_mode_delta_recharge_le_sous_arbre_depuis_ih02(cur, racine):
