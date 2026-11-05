@@ -15,6 +15,8 @@ import {
     People as ClientIcon,
     Business as FournisseurIcon,
     Handyman as MaintenanceIcon,
+    Build as OperationIcon,
+    EventRepeat as PmIcon,
     Assignment as ProjetIcon,
     AccountTree as StructureIcon,
     Visibility as ViewIcon
@@ -91,6 +93,22 @@ const IfsData = () => {
       path: '/ifs-data/maintenance',
       icon: <MaintenanceIcon sx={{ fontSize: 36 }} />,
       color: '#9c27b0' // Violet
+    },
+    {
+      id: 'pm-actions',
+      title: 'Maintenance PM Action',
+      description: 'Plans de maintenance préventive, étapes, ressources et pièces exportés vers IFS',
+      path: '/ifs-data/pm-actions',
+      icon: <PmIcon sx={{ fontSize: 36 }} />,
+      color: '#7b1fa2'
+    },
+    {
+      id: 'operations',
+      title: 'Opération de Maintenance',
+      description: 'Opérations des bons de travail, ressources et besoins matière exportés vers IFS',
+      path: '/ifs-data/operations',
+      icon: <OperationIcon sx={{ fontSize: 36 }} />,
+      color: '#5e35b1'
     },
     {
       id: 'projets',

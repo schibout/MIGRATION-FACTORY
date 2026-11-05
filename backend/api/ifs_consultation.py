@@ -36,6 +36,18 @@ def colonnes_export(table, libelles={}):
     return [(f't.{q(c)}' if c in reelles else 'NULL', c, libelles.get(c, c)) for c in noms]
 
 
+def source_export(table, label, recherche, cle, ordre, libelles={}):
+    """Source d'une table montree telle qu'exportee ; `recherche` : expressions texte sur l'alias t."""
+    return {
+        'label': label,
+        'from': f'clean_data.{q(table)} t',
+        'colonnes': colonnes_export(table, libelles),
+        'recherche': recherche,
+        'cle': cle,
+        'ordre': f'{ordre}, t.ctid',
+    }
+
+
 def filtre(src, search):
     """(FROM + WHERE, parametres) ; la recherche porte sur les expressions de la source."""
     clauses = [src['where']] if src.get('where') else []

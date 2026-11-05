@@ -1,9 +1,11 @@
-"""Garde-fous de la configuration des ecrans Donnees IFS Fournisseurs, Articles, Structure, Projets et Clients (sans base)."""
+"""Garde-fous de la configuration des ecrans de consultation Donnees IFS (sans base)."""
 import pytest
 
-from api import ifs_data_articles, ifs_data_clients, ifs_data_projets, ifs_data_structure, ifs_fournisseurs
+from api import (ifs_data_articles, ifs_data_clients, ifs_data_operations, ifs_data_pm_actions, ifs_data_projets,
+                 ifs_data_structure, ifs_fournisseurs)
 
-ECRANS = [ifs_fournisseurs, ifs_data_articles, ifs_data_structure, ifs_data_projets, ifs_data_clients]
+ECRANS = [ifs_fournisseurs, ifs_data_articles, ifs_data_structure, ifs_data_projets, ifs_data_clients,
+          ifs_data_pm_actions, ifs_data_operations]
 
 
 @pytest.mark.parametrize('ecran', ECRANS)

@@ -50,6 +50,8 @@ from .ifs_data_articles import ifs_data_articles_blueprint
 from .ifs_data_structure import ifs_data_structure_blueprint
 from .ifs_data_projets import ifs_data_projets_blueprint
 from .ifs_data_clients import ifs_data_clients_blueprint
+from .ifs_data_pm_actions import ifs_data_pm_actions_blueprint
+from .ifs_data_operations import ifs_data_operations_blueprint
 from .equipment_browser import equipment_browser_blueprint
 from .resource_files import resource_files_blueprint
 
@@ -123,6 +125,8 @@ def register_blueprints(app):
     app.register_blueprint(ifs_data_structure_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/structure')
     app.register_blueprint(ifs_data_projets_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/projets')
     app.register_blueprint(ifs_data_clients_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/clients')
+    app.register_blueprint(ifs_data_pm_actions_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/pm-actions')
+    app.register_blueprint(ifs_data_operations_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/operations')
     app.register_blueprint(equipment_browser_blueprint, url_prefix=f'{API_PREFIX}/maintenance/equipment-browser')
     app.register_blueprint(resource_files_blueprint, url_prefix=f'{API_PREFIX}/resource-files')
 
