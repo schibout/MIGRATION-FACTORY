@@ -79,7 +79,7 @@ const IfsData = () => {
     {
       id: 'clients',
       title: 'Clients',
-      description: 'Données clients IFS',
+      description: 'Clients, adresses, fiscalité et paiement exportés vers IFS',
       path: '/ifs-data/clients',
       icon: <ClientIcon sx={{ fontSize: 36 }} />,
       color: '#ff9800' // Orange

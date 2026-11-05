@@ -9,11 +9,8 @@ Lecture seule. Les colonnes viennent de public.etl_export_queries, comme l'expor
 """
 from flask import Blueprint
 from flask_jwt_extended import jwt_required
-from sqlalchemy import text
 
-from models import db
-
-from .ifs_consultation import exporter, lister
+from .ifs_consultation import colonnes_export, exporter, lister
 from .sap_articles import q
 
 ifs_data_projets_blueprint = Blueprint('ifs_data_projets', __name__)
@@ -64,20 +61,11 @@ _ABSENT = 'NOT EXISTS (SELECT 1 FROM clean_data.{0} x WHERE {1})'
 
 
 def _source_table(table):
-    liste = db.session.execute(text(
-        "SELECT column_list FROM public.etl_export_queries "
-        "WHERE table_schema = 'clean_data' AND table_name = :t AND is_active"), {'t': table}).scalar() or ''
-    reelles = {r[0] for r in db.session.execute(text(
-        "SELECT column_name FROM information_schema.columns "
-        "WHERE table_schema = 'clean_data' AND table_name = :t"), {'t': table})}
     recherche, ordre = _TABLES[table]
-    # Colonne declaree mais absente de la table : NULL, comme build_dynamic_query
-    colonnes = [(f't.{q(c)}' if c in reelles else 'NULL', c, LIBELLES.get(c, c))
-                for c in (x.strip().lower() for x in liste.split(',')) if c]
     return {
         'label': TABLES[table],
         'from': f'clean_data.{q(table)} t',
-        'colonnes': colonnes,
+        'colonnes': colonnes_export(table, LIBELLES),
         'recherche': [f't.{c}' for c in recherche],
         'cle': 't.project_id',
         'ordre': ', '.join(f't.{c.strip()}' for c in ordre.split(',')) + ', t.ctid',

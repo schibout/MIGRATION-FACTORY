@@ -22,6 +22,20 @@ def colonnes_table(table, *exclues):
             if r[0] not in AUDIT and r[0] not in exclues]
 
 
+def colonnes_export(table, libelles={}):
+    """(expression, cle, libelle) des colonnes de public.etl_export_queries pour clean_data.<table>, dans
+    l'ordre du fichier d'export. Colonne declaree mais absente de la table : NULL, comme build_dynamic_query."""
+    liste = db.session.execute(text(
+        "SELECT column_list FROM public.etl_export_queries "
+        "WHERE table_schema = 'clean_data' AND table_name = :t AND is_active"), {'t': table}).scalar() or ''
+    reelles = {r[0] for r in db.session.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = 'clean_data' AND table_name = :t"), {'t': table})}
+    # dict.fromkeys : une liste peut declarer deux fois la meme colonne (customer_info_contact.guid)
+    noms = dict.fromkeys(c.strip().lower() for c in liste.split(',') if c.strip())
+    return [(f't.{q(c)}' if c in reelles else 'NULL', c, libelles.get(c, c)) for c in noms]
+
+
 def filtre(src, search):
     """(FROM + WHERE, parametres) ; la recherche porte sur les expressions de la source."""
     clauses = [src['where']] if src.get('where') else []
