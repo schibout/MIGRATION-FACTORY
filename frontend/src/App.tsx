@@ -46,6 +46,7 @@ import IfsViewCatalog from './pages/IfsViewCatalog';
 import IfsData from './pages/IfsData';
 import IfsDataArticles from './pages/IfsDataArticles';
 import IfsDataStructure from './pages/IfsDataStructure';
+import IfsDataProjets from './pages/IfsDataProjets';
 import IfsDataClients from './pages/IfsDataClients';
 import IfsDataFournisseurs from './pages/IfsDataFournisseurs';
 import IH02HierarchyPage from './pages/IH02HierarchyPage';
@@ -189,6 +190,7 @@ function App() {
           <Route path="ifs-data/fournisseurs" element={<IfsDataFournisseurs />} />
           <Route path="ifs-data/articles" element={<IfsDataArticles />} />
           <Route path="ifs-data/structure" element={<IfsDataStructure />} />
+          <Route path="ifs-data/projets" element={<IfsDataProjets />} />
           <Route path="ifs-target-data" element={<Navigate to="/ifs-data" replace />} />
           
           {/* Routes pour les projets */}

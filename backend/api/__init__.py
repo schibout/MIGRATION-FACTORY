@@ -48,6 +48,7 @@ from .sap_articles import sap_articles_blueprint
 from .ifs_fournisseurs import ifs_fournisseurs_blueprint
 from .ifs_data_articles import ifs_data_articles_blueprint
 from .ifs_data_structure import ifs_data_structure_blueprint
+from .ifs_data_projets import ifs_data_projets_blueprint
 from .equipment_browser import equipment_browser_blueprint
 from .resource_files import resource_files_blueprint
 
@@ -119,6 +120,7 @@ def register_blueprints(app):
     app.register_blueprint(ifs_fournisseurs_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/fournisseurs')
     app.register_blueprint(ifs_data_articles_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/articles')
     app.register_blueprint(ifs_data_structure_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/structure')
+    app.register_blueprint(ifs_data_projets_blueprint, url_prefix=f'{API_PREFIX}/ifs-data/projets')
     app.register_blueprint(equipment_browser_blueprint, url_prefix=f'{API_PREFIX}/maintenance/equipment-browser')
     app.register_blueprint(resource_files_blueprint, url_prefix=f'{API_PREFIX}/resource-files')
 

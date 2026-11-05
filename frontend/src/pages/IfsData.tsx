@@ -95,7 +95,7 @@ const IfsData = () => {
     {
       id: 'projets',
       title: 'Projets',
-      description: 'Gestion des projets IFS',
+      description: 'Projets, sous-projets, activités et rôles exportés vers IFS',
       path: '/ifs-data/projets',
       icon: <ProjetIcon sx={{ fontSize: 36 }} />,
       color: '#f44336' // Rouge
