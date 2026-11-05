@@ -15,10 +15,17 @@ Flask 2.3, SQLAlchemy 2, Python 3.11 ; PostgreSQL externe ; Docker Compose.
 ## Regles de travail
 
 - Repondre en francais et privilegier les changements limites au besoin demande.
-- `.env` peut etre versionne (depot GitHub prive, proprietaire unique). Ne pas
-  versionner les autres mots de passe et jetons, les donnees importees ou les backups.
+- Ne pas versionner `.env`, les autres mots de passe et jetons, les donnees
+  importees ou les backups.
 - « Installe sur le serveur » : commit et push, `git pull` sur le serveur, puis
-  installation des modifications, sans redemander.
+  installation des modifications, sans redemander (skill `deploy-serveur`).
+- « Developpe en autonomie » : coder et verifier en local, installer sur le serveur,
+  puis tester l'ecran avec Playwright sur le port 8081, sans validation intermediaire.
+  Sans ces mots, s'arreter au code local et proposer l'installation.
+- Le depot peut porter un travail parallele : indexer des chemins explicites, puis
+  controler `git show --stat HEAD` apres le commit et avant tout push.
+  Avant d'ecrire un fichier dit nouveau, verifier qu'il n'existe pas.
+- Lecture de la base du serveur : `bash scripts/ai/sql_serveur.sh "SELECT ..."`.
 - Les demandes utilisateur autorisent les travaux necessaires dans leur perimetre ;
   ne pas demander de confirmation supplementaire pour une operation deja autorisee.
 - Ne pas deployer, lancer de migration ou contacter des services en production

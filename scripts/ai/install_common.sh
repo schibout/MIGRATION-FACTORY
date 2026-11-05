@@ -16,10 +16,13 @@ du depot. Aucune connexion aux comptes ou a PostgreSQL n'est effectuee.
   --update-cli       Reinstaller le CLI stable meme s'il est deja present.
   --vscode           Installer aussi les extensions VS Code officielles utiles.
   --design           Ajouter frontend-design au profil de plugins essentiels.
+  --audit            Claude seulement : controler le poste en lecture seule.
   -h, --help         Afficher cette aide.
 
 Prerequis : Bash, Git, Node.js 20+ / npm et Python 3.11+.
-CLI Claude natif stable ; CLI Codex via npm @openai/codex@latest.
+CLI Claude natif stable (ou npm stable si deja installe via npm) ;
+CLI Codex via npm @openai/codex@latest.
+Le hook pre-commit du projet est installe si aucun hook personnel n'existe.
 Les parametres personnels sont sauvegardes avant les commandes d'installation.
 EOF
 }
@@ -74,7 +77,20 @@ if existing:
 ' "$AI_ASSISTANT"
 }
 
+ai_claude_is_npm() {
+  local task_path
+  task_path="$(command -v claude 2>/dev/null)" || return 1
+  [[ $task_path == */npm/* || $(readlink -f -- "$task_path" 2>/dev/null) == *node_modules* ]]
+}
+
 ai_install_claude_cli() {
+  # Keep a single CLI: a native install next to npm leaves two binaries on PATH.
+  if ai_claude_is_npm; then
+    printf 'CLI Claude installe via npm : mise a jour par npm.\n'
+    ai_run npm install -g @anthropic-ai/claude-code@stable
+    (( AI_DRY_RUN )) || hash -r
+    return
+  fi
   if [[ ${OSTYPE:-} == msys* || ${OSTYPE:-} == cygwin* ]]; then
     (( AI_DRY_RUN )) || ai_require powershell.exe 'Utiliser Git Bash ou WSL.'
     ai_run powershell.exe -NoProfile -NonInteractive -Command \
@@ -197,9 +213,10 @@ ai_install_vscode() {
 
 ai_install_main() {
   AI_ASSISTANT=$1; shift
-  AI_DRY_RUN=0 AI_CONFIGURE_ONLY=0 AI_SKIP_CLI=0 AI_UPDATE_CLI=0 AI_VSCODE=0 AI_DESIGN=0
+  AI_DRY_RUN=0 AI_CONFIGURE_ONLY=0 AI_SKIP_CLI=0 AI_UPDATE_CLI=0 AI_VSCODE=0 AI_DESIGN=0 AI_AUDIT=0
   while (( $# )); do
     case "$1" in
+      --audit) AI_AUDIT=1 ;;
       --dry-run) AI_DRY_RUN=1 ;;
       --configure-only) AI_CONFIGURE_ONLY=1 ;;
       --skip-cli) AI_SKIP_CLI=1 ;;
@@ -214,6 +231,12 @@ ai_install_main() {
   (( ! AI_SKIP_CLI || ! AI_UPDATE_CLI )) || ai_die '--skip-cli et --update-cli sont incompatibles.'
   (( ! AI_CONFIGURE_ONLY || (! AI_UPDATE_CLI && ! AI_VSCODE && ! AI_DESIGN) )) || ai_die '--configure-only est incompatible avec --update-cli, --vscode ou --design.'
   cd -- "$AI_REPO_ROOT"
+  if (( AI_AUDIT )); then
+    [[ $AI_ASSISTANT == claude ]] || ai_die '--audit concerne seulement Claude.'
+    AI_DRY_RUN=0
+    ai_python
+    exec "$AI_PYTHON" "$AI_REPO_ROOT/scripts/ai/audit_claude.py"
+  fi
   ai_python
   if (( ! AI_CONFIGURE_ONLY )); then
     if (( ! AI_DRY_RUN )); then
@@ -227,6 +250,9 @@ ai_install_main() {
     ai_check_cli_api
     ai_install_plugins
     if (( AI_VSCODE )); then ai_install_vscode; fi
+    # A personal hook is left in place: warn, do not abort the installation.
+    ai_run "$AI_PYTHON" "$AI_REPO_ROOT/scripts/ai/install_hooks.py" \
+      || printf 'Avertissement : hook pre-commit non installe.\n' >&2
   fi
   ai_run "$AI_PYTHON" "$AI_REPO_ROOT/scripts/ai/sync_skills.py"
   if (( AI_DRY_RUN )); then

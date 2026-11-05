@@ -176,6 +176,29 @@ class InstallerTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(any("plugin add" in line and "--help" not in line for line in self.commands()))
 
+    def test_update_of_npm_claude_stays_on_npm(self):
+        npm_dir = self.base / "npm"
+        npm_dir.mkdir()
+        shutil.move(str(self.bin / "claude"), npm_dir / "claude")
+        result = self.run_installer(
+            "claude", "--update-cli", PATH=str(npm_dir) + os.pathsep + self.env["PATH"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = self.commands()
+        self.assertIn("npm:install -g @anthropic-ai/claude-code@stable", commands)
+        self.assertFalse(any(line.startswith("curl:") for line in commands))
+
+    def test_hook_failure_does_not_abort_installation(self):
+        # install_hooks.py is absent from this fixture, so the step fails.
+        result = self.run_installer("claude", "--skip-cli")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("hook pre-commit non installe", result.stderr)
+        self.assertIn("Installation terminee", result.stdout)
+
+    def test_audit_is_refused_for_codex(self):
+        result = self.run_installer("codex", "--audit")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(any(line.startswith("codex:") for line in self.commands()))
+
     def test_context7_configuration_never_starts_oauth(self):
         result = self.run_installer("codex", "--skip-cli")
         self.assertEqual(result.returncode, 0, result.stderr)

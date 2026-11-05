@@ -4,6 +4,9 @@
 # ===========================================================================
 
 # --- Secrets & environnement (NE JAMAIS COMMITER) -------------------------
+.env
+.env.*
+!.env.example
 *.pem
 *.key
 secrets.json
@@ -73,6 +76,7 @@ backend/exports/
 .claude/skills/*
 !.claude/skills/migration-factory/
 !.claude/skills/verify-change/
+!.claude/skills/deploy-serveur/
 .codex/*
 !.codex/config.toml
 !.codex/agents/

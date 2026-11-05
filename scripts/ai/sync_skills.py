@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synchronise uniquement les deux skills projet, sans toucher au catalogue global."""
+"""Synchronise uniquement les skills projet, sans toucher au catalogue global."""
 
 import argparse
 from datetime import datetime, timezone
@@ -7,7 +7,7 @@ from pathlib import Path
 import shutil
 import uuid
 
-SKILLS = ('migration-factory', 'verify-change')
+SKILLS = ('migration-factory', 'verify-change', 'deploy-serveur')
 ROOT = Path(__file__).resolve().parents[2]
 
 

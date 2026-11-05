@@ -55,6 +55,18 @@ class VerificationTests(unittest.TestCase):
             run = lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 7)
             self.assertEqual(verify.run_checks(Path(directory), verify.build_plan(["frontend/src/Removed.tsx"]), runner=run), 7)
 
+    def test_git_hook_environment_is_not_passed_to_checks(self):
+        seen = {}
+
+        def run(command, cwd, env):
+            seen.update(env)
+            return subprocess.CompletedProcess(command, 0)
+
+        with tempfile.TemporaryDirectory() as directory, patch.dict(verify.os.environ, {"GIT_INDEX_FILE": "next-index", "GIT_DIR": ".git"}):
+            verify.run_checks(Path(directory), verify.build_plan(["frontend/src/Removed.tsx"]), runner=run)
+        self.assertTrue(seen)
+        self.assertFalse([key for key in seen if key.startswith("GIT_")])
+
     def test_deleted_python_file_is_not_parsed(self):
         with tempfile.TemporaryDirectory() as directory:
             plan = verify.build_plan(["scripts/deleted.py"])

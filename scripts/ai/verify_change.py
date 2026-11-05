@@ -85,7 +85,9 @@ def contained_path(root: Path, name: str) -> Path:
 
 
 def run_checks(root: Path, checks: list[Check], *, runner=subprocess.run) -> int:
-    environment = os.environ.copy()
+    # Un hook Git exporte GIT_INDEX_FILE et GIT_DIR : transmis aux controles, les
+    # tests qui creent un depot temporaire agiraient sur l'index du vrai depot.
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     environment["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     for check in checks:
         print("Controle : " + check.kind, flush=True)

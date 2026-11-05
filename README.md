@@ -41,7 +41,8 @@ avoir un préfixe accessible à l'utilisateur, par exemple via un gestionnaire N
 | `--dry-run` | Affiche les actions sans écriture, installation ni appel réseau. |
 | `--configure-only` | Synchronise uniquement les skills du dépôt ; aucun appel aux CLI. |
 | `--skip-cli` | Exige une CLI existante sans la mettre à jour. |
-| `--update-cli` | Réinstalle explicitement Claude stable ou Codex publié sur npm. |
+| `--update-cli` | Réinstalle explicitement Claude stable (par npm s'il est déjà installé ainsi, pour ne pas créer de second binaire) ou Codex publié sur npm. |
+| `--audit` | Claude seulement : contrôle le poste en lecture seule (mémoire, permissions, worktrees, CLI, hook) ; code 1 s'il reste un point à traiter. |
 | `--vscode` | Installe les extensions officielles Python, Pylance, debugpy, Black, Flake8, Prettier, ESLint et l'assistant concerné. |
 | `--design` | Ajoute le plugin `frontend-design`. |
 | `--help` | Affiche l'aide. |
@@ -106,16 +107,18 @@ UI/UX Pro Max. Leurs installations personnelles sont préservées ; ils peuvent
 être réactivés pour un besoin précis dans `.claude/settings.json` ou
 `.codex/config.toml`. Le runtime et les outils système Codex sont conservés.
 
-Les deux skills spécifiques sont versionnés dans `.agents/skills/` :
+Les skills spécifiques sont versionnés dans `.agents/skills/` :
 
 - **migration-factory** : introspection des schémas, règles SAP/IFS, migrations,
   loaders et préservation des saisies. Aucune recommandation de DROP/RECREATE
   des sources SAP.
 - **verify-change** : sélection des contrôles, exécution et restitution des
   preuves ; distinction entre tests locaux et tests connectés.
+- **deploy-serveur** : commit, push, `git pull`, installation selon les fichiers
+  touchés et vérification sur le serveur, avec les pièges connus.
 
-Claude les expose par `/migration-factory` et `/verify-change` ; Codex permet
-de les mentionner par `$migration-factory` et `$verify-change`. Les copies
+Claude les expose par `/migration-factory`, `/verify-change` et `/deploy-serveur` ;
+Codex permet de les mentionner par `$` suivi du même nom. Les copies
 Claude sont générées depuis la source commune :
 
 ```bash
