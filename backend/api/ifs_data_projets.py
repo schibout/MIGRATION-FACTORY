@@ -3,6 +3,8 @@ categorie d'export 'project' (module etl_project.py).
 
   GET  /api/v1/ifs-data/projets              onglet, table, search, page, page_size
   GET  /api/v1/ifs-data/projets/export.xlsx  onglet, search : une feuille par table de l'onglet
+  GET  /api/v1/ifs-data/projets/sync         etat du dernier rechargement
+  POST /api/v1/ifs-data/projets/sync         {"source": "mf"} module ETL seul ; {"source": "sap"} import ASAP puis module ETL
 
 Lecture seule. Les colonnes viennent de public.etl_export_queries, comme l'export
 (services/export_service.py) : l'ecran montre les colonnes du CSV, dans le meme ordre.
@@ -10,12 +12,13 @@ Lecture seule. Les colonnes viennent de public.etl_export_queries, comme l'expor
 from flask import Blueprint
 from flask_jwt_extended import jwt_required
 
-from .ifs_consultation import colonnes_export, exporter, lister
+from .finance import _write_status
+from .ifs_consultation import colonnes_export, exporter, lister, routes_sync
 from .sap_articles import q
 
 ifs_data_projets_blueprint = Blueprint('ifs_data_projets', __name__)
 
-SYNC_KEY = 'projets_ifs'  # jamais ecrite ici : l'ecran n'a pas de synchronisation
+SYNC_KEY = 'projets_ifs'
 
 TABLES = {
     'project_base': 'Projets',
@@ -136,3 +139,31 @@ def liste():
 @jwt_required()
 def export():
     return exporter(ONGLETS, _source, 'projets_ifs')
+
+
+def _service_asap():
+    from services.sharepoint_service import SharePointService
+    return SharePointService()
+
+
+def _importer_asap(cle, _utilisateur):
+    """Recharge depuis ASAP (SharePoint) les listes lues par les procedures du module, etats d'avancement compris
+    (les activites viennent de clean_data.v_portes_detail). Un import rate arrete tout : le module repartirait
+    sinon sur les anciennes donnees en affichant un succes."""
+    service = _service_asap()
+    etapes = [('Import des projets ASAP', service.import_projets_from_sharepoint, 5),
+              ('Import des utilisateurs ASAP', service.import_users_from_sharepoint, 15),
+              ('Import des projets à reprendre', service.import_projets_a_reprendre, 25),
+              ("Import des états d'avancement ASAP", service.import_all_etats_avancement, 35)]
+    for libelle, importer, progression in etapes:
+        _write_status(cle, step=libelle, progress=progression)
+        resultat = importer()
+        # db_saved : ces imports repondent success=True quand seule l'ecriture en base a echoue
+        if not resultat.get('success') or resultat.get('db_saved') is False:
+            detail = resultat.get('error') or '; '.join(map(str, resultat.get('errors') or [])) or 'rien enregistré'
+            raise RuntimeError(f'{libelle} : {detail}')
+    _write_status(cle, step='Calcul du module ETL projets', progress=90)
+
+
+lancer_sync = routes_sync(ifs_data_projets_blueprint, SYNC_KEY, 'etl_project.py',
+                          'SELECT count(*) FROM clean_data.project_base', avant_module=_importer_asap)

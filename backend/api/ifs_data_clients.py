@@ -3,6 +3,8 @@ categorie d'export 'customer' (modules etl_customer.py, etl_file_customer.py, et
 
   GET  /api/v1/ifs-data/clients              onglet, table, search, page, page_size
   GET  /api/v1/ifs-data/clients/export.xlsx  onglet, search : une feuille par table de l'onglet
+  GET  /api/v1/ifs-data/clients/sync         etat du dernier rechargement
+  POST /api/v1/ifs-data/clients/sync         {"source": "mf"} module ETL seul ; {"source": "sap"} extraction SAP puis module ETL
 
 Lecture seule. Les colonnes viennent de public.etl_export_queries, comme l'export : chaque table
 montre les colonnes du CSV, precedees du N° SAP et du nom du client.
@@ -10,12 +12,12 @@ montre les colonnes du CSV, precedees du N° SAP et du nom du client.
 from flask import Blueprint
 from flask_jwt_extended import jwt_required
 
-from .ifs_consultation import colonnes_export, exporter, lister
+from .ifs_consultation import colonnes_export, exporter, lister, routes_sync
 from .sap_articles import q
 
 ifs_data_clients_blueprint = Blueprint('ifs_data_clients', __name__)
 
-SYNC_KEY = 'clients_ifs'  # jamais ecrite ici : l'ecran n'a pas de synchronisation
+SYNC_KEY = 'clients_ifs'
 
 # table -> (colonne portant le N° IFS du client, libelle de l'ecran d'export)
 TABLES = {
@@ -157,3 +159,9 @@ def liste():
 @jwt_required()
 def export():
     return exporter(ONGLETS, _source, 'clients_ifs')
+
+# Tables SAP lues par les procedures sp_insert_* du module ; le fichier et les tables PHL viennent de l'import
+_SAP_TABLES = ['KNA1', 'KNB1', 'KNVV', 'KNBK', 'ADRC', 'ADR2', 'ADR3', 'ADR6', 'T005T']
+
+lancer_sync = routes_sync(ifs_data_clients_blueprint, SYNC_KEY, 'etl_file_customer.py',
+                          'SELECT count(DISTINCT customer_id) FROM clean_data.customer_info', tables_sap=_SAP_TABLES)

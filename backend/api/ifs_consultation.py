@@ -3,12 +3,13 @@
 Les noms de tables viennent de la configuration de chaque ecran, jamais de la requete.
 """
 from flask import jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import text
 
 from models import db
 
-from .finance import _envoyer, _feuille_tableau, _json, _read_status
-from .sap_articles import q
+from .finance import _envoyer, _feuille_tableau, _json, _read_status, _start_sync, _sync_source
+from .sap_articles import _charger_modules, q
 
 AUDIT = {'created_timestamp', 'updated_timestamp', 'created_by', 'updated_by', 'is_deleted'}
 BOOLEENS = {'dans_perimetre', 'dans_sap', 'dans_fichier'}
@@ -167,3 +168,37 @@ def exporter(onglets, source, prefixe):
         # La cle tient en 31 caracteres et reste unique, contrairement aux libelles
         _feuille_tableau(wb.active if i == 0 else wb.create_sheet(), key, libelles, rows, set())
     return _envoyer(wb, f'{prefixe}_{onglet}')
+
+
+def routes_sync(blueprint, cle, module, comptage, tables_sap=None, avant_module=None, garde=None):
+    """Declare GET et POST /sync d'un ecran et renvoie la vue POST. {"source": "mf"} (Calculer) lance le module ETL
+    seul ; {"source": "sap"} (Synchroniser) renouvelle d'abord la source : extraction de `tables_sap`, ou
+    `avant_module(cle, utilisateur)` si elle ne se resume pas a une extraction. Sans l'un ni l'autre, la source
+    est un fichier : 400. `garde()` peut refuser le lancement en renvoyant une reponse."""
+
+    @blueprint.route('/sync', methods=['GET'])
+    @jwt_required()
+    def etat_sync():
+        return jsonify(_read_status(cle) or {'status': 'never'})
+
+    @blueprint.route('/sync', methods=['POST'])
+    @jwt_required()
+    def lancer_sync():
+        synchroniser = _sync_source() == 'sap'
+        if synchroniser and not (tables_sap or avant_module):
+            return jsonify({'error': 'La source de cet écran est un fichier : rien à synchroniser.'}), 400
+        refus = garde() if garde else None
+        if refus:
+            return refus
+        utilisateur = str(get_jwt_identity() or cle)
+
+        def load(conn):
+            if synchroniser and avant_module:
+                avant_module(cle, utilisateur)
+            _charger_modules(conn, cle, [module])
+            return conn.execute(text(comptage)).scalar()
+
+        return _start_sync(cle, tables_sap or [], f'module ETL {module}', load,
+                           extraire=synchroniser and bool(tables_sap))
+
+    return lancer_sync

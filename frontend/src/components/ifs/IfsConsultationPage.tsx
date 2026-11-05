@@ -71,6 +71,8 @@ interface Props {
   // Sans ces aides, l'écran est en consultation seule : pas de bouton de rechargement
   aideRecalculer?: string;
   aideSynchroniser?: string;
+  libelleSynchroniser?: string; // « Synchroniser ASAP » pour les projets
+  sansSynchronisation?: string; // source fichier : bouton grisé, avec la raison
   libelleRecharge?: string; // « 1 841 fournisseurs chargés »
   noteEchec?: string;
 }
@@ -84,7 +86,7 @@ const formatCell = (v: Row[string], kind: Colonne['kind']) => {
 
 const IfsConsultationPage: React.FC<Props> = ({
   titre, icone, apiUrl, guide, onglets, placeholder, entite, fichierExport,
-  aideRecalculer, aideSynchroniser, libelleRecharge, noteEchec,
+  aideRecalculer, aideSynchroniser, libelleSynchroniser = 'Synchroniser SAP', sansSynchronisation, libelleRecharge, noteEchec,
 }) => {
   const [searchParams] = useSearchParams(); // ?onglet=controles depuis le tableau de bord
   const [onglet, setOnglet] = useState(
@@ -149,7 +151,9 @@ const IfsConsultationPage: React.FC<Props> = ({
       const res = await api.post<SyncStatus>(`${apiUrl}/sync`, { source });
       setSync(res.data);
     } catch (err: any) {
-      if (err?.response?.status === 409) setSync(err.response.data);
+      const refus = err?.response?.data;
+      if (err?.response?.status === 409 && refus?.status) setSync(refus); // déjà en cours : on suit ce traitement
+      else if (refus?.message || refus?.error) setError(refus.message ?? refus.error);
       else setError('Impossible de lancer la synchronisation');
     }
   };
@@ -208,7 +212,7 @@ const IfsConsultationPage: React.FC<Props> = ({
             <Tooltip title={aideRecalculer}>
               <span>
                 <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
-                  Recalculer
+                  Calculer
                 </Button>
               </span>
             </Tooltip>
@@ -217,8 +221,15 @@ const IfsConsultationPage: React.FC<Props> = ({
             <Tooltip title={aideSynchroniser}>
               <span>
                 <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
-                  {running ? 'Synchronisation…' : 'Synchroniser SAP'}
+                  {running ? 'Synchronisation…' : libelleSynchroniser}
                 </Button>
+              </span>
+            </Tooltip>
+          )}
+          {sansSynchronisation && (
+            <Tooltip title={sansSynchronisation}>
+              <span>
+                <Button variant="contained" startIcon={<SyncIcon />} disabled>{libelleSynchroniser}</Button>
               </span>
             </Tooltip>
           )}

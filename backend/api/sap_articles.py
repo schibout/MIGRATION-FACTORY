@@ -273,6 +273,8 @@ def _charger_modules(conn, key='articles_sap', noms=ARTICLE_MODULES):
         'SELECT display_name, python_module, module_params FROM public.etl_target_tables '
         'WHERE python_module = ANY(:m) AND is_active ORDER BY execution_order, id'),
         {'m': list(noms)}).mappings().all()
+    if not modules:
+        raise RuntimeError(f"Module ETL absent ou inactif : {', '.join(noms)}")
     dossier = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'etl_modules')
     for i, m in enumerate(modules, 1):
         _write_status(key, step=f"{i}/{len(modules)} {m['display_name']}",

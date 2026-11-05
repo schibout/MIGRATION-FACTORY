@@ -28,6 +28,10 @@ const IfsDataStructure: React.FC = () => (
     placeholder="Code, désignation, parent…"
     entite="objets"
     fichierExport="structure_ifs.xlsx"
+    aideRecalculer="Relance le module ETL structure depuis la hiérarchie de maintenance en place (IH02), sans appeler SAP"
+    aideSynchroniser="Sauvegarde la maintenance, ré-extrait SAP et fusionne en préservant les saisies manuelles, puis relance le module ETL structure"
+    libelleRecharge="objets fonctionnels chargés"
+    noteEchec="Une sauvegarde de la maintenance a été prise avant le rechargement ; elle reste restaurable depuis l'écran IH02."
   />
 );
 

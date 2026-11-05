@@ -3,17 +3,19 @@ clean_data de la categorie d'export 'Operation' (module etl_operation.py).
 
   GET  /api/v1/ifs-data/operations              onglet, table, search, page, page_size
   GET  /api/v1/ifs-data/operations/export.xlsx  onglet, search : une feuille par table de l'onglet
+  GET  /api/v1/ifs-data/operations/sync         etat du dernier rechargement
+  POST /api/v1/ifs-data/operations/sync         {"source": "mf"} module ETL seul ; {"source": "sap"} extraction SAP puis module ETL
 
 Lecture seule. Colonnes lues dans public.etl_export_queries, comme l'export.
 """
 from flask import Blueprint
 from flask_jwt_extended import jwt_required
 
-from .ifs_consultation import exporter, lister, source_export
+from .ifs_consultation import exporter, lister, routes_sync, source_export
 
 ifs_data_operations_blueprint = Blueprint('ifs_data_operations', __name__)
 
-SYNC_KEY = 'operations_ifs'  # jamais ecrite ici : l'ecran n'a pas de synchronisation
+SYNC_KEY = 'operations_ifs'
 
 # table -> (libelle, expressions de recherche)
 TABLES = {
@@ -99,3 +101,10 @@ def liste():
 @jwt_required()
 def export():
     return exporter(ONGLETS, _source, 'operations_ifs')
+
+# Tables SAP lues par alimenter_jt_task, _resource et maint_material_req_line. Les textes longs
+# (raw_data.sap_long_text) restent recharges par l'ecran Textes de l'extraction.
+_SAP_TABLES = ['AUFK', 'AFKO', 'AFIH', 'AFVC', 'AFVV', 'AFRU', 'CRHD', 'ILOA', 'JEST', 'RESB']
+
+lancer_sync = routes_sync(ifs_data_operations_blueprint, SYNC_KEY, 'etl_operation.py',
+                          'SELECT count(*) FROM clean_data.jt_task', tables_sap=_SAP_TABLES)

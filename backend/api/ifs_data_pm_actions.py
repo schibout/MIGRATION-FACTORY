@@ -3,17 +3,19 @@ categorie d'export 'PM Action' (module etl_pm_action.py).
 
   GET  /api/v1/ifs-data/pm-actions              onglet, table, search, page, page_size
   GET  /api/v1/ifs-data/pm-actions/export.xlsx  onglet, search : une feuille par table de l'onglet
+  GET  /api/v1/ifs-data/pm-actions/sync         etat du dernier rechargement
+  POST /api/v1/ifs-data/pm-actions/sync         {"source": "mf"} module ETL seul ; pas de synchronisation : raw_data.pe_tools vient d'un fichier
 
 Lecture seule. Colonnes lues dans public.etl_export_queries, comme l'export.
 """
 from flask import Blueprint
 from flask_jwt_extended import jwt_required
 
-from .ifs_consultation import exporter, lister, source_export
+from .ifs_consultation import exporter, lister, routes_sync, source_export
 
 ifs_data_pm_actions_blueprint = Blueprint('ifs_data_pm_actions', __name__)
 
-SYNC_KEY = 'pm_actions_ifs'  # jamais ecrite ici : l'ecran n'a pas de synchronisation
+SYNC_KEY = 'pm_actions_ifs'
 
 # table -> (libelle, colonnes de recherche en plus du N° de plan)
 TABLES = {
@@ -122,3 +124,7 @@ def liste():
 @jwt_required()
 def export():
     return exporter(ONGLETS, _source, 'pm_actions_ifs')
+
+# Pas de source a synchroniser : raw_data.pe_tools est alimentee par l'import du fichier PE Tools
+lancer_sync = routes_sync(ifs_data_pm_actions_blueprint, SYNC_KEY, 'etl_pm_action.py',
+                          'SELECT count(*) FROM clean_data.pm_action')

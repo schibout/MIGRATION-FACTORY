@@ -3,18 +3,20 @@ clean_data de la categorie d'export 'maintenance' (module etl_maintenance_resour
 
   GET  /api/v1/ifs-data/maintenance-ressources              onglet, table, search, page, page_size
   GET  /api/v1/ifs-data/maintenance-ressources/export.xlsx  onglet, search : une feuille par table de l'onglet
+  GET  /api/v1/ifs-data/maintenance-ressources/sync         etat du dernier rechargement
+  POST /api/v1/ifs-data/maintenance-ressources/sync         {"source": "mf"} module ETL seul ; pas de synchronisation : les tables raw_data viennent de fichiers
 
 Lecture seule. Colonnes lues dans public.etl_export_queries, comme l'export, precedees de la ressource.
 """
 from flask import Blueprint
 from flask_jwt_extended import jwt_required
 
-from .ifs_consultation import colonnes_catalogue, colonnes_export, exporter, lister
+from .ifs_consultation import colonnes_catalogue, colonnes_export, exporter, lister, routes_sync
 from .sap_articles import q
 
 ifs_data_ressources_blueprint = Blueprint('ifs_data_ressources', __name__)
 
-SYNC_KEY = 'ressources_ifs'  # jamais ecrite ici : l'ecran n'a pas de synchronisation
+SYNC_KEY = 'ressources_ifs'
 
 # table -> (colonne portant le N° de la ressource, libelle)
 TABLES = {
@@ -131,3 +133,7 @@ def liste():
 @jwt_required()
 def export():
     return exporter(ONGLETS, _source, 'ressources_maintenance_ifs')
+
+# Pas de source a synchroniser : les tables raw_data du module sont alimentees par l'import de fichiers
+lancer_sync = routes_sync(ifs_data_ressources_blueprint, SYNC_KEY, 'etl_maintenance_resource.py',
+                          'SELECT count(*) FROM clean_data.resource_detail_file')

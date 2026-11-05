@@ -32,6 +32,10 @@ const IfsDataClients: React.FC = () => (
     placeholder="N° IFS, N° SAP, nom…"
     entite="clients"
     fichierExport="clients_ifs.xlsx"
+    aideRecalculer="Relance le module ETL clients depuis les fichiers et les tables déjà extraites, sans appeler SAP"
+    aideSynchroniser="Ré-extrait les tables clients de SAP (KNA1, KNB1, KNVV, adresses…), puis relance le module ETL clients"
+    libelleRecharge="clients chargés"
+    noteEchec="Relancez le calcul : le module recharge les tables clients à chaque exécution."
   />
 );
 

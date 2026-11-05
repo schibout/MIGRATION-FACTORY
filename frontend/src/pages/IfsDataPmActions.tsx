@@ -34,6 +34,10 @@ const IfsDataPmActions: React.FC = () => (
     placeholder="N° plan, description, objet…"
     entite="plans"
     fichierExport="pm_actions_ifs.xlsx"
+    aideRecalculer="Relance le module ETL PM Actions depuis les données PE Tools importées"
+    sansSynchronisation="Pas de synchronisation SAP : la source PE Tools provient d'un fichier, à importer dans Maintenance > PE Tools"
+    libelleRecharge="plans de maintenance chargés"
+    noteEchec="Relancez le calcul : le module recharge les tables PM Actions à chaque exécution."
   />
 );
 

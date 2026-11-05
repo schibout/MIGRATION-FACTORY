@@ -28,6 +28,11 @@ const IfsDataProjets: React.FC = () => (
     placeholder="N° projet, nom, responsable, site…"
     entite="projets"
     fichierExport="projets_ifs.xlsx"
+    aideRecalculer="Relance le module ETL projets depuis les données ASAP déjà importées, sans appeler ASAP"
+    aideSynchroniser="Réimporte depuis ASAP les projets, utilisateurs, projets à reprendre et états d'avancement (plus de 1 000 sites, peut être long), puis relance le module ETL projets"
+    libelleSynchroniser="Synchroniser ASAP"
+    libelleRecharge="projets chargés"
+    noteEchec="Le module ETL n'est pas lancé si un import ASAP échoue ; les listes déjà importées restent en place."
   />
 );
 

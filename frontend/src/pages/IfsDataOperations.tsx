@@ -26,6 +26,10 @@ const IfsDataOperations: React.FC = () => (
     placeholder="N° opération, N° bon de travail, description, objet…"
     entite="opérations"
     fichierExport="operations_ifs.xlsx"
+    aideRecalculer="Relance le module ETL opérations depuis les tables déjà extraites, sans appeler SAP"
+    aideSynchroniser="Ré-extrait les tables d'ordres de SAP (AUFK, AFKO, AFVC, RESB…), puis relance le module ETL opérations. Les textes longs se rechargent depuis l'écran Textes de l'extraction."
+    libelleRecharge="opérations chargées"
+    noteEchec="Relancez le calcul : le module recharge les tables opérations à chaque exécution."
   />
 );
 

@@ -3,18 +3,23 @@ structure de maintenance exportees vers IFS (module etl_equipment_functional.py)
 
   GET  /api/v1/ifs-data/structure              onglet, table, search, page, page_size
   GET  /api/v1/ifs-data/structure/export.xlsx  onglet, search : une feuille par table de l'onglet
+  GET  /api/v1/ifs-data/structure/sync         etat du dernier rechargement
+  POST /api/v1/ifs-data/structure/sync         {"source": "mf"} module ETL seul ; {"source": "sap"} job de fusion maintenance puis module ETL
 
 Lecture seule, sans rechargement : ces tables se rechargent depuis Chargement des donnees.
 """
-from flask import Blueprint
+import time
+
+from flask import Blueprint, current_app
 from flask_jwt_extended import jwt_required
 
-from .ifs_consultation import colonnes_catalogue, colonnes_table, exporter, lister
+from .finance import _write_status
+from .ifs_consultation import colonnes_catalogue, colonnes_table, exporter, lister, routes_sync
 from .sap_articles import q
 
 ifs_data_structure_blueprint = Blueprint('ifs_data_structure', __name__)
 
-SYNC_KEY = 'structure_maintenance'  # jamais ecrite ici : l'ecran n'a pas de synchronisation
+SYNC_KEY = 'structure_maintenance'
 
 TABLES = {
     'equipment_functional': 'Postes techniques',
@@ -157,3 +162,35 @@ def liste():
 @jwt_required()
 def export():
     return exporter(ONGLETS, _source, 'structure_ifs')
+
+
+def _jobs():
+    from services import maintenance_reload_service
+    return maintenance_reload_service
+
+
+def _operation_en_cours():
+    from .maintenance_snapshots import active_job_conflict
+    return active_job_conflict()
+
+
+def _recharger_maintenance(cle, utilisateur):
+    """Passe par le job de fusion : snapshot prealable, saisies preservees (source MANUAL, updated_by), un seul
+    job a la fois. Une extraction directe n'alimenterait pas clean_data.maintenance_object, lue par le module."""
+    jobs = _jobs()
+    job_id = jobs.create_job('RELOAD', {'mode': 'merge', 'with_extraction': True}, user=utilisateur)['id']
+    jobs.start_job(current_app._get_current_object(), job_id)
+    while True:
+        time.sleep(5)
+        job = jobs.get_job(job_id)
+        _write_status(cle, step=job['current_step'], progress=int(0.85 * (job['progress'] or 0)))
+        if job['status'] == 'DONE':
+            break
+        if job['status'] == 'ERROR':
+            raise RuntimeError(f"Rechargement maintenance en échec : {job.get('error_message')}")
+    _write_status(cle, step='Calcul du module ETL structure', progress=90)
+
+
+lancer_sync = routes_sync(ifs_data_structure_blueprint, SYNC_KEY, 'etl_equipment_functional.py',
+                          'SELECT count(*) FROM clean_data.equipment_functional',
+                          avant_module=_recharger_maintenance, garde=_operation_en_cours)

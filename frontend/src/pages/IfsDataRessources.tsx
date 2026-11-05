@@ -30,6 +30,10 @@ const IfsDataRessources: React.FC = () => (
     placeholder="N° ressource, identifiant, nom…"
     entite="ressources"
     fichierExport="ressources_maintenance_ifs.xlsx"
+    aideRecalculer="Relance le module ETL ressources depuis les fichiers de ressources importés"
+    sansSynchronisation="Pas de synchronisation SAP : les ressources de maintenance proviennent de fichiers, à importer dans le chargement des ressources"
+    libelleRecharge="ressources chargées"
+    noteEchec="Relancez le calcul : le module recharge les tables ressources à chaque exécution."
   />
 );
 
