@@ -103,7 +103,7 @@ const IfsData = () => {
     {
       id: 'structure',
       title: 'Structure',
-      description: 'Structure organisationnelle',
+      description: 'Postes techniques, équipements, pièces de rechange et kits',
       path: '/ifs-data/structure',
       icon: <StructureIcon sx={{ fontSize: 36 }} />,
       color: '#2196f3' // Bleu

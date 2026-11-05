@@ -9,8 +9,8 @@ exportees vers IFS par les modules ETL articles, regroupees par theme.
 
 Lecture seule : un rechargement ecraserait toute modification faite dans ces tables. Le rechargement
 est celui de Donnees SAP > Articles (meme etat, donc une seule synchronisation a la fois entre les
-deux ecrans). article_perimetre (Finance > Articles) ne pilote PAS le chargement, parti de
-ifs_article_maitre : l'ecart est visible dans les controles, il n'est pas corrige ici.
+deux ecrans). article_perimetre (Finance > Articles) pilote le catalogue, donc ses tables filles ;
+les articles de ifs_article_maitre hors perimetre apparaissent dans les controles.
 """
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required

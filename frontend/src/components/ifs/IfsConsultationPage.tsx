@@ -62,15 +62,16 @@ interface Props {
   titre: string;
   icone: React.ReactNode;
   apiUrl: string;
-  guide: string;
+  guide?: string; // requis si un onglet 'mode_emploi' existe
   onglets: OngletConsultation[];
   placeholder: string;
   entite: string; // pluriel affiché sur le compteur : « 1 927 fournisseurs »
   fichierExport: string;
-  aideRecalculer: string;
-  aideSynchroniser: string;
-  libelleRecharge: string; // « 1 841 fournisseurs chargés »
-  noteEchec: string;
+  // Sans ces aides, l'écran est en consultation seule : pas de bouton de rechargement
+  aideRecalculer?: string;
+  aideSynchroniser?: string;
+  libelleRecharge?: string; // « 1 841 fournisseurs chargés »
+  noteEchec?: string;
 }
 
 const nombre = (v: number) => v.toLocaleString('fr-FR');
@@ -199,20 +200,24 @@ const IfsConsultationPage: React.FC<Props> = ({
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title={aideRecalculer}>
-            <span>
-              <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
-                Recalculer
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title={aideSynchroniser}>
-            <span>
-              <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
-                {running ? 'Synchronisation…' : 'Synchroniser SAP'}
-              </Button>
-            </span>
-          </Tooltip>
+          {aideRecalculer && (
+            <Tooltip title={aideRecalculer}>
+              <span>
+                <Button variant="outlined" startIcon={<RecalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
+                  Recalculer
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+          {aideSynchroniser && (
+            <Tooltip title={aideSynchroniser}>
+              <span>
+                <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
+                  {running ? 'Synchronisation…' : 'Synchroniser SAP'}
+                </Button>
+              </span>
+            </Tooltip>
+          )}
         </Box>
       </Box>
 
