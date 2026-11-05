@@ -1,7 +1,8 @@
 -- Alimente clean_data.article_sap pour TOUS les articles du perimetre
 -- clean_data.ifs_article_maitre (societe STJN + articles de maintenance, cf.
 -- sql/inventory/alimenter_ifs_article.sql) : lancer alimenter_ifs_article()
--- avant.
+-- avant. S'y ajoutent les articles des fichiers valides presents dans MARA
+-- (clean_data.article_perimetre_validation, ecran Finance > Articles).
 --
 -- Grain : une ligne par article (~35 700). Site = division STJN ouverte dans
 -- marc, SJ (9200) prioritaire sur CS (9000) ; un article sans division STJN
@@ -17,7 +18,9 @@ AS $function$
 DECLARE
     v_count INTEGER := 0;
 BEGIN
-    TRUNCATE TABLE clean_data.article_sap;
+    -- DELETE et non TRUNCATE : le bouton Calculer de Finance > Articles lance cette
+    -- fonction pendant que les ecrans lisent la table.
+    DELETE FROM clean_data.article_sap;
 
     INSERT INTO clean_data.article_sap (
         "N° article", "Description article", "Site", "Site Description",
@@ -46,7 +49,12 @@ BEGIN
     -- sinon SJ par defaut (max('9200','9000') = '9200').
     WITH sites AS MATERIALIZED (
         SELECT a.numero_article AS matnr, COALESCE(max(c.werks::text), '9200') AS werks
-          FROM clean_data.ifs_article_maitre a
+          FROM (SELECT numero_article FROM clean_data.ifs_article_maitre
+                UNION
+                SELECT m.matnr::text
+                  FROM clean_data.article_perimetre_validation v
+                  JOIN raw_data.mara m
+                    ON m.mandt::text = '700' AND LTRIM(m.matnr::text, '0') = v.numero_article) a
           LEFT JOIN raw_data.marc c
             ON c.mandt::text = '700' AND c.matnr::text = a.numero_article
            AND c.werks::text IN ('9200', '9000')

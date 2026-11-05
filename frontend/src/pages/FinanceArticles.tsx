@@ -167,7 +167,7 @@ const FinanceArticles: React.FC = () => {
               InputLabelProps={{ shrink: true }}
             />
           </Tooltip>
-          <Tooltip title="Recalcule le périmètre depuis les fichiers validés et la table des articles SAP déjà chargée, avec la date d'arrêté saisie, sans appeler SAP">
+          <Tooltip title="Relit les tables SAP déjà extraites (MARA, MAKT, MARC…) et met à jour les colonnes SAP de chaque N° article, puis recalcule le périmètre avec la date d'arrêté saisie. Le groupe comptable et le groupe d'achat restent ceux du fichier. N'appelle pas SAP : pour des données fraîches, utiliser Synchroniser SAP">
             <span>
               <Button variant="outlined" startIcon={<CalculIcon />} onClick={() => handleSync('mf')} disabled={running}>
                 Calculer
@@ -202,6 +202,7 @@ const FinanceArticles: React.FC = () => {
         FICHIER = article des fichiers validés par le métier (la référence, même absent de SAP : ses colonnes SAP restent
         vides) ; SAP_NOUVEAU = article de Données SAP &gt; Articles créé dans SAP (date de création MARA) à partir de la
         date d'arrêté et absent des fichiers validés. Les colonnes « Fichier · … » viennent des fichiers importés.
+        Groupe comptable et groupe d'achat viennent toujours du fichier, jamais de SAP : vides si le fichier ne les renseigne pas.
       </Alert>
 
       {stats && (

@@ -1465,6 +1465,13 @@ ART_CLE = 'N° article'
 ART_RECHERCHE = (ART_CLE, 'Description article', 'Ancien numéro article')
 # Prefixe des colonnes du fichier valide (article_perimetre_validation.donnees)
 ART_FICHIER = 'Fichier · '
+# Colonnes toujours lues dans le fichier valide, jamais dans SAP (vides si le fichier ne les porte pas)
+ART_GROUPES = {
+    'Groupe comptable': "val.donnees ->> 'Groupe comptable'",
+    'Groupe comptable Description': "val.donnees ->> 'Groupe comptable Description'",
+    "Groupe d'achat": "val.donnees ->> 'Groupe d''achat'",
+    "Groupe d'achat Description": "val.donnees ->> 'Groupe d''achat Description'",
+}
 
 
 def _art_colonnes():
@@ -1477,7 +1484,7 @@ def _art_colonnes():
     fichier = [r[0] for r in db.session.execute(text(
         'SELECT DISTINCT k FROM clean_data.article_perimetre_validation, '
         'jsonb_object_keys(donnees) k ORDER BY 1'))]
-    cols_vue = [(c, c, f'v."{c}"') for c in vue]
+    cols_vue = [(c, c, ART_GROUPES.get(c, f'v."{c}"')) for c in vue]
     cols_fichier = [(ART_FICHIER + n, ART_FICHIER + n, f'val.donnees ->> :f{i}') for i, n in enumerate(fichier)]
     i = vue.index('Description article') + 1 if 'Description article' in vue else len(vue)
     return ([('source', 'Source', 'p.source')] + cols_vue[:i] + cols_fichier + cols_vue[i:],
@@ -1564,7 +1571,8 @@ def get_art_sync_status():
 def start_art_sync():
     """{"source": "sap"|"mf", "date_arrete": "YYYY-MM-DD"} ; 'sap' = extraction des
     tables articles + modules ETL articles (comme Donnees SAP > Articles) puis
-    recalcul du perimetre ; 'mf' = recalcul du perimetre seul depuis article_sap."""
+    recalcul du perimetre ; 'mf' = sans appeler SAP, article_sap relue dans les tables SAP
+    deja extraites (raw_data), puis recalcul du perimetre."""
     from api.sap_articles import ARTICLE_SAP_TABLES, _charger_modules
 
     saisie = (request.get_json(silent=True) or {}).get('date_arrete') or None
@@ -1578,7 +1586,11 @@ def start_art_sync():
             _charger_modules(conn, 'articles_perimetre')
             return charger(conn)
         return _start_sync('articles_perimetre', ARTICLE_SAP_TABLES, 'articles et périmètre', load)
-    return _start_sync('articles_perimetre', [], 'clean_data.article_perimetre', charger, extraire=False)
+
+    def recalculer(conn):
+        conn.execute(text('SELECT clean_data.alimenter_article_sap()'))
+        return charger(conn)
+    return _start_sync('articles_perimetre', [], 'articles depuis les tables SAP', recalculer, extraire=False)
 
 
 # Import du fichier valide (page /finance/articles/import) : memes etapes et memes
