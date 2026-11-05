@@ -43,8 +43,6 @@ ONGLETS = {
     'controles': CONTROLES,
 }
 
-LIBELLES = {'pm_no': 'N° plan', 'pm_revision': 'Révision', 'description': 'Description', 'mch_code': 'Objet',
-            'mch_code_contract': 'Site objet', 'part_no': 'N° article', 'work_type_id': 'Type de travail'}
 _MEME_PLAN = 'x.pm_no = {0}.pm_no AND x.pm_revision = {0}.pm_revision'
 
 
@@ -55,7 +53,7 @@ def _absent(table, condition):
 def _source_table(table):
     label, recherche = TABLES[table]
     return source_export(table, label, ['t.pm_no::text'] + [f't.{c}' for c in recherche], 't.pm_no',
-                         't.pm_no, t.pm_revision', LIBELLES)
+                         't.pm_no, t.pm_revision')
 
 
 def _source_synthese():

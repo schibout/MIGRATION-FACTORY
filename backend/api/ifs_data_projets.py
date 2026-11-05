@@ -50,13 +50,6 @@ _TABLES = {
     'project_role': (['project_id', 'role_id'], 'project_id, role_id'),
     'project_role_assignment': (['project_id', 'role_id', 'person_id'], 'project_id, role_id, person_id'),
 }
-LIBELLES = {
-    'project_id': 'Projet', 'name': 'Nom', 'description': 'Description', 'manager': 'Responsable',
-    'company': 'Société', 'customer_id': 'Client', 'site': 'Site', 'sub_project_id': 'Sous-projet',
-    'parent_sub_project_id': 'Sous-projet parent', 'activity_no': 'N° activité', 'activity_seq': 'Séq. activité',
-    'activity_responsible': 'Responsable activité', 'activity_class_id': 'Classe', 'value': 'Valeur',
-    'role_id': 'Rôle', 'person_id': 'Personne',
-}
 _ABSENT = 'NOT EXISTS (SELECT 1 FROM clean_data.{0} x WHERE {1})'
 
 
@@ -65,7 +58,7 @@ def _source_table(table):
     return {
         'label': TABLES[table],
         'from': f'clean_data.{q(table)} t',
-        'colonnes': colonnes_export(table, LIBELLES),
+        'colonnes': colonnes_export(table),
         'recherche': [f't.{c}' for c in recherche],
         'cle': 't.project_id',
         'ordre': ', '.join(f't.{c.strip()}' for c in ordre.split(',')) + ', t.ctid',

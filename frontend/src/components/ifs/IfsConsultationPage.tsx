@@ -296,7 +296,7 @@ const IfsConsultationPage: React.FC<Props> = ({
             <TableHead>
               <TableRow>
                 {colonnes.map((c) => (
-                  <TableCell key={c.key} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.label}</TableCell>
+                  <TableCell key={c.key} title={c.key} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.label}</TableCell>
                 ))}
               </TableRow>
             </TableHead>

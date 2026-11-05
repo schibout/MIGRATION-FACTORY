@@ -1,11 +1,18 @@
 """Garde-fous de la configuration des ecrans de consultation Donnees IFS (sans base)."""
 import pytest
 
-from api import (ifs_data_articles, ifs_data_clients, ifs_data_operations, ifs_data_pm_actions, ifs_data_projets,
-                 ifs_data_structure, ifs_fournisseurs)
+from api import (ifs_consultation, ifs_data_articles, ifs_data_clients, ifs_data_operations, ifs_data_pm_actions,
+                 ifs_data_projets, ifs_data_structure, ifs_fournisseurs)
 
 ECRANS = [ifs_fournisseurs, ifs_data_articles, ifs_data_structure, ifs_data_projets, ifs_data_clients,
           ifs_data_pm_actions, ifs_data_operations]
+
+
+def test_libelle_du_catalogue():
+    catalogue = {'country': 'Pays', 'country_db': 'Pays'}
+    assert ifs_consultation.libelle('country', catalogue) == 'Pays'
+    assert ifs_consultation.libelle('country_db', catalogue) == 'Pays (code)'  # sinon deux colonnes « Pays »
+    assert ifs_consultation.libelle('absent', catalogue) == 'absent'
 
 
 @pytest.mark.parametrize('ecran', ECRANS)

@@ -32,15 +32,12 @@ ONGLETS = {
     'controles': CONTROLES,
 }
 
-LIBELLES = {'task_seq': 'N° opération', 'wo_no': 'N° bon de travail', 'order_no': 'N° ordre', 'site': 'Site',
-            'description': 'Description', 'mach_code': 'Objet', 'part_no': 'N° article',
-            'work_type_id': 'Type de travail'}
 _ABSENTE = 'NOT EXISTS (SELECT 1 FROM clean_data.{0} x WHERE x.{1} = t.{1})'
 
 
 def _source_table(table):
     label, recherche = TABLES[table]
-    return source_export(table, label, recherche, 't.task_seq', 't.task_seq', LIBELLES)
+    return source_export(table, label, recherche, 't.task_seq', 't.task_seq')
 
 
 def _source_synthese():

@@ -18,7 +18,7 @@ from sqlalchemy import text
 from models import db
 
 from .finance import FOURN_SAP_TABLES, _read_status, _start_sync, _sync_source, _write_status
-from .ifs_consultation import colonnes_table, exporter, lister
+from .ifs_consultation import colonnes_catalogue, colonnes_table, exporter, lister
 from .sap_articles import _charger_modules, q
 
 ifs_fournisseurs_blueprint = Blueprint('ifs_fournisseurs', __name__)
@@ -112,8 +112,8 @@ def _source_table(table):
         return {
             'label': label,
             'from': _GENERAL,
-            'colonnes': _ID_COLONNES + [(f'g.{q(c)}', c, c) for c in colonnes
-                                        if c not in ('supplier_legacy_sap_id', 'name')],
+            'colonnes': _ID_COLONNES + colonnes_catalogue(
+                table, [c for c in colonnes if c not in ('supplier_legacy_sap_id', 'name')], 'g'),
             'recherche': _ID_RECHERCHE,
             'cle': 'g.supplier_id',
             'ordre': 'g.supplier_id',
@@ -123,7 +123,7 @@ def _source_table(table):
         'label': label,
         'from': f'clean_data.{q(table)} t LEFT JOIN {_GENERAL} ON g.supplier_id = {cle_sql}',
         'colonnes': [(cle_sql, cle, cle), _ID_COLONNES[1], _ID_COLONNES[2]]
-                    + [(f't.{q(c)}', c, c) for c in colonnes],
+                    + colonnes_catalogue(table, colonnes),
         'recherche': [cle_sql, 'g.supplier_legacy_sap_id', 'g.name']
                      + (['t.part_no'] if table == 'purchase_part_supplier' else []),
         'cle': cle_sql,

@@ -22,7 +22,50 @@ def colonnes_table(table, *exclues):
             if r[0] not in AUDIT and r[0] not in exclues]
 
 
-def colonnes_export(table, libelles={}):
+# Table clean_data dont l'entite du catalogue IFS (/ifs-data/catalog) porte un autre nom
+ENTITES_CATALOGUE = {
+    'cus_comm_method': 'COMM_METHOD',
+    'cus_ident_invoice_info': 'IDENTITY_INVOICE_INFO',
+    'cus_identity_pay_info': 'IDENTITY_PAY_INFO',
+    'cus_payment_address': 'PAYMENT_ADDRESS',
+    'cus_paym_way_per_ident': 'PAYMENT_WAY_PER_IDENTITY',
+    'equipment_functional': 'EQUIPMENT_FUNCTIONAL_UIV',
+    'equipment_serial': 'EQUIPMENT_FUNCTIONAL_UIV',
+    'invent_part_plan': 'INVENTORY_PART_PLANNING',
+    'project_activity': 'ACTIVITY',
+    'project_activity_class': 'ACTIVITY',
+    'supplier_addr_tax_number': 'CUSTOMER_ADDR_TAX_NUMBER',
+}
+
+
+def libelles_catalogue(table):
+    """{colonne: libelle francais} de public.ifs_field_catalog : celui de l'entite de la table, sinon (spec sans
+    libelle, comme ACTIVITY) le plus frequent du meme champ dans tout le catalogue. Le lot 11 porte des libelles
+    parasites purement numeriques ('0'), ecartes."""
+    return dict(db.session.execute(text(
+        "SELECT DISTINCT ON (f) f, l FROM ("
+        "  SELECT lower(field_name) AS f, trim(field_label_fr) AS l, upper(entity) AS e, lot_id, "
+        "         count(*) OVER (PARTITION BY lower(field_name), trim(field_label_fr)) AS n "
+        "  FROM public.ifs_field_catalog WHERE trim(field_label_fr) !~ '^[0-9]*$') c "
+        "ORDER BY f, (e = :e) DESC, n DESC, lot_id, l"),
+        {'e': ENTITES_CATALOGUE.get(table, table).upper()}).all())
+
+
+def libelle(colonne, catalogue):
+    """Libelle du catalogue, sinon le nom technique. <col> et <col>_db y portent le meme libelle : on les distingue."""
+    texte = catalogue.get(colonne)
+    if not texte:
+        return colonne
+    return f'{texte} (code)' if colonne.endswith('_db') else texte
+
+
+def colonnes_catalogue(table, noms, alias='t'):
+    """(expression, cle, libelle) des colonnes `noms` de clean_data.<table>, libellees par le catalogue IFS."""
+    catalogue = libelles_catalogue(table)
+    return [(f'{alias}.{q(c)}', c, libelle(c, catalogue)) for c in noms]
+
+
+def colonnes_export(table):
     """(expression, cle, libelle) des colonnes de public.etl_export_queries pour clean_data.<table>, dans
     l'ordre du fichier d'export. Colonne declaree mais absente de la table : NULL, comme build_dynamic_query."""
     liste = db.session.execute(text(
@@ -33,15 +76,16 @@ def colonnes_export(table, libelles={}):
         "WHERE table_schema = 'clean_data' AND table_name = :t"), {'t': table})}
     # dict.fromkeys : une liste peut declarer deux fois la meme colonne (customer_info_contact.guid)
     noms = dict.fromkeys(c.strip().lower() for c in liste.split(',') if c.strip())
-    return [(f't.{q(c)}' if c in reelles else 'NULL', c, libelles.get(c, c)) for c in noms]
+    catalogue = libelles_catalogue(table)
+    return [(f't.{q(c)}' if c in reelles else 'NULL', c, libelle(c, catalogue)) for c in noms]
 
 
-def source_export(table, label, recherche, cle, ordre, libelles={}):
+def source_export(table, label, recherche, cle, ordre):
     """Source d'une table montree telle qu'exportee ; `recherche` : expressions texte sur l'alias t."""
     return {
         'label': label,
         'from': f'clean_data.{q(table)} t',
-        'colonnes': colonnes_export(table, libelles),
+        'colonnes': colonnes_export(table),
         'recherche': recherche,
         'cle': cle,
         'ordre': f'{ordre}, t.ctid',

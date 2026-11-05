@@ -9,7 +9,7 @@ Lecture seule, sans rechargement : ces tables se rechargent depuis Chargement de
 from flask import Blueprint
 from flask_jwt_extended import jwt_required
 
-from .ifs_consultation import colonnes_table, exporter, lister
+from .ifs_consultation import colonnes_catalogue, colonnes_table, exporter, lister
 from .sap_articles import q
 
 ifs_data_structure_blueprint = Blueprint('ifs_data_structure', __name__)
@@ -81,7 +81,7 @@ def _source_objet(table):
     return {
         'label': TABLES[table],
         'from': f'clean_data.{q(table)} t',
-        'colonnes': alias + [(f't.{q(c)}', c, c) for c in colonnes_table(table, *exclues)],
+        'colonnes': alias + colonnes_catalogue(table, colonnes_table(table, *exclues)),
         'recherche': ['t.mch_code', 't.mch_name', 't.sup_mch_code'],
         'cle': 't.mch_code',
         'ordre': 't.mch_code, t.ctid',

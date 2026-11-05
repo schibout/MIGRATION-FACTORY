@@ -16,7 +16,7 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from .finance import _read_status, _start_sync, _sync_source
-from .ifs_consultation import colonnes_table, exporter, lister
+from .ifs_consultation import colonnes_catalogue, colonnes_table, exporter, lister
 from .sap_articles import ARTICLE_SAP_TABLES, _charger_modules, q
 
 ifs_data_articles_blueprint = Blueprint('ifs_data_articles', __name__)
@@ -99,7 +99,7 @@ def _source_table(table):
             'label': TABLES[table],
             'from': _CATALOGUE,
             'colonnes': [('g.part_no', 'part_no', 'N° article'), ('g.description', 'description', 'Désignation')]
-                        + [(f'g.{q(c)}', c, c) for c in colonnes_table(table, 'part_no', 'description')],
+                        + colonnes_catalogue(table, colonnes_table(table, 'part_no', 'description'), 'g'),
             'recherche': ['g.part_no', 'g.description'],
             'cle': 'g.part_no',
             'ordre': 'g.part_no',
@@ -107,7 +107,7 @@ def _source_table(table):
     return {
         'label': TABLES[table],
         'from': f'clean_data.{q(table)} t LEFT JOIN {_CATALOGUE} ON g.part_no = t.part_no',
-        'colonnes': _ID_LIGNE + [(f't.{q(c)}', c, c) for c in colonnes_table(table, 'part_no', 'contract')],
+        'colonnes': _ID_LIGNE + colonnes_catalogue(table, colonnes_table(table, 'part_no', 'contract')),
         'recherche': ['t.part_no', 'g.description'] + _RECHERCHE.get(table, []),
         'cle': 't.part_no',
         'ordre': 't.part_no, t.contract, t.ctid',
