@@ -12,11 +12,11 @@ import logging
 import threading
 
 from flask import Blueprint, current_app, jsonify
-from flask_jwt_extended import jwt_required
 from sqlalchemy import text
 
 from models import db
 from services.dashboard_synthese import mois_glissants, series_controles, statut_extraction, synthese
+from utils.auth_decorators import require_permission
 
 from . import (ifs_data_articles, ifs_data_clients, ifs_data_operations, ifs_data_pm_actions, ifs_data_projets,
                ifs_data_ressources, ifs_data_structure, ifs_fournisseurs)
@@ -187,7 +187,7 @@ def _maintenance():
 
 
 @dashboard_blueprint.route('', methods=['GET'])
-@jwt_required()
+@require_permission('view_dashboards')
 def tableau_de_bord():
     calcule_le, perimee = db.session.execute(text(
         "SELECT max(calculated_at), COALESCE(max(calculated_at) < now() - interval '1 hour', true) "
@@ -227,7 +227,7 @@ def tableau_de_bord():
 
 
 @dashboard_blueprint.route('/recalculer', methods=['POST'])
-@jwt_required()
+@require_permission('view_dashboards')
 def recalculer():
     if _calcul_en_cours():
         return jsonify({'error': 'Un calcul est déjà en cours.'}), 409
@@ -236,7 +236,7 @@ def recalculer():
 
 
 @dashboard_blueprint.route('/historique/<ecran>', methods=['GET'])
-@jwt_required()
+@require_permission('view_dashboards')
 def historique_ecran(ecran):
     if ecran not in {d['cle'] for d in _AVEC_CONTROLES}:
         return jsonify({'error': 'Domaine inconnu'}), 404

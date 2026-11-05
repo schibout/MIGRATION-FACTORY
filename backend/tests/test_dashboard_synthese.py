@@ -1,5 +1,7 @@
 """Logique du tableau de bord et journal ETL (sans base)."""
+import re
 from datetime import date, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -98,6 +100,14 @@ def test_series_controles_limite_et_ordre_stable():
     resultat = series_controles(lignes, 'x', limite=3)
     assert [s['code'] for s in resultat['series']] == ['c6', 'c7', 'c8']  # les plus lourds, tries par code
     assert resultat['masques'] == 5  # c1 a c5 ; c0 n'a jamais eu d'anomalie
+
+
+def test_toutes_les_routes_exigent_la_permission():
+    # Lecture du source : importer api.dashboard charge tout le paquet api et ses dependances
+    source = (Path(__file__).parent.parent / 'api' / 'dashboard.py').read_text(encoding='utf-8')
+    routes = re.findall(r"@dashboard_blueprint\.route\(.*\)\n(.*)\n", source)
+    assert len(routes) == 3
+    assert set(routes) == {"@require_permission('view_dashboards')"}
 
 
 def _module(run_etl):

@@ -264,8 +264,10 @@ const Dashboard: React.FC = () => {
       const res = await api.get<Synthese>('/dashboard');
       setData(res.data);
       setError(null);
-    } catch {
-      setError('Impossible de charger le tableau de bord.');
+    } catch (e) {
+      setError((e as { response?: { status?: number } }).response?.status === 403
+        ? "Votre compte n'a pas accès au tableau de bord."
+        : 'Impossible de charger le tableau de bord.');
     }
   }, []);
 
