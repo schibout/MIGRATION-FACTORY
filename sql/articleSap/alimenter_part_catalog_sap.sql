@@ -1,10 +1,11 @@
 -- Le type de retour a change (void -> integer) : CREATE OR REPLACE le refuse.
 DROP FUNCTION IF EXISTS clean_data.alimenter_part_catalog_sap();
 
--- Alimente clean_data.part_catalog pour les articles du perimetre
--- clean_data.ifs_article_maitre (STJN + articles de maintenance, le meme que
--- article_sap), toutes les infos etant lues dans SAP (mara / makt / marc /
--- texte long). Inspiree de clean_data.alimenter_part_catalog() (sql/inventory/).
+-- Alimente clean_data.part_catalog avec TOUS les articles de clean_data.article_perimetre
+-- (ecran Finance > Articles, a calculer avant ce module), et eux seuls. Les infos sont
+-- lues dans SAP (mara / makt / marc / texte long) ; pour un article absent de SAP,
+-- designation et unite viennent du fichier valide (unite deja au format IFS).
+-- Inspiree de clean_data.alimenter_part_catalog() (sql/inventory/).
 -- Les articles fabriques PHL / composants sont charges par les modules
 -- articlePhl / ArticleComposant.
 --
@@ -24,18 +25,26 @@ BEGIN
     v_start_time := CURRENT_TIMESTAMP;
     RAISE NOTICE 'Debut de l''alimentation PART_CATALOG (article_sap) - %', v_start_time;
 
-    -- Perimetre = clean_data.ifs_article_maitre (STJN + articles de maintenance),
-    -- le meme que article_sap et part_catalog ; toutes les infos viennent de SAP.
+    -- Sans perimetre calcule, on bloque (rollback du module) plutot que de vider
+    -- le catalogue et ses tables filles.
+    IF NOT EXISTS (SELECT 1 FROM clean_data.article_perimetre) THEN
+        RAISE EXCEPTION 'clean_data.article_perimetre est vide : lancer Calculer dans Finance > Articles';
+    END IF;
+
+    -- numero_article est sans zeros de tete, mara.matnr numerique complete a 18
+    -- chiffres. LEFT JOIN : un article absent de SAP est cree quand meme (matnr NULL).
     DROP TABLE IF EXISTS tmp_article_sap;
     CREATE TEMP TABLE tmp_article_sap ON COMMIT DROP AS
-    SELECT DISTINCT ON (LTRIM(a.numero_article, '0'))
-        SUBSTRING(LTRIM(a.numero_article, '0'), 1, 25) AS part_no,
+    SELECT
+        p.numero_article AS part_no,
         m.matnr,
         m.meins
-    FROM clean_data.ifs_article_maitre a
-    JOIN raw_data.mara m
-      ON m.mandt::text = '700' AND m.matnr::text = a.numero_article
-    ORDER BY LTRIM(a.numero_article, '0');
+    FROM clean_data.article_perimetre p
+    LEFT JOIN raw_data.mara m
+      ON m.mandt::text = '700'
+     AND m.matnr::text = CASE WHEN p.numero_article ~ '^[0-9]+$'
+                              THEN LPAD(p.numero_article, 18, '0')
+                              ELSE p.numero_article END;
 
     TRUNCATE TABLE clean_data.part_catalog RESTART IDENTITY;
     RAISE NOTICE 'Table part_catalog videe';
@@ -64,12 +73,18 @@ BEGIN
     )
     SELECT
         t.part_no,
-        -- Designation SAP (makt, langue F)
-        SUBSTRING(TRIM(COALESCE(k.maktx, '')), 1, 200) AS description,
-        -- Unite de base SAP (mara.meins) transcodee UOM ; repli '*' (unite
-        -- generique IFS), jamais l'unite SAP brute (rejetee par IFS).
+        -- Designation SAP (makt, langue F), a defaut celle du fichier valide
+        SUBSTRING(COALESCE(
+            NULLIF(TRIM(k.maktx), ''),
+            TRIM(val.donnees->>'Description article'),
+            ''
+        ), 1, 200) AS description,
+        -- Unite de base SAP (mara.meins) transcodee UOM ; article absent de SAP :
+        -- unite du fichier ; repli '*' (unite generique IFS), jamais l'unite SAP
+        -- brute (rejetee par IFS).
         SUBSTRING(COALESCE(
             public.get_transcodification('UOM', NULLIF(UPPER(TRIM(t.meins)), '')),
+            CASE WHEN t.matnr IS NULL THEN NULLIF(TRIM(val.donnees->>'U/M Stock'), '') END,
             '*'
         ), 1, 30) AS unit_code,
         -- Suivi par lot : gestion de lot SAP (marc.xchar) sur une division STJN
@@ -94,6 +109,8 @@ BEGIN
     FROM tmp_article_sap t
     LEFT JOIN raw_data.makt k
       ON k.mandt::text = '700' AND k.matnr = t.matnr AND k.spras::text = 'F'
+    LEFT JOIN clean_data.article_perimetre_validation val
+      ON val.numero_article = t.part_no
     CROSS JOIN LATERAL (
         SELECT EXISTS (
             SELECT 1 FROM raw_data.marc marc

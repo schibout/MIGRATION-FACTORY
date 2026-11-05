@@ -16,6 +16,12 @@ BEGIN
     
     RAISE NOTICE 'Début de l''alimentation du catalogue des pièces (PART_CATALOG) - %', v_start_time;
     
+    -- Reference = ecran Finance > Articles : sans perimetre calcule, on bloque
+    -- (rollback du module) plutot que de vider le catalogue et ses tables filles.
+    IF NOT EXISTS (SELECT 1 FROM clean_data.article_perimetre) THEN
+        RAISE EXCEPTION 'clean_data.article_perimetre est vide : lancer Calculer dans Finance > Articles';
+    END IF;
+
     -- Vider la table cible avant insertion
     TRUNCATE TABLE clean_data.part_catalog RESTART IDENTITY;
     RAISE NOTICE 'Table part_catalog vidée';
@@ -87,6 +93,11 @@ BEGIN
         txt.info_text
 
     FROM clean_data.ifs_article_maitre va
+    -- Perimetre = Finance > Articles. inventory_part, purchase_part et sales_part
+    -- filtrent sur part_catalog : ils suivent ce perimetre. Les articles du perimetre
+    -- absents de ifs_article_maitre sont ajoutes par alimenter_part_catalog_sap().
+    JOIN clean_data.article_perimetre p
+      ON p.numero_article = TRIM(LTRIM(va.numero_article, '0'))
     -- info_text : texte de commande SAP (texte long MATERIAL / BEST / F).
     -- STXL.CLUSTD est un cluster compresse illisible en SQL (et NULL dans
     -- raw_data.stxl : type LRAW non extrait) : le contenu est lu par
@@ -99,9 +110,6 @@ BEGIN
     ) txt ON TRUE
     WHERE va.numero_article IS NOT NULL
     AND TRIM(COALESCE(va.numero_article, '')) != ''
-    -- Perimetre = ifs_article_maitre tel quel (STJN + articles de maintenance,
-    -- ~35 700, cf. alimenter_ifs_article) : meme perimetre partout (part_catalog,
-    -- article_sap, part_catalog_sap). Plus de filtre propre ici.
     ORDER BY COALESCE(va.numero_article, '');
 
     -- Compter les enregistrements insérés

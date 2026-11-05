@@ -3,8 +3,10 @@
 
 """
 Module ETL Article SAP : catalogue des articles (part_catalog).
-Perimetre : articles de raw_data.article_sap existant dans SAP (mara, mandt 700).
-Infos     : SAP uniquement (mara, makt, marc, texte long de commande).
+Perimetre : articles de article_perimetre (ecran Finance > Articles, a calculer
+            avant ce module ; le chargement est bloque si le perimetre est vide).
+Infos     : SAP (mara, makt, marc, texte long de commande) ; fichier valide pour
+            un article absent de SAP.
 Cible     : clean_data.part_catalog.
 
 Alimente d'abord clean_data.article_sap (clean_data.alimenter_article_sap(),

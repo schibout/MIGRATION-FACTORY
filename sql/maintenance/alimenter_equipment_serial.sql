@@ -17,17 +17,17 @@ BEGIN
     -- equipment_functional. UNIQUEMENT des equipements : ni poste technique
     -- (-> equipment_functional) ni article / ligne de nomenclature.
     --
-    -- Perimetre :
-    --   ancres = equipements dont le parent est un POSTE TECHNIQUE
-    --          + equipements portant un code article (attributes.matnr)
-    --   puis descente recursive dans les equipements enfants.
+    -- Perimetre (les DEUX conditions) :
+    --   1. sous la structure : la chaine des parents remonte a un poste
+    --      technique exporte dans equipment_functional (a alimenter avant) ;
+    --   2. article renseigne (attributes.matnr, sans zeros de tete).
+    -- Un equipement sans article n'est pas exporte, mais on descend sous lui.
     -- Exclusion des equipements ARCHIVES (statut SAP actif INAK=I0320 /
     -- suppression=I0076 dans raw_data.jest) : on ne descend pas sous eux.
     --
-    -- Ordre : niveau recalcule DANS le perimetre (racine = equipement dont le
-    -- parent n'est pas exporte) -> parents toujours avant enfants.
-    -- sup_mch_code = code du parent s'il est exporte (poste technique de
-    -- equipment_functional ou equipement du perimetre), sinon NULL.
+    -- sup_mch_code = ancetre exporte le plus proche (equipement avec article,
+    -- sinon le poste technique) : jamais NULL ni pointant un objet non exporte.
+    -- Ordre : profondeur reelle -> parents toujours avant enfants.
     -- ============================================================
     WITH RECURSIVE archive AS MATERIALIZED (
         SELECT o.id
@@ -39,36 +39,26 @@ BEGIN
                         AND j.stat IN ('I0320', 'I0076')
                         AND (j.inact IS NULL OR TRIM(j.inact) <> 'X'))
     ),
-    perim AS (
-        SELECT e.id, ARRAY[e.id] AS chemin
+    structure AS (
+        SELECT e.id, e.code, NULLIF(LTRIM(TRIM(e.attributes->>'matnr'), '0'), '') AS part_no,
+               p.code AS sup_code, 1 AS lvl, ARRAY[e.id] AS chemin
         FROM clean_data.maintenance_object e
-        LEFT JOIN clean_data.maintenance_object p ON p.id = e.parent_id
+        JOIN clean_data.maintenance_object p ON p.id = e.parent_id AND p.object_type = 'FUNC_LOC'
         WHERE e.object_type = 'EQUIPMENT' AND e.is_active
           AND e.id NOT IN (SELECT id FROM archive)
-          AND (p.object_type = 'FUNC_LOC'
-               OR NULLIF(LTRIM(TRIM(e.attributes->>'matnr'), '0'), '') IS NOT NULL)
+          AND EXISTS (SELECT 1 FROM clean_data.equipment_functional ef WHERE ef.mch_code = p.code)
         UNION ALL
-        SELECT c.id, a.chemin || c.id
-        FROM perim a
+        SELECT c.id, c.code, NULLIF(LTRIM(TRIM(c.attributes->>'matnr'), '0'), ''),
+               CASE WHEN a.part_no IS NOT NULL THEN a.code ELSE a.sup_code END,
+               a.lvl + 1, a.chemin || c.id
+        FROM structure a
         JOIN clean_data.maintenance_object c
           ON c.parent_id = a.id AND c.object_type = 'EQUIPMENT' AND c.is_active
         WHERE c.id <> ALL (a.chemin)
           AND c.id NOT IN (SELECT id FROM archive)
     ),
-    ens AS MATERIALIZED (SELECT DISTINCT id FROM perim),
-    niv AS (
-        SELECT o.id, 1 AS lvl
-        FROM ens
-        JOIN clean_data.maintenance_object o ON o.id = ens.id
-        WHERE o.parent_id IS NULL OR o.parent_id NOT IN (SELECT id FROM ens)
-        UNION ALL
-        SELECT c.id, n.lvl + 1
-        FROM niv n
-        JOIN clean_data.maintenance_object c ON c.parent_id = n.id
-        JOIN ens ON ens.id = c.id
-    ),
     eq AS (
-        SELECT o.id,
+        SELECT s.id, s.part_no, s.sup_code, s.lvl,
                CASE WHEN o.attributes->>'ansdt' ~ '^[0-9]{8}$' AND o.attributes->>'ansdt' <> '00000000'
                     THEN to_date(o.attributes->>'ansdt', 'YYYYMMDD') END AS purch_date,
                CASE WHEN o.attributes->>'gwlen' ~ '^[0-9]{8}$' AND o.attributes->>'gwlen' <> '00000000'
@@ -77,10 +67,10 @@ BEGIN
                NULLIF(TRIM(o.attributes->>'herst'), '') AS manufacturer_no,
                NULLIF(TRIM(o.attributes->>'sernr'), '') AS serial_no,
                NULLIF(TRIM(o.attributes->>'typbz'), '') AS type,
-               NULLIF(LTRIM(TRIM(o.attributes->>'matnr'), '0'), '') AS part_no,
                public.get_vendor_no_ifs(NULLIF(TRIM(o.attributes->>'elief'), '')) AS vendor_no
-        FROM ens
-        JOIN clean_data.maintenance_object o ON o.id = ens.id
+        FROM structure s
+        JOIN clean_data.maintenance_object o ON o.id = s.id
+        WHERE s.part_no IS NOT NULL
     )
     INSERT INTO clean_data.equipment_serial (
         equipment_object_seq,
@@ -93,7 +83,7 @@ BEGIN
         operational_status_db
     )
     SELECT
-        ROW_NUMBER() OVER (ORDER BY n.lvl, o.sap_key),
+        ROW_NUMBER() OVER (ORDER BY eq.lvl, o.sap_key),
         v_contract,
         o.code,                                                   -- mch_code (equnr sans zeros)
         SUBSTRING(COALESCE(o.designation, o.code), 1, 200),       -- mch_name
@@ -103,8 +93,8 @@ BEGIN
         eq.vendor_no,
         SUBSTRING(eq.type, 1, 30),
         eq.purch_price, eq.purch_date, eq.warr_exp,
-        CASE WHEN sup.code IS NOT NULL THEN v_contract END,
-        sup.code,                                                 -- sup_mch_code
+        v_contract,
+        eq.sup_code,                                              -- sup_mch_code
         COALESCE(public.get_default_value('equipment_serial', 'company'), 'TRIMET'),
         COALESCE(public.get_default_value('equipment_serial', 'ownership_db'), 'COMPANY OWNED'),
         COALESCE(public.get_default_value('equipment_serial', 'location_id'), '1'),
@@ -112,15 +102,8 @@ BEGIN
         COALESCE(public.get_default_value('equipment_serial', 'pm_prog_application_status'), 'FALSE'),
         'FALSE', 'FALSE',
         'IN_OPERATION'
-    FROM niv n
-    JOIN clean_data.maintenance_object o ON o.id = n.id
-    JOIN eq ON eq.id = o.id
-    LEFT JOIN clean_data.maintenance_object p ON p.id = o.parent_id
-    LEFT JOIN LATERAL (
-        SELECT p.code
-        WHERE p.id IN (SELECT id FROM ens)
-           OR (p.object_type = 'FUNC_LOC' AND p.is_active)
-    ) sup ON TRUE;
+    FROM eq
+    JOIN clean_data.maintenance_object o ON o.id = eq.id;
 
     GET DIAGNOSTICS v_count_total = ROW_COUNT;
     RAISE NOTICE 'EQUIPMENT_SERIAL alimente depuis maintenance_object : % equipements (durée %)',
@@ -135,8 +118,8 @@ $function$;
 
 COMMENT ON FUNCTION clean_data.alimenter_equipment_serial() IS
 'Alimente EQUIPMENT_SERIAL depuis clean_data.maintenance_object (EQUIPMENT) — UNIQUEMENT
-les equipements (ni postes techniques ni articles). Perimetre : equipements sous un poste
-technique + equipements portant un code article, puis leurs equipements enfants
-(recursif), hors equipements archives (jest I0320/I0076). Parents inseres avant enfants.
-sup_mch_code = code du parent s''il est exporte, sinon NULL. serial_no = sernr, a defaut
-le code de l''equipement (obligatoire IFS).';
+les equipements (ni postes techniques ni articles). Perimetre : equipements sous la
+structure (chaine de parents jusqu''a un poste technique de equipment_functional, a
+alimenter avant) ET portant un code article, hors equipements archives (jest I0320/I0076)
+et leurs descendants. Parents inseres avant enfants. sup_mch_code = ancetre exporte le
+plus proche. serial_no = sernr, a defaut le code de l''equipement (obligatoire IFS).';

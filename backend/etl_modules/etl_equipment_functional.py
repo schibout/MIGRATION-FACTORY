@@ -14,7 +14,7 @@ Enchaîne trois traitements, dans cet ordre imposé (chaque étape lit la préc�
      articles de l'étape 2 (BOM_ITEM sous ARTICLE, récursif) -> clean_data.equipment_spare_structure.
 
   + clean_data.alimenter_equipment_serial() (après l'étape 1) : équipements (objets série)
-     sous un poste technique ou portant un code article, puis leurs équipements enfants
+     sous la structure (postes techniques de l'étape 1) ET portant un code article
      -> clean_data.equipment_serial.
 
 Mode FULL uniquement (TRUNCATE + rechargement) : snapshot de la structure.
