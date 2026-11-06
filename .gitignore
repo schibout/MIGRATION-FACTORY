@@ -91,7 +91,6 @@ backend/exports/
 !.vscode/extensions.json
 .idea/
 .devcontainer/
-graphify-out/
 
 # --- OS / Editeurs --------------------------------------------------------
 .DS_Store

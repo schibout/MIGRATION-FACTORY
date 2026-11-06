@@ -1,0 +1,1 @@
+{"nodes": [{"id": "articlephl_phl_article_phl_article_table", "label": "raw_data.phl_article (staging table, 66 cols)", "file_type": "code", "source_file": "sql/articlePhl/phl_article.sql", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

@@ -1,0 +1,1 @@
+{"nodes": [{"id": "deploy_serveur_deployment_procedure", "label": "deploy-serveur deployment procedure", "file_type": "rationale", "source_file": ".agents/skills/deploy-serveur/SKILL.md", "source_location": "Commit/push, install, verify sections", "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}
