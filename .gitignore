@@ -85,6 +85,8 @@ backend/exports/
 .cursor/
 .taskmaster/
 .playwright-mcp/
+# Conversion Graphify locale exclue explicitement du depot
+graphify-out/converted/VueIFS_4d54d972.md
 .vscode/*
 !.vscode/settings.json
 !.vscode/launch.json
