@@ -33,6 +33,9 @@ class ExtractionService:
         # pool_recycle : recycle les connexions au bout de 30 min.
         self.engine = create_engine(uri, pool_pre_ping=True, pool_recycle=1800)
         self._ensure_tables()
+        # gunicorn --preload : une connexion gardée ici serait héritée par tous les
+        # workers après le fork et partagée entre eux (SSL "bad record mac").
+        self.engine.dispose()
 
     def initialize(self):
         self._ensure_engine()
