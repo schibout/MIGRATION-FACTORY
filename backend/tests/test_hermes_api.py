@@ -203,6 +203,27 @@ def test_sauvegarde_conversation_profil_inconnu_renvoie_400(client):
 def test_hermes_origin_retire_v1():
     assert hermes_module._hermes_origin({'base_url': 'http://10.0.0.1:8642/v1'}) == 'http://10.0.0.1:8642'
     assert hermes_module._hermes_origin({'base_url': 'https://h:9/v1'}) == 'https://h:9'
+    assert hermes_module._hermes_origin({'base_url': 'http://h:9/p/trimet-full/v1'}) == 'http://h:9/p/trimet-full'
+
+
+@pytest.mark.parametrize('profile, attendu', [
+    ('', 'http://h:9/p/trimet-full/v1'),
+    ('maintenance', 'http://h:9/p/trimet-maint/v1'),
+])
+def test_hermes_config_route_vers_le_profil(profile, attendu):
+    valeurs = {'HERMES_API_URL': 'http://h:9/v1'}
+    with patch.object(hermes_module, 'get_config', lambda k, d=None: valeurs.get(k, d)), \
+         patch.object(hermes_module, 'get_config_int', lambda k, d=0: d):
+        assert hermes_module._hermes_config(profile)['base_url'] == attendu
+
+
+def test_chat_maintenance_utilise_le_profil_maintenance(client):
+    with patch.object(hermes_module, '_hermes_config', return_value=_CFG_OK) as cfg, \
+         patch.object(hermes_module.requests, 'post', return_value=_upstream(body={'ok': True})):
+        client.post('/api/v1/hermes/chat', json={
+            'messages': [{'role': 'user', 'content': 'x'}], 'profile': 'maintenance', 'stream': False,
+        })
+    cfg.assert_called_once_with('maintenance')
 
 
 def test_create_job_body_vide_renvoie_400(client):

@@ -103,8 +103,10 @@ SETTINGS_CATALOG = [
     {'key': 'AI_RAG_PROFILE',              'category': 'ai', 'label': 'Profil RAG (auto | compact | large)',  'type': 'text',     'secret': False, 'default': 'auto',                        'requires_restart': False},
 
     # ---------- Agent Trimet (moteur agentique, API OpenAI-compatible) ----------
-    {'key': 'HERMES_API_URL',              'category': 'ai', 'label': 'URL API Agent Trimet (OpenAI-compatible)', 'type': 'url',      'secret': False, 'default': 'http://10.190.100.58:8642/v1', 'requires_restart': False},
+    {'key': 'HERMES_API_URL',              'category': 'ai', 'label': 'URL API Agent Trimet (OpenAI-compatible)', 'type': 'url',      'secret': False, 'default': 'http://172.17.0.1:18642/v1', 'requires_restart': False},
     {'key': 'HERMES_API_KEY',              'category': 'ai', 'label': 'Clé API Agent Trimet',                    'type': 'password', 'secret': True,  'default': '',                            'requires_restart': False},
+    {'key': 'HERMES_PROFILE',              'category': 'ai', 'label': 'Profil Hermes Agent Trimet',              'type': 'text',     'secret': False, 'default': 'trimet-full',                 'requires_restart': False},
+    {'key': 'HERMES_PROFILE_MAINTENANCE',  'category': 'ai', 'label': 'Profil Hermes Agent Maintenance',         'type': 'text',     'secret': False, 'default': 'trimet-maint',                'requires_restart': False},
     {'key': 'HERMES_TIMEOUT_SECONDS',      'category': 'ai', 'label': 'Timeout Agent Trimet (s)',                'type': 'number',   'secret': False, 'default': '300',                         'requires_restart': False},
 ]
 

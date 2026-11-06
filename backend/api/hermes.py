@@ -108,12 +108,23 @@ def _ensure_schema():
         _schema_ready = True
 
 
-def _hermes_config() -> dict:
+# Profil applicatif -> profil Hermes (clé de configuration, valeur par défaut).
+# Hermes choisit le profil par l'URL (/p/<profil>/...), jamais par le champ model.
+_HERMES_AGENT_PROFILES = {
+    '': ('HERMES_PROFILE', 'trimet-full'),
+    'maintenance': ('HERMES_PROFILE_MAINTENANCE', 'trimet-maint'),
+}
+
+
+def _hermes_config(profile: str = '') -> dict:
     """Lecture dynamique (DB system_config > env > défaut) — même pattern que
     external_llm_service : la clé/URL se changent sans redémarrage."""
     timeout = get_config_int('HERMES_TIMEOUT_SECONDS', 300)
+    racine = (get_config('HERMES_API_URL', 'http://172.17.0.1:18642/v1') or '').rstrip('/').removesuffix('/v1')
+    cle_profil, profil_defaut = _HERMES_AGENT_PROFILES[profile]
+    agent = get_config(cle_profil, profil_defaut)
     return {
-        'base_url': (get_config('HERMES_API_URL', 'http://10.190.100.58:8642/v1') or '').rstrip('/'),
+        'base_url': f"{racine}/p/{agent}/v1" if agent else f"{racine}/v1",
         'api_key': get_config('HERMES_API_KEY', '') or '',
         # read timeout = silence max ENTRE deux chunks SSE, pas la durée totale.
         'read_timeout': (timeout if timeout > 0 else None),
@@ -121,11 +132,11 @@ def _hermes_config() -> dict:
 
 
 def _hermes_origin(cfg: dict) -> str:
-    """Origine du serveur Hermes (http://host:port) SANS le suffixe /v1 : les
-    endpoints Jobs sont sous {origin}/api/jobs (hors /v1). urlsplit >> rstrip('/v1')
-    (qui retirerait des caractères, pas un segment)."""
+    """Origine du serveur Hermes SANS le suffixe /v1, préfixe /p/<profil> conservé :
+    les endpoints Jobs sont sous {origin}/api/jobs (hors /v1) et propres au profil.
+    urlsplit >> rstrip('/v1') (qui retirerait des caractères, pas un segment)."""
     p = urlsplit(cfg['base_url'])
-    return urlunsplit((p.scheme, p.netloc, '', '', ''))
+    return urlunsplit((p.scheme, p.netloc, p.path.removesuffix('/v1'), '', ''))
 
 
 def _proxy(method: str, url: str, cfg: dict, json_body=None):
@@ -230,7 +241,7 @@ def chat():
         return jsonify({'success': False,
                         'error': 'messages doit être une liste non vide de {role, content}.'}), 400
 
-    cfg = _hermes_config()
+    cfg = _hermes_config(profile)
     if not cfg['api_key']:
         # 500 explicite : clé absente = erreur de configuration serveur, pas d'appel.
         return jsonify({'success': False,

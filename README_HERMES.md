@@ -55,8 +55,10 @@ Page **Paramètres → Assistant IA — Modèle** (ou variables d'environnement)
 
 | Clé | Défaut | Rôle |
 |---|---|---|
-| `HERMES_API_URL` | `http://10.190.100.58:8642/v1` | Endpoint OpenAI-compatible de Hermes |
-| `HERMES_API_KEY` | *(vide — obligatoire)* | La `API_SERVER_KEY` du serveur Hermes (masquée) |
+| `HERMES_API_URL` | `http://172.17.0.1:18642/v1` | Racine Hermes vue du conteneur (relais vers `127.0.0.1:8642`) |
+| `HERMES_PROFILE` | `trimet-full` | Profil de l'Agent Trimet (`/p/<profil>/v1`) ; jobs inclus |
+| `HERMES_PROFILE_MAINTENANCE` | `trimet-maint` | Profil de l'Agent Maintenance |
+| `HERMES_API_KEY` | *(vide — obligatoire)* | Clé commune : `API_SERVER_KEY` du `.env` de chacun des deux profils, pas celle du profil par défaut (masquée) |
 | `HERMES_TIMEOUT_SECONDS` | `300` | Silence max entre deux chunks du stream |
 
 Lecture dynamique (DB `system_config` > env > défaut) : changement de clé sans
