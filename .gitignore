@@ -85,15 +85,15 @@ backend/exports/
 .cursor/
 .taskmaster/
 .playwright-mcp/
-# Conversion Graphify locale exclue explicitement du depot
-graphify-out/converted/VueIFS_4d54d972.md
+# Graphe et caches Graphify generes localement
+graphify-out/
 .vscode/*
 !.vscode/settings.json
 !.vscode/launch.json
 !.vscode/extensions.json
 .idea/
 .devcontainer/
-
+graphify-out/
 # --- OS / Editeurs --------------------------------------------------------
 .DS_Store
 Thumbs.db
