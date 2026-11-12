@@ -168,7 +168,9 @@ const FinanceFournisseurs: React.FC = () => {
     try {
       setImporting(true);
       setError(null);
-      const res = await api.post('/finance/fournisseurs/import', form);
+      const res = await api.post('/finance/fournisseurs/import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       const r = res.data.import;
       setImportResult(
         `${r.fournisseurs.toLocaleString('fr-FR')} fournisseurs importés : ${r.devenus_fichier} SAP_NOUVEAU passés en FICHIER, `
