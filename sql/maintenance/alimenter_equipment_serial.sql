@@ -17,16 +17,15 @@ BEGIN
     -- equipment_functional. UNIQUEMENT des equipements : ni poste technique
     -- (-> equipment_functional) ni article / ligne de nomenclature.
     --
-    -- Perimetre (les DEUX conditions) :
-    --   1. sous la structure : la chaine des parents remonte a un poste
-    --      technique exporte dans equipment_functional (a alimenter avant) ;
-    --   2. article renseigne (attributes.matnr, sans zeros de tete).
-    -- Un equipement sans article n'est pas exporte, mais on descend sous lui.
+    -- Perimetre : TOUS les equipements sous la structure, c.-a-d. dont la
+    -- chaine des parents remonte a un poste technique exporte dans
+    -- equipment_functional (a alimenter avant). Depuis le 2026-11-15, un
+    -- equipement SANS article est exporte aussi (part_no NULL) : decision
+    -- metier explicite, les rejets IFS correspondants sont acceptes.
     -- Exclusion des equipements ARCHIVES (statut SAP actif INAK=I0320 /
     -- suppression=I0076 dans raw_data.jest) : on ne descend pas sous eux.
     --
-    -- sup_mch_code = ancetre exporte le plus proche (equipement avec article,
-    -- sinon le poste technique) : jamais NULL ni pointant un objet non exporte.
+    -- sup_mch_code = parent direct (poste technique ou equipement exporte).
     -- Ordre : profondeur reelle -> parents toujours avant enfants.
     -- ============================================================
     WITH RECURSIVE archive AS MATERIALIZED (
@@ -49,7 +48,7 @@ BEGIN
           AND EXISTS (SELECT 1 FROM clean_data.equipment_functional ef WHERE ef.mch_code = p.code)
         UNION ALL
         SELECT c.id, c.code, NULLIF(LTRIM(TRIM(c.attributes->>'matnr'), '0'), ''),
-               CASE WHEN a.part_no IS NOT NULL THEN a.code ELSE a.sup_code END,
+               a.code,
                a.lvl + 1, a.chemin || c.id
         FROM structure a
         JOIN clean_data.maintenance_object c
@@ -70,7 +69,6 @@ BEGIN
                public.get_vendor_no_ifs(NULLIF(TRIM(o.attributes->>'elief'), '')) AS vendor_no
         FROM structure s
         JOIN clean_data.maintenance_object o ON o.id = s.id
-        WHERE s.part_no IS NOT NULL
     )
     INSERT INTO clean_data.equipment_serial (
         equipment_object_seq,
@@ -80,7 +78,8 @@ BEGIN
         sup_contract, sup_mch_code,
         company, ownership_db, location_id, safe_access_code_db,
         pm_prog_application_status, is_geographic_object, is_category_object,
-        operational_status_db
+        operational_status_db,
+        criticality, area_id, c_org_code, mch_loc
     )
     SELECT
         ROW_NUMBER() OVER (ORDER BY eq.lvl, o.sap_key),
@@ -101,9 +100,23 @@ BEGIN
         COALESCE(public.get_default_value('equipment_serial', 'safe_access_code_db'), 'NOT_REQUIRED'),
         COALESCE(public.get_default_value('equipment_serial', 'pm_prog_application_status'), 'FALSE'),
         'FALSE', 'FALSE',
-        'IN_OPERATION'
+        'IN_OPERATION',
+        SUBSTRING(o.risk_factor, 1, 10),                          -- criticality = facteur de risque
+        SUBSTRING(o.zone, 1, 100),                                -- area_id = zone
+        -- c_org_code = poste responsable (equz.gewrk, 7.MATC) transcode en SJ-MATC.
+        SUBSTRING(public.get_transcodification('Organization',
+            NULLIF(TRIM(split_part(o.resp_work_center, ' - ', 1)), '')), 1, 8),
+        sal.msgrp                                                 -- mch_loc = salle (ILOA-MSGRP)
     FROM eq
-    JOIN clean_data.maintenance_object o ON o.id = eq.id;
+    JOIN clean_data.maintenance_object o ON o.id = eq.id
+    -- Salle de l'equipement : localisation (ILOA) de la periode EQUZ courante.
+    LEFT JOIN (
+        SELECT z.equnr, SUBSTRING(TRIM(l.msgrp), 1, 60) AS msgrp
+        FROM (SELECT DISTINCT ON (equnr) mandt, equnr, iloan
+              FROM raw_data.equz ORDER BY equnr, datbi DESC) z
+        JOIN raw_data.iloa l ON l.mandt = z.mandt AND l.iloan = z.iloan
+        WHERE TRIM(l.msgrp) <> ''
+    ) sal ON sal.equnr = o.sap_key;
 
     GET DIAGNOSTICS v_count_total = ROW_COUNT;
     RAISE NOTICE 'EQUIPMENT_SERIAL alimente depuis maintenance_object : % equipements (durée %)',
@@ -118,8 +131,9 @@ $function$;
 
 COMMENT ON FUNCTION clean_data.alimenter_equipment_serial() IS
 'Alimente EQUIPMENT_SERIAL depuis clean_data.maintenance_object (EQUIPMENT) — UNIQUEMENT
-les equipements (ni postes techniques ni articles). Perimetre : equipements sous la
-structure (chaine de parents jusqu''a un poste technique de equipment_functional, a
-alimenter avant) ET portant un code article, hors equipements archives (jest I0320/I0076)
-et leurs descendants. Parents inseres avant enfants. sup_mch_code = ancetre exporte le
-plus proche. serial_no = sernr, a defaut le code de l''equipement (obligatoire IFS).';
+les equipements (ni postes techniques ni articles). Perimetre : TOUS les equipements sous
+la structure (chaine de parents jusqu''a un poste technique de equipment_functional, a
+alimenter avant), avec ou sans article (part_no NULL accepte depuis le 2026-11-15), hors
+equipements archives (jest I0320/I0076) et leurs descendants. Parents inseres avant
+enfants. sup_mch_code = parent direct. serial_no = sernr, a defaut le code de
+l''equipement (obligatoire IFS).';

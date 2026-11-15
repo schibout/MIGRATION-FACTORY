@@ -56,7 +56,8 @@ BEGIN
         category_id, item_class_id, cluster_id,
         cost_center,
         is_category_object, is_geographic_object,
-        note, operational_status_db
+        note, operational_status_db,
+        criticality, area_id, c_org_code, mch_loc
     )
     SELECT
         ROW_NUMBER() OVER (ORDER BY t.lvl, o.code),
@@ -73,10 +74,23 @@ BEGIN
         NULL,                                                     -- cost_center : non alimente (volontaire)
         'FALSE', 'FALSE',
         NULL,
-        'IN_OPERATION'
+        'IN_OPERATION',
+        SUBSTRING(o.risk_factor, 1, 10),                          -- criticality = facteur de risque
+        SUBSTRING(o.zone, 1, 100),                                -- area_id = zone
+        -- c_org_code = poste responsable (7.MATC, parfois saisi « 7.MATC - libelle »)
+        -- transcode en organisation IFS (SJ-MATC) ; non transcode -> NULL.
+        SUBSTRING(public.get_transcodification('Organization',
+            NULLIF(TRIM(split_part(o.resp_work_center, ' - ', 1)), '')), 1, 8),
+        sal.msgrp                                                 -- mch_loc = salle (ILOA-MSGRP)
     FROM tree t
     JOIN clean_data.maintenance_object o ON o.id = t.id
     LEFT JOIN clean_data.maintenance_object p ON p.id = o.parent_id
+    LEFT JOIN (
+        SELECT f.tplnr, SUBSTRING(TRIM(l.msgrp), 1, 60) AS msgrp
+        FROM raw_data.iflot f
+        JOIN raw_data.iloa l ON l.mandt = f.mandt AND l.iloan = f.iloan
+        WHERE TRIM(l.msgrp) <> ''
+    ) sal ON sal.tplnr = o.sap_key
     WHERE NOT EXISTS (
         SELECT 1
         FROM raw_data.iflot il
