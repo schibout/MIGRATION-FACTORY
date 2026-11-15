@@ -31,7 +31,12 @@
 --     = ekkn.kostl, ou pour une imputation sur ordre le centre de couts
 --     responsable de l'ordre (aufk.kostv). NULL si le centre n'est pas transcode,
 --     et pour une imputation sur OTP (PRPS ne porte pas de centre de couts) ;
---   - PROJECT_ID = commande_achat_ifs.numero_projet (projet SharePoint de l'OTP).
+--   - PROJECT_ID = ID projet IFS saisi dans la reprise des couts projet
+--     (reprise_cout_projet_ifs), sinon commande_achat_ifs.numero_projet (projet
+--     SharePoint de l'OTP) ;
+--   - lignes : ACTIVITY_SEQ, ABREVIATION_ACTIVITE (<projet>.20.REP CAPEX /
+--     .30.REP OPEX), SUB_PROJECT_ID (20 / 30) et ACTIVITY_NO (REP), regle de la
+--     reprise des couts projet, voir tmp_po_activite.
 --   L'en-tete prend la pre-imputation et le projet du premier poste.
 -- Toutes les autres constantes : public.get_default_value('clean_data.<table>',
 -- '<colonne>') (migration 104, ecran Valeurs par defaut), resolues UNE fois.
@@ -81,6 +86,46 @@ BEGIN
     FROM (SELECT DISTINCT centre_cout_sap
           FROM clean_data.commande_achat_ifs
           WHERE centre_cout_sap IS NOT NULL) p;
+
+    -- Activite d'imputation, meme regle que la reprise des couts projet
+    -- (sql/historiqueCoutProjet/03_reprise_cout_projet.sql) : nature CAPEX / OPEX par
+    -- le suffixe de l'OTP (IM / EX), sinon la qualification manuelle de l'ecran
+    -- Historique des couts ; abreviation <ID projet IFS>.20.REP (CAPEX) / .30.REP (OPEX) ;
+    -- ACTIVITY_SEQ = sequence saisie pour cette nature (reprise_cout_projet_ifs), sinon
+    -- l'unique activite du projet portant l'abreviation, sinon NULL (activite creee
+    -- directement dans IFS : l'abreviation sert a la retrouver).
+    -- Ligne sans OTP ou sans projet : rien (PROJECT_ID / ACTIVITY_SEQ vides).
+    DROP TABLE IF EXISTS tmp_po_activite;
+    CREATE TEMP TABLE tmp_po_activite ON COMMIT DROP AS
+    WITH o AS (
+        SELECT x.element_otp, x.numero_projet,
+               COALESCE(c.project_id_ifs, x.numero_projet) AS project_id,
+               COALESCE(clean_data.nature_suffixe_otp(x.element_otp), m.nature) AS nature,
+               c.activity_seq_capex, c.activity_seq_opex
+        FROM (SELECT DISTINCT element_otp, numero_projet
+              FROM clean_data.commande_achat_ifs
+              WHERE element_otp IS NOT NULL AND numero_projet IS NOT NULL) x
+        LEFT JOIN clean_data.reprise_cout_otp_nature m ON m.element_otp = x.element_otp
+        LEFT JOIN clean_data.reprise_cout_projet_ifs c ON c.numero_projet = x.numero_projet
+    ),
+    -- Abreviation = <projet>.<sous-projet>.<n° activite> : sous-projet 20 (CAPEX) /
+    -- 30 (OPEX), activite REP (regle validee le 2026-11-15, activites creees dans IFS)
+    s AS (
+        SELECT o.*, CASE o.nature WHEN 'CAPEX' THEN '20' WHEN 'OPEX' THEN '30' END AS sub_project_id
+        FROM o
+    ),
+    a AS (
+        SELECT s.*, CASE WHEN s.sub_project_id IS NOT NULL THEN 'REP' END AS activity_no,
+               s.project_id || '.' || s.sub_project_id || '.REP' AS abrev
+        FROM s
+    )
+    SELECT a.element_otp, a.numero_projet, a.project_id, a.abrev, a.sub_project_id, a.activity_no,
+           COALESCE(CASE a.nature WHEN 'CAPEX' THEN a.activity_seq_capex
+                                  WHEN 'OPEX'  THEN a.activity_seq_opex END,
+                    (SELECT min(pa.activity_seq) FROM clean_data.project_activity pa
+                     WHERE pa.project_id = a.project_id AND pa.short_name = a.abrev
+                     HAVING count(*) = 1)) AS activity_seq
+    FROM a;
 
     -- En-tetes candidats avec leurs identifiants IFS resolus
     DROP TABLE IF EXISTS tmp_po_entete;
@@ -311,7 +356,8 @@ BEGIN
             p.delivery_terms,
             d.language_code,
             p.pre_accounting_id,
-            p.numero_projet,
+            COALESCE((SELECT c.project_id_ifs FROM clean_data.reprise_cout_projet_ifs c
+                      WHERE c.numero_projet = p.numero_projet), p.numero_projet),
             p.ship_via_code,
             p.vendor_no,
             p.date_creation::timestamp,
@@ -402,6 +448,10 @@ BEGIN
             close_code_db,
             pre_accounting_id,
             project_id,
+            activity_seq,
+            abreviation_activite,
+            sub_project_id,
+            activity_no,
             contract,
             buy_unit_meas,
             price_conv_factor,
@@ -537,7 +587,11 @@ BEGIN
             d.close_code,
             d.close_code_db,
             pa.pre_accounting_id,
-            l.numero_projet,
+            COALESCE(act.project_id, l.numero_projet),
+            act.activity_seq,
+            act.abrev,
+            act.sub_project_id,
+            act.activity_no,
             po.contract,
             l.unite_achat,
             NULLIF(d.price_conv_factor, '')::numeric,
@@ -599,6 +653,7 @@ BEGIN
     JOIN clean_data.purchase_order po ON po.order_no = 'S' || l.num_commande_sap
     JOIN clean_data.part_catalog pc ON pc.part_no = l.article_sap
     LEFT JOIN tmp_po_pre_accounting pa ON pa.centre_cout_sap = l.centre_cout_sap
+    LEFT JOIN tmp_po_activite act ON act.element_otp = l.element_otp AND act.numero_projet = l.numero_projet
     CROSS JOIN d
     WHERE l.type_ligne_ifs = 'PART'
     ORDER BY l.num_commande_sap, l.num_ligne_sap;
@@ -627,6 +682,10 @@ BEGIN
             close_code_db,
             pre_accounting_id,
             project_id,
+            activity_seq,
+            abreviation_activite,
+            sub_project_id,
+            activity_no,
             contract,
             buy_unit_meas,
             price_conv_factor,
@@ -746,7 +805,11 @@ BEGIN
             d.close_code,
             d.close_code_db,
             pa.pre_accounting_id,
-            l.numero_projet,
+            COALESCE(act.project_id, l.numero_projet),
+            act.activity_seq,
+            act.abrev,
+            act.sub_project_id,
+            act.activity_no,
             po.contract,
             l.unite_achat,
             NULLIF(d.price_conv_factor, '')::numeric,
@@ -798,6 +861,7 @@ BEGIN
     FROM clean_data.commande_achat_ifs l
     JOIN clean_data.purchase_order po ON po.order_no = 'S' || l.num_commande_sap
     LEFT JOIN tmp_po_pre_accounting pa ON pa.centre_cout_sap = l.centre_cout_sap
+    LEFT JOIN tmp_po_activite act ON act.element_otp = l.element_otp AND act.numero_projet = l.numero_projet
     CROSS JOIN d
     WHERE COALESCE(l.type_ligne_ifs, 'NOPART') = 'NOPART'
       AND l.num_ligne_sap IS NOT NULL

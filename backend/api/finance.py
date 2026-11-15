@@ -719,6 +719,9 @@ def _ca_lignes_ifs(table):
     return list(result.keys()), result.all()
 
 
+_CA_HORS_LOT11 = {'abreviation_activite', 'sub_project_id', 'activity_no'}
+
+
 def _csv_ifs(v):
     """Cellule au format des fichiers modeles Lot11 : dates JJ/MM/AAAA, virgule decimale."""
     if v is None:
@@ -757,10 +760,12 @@ def export_commandes_achat_zip():
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as z:
         z.writestr(f'commandes_achat_{horodatage}.xlsx', classeur.getvalue())
         for t, (colonnes, rows) in ifs.items():
+            # Activite projet : colonnes hors modele Lot11, gardees dans le classeur seulement
+            garde = [i for i, c in enumerate(colonnes) if c not in _CA_HORS_LOT11]
             texte = io.StringIO()
             w = csv.writer(texte, delimiter=';', lineterminator='\r\n')
-            w.writerow([c.upper() for c in colonnes])
-            w.writerows([[_csv_ifs(v) for v in r] for r in rows])
+            w.writerow([colonnes[i].upper() for i in garde])
+            w.writerows([[_csv_ifs(r[i]) for i in garde] for r in rows])
             z.writestr(f'{t.upper()}.csv', texte.getvalue().encode('utf-8-sig'))
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, mimetype='application/zip',

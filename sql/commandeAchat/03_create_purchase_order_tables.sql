@@ -591,3 +591,15 @@ COMMENT ON TABLE clean_data.purchase_order_line_part IS
     'Reprise IFS : lignes de commande d''achat avec article (PURCHASE_ORDER_LINE_PART). Recharge par clean_data.alimenter_purchase_order().';
 COMMENT ON TABLE clean_data.purchase_order_line_nopart IS
     'Reprise IFS : lignes de commande d''achat sans article (PURCHASE_ORDER_LINE_NOPART). Recharge par clean_data.alimenter_purchase_order().';
+
+-- Activite d'imputation projet (hors modele IFS, aide a retrouver l'activite dans IFS) :
+-- abreviation <ID projet IFS>.20.REP (CAPEX) / .30.REP (OPEX), sous-projet 20 / 30,
+-- n° d'activite REP. Migration 133.
+ALTER TABLE clean_data.purchase_order_line_part
+    ADD COLUMN IF NOT EXISTS abreviation_activite text,
+    ADD COLUMN IF NOT EXISTS sub_project_id varchar(10),
+    ADD COLUMN IF NOT EXISTS activity_no varchar(10);
+ALTER TABLE clean_data.purchase_order_line_nopart
+    ADD COLUMN IF NOT EXISTS abreviation_activite text,
+    ADD COLUMN IF NOT EXISTS sub_project_id varchar(10),
+    ADD COLUMN IF NOT EXISTS activity_no varchar(10);

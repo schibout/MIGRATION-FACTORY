@@ -88,10 +88,12 @@ const IFS_PRINCIPALES: Record<IfsVue, string[]> = {
     'order_date', 'wanted_receipt_date', 'buyer_code', 'address1', 'city'],
   purchase_order_line_part: ['order_no', 'line_no', 'contract', 'part_no', 'description', 'buy_qty_due',
     'buy_unit_meas', 'buy_unit_price', 'currency_code', 'currency_rate', 'planned_delivery_date',
-    'promised_delivery_date', 'pre_accounting_id', 'invoicing_supplier'],
+    'promised_delivery_date', 'pre_accounting_id', 'project_id', 'sub_project_id', 'activity_no', 'activity_seq',
+    'abreviation_activite', 'invoicing_supplier'],
   purchase_order_line_nopart: ['order_no', 'line_no', 'contract', 'description', 'buy_qty_due', 'buy_unit_meas',
     'buy_unit_price', 'currency_code', 'currency_rate', 'planned_delivery_date', 'promised_delivery_date',
-    'pre_accounting_id', 'invoicing_supplier'],
+    'pre_accounting_id', 'project_id', 'sub_project_id', 'activity_no', 'activity_seq', 'abreviation_activite',
+    'invoicing_supplier'],
 };
 
 const ONGLETS: { value: Vue; label: string; description: string }[] = [
