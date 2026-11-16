@@ -150,6 +150,13 @@ class ArticleSapETL:
                         f"✅ part_catalog alimentee avec succes : {records} lignes", "success"
                     )
 
+                    # Traductions anglaises (makt langue E) des articles de part_catalog
+                    cursor.execute("SELECT clean_data.alimenter_part_catalog_language()")
+                    self._add_log_message(
+                        f"✅ part_catalog_language alimentee : {cursor.fetchone()[0] or 0} lignes",
+                        "success"
+                    )
+
             conn_psycopg2.close()
 
             execution_time = time.time() - start_time
