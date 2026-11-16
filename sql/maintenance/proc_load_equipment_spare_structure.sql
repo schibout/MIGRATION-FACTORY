@@ -122,6 +122,7 @@ BEGIN
         connected AS (
             SELECT DISTINCT spare_id::text AS matnr, ARRAY[spare_id::text] AS path
             FROM clean_data.equipment_object_spare
+            WHERE spare_id IS NOT NULL
             UNION ALL
             SELECT e.child_id, c.path || e.child_id
             FROM connected c
@@ -131,9 +132,10 @@ BEGIN
         ),
         -- Arêtes DÉCONNECTÉES : ni le kit ni le composant ne sont connectés
         edges AS (
-            SELECT * FROM all_edges
-            WHERE parent_id NOT IN (SELECT matnr FROM connected)
-              AND child_id  NOT IN (SELECT matnr FROM connected)
+            SELECT * FROM all_edges e
+            -- NOT EXISTS et non NOT IN : un NULL dans connected viderait tout
+            WHERE NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = e.parent_id)
+              AND NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = e.child_id)
         ),
         -- Racines B : IBAU / ERSA du périmètre non connectés (mono-site SJ)
         roots AS (
@@ -141,7 +143,7 @@ BEGIN
             FROM clean_data.article_perimetre p
             JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
             WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
-              AND p.numero_article NOT IN (SELECT matnr FROM connected)
+              AND NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = p.numero_article)
         ),
         -- Descente récursive depuis les racines B (parents avant composants),
         -- le contrat de la racine suit tout le sous-arbre
@@ -270,6 +272,7 @@ BEGIN
         connected AS (
             SELECT DISTINCT spare_id::text AS matnr, ARRAY[spare_id::text] AS path
             FROM clean_data.equipment_object_spare
+            WHERE spare_id IS NOT NULL
             UNION ALL
             SELECT e.child_id, c.path || e.child_id
             FROM connected c
@@ -278,16 +281,17 @@ BEGIN
               AND array_length(c.path, 1) < 50
         ),
         edges AS (
-            SELECT * FROM all_edges
-            WHERE parent_id NOT IN (SELECT matnr FROM connected)
-              AND child_id  NOT IN (SELECT matnr FROM connected)
+            SELECT * FROM all_edges e
+            -- NOT EXISTS et non NOT IN : un NULL dans connected viderait tout
+            WHERE NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = e.parent_id)
+              AND NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = e.child_id)
         ),
         roots AS (
             SELECT p.numero_article AS matnr, 'SJ' AS contract
             FROM clean_data.article_perimetre p
             JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
             WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
-              AND p.numero_article NOT IN (SELECT matnr FROM connected)
+              AND NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = p.numero_article)
               AND (p_spare_id IS NULL OR p.numero_article = p_spare_id)
         ),
         hier AS (

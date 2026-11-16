@@ -5,17 +5,16 @@
 Module ETL « Structures de maintenance » : export IFS de la structure PRÉPARÉE
 dans l'écran IH02 (clean_data.maintenance_object), jamais de raw_data.
 
-Enchaîne trois traitements, dans cet ordre imposé (chaque étape lit la précédente) :
+Enchaîne quatre traitements, dans cet ordre imposé (chaque étape lit la précédente) :
   1. clean_data.alimenter_equipment_functional() : postes techniques (FUNC_LOC actifs,
      hiérarchie par parent_id, code/désignation de l'écran) -> clean_data.equipment_functional.
-  2. clean_data.load_equipment_object_spare('FULL') : nomenclature des postes techniques
-     (BOM_ITEM sous FUNC_LOC via v_fl_nomenclature, catégorie L) -> clean_data.equipment_object_spare.
-  3. clean_data.load_equipment_spare_structure('FULL') : structure kit -> composants des
-     articles de l'étape 2 (BOM_ITEM sous ARTICLE, récursif) -> clean_data.equipment_spare_structure.
-
-  + clean_data.alimenter_equipment_serial() (après l'étape 1) : équipements (objets série)
-     sous la structure (postes techniques de l'étape 1) ET portant un code article
-     -> clean_data.equipment_serial.
+  2. clean_data.alimenter_equipment_serial() : TOUS les équipements sous les postes
+     techniques de l'étape 1, avec ou sans article -> clean_data.equipment_serial.
+  3. clean_data.load_equipment_object_spare('FULL') : pièces CONNECTÉES = tout article
+     sous un objet des étapes 1-2 (toutes catégories, nomenclature à plat, parents avant
+     enfants) -> clean_data.equipment_object_spare.
+  4. clean_data.load_equipment_spare_structure('FULL') : pièces DÉCONNECTÉES, kit ->
+     composants hors des pièces de l'étape 3 -> clean_data.equipment_spare_structure.
 
 Mode FULL uniquement (TRUNCATE + rechargement) : snapshot de la structure.
 """

@@ -1,311 +1,144 @@
 -- =============================================================
 -- Procédure stockée : clean_data.load_equipment_object_spare
 -- Cible     : clean_data.equipment_object_spare
---             (pièces de rechange rattachées à un objet d'équipement)
--- Objectif  : Alimenter la table depuis la NOMENCLATURE DES POSTES TECHNIQUES
---             (écran IH02) : tous les articles ayant un poste technique
---             comme parent, PLUS les nomenclatures d'équipement (stlty=E,
---             à plat, vue v_eq_nomenclature_export, validées dans
---             equipment_serial ; depuis le 2026-11-03).
--- Mode FULL : TRUNCATE + INSERT complet
--- Mode DELTA: suppression + réinjection d'un poste technique précis (ou tous)
--- Auteur    : généré automatiquement
+--             (pièces détachées CONNECTÉES : rattachées à un objet)
 --
--- Source : clean_data.v_fl_nomenclature (vue simple, source/recreate_v_fl_nomenclature.sql)
---            = clean_data.maintenance_object : BOM_ITEM actif sous un FUNC_LOC,
---              article via ref_object_id — la nomenclature PRÉPARÉE dans IH02
---              (route /api/.../ih02-hierarchy/bom/<tplnr>), modifications
---              d'écran comprises. Plus aucune lecture de raw_data.
+-- Règle métier (2026-11-16) : TOUTES les pièces détachées présentes dans la
+-- structure IH02 (clean_data.maintenance_object) sous un objet exporté :
+--   - objet fonctionnel = poste technique de equipment_functional ;
+--   - objet série       = équipement de equipment_serial.
+-- Toutes catégories de poste de nomenclature (L, I, N, X, Y, Z, vide...).
+-- La nomenclature des articles est dépliée À PLAT sur tous les niveaux :
+-- chaque composant est relié directement à l'objet, quantité = produit des
+-- quantités le long du chemin.
 --
--- Mapping :
---   equipment_object_seq  = le CODE du POSTE TECHNIQUE (mch_code = tplnr_display),
---                           validé contre clean_data.equipment_functional
---                           (contract = 'SJ'). ⚠️ On stocke le mch_code (texte),
---                           pas la séquence interne -> la colonne cible est
---                           passée en VARCHAR (voir ALTER ci-dessous).
---   spare_id              = l'article (inventory_part) = matnr_short
---                           (idnrk sans zéros de tête).
+-- Ordre : PARENTS AVANT ENFANTS -> mch_spare_seq suit la profondeur (pièces
+-- directement sous l'objet, puis leurs composants, niveau par niveau).
+-- Un même article sous un même objet (plusieurs positions / chemins) donne
+-- une seule ligne, quantités SOMMÉES, niveau = le plus haut.
 --
--- Filtre item_category='L' : postes ARTICLE stock uniquement (vrais
---   inventory_part). Les catégories I (structure PM), Z, Y, T (texte),
---   N (non-stock), X, D (document) sont écartées.
---
--- Déduplication : un même article peut apparaître à plusieurs positions
---   (posnr) sous un même poste -> 1 seule ligne par (poste, article), les
---   quantités sont SOMMÉES.
---
--- Rejets : un poste technique absent de equipment_functional (archivé /
---   hors hiérarchie active) ne peut être rattaché -> ses articles sont rejetés.
+-- equipment_object_seq = CODE de l'objet (mch_code), pas la séquence interne.
+-- spare_id = code article (matnr sans zéros de tête).
+-- Rejets : pièces sous un objet non exporté (archivé / hors hiérarchie) ou
+--   de quantité vide / nulle.
 --
 -- has_spare_structure / objversion : IN_SCOPE=NO dans la spec IFS -> NULL.
 -- allow_wo_mat_site = 'FALSE' ; part_ownership_db = 'COMPANY OWNED'.
 -- =============================================================
 
--- -------------------------------------------------------------
--- Pieces de rechange des NOMENCLATURES D'EQUIPEMENT (stlty=E, eqst ;
--- passe 5d de load_maintenance_object, 2026-11-03), A PLAT (demande
--- explicite) : les lignes d'une nomenclature d'equipement sont surtout des
--- ensembles de categorie I (ex. 617546 MECANISME SUPERIEUR sous 122467),
--- qui ne sont pas des articles IFS. On exporte donc :
---   - les lignes L directement sous l'equipement ;
---   - les lignes L de la nomenclature matiere d'un ensemble I, rattachees
---     directement a l'equipement, quantite = qte ensemble x qte piece.
--- Les postes techniques gardent leur regle (L direct seulement, via
--- v_fl_nomenclature) : demande explicite de ne pas y toucher.
--- ponytail: un seul niveau d'ensemble I ; un ensemble I sous un ensemble I
---   n'est pas eclate (aucun cas au 2026-11-03), etendre en CTE recursive sinon.
--- -------------------------------------------------------------
-CREATE OR REPLACE VIEW clean_data.v_eq_nomenclature_export AS
-SELECT eq.code AS mch_code, a.code AS spare_id, b.quantity AS quantity
-FROM clean_data.maintenance_object b
-JOIN clean_data.maintenance_object eq
-  ON eq.id = b.parent_id AND eq.object_type = 'EQUIPMENT' AND eq.is_active
-JOIN clean_data.maintenance_object a
-  ON a.id = b.ref_object_id AND a.object_type = 'ARTICLE'
-WHERE b.object_type = 'BOM_ITEM' AND b.is_active AND b.category = 'L'
-UNION ALL
-SELECT eq.code, c.code, b.quantity * cb.quantity
-FROM clean_data.maintenance_object b
-JOIN clean_data.maintenance_object eq
-  ON eq.id = b.parent_id AND eq.object_type = 'EQUIPMENT' AND eq.is_active
-JOIN clean_data.maintenance_object cb
-  ON cb.parent_id = b.ref_object_id AND cb.object_type = 'BOM_ITEM'
- AND cb.is_active AND cb.category = 'L'
-JOIN clean_data.maintenance_object c
-  ON c.id = cb.ref_object_id AND c.object_type = 'ARTICLE'
-WHERE b.object_type = 'BOM_ITEM' AND b.is_active AND b.category = 'I';
+CREATE OR REPLACE VIEW clean_data.v_object_spare_export AS
+WITH RECURSIVE pieces AS (
+    -- Niveau 1 : postes de nomenclature directement sous l'objet
+    SELECT o.code AS mch_code, a.id AS article_id, a.code AS spare_id,
+           b.quantity::numeric AS qty, 1 AS lvl, ARRAY[a.id] AS path
+    FROM clean_data.maintenance_object b
+    JOIN clean_data.maintenance_object o
+      ON o.id = b.parent_id AND o.object_type IN ('FUNC_LOC', 'EQUIPMENT') AND o.is_active
+    JOIN clean_data.maintenance_object a
+      ON a.id = b.ref_object_id AND a.object_type = 'ARTICLE'
+    WHERE b.object_type = 'BOM_ITEM' AND b.is_active
+    UNION ALL
+    -- Niveaux suivants : nomenclature matière de l'article, à plat
+    SELECT p.mch_code, a.id, a.code, p.qty * b.quantity, p.lvl + 1, p.path || a.id
+    FROM pieces p
+    JOIN clean_data.maintenance_object b
+      ON b.parent_id = p.article_id AND b.object_type = 'BOM_ITEM' AND b.is_active
+    JOIN clean_data.maintenance_object a
+      ON a.id = b.ref_object_id AND a.object_type = 'ARTICLE'
+    WHERE a.id <> ALL (p.path)          -- anti-cycle
+      AND p.lvl < 50                    -- garde-fou de profondeur
+)
+SELECT mch_code, spare_id, qty, lvl FROM pieces;
 
-COMMENT ON VIEW clean_data.v_eq_nomenclature_export IS
-'Pieces de rechange des nomenclatures d''equipement pour equipment_object_spare :
- lignes L directes + lignes L des ensembles I, a plat (qte ensemble x qte piece).
- mch_code = code de l''equipement (= equipment_serial.mch_code).';
+COMMENT ON VIEW clean_data.v_object_spare_export IS
+'Pièces détachées connectées pour equipment_object_spare : tout article sous un poste
+ technique ou un équipement dans IH02, toutes catégories, nomenclature dépliée à plat
+ (qty = produit des quantités, lvl = profondeur, 1 = directement sous l''objet).';
+
+-- Remplacée par v_object_spare_export (plus utilisée).
+DROP VIEW IF EXISTS clean_data.v_eq_nomenclature_export;
 
 CREATE OR REPLACE PROCEDURE clean_data.load_equipment_object_spare(
     p_mode        VARCHAR DEFAULT 'FULL',    -- 'FULL' | 'DELTA'
-    p_tplnr       VARCHAR DEFAULT NULL       -- DELTA : recharger un poste technique précis
-                                             --         (mch_code = tplnr_display) ; NULL = tous
+    p_tplnr       VARCHAR DEFAULT NULL       -- DELTA : code d'un objet précis
+                                             --         (mch_code) ; NULL = tous
 )
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    -- Compteurs
     v_nb_inserted   BIGINT  := 0;
     v_nb_updated    BIGINT  := 0;
     v_nb_deleted    BIGINT  := 0;
     v_nb_rejected   BIGINT  := 0;
     v_nb_src        BIGINT  := 0;
+    v_last_seq      BIGINT  := 0;
 
-    -- Exécution
     v_start_ts      TIMESTAMP := CLOCK_TIMESTAMP();
     v_log_id        BIGINT;
     v_err_msg       TEXT;
     v_proc          CONSTANT VARCHAR := 'load_equipment_object_spare';
-
 BEGIN
 
-    -- ── Validation paramètre ─────────────────────────────────
     IF p_mode NOT IN ('FULL', 'DELTA') THEN
         RAISE EXCEPTION 'Paramètre p_mode invalide : %. Valeurs acceptées : FULL, DELTA', p_mode;
     END IF;
 
-    -- ── Ouverture du log ─────────────────────────────────────
     INSERT INTO clean_data.etl_log (procedure_name, mode, status)
     VALUES (v_proc, p_mode, 'RUNNING')
     RETURNING id INTO v_log_id;
 
-    RAISE NOTICE '[%] ══ Début % (mode=%, tplnr=%)',
-        TO_CHAR(v_start_ts, 'HH24:MI:SS'), v_proc, p_mode,
-        COALESCE(p_tplnr, 'TOUS');
+    RAISE NOTICE '[%] ══ Début % (mode=%, objet=%)',
+        TO_CHAR(v_start_ts, 'HH24:MI:SS'), v_proc, p_mode, COALESCE(p_tplnr, 'TOUS');
 
-
-    -- ═══════════════════════════════════════════════════════════
-    -- MODE FULL — Rechargement complet
-    -- ═══════════════════════════════════════════════════════════
     IF p_mode = 'FULL' THEN
-
-        RAISE NOTICE '[%] Truncate de la table cible…',
-            TO_CHAR(CLOCK_TIMESTAMP(), 'HH24:MI:SS');
-
         TRUNCATE TABLE clean_data.equipment_object_spare;
-
-        -- ── Insertion complète ────────────────────────────────
-        WITH ef_uniq AS (
-            -- Postes techniques valides (actifs) ; 1 ligne par mch_code
-            SELECT DISTINCT mch_code, contract
-            FROM clean_data.equipment_functional
-            WHERE contract = 'SJ'
-        ),
-        -- Composants de nomenclature de poste technique (= pièces de rechange)
-        bom AS (
-            SELECT
-                ef.mch_code                                                          AS equipment_object_seq,  -- code poste technique
-                ef.contract,
-                v.matnr_short                                                        AS spare_id,
-                ROUND(CAST(REGEXP_REPLACE(TRIM(v.quantity), '[^0-9.]', '', 'g') AS NUMERIC), 0) AS qty
-            FROM clean_data.v_fl_nomenclature v
-            JOIN ef_uniq ef ON ef.mch_code = v.tplnr_display
-            WHERE v.item_category = 'L'               -- articles stock uniquement
-              AND v.idnrk IS NOT NULL AND TRIM(v.idnrk) <> ''
-              AND TRIM(v.quantity) <> ''
-            UNION ALL
-            -- Nomenclatures d'equipement (a plat), equipement valide dans equipment_serial
-            SELECT es.mch_code, es.contract, v.spare_id, ROUND(v.quantity, 0)
-            FROM clean_data.v_eq_nomenclature_export v
-            JOIN (SELECT DISTINCT mch_code, contract FROM clean_data.equipment_serial
-                  WHERE contract = 'SJ') es ON es.mch_code = v.mch_code
-        ),
-        -- 1 ligne par (poste, article) : quantités sommées
-        agg AS (
-            SELECT equipment_object_seq, contract, spare_id, SUM(qty) AS qty
-            FROM bom
-            WHERE qty IS NOT NULL AND qty > 0
-            GROUP BY equipment_object_seq, contract, spare_id
-        ),
-        source AS (
-            SELECT
-                ROW_NUMBER() OVER (ORDER BY equipment_object_seq, spare_id) AS mch_spare_seq,
-                contract,
-                equipment_object_seq,
-                contract                                                   AS spare_contract,
-                spare_id,
-                qty
-            FROM agg
-        )
-        INSERT INTO clean_data.equipment_object_spare (
-            mch_spare_seq,
-            contract,
-            equipment_object_seq,
-            spare_contract,
-            spare_id,
-            qty,
-            part_ownership_db,
-            allow_wo_mat_site
-        )
-        SELECT
-            src.mch_spare_seq,
-            src.contract,
-            src.equipment_object_seq,
-            src.spare_contract,
-            src.spare_id,
-            src.qty,
-            'COMPANY OWNED',
-            'FALSE'                     -- booléen IFS (_db) en MAJUSCULE
-        FROM source src;
-
-        GET DIAGNOSTICS v_nb_inserted = ROW_COUNT;
-
-        -- Couples (poste, article) sources vs insérés -> rejets
-        -- (rejet principal = poste technique absent de equipment_functional)
-        SELECT COUNT(*) INTO v_nb_src
-        FROM (
-            SELECT DISTINCT v.tplnr_display, v.matnr_short
-            FROM clean_data.v_fl_nomenclature v
-            WHERE v.item_category = 'L'
-              AND v.idnrk IS NOT NULL AND TRIM(v.idnrk) <> ''
-              AND TRIM(v.quantity) <> ''
-            UNION
-            SELECT mch_code, spare_id FROM clean_data.v_eq_nomenclature_export
-        ) s;
-
-        v_nb_rejected := GREATEST(v_nb_src - v_nb_inserted, 0);
-
-        RAISE NOTICE '[%] FULL terminé — couples source: %, insérés: %, rejetés (postes non rattachés): %',
-            TO_CHAR(CLOCK_TIMESTAMP(), 'HH24:MI:SS'),
-            v_nb_src, v_nb_inserted, v_nb_rejected;
-
-
-    -- ═══════════════════════════════════════════════════════════
-    -- MODE DELTA — Rechargement ciblé (poste(s) technique(s) modifié(s))
-    -- ═══════════════════════════════════════════════════════════
-    ELSIF p_mode = 'DELTA' THEN
-
-        -- Supprimer les lignes existantes concernées
-        -- (equipment_object_seq contient désormais le mch_code du poste)
+    ELSE
         DELETE FROM clean_data.equipment_object_spare eos
-        WHERE (p_tplnr IS NULL)                              -- Tous
-           OR eos.equipment_object_seq = p_tplnr;           -- Ou poste précis
-
+        WHERE p_tplnr IS NULL OR eos.equipment_object_seq = p_tplnr;
         GET DIAGNOSTICS v_nb_deleted = ROW_COUNT;
-
-        RAISE NOTICE '[%] Lignes supprimées avant réinjection : %',
-            TO_CHAR(CLOCK_TIMESTAMP(), 'HH24:MI:SS'), v_nb_deleted;
-
-        -- Recalcul du mch_spare_seq à partir du MAX existant
-        WITH ef_uniq AS (
-            SELECT DISTINCT mch_code, contract
-            FROM clean_data.equipment_functional
-            WHERE contract = 'SJ'
-        ),
-        max_seq AS (
-            SELECT COALESCE(MAX(mch_spare_seq), 0) AS last_seq
-            FROM clean_data.equipment_object_spare
-        ),
-        bom AS (
-            SELECT
-                ef.mch_code                                                          AS equipment_object_seq,
-                ef.contract,
-                v.matnr_short                                                        AS spare_id,
-                ROUND(CAST(REGEXP_REPLACE(TRIM(v.quantity), '[^0-9.]', '', 'g') AS NUMERIC), 0) AS qty
-            FROM clean_data.v_fl_nomenclature v
-            JOIN ef_uniq ef ON ef.mch_code = v.tplnr_display
-            WHERE v.item_category = 'L'
-              AND v.idnrk IS NOT NULL AND TRIM(v.idnrk) <> ''
-              AND TRIM(v.quantity) <> ''
-              AND (p_tplnr IS NULL OR v.tplnr = p_tplnr OR v.tplnr_display = p_tplnr)
-            UNION ALL
-            SELECT es.mch_code, es.contract, v.spare_id, ROUND(v.quantity, 0)
-            FROM clean_data.v_eq_nomenclature_export v
-            JOIN (SELECT DISTINCT mch_code, contract FROM clean_data.equipment_serial
-                  WHERE contract = 'SJ') es ON es.mch_code = v.mch_code
-            WHERE (p_tplnr IS NULL OR v.mch_code = p_tplnr)
-        ),
-        agg AS (
-            SELECT equipment_object_seq, contract, spare_id, SUM(qty) AS qty
-            FROM bom
-            WHERE qty IS NOT NULL AND qty > 0
-            GROUP BY equipment_object_seq, contract, spare_id
-        ),
-        source AS (
-            SELECT
-                (SELECT last_seq FROM max_seq)
-                + ROW_NUMBER() OVER (ORDER BY equipment_object_seq, spare_id) AS mch_spare_seq,
-                contract,
-                equipment_object_seq,
-                contract                                                     AS spare_contract,
-                spare_id,
-                qty
-            FROM agg
-        )
-        INSERT INTO clean_data.equipment_object_spare (
-            mch_spare_seq,
-            contract,
-            equipment_object_seq,
-            spare_contract,
-            spare_id,
-            qty,
-            part_ownership_db,
-            allow_wo_mat_site
-        )
-        SELECT
-            src.mch_spare_seq,
-            src.contract,
-            src.equipment_object_seq,
-            src.spare_contract,
-            src.spare_id,
-            src.qty,
-            'COMPANY OWNED',
-            'FALSE'                     -- booléen IFS (_db) en MAJUSCULE
-        FROM source src;
-
-        GET DIAGNOSTICS v_nb_inserted = ROW_COUNT;
-
-        RAISE NOTICE '[%] DELTA terminé — supprimés: %, insérés: %',
-            TO_CHAR(CLOCK_TIMESTAMP(), 'HH24:MI:SS'),
-            v_nb_deleted, v_nb_inserted;
+        SELECT COALESCE(MAX(mch_spare_seq), 0) INTO v_last_seq
+        FROM clean_data.equipment_object_spare;
     END IF;
 
+    WITH objets AS (
+        -- Objets exportés : fonctionnels (postes techniques) et série (équipements)
+        SELECT DISTINCT mch_code, contract FROM clean_data.equipment_functional WHERE contract = 'SJ'
+        UNION
+        SELECT DISTINCT mch_code, contract FROM clean_data.equipment_serial WHERE contract = 'SJ'
+    ),
+    agg AS (
+        SELECT ob.mch_code AS equipment_object_seq, ob.contract, v.spare_id,
+               ROUND(SUM(v.qty), 0) AS qty, MIN(v.lvl) AS lvl
+        FROM clean_data.v_object_spare_export v
+        JOIN objets ob ON ob.mch_code = v.mch_code
+        WHERE (p_tplnr IS NULL OR v.mch_code = p_tplnr)
+        GROUP BY ob.mch_code, ob.contract, v.spare_id
+    )
+    INSERT INTO clean_data.equipment_object_spare (
+        mch_spare_seq, contract, equipment_object_seq, spare_contract,
+        spare_id, qty, part_ownership_db, allow_wo_mat_site
+    )
+    SELECT
+        v_last_seq + ROW_NUMBER() OVER (ORDER BY lvl, equipment_object_seq, spare_id),  -- parents avant enfants
+        contract, equipment_object_seq, contract, spare_id, qty,
+        'COMPANY OWNED',
+        'FALSE'                     -- booléen IFS (_db) en MAJUSCULE
+    FROM agg
+    WHERE qty IS NOT NULL AND qty > 0;
 
-    -- ── Fermeture du log (SUCCESS/WARNING) ────────────────────
+    GET DIAGNOSTICS v_nb_inserted = ROW_COUNT;
+
+    -- Couples (objet, article) source vs insérés -> rejets
+    SELECT COUNT(DISTINCT (mch_code, spare_id)) INTO v_nb_src
+    FROM clean_data.v_object_spare_export
+    WHERE p_tplnr IS NULL OR mch_code = p_tplnr;
+
+    v_nb_rejected := GREATEST(v_nb_src - v_nb_inserted, 0);
+
+    RAISE NOTICE '[%] % terminé — couples source: %, insérés: %, supprimés: %, rejetés: %',
+        TO_CHAR(CLOCK_TIMESTAMP(), 'HH24:MI:SS'), p_mode,
+        v_nb_src, v_nb_inserted, v_nb_deleted, v_nb_rejected;
+
     UPDATE clean_data.etl_log
     SET end_ts      = CLOCK_TIMESTAMP(),
         status      = CASE WHEN v_nb_rejected > 0 THEN 'WARNING' ELSE 'SUCCESS' END,
@@ -325,55 +158,25 @@ BEGIN
         CASE WHEN v_nb_rejected > 0 THEN 'WARNING' ELSE 'SUCCESS' END,
         EXTRACT(EPOCH FROM (CLOCK_TIMESTAMP() - v_start_ts))::INTEGER;
 
-
--- ── Gestion des erreurs ───────────────────────────────────────
 EXCEPTION WHEN OTHERS THEN
-
     GET STACKED DIAGNOSTICS v_err_msg = MESSAGE_TEXT;
-
     UPDATE clean_data.etl_log
-    SET end_ts  = CLOCK_TIMESTAMP(),
-        status  = 'ERROR',
-        message = v_err_msg
+    SET end_ts = CLOCK_TIMESTAMP(), status = 'ERROR', message = v_err_msg
     WHERE id = v_log_id;
-
     RAISE EXCEPTION '[%] ERREUR dans % : %',
         TO_CHAR(CLOCK_TIMESTAMP(), 'HH24:MI:SS'), v_proc, v_err_msg;
-
 END;
 $$;
 
 COMMENT ON PROCEDURE clean_data.load_equipment_object_spare IS
-    'Charge la table equipment_object_spare (pièces de rechange par objet
-     d''équipement) depuis la nomenclature des POSTES TECHNIQUES (écran IH02) :
-     clean_data.v_fl_nomenclature (TPST → STKO stlty=T → STPO stlty=T),
-     articles item_category=L uniquement.
-     equipment_object_seq = CODE du poste technique (mch_code = tplnr_display),
-     validé dans equipment_functional (contract=SJ). spare_id = matnr_short.
-     1 ligne par (poste, article), quantités sommées.
+    'Charge equipment_object_spare = pièces détachées CONNECTÉES : tout article de la
+     structure IH02 sous un objet fonctionnel (equipment_functional) ou un objet série
+     (equipment_serial), toutes catégories, nomenclature des articles dépliée à plat
+     (v_object_spare_export). 1 ligne par (objet, article), quantités sommées ;
+     mch_spare_seq ordonné parents avant enfants (profondeur).
      FULL  : Truncate + rechargement complet.
-     DELTA : Suppression + réinjection pour un poste (p_tplnr = mch_code /
-             tplnr_display) ou tous les postes si p_tplnr est NULL.';
+     DELTA : Suppression + réinjection d''un objet (p_tplnr = mch_code) ou de tous.
+     Dépendances : equipment_functional et equipment_serial alimentées AVANT.';
 
-
--- =============================================================
--- EXEMPLES D'APPEL
--- =============================================================
-
--- Rechargement complet :
 -- CALL clean_data.load_equipment_object_spare('FULL');
-
--- Rechargement delta de tous les postes :
--- CALL clean_data.load_equipment_object_spare('DELTA');
-
--- Rechargement delta d'un poste technique précis (mch_code / tplnr_display) :
 -- CALL clean_data.load_equipment_object_spare('DELTA', 'T340-E100-1005');
-
--- Consulter le journal d'exécution :
--- SELECT * FROM clean_data.etl_log
--- WHERE procedure_name = 'load_equipment_object_spare'
--- ORDER BY start_ts DESC
--- LIMIT 20;
-
--- Rafraîchir la source avant un rechargement (si les tables SAP ont changé) :
--- REFRESH MATERIALIZED VIEW clean_data.v_fl_nomenclature;
