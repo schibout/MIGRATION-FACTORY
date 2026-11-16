@@ -20,10 +20,14 @@
 --   article, division 9200 en priorité) ne sont plus produites.
 --   Un composant DÉSACTIVÉ à l'écran (is_active = false) ne sort plus.
 --
+-- PIÈCES DÉCONNECTÉES UNIQUEMENT (règle métier du 2026-11-16) : cette table
+--   est la liste des pièces détachées HORS structure. Une pièce CONNECTÉE =
+--   rattachée à un poste technique ou un équipement (equipment_object_spare)
+--   ou présente dans le sous-arbre de nomenclature d'une telle pièce. Toute
+--   ligne dont le kit OU le composant est connecté est exclue.
+--
 -- PÉRIMÈTRE (Finance > Articles, clean_data.article_perimetre) :
---   RACINES B = tous les articles IBAU et ERSA du périmètre, rattachés ou non
---   à un poste technique, PLUS les articles rattachés à un objet
---   (clean_data.equipment_object_spare.spare_id, tout type).
+--   RACINES B = les articles IBAU et ERSA du périmètre NON connectés.
 --   On explose ensuite la nomenclature matière de B de façon RÉCURSIVE
 --   (un composant qui est lui-même un kit est éclaté à son tour).
 --   Une ligne exige un kit ET un composant (colonnes NOT NULL) : un article
@@ -93,20 +97,9 @@ BEGIN
 
         -- ── Insertion complète ────────────────────────────────
         WITH RECURSIVE
-        -- Racines B : articles rattachés à un objet, avec leur contrat, et tous
-        -- les IBAU / ERSA du périmètre (mono-site SJ, comme les objets)
-        roots AS (
-            SELECT DISTINCT spare_id::text AS matnr, contract
-            FROM clean_data.equipment_object_spare
-            UNION
-            SELECT p.numero_article, 'SJ'
-            FROM clean_data.article_perimetre p
-            JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
-            WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
-        ),
         -- Arêtes kit -> composant = nomenclature matière de l'écran IH02
         -- (code = matnr sans zéros de tête, comme spare_id)
-        edges AS (
+        all_edges AS (
             SELECT
                 a.code                                         AS parent_id,
                 c.code                                         AS child_id,
@@ -123,6 +116,32 @@ BEGIN
               AND a.code IN (SELECT numero_article FROM clean_data.article_perimetre)
               AND c.code IN (SELECT numero_article FROM clean_data.article_perimetre)
             GROUP BY a.code, c.code
+        ),
+        -- Pièces CONNECTÉES : rattachées à un objet (equipment_object_spare)
+        -- + tout leur sous-arbre de nomenclature -> exclues de cet export
+        connected AS (
+            SELECT DISTINCT spare_id::text AS matnr, ARRAY[spare_id::text] AS path
+            FROM clean_data.equipment_object_spare
+            UNION ALL
+            SELECT e.child_id, c.path || e.child_id
+            FROM connected c
+            JOIN all_edges e ON e.parent_id = c.matnr
+            WHERE e.child_id <> ALL (c.path)
+              AND array_length(c.path, 1) < 50
+        ),
+        -- Arêtes DÉCONNECTÉES : ni le kit ni le composant ne sont connectés
+        edges AS (
+            SELECT * FROM all_edges
+            WHERE parent_id NOT IN (SELECT matnr FROM connected)
+              AND child_id  NOT IN (SELECT matnr FROM connected)
+        ),
+        -- Racines B : IBAU / ERSA du périmètre non connectés (mono-site SJ)
+        roots AS (
+            SELECT p.numero_article AS matnr, 'SJ' AS contract
+            FROM clean_data.article_perimetre p
+            JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
+            WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
+              AND p.numero_article NOT IN (SELECT matnr FROM connected)
         ),
         -- Descente récursive depuis les racines B (parents avant composants),
         -- le contrat de la racine suit tout le sous-arbre
@@ -230,18 +249,7 @@ BEGIN
             SELECT COALESCE(MAX(spare_seq), 0) AS last_seq
             FROM clean_data.equipment_spare_structure
         ),
-        roots AS (
-            SELECT DISTINCT spare_id::text AS matnr, contract
-            FROM clean_data.equipment_object_spare
-            WHERE (p_spare_id IS NULL OR spare_id = p_spare_id)
-            UNION
-            SELECT p.numero_article, 'SJ'
-            FROM clean_data.article_perimetre p
-            JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
-            WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
-              AND (p_spare_id IS NULL OR p.numero_article = p_spare_id)
-        ),
-        edges AS (
+        all_edges AS (
             SELECT
                 a.code                                         AS parent_id,
                 c.code                                         AS child_id,
@@ -258,6 +266,29 @@ BEGIN
               AND a.code IN (SELECT numero_article FROM clean_data.article_perimetre)
               AND c.code IN (SELECT numero_article FROM clean_data.article_perimetre)
             GROUP BY a.code, c.code
+        ),
+        connected AS (
+            SELECT DISTINCT spare_id::text AS matnr, ARRAY[spare_id::text] AS path
+            FROM clean_data.equipment_object_spare
+            UNION ALL
+            SELECT e.child_id, c.path || e.child_id
+            FROM connected c
+            JOIN all_edges e ON e.parent_id = c.matnr
+            WHERE e.child_id <> ALL (c.path)
+              AND array_length(c.path, 1) < 50
+        ),
+        edges AS (
+            SELECT * FROM all_edges
+            WHERE parent_id NOT IN (SELECT matnr FROM connected)
+              AND child_id  NOT IN (SELECT matnr FROM connected)
+        ),
+        roots AS (
+            SELECT p.numero_article AS matnr, 'SJ' AS contract
+            FROM clean_data.article_perimetre p
+            JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
+            WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
+              AND p.numero_article NOT IN (SELECT matnr FROM connected)
+              AND (p_spare_id IS NULL OR p.numero_article = p_spare_id)
         ),
         hier AS (
             SELECT r.matnr AS matnr, r.contract, 1 AS lvl, ARRAY[r.matnr] AS path
@@ -359,8 +390,10 @@ $$;
 COMMENT ON PROCEDURE clean_data.load_equipment_spare_structure IS
     'Charge la structure kit -> composants (equipment_spare_structure) depuis
      la nomenclature matière préparée dans IH02 (maintenance_object).
+     PIÈCES DÉCONNECTÉES uniquement : toute ligne dont le kit ou le composant est
+     rattaché à un objet (equipment_object_spare) ou sous une pièce rattachée est exclue.
      PÉRIMÈTRE : Finance > Articles (article_perimetre) pour le kit et le composant.
-     Racines B = tous les IBAU / ERSA du périmètre + equipment_object_spare.spare_id ;
+     Racines B = IBAU / ERSA du périmètre non connectés ;
      explosion RÉCURSIVE de leur nomenclature (parents avant composants).
      FULL  : Truncate + rechargement complet.
      DELTA : Suppression + réinjection du sous-arbre d''une racine (p_spare_id)
