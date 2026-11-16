@@ -19,7 +19,8 @@
 --
 -- equipment_object_seq = CODE de l'objet (mch_code), pas la séquence interne.
 -- spare_id = code article (matnr sans zéros de tête).
--- Rejets : pièces sous un objet non exporté (archivé / hors hiérarchie) ou
+-- Rejets : pièces sous un objet non exporté (archivé / hors hiérarchie), code
+--   article de plus de 25 caractères (saisie manuelle IH02) ou
 --   de quantité vide / nulle.
 --
 -- has_spare_structure / objversion : IN_SCOPE=NO dans la spec IFS -> NULL.
@@ -112,6 +113,9 @@ BEGIN
         FROM clean_data.v_object_spare_export v
         JOIN objets ob ON ob.mch_code = v.mch_code
         WHERE (p_tplnr IS NULL OR v.mch_code = p_tplnr)
+          -- Code article IFS limité à 25 car. : les articles saisis à la main
+          -- avec un libellé comme code (source MANUAL) sont rejetés, à corriger dans IH02.
+          AND length(v.spare_id) <= 25
         GROUP BY ob.mch_code, ob.contract, v.spare_id
     )
     INSERT INTO clean_data.equipment_object_spare (
