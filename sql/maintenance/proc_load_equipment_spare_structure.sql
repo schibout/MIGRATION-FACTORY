@@ -117,12 +117,16 @@ BEGIN
               AND c.code IN (SELECT numero_article FROM clean_data.article_perimetre)
             GROUP BY a.code, c.code
         ),
-        -- Pièces CONNECTÉES : rattachées à un objet (equipment_object_spare)
+        -- Pièces CONNECTÉES : rattachées à un objet exporté (v_object_spare_export)
         -- + tout leur sous-arbre de nomenclature -> exclues de cet export
         connected AS (
-            SELECT DISTINCT spare_id::text AS matnr, ARRAY[spare_id::text] AS path
-            FROM clean_data.equipment_object_spare
-            WHERE spare_id IS NOT NULL
+            -- Source = la vue AVANT les rejets d'export (code > 25 car., qté nulle) :
+            -- une pièce connectée mais rejetée reste connectée.
+            SELECT DISTINCT v.spare_id::text AS matnr, ARRAY[v.spare_id::text] AS path
+            FROM clean_data.v_object_spare_export v
+            WHERE v.spare_id IS NOT NULL
+              AND (EXISTS (SELECT 1 FROM clean_data.equipment_functional f WHERE f.mch_code = v.mch_code)
+                   OR EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = v.mch_code))
             UNION ALL
             SELECT e.child_id, c.path || e.child_id
             FROM connected c
@@ -270,9 +274,13 @@ BEGIN
             GROUP BY a.code, c.code
         ),
         connected AS (
-            SELECT DISTINCT spare_id::text AS matnr, ARRAY[spare_id::text] AS path
-            FROM clean_data.equipment_object_spare
-            WHERE spare_id IS NOT NULL
+            -- Source = la vue AVANT les rejets d'export (code > 25 car., qté nulle) :
+            -- une pièce connectée mais rejetée reste connectée.
+            SELECT DISTINCT v.spare_id::text AS matnr, ARRAY[v.spare_id::text] AS path
+            FROM clean_data.v_object_spare_export v
+            WHERE v.spare_id IS NOT NULL
+              AND (EXISTS (SELECT 1 FROM clean_data.equipment_functional f WHERE f.mch_code = v.mch_code)
+                   OR EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = v.mch_code))
             UNION ALL
             SELECT e.child_id, c.path || e.child_id
             FROM connected c

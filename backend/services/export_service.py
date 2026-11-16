@@ -30,6 +30,17 @@ def _safe_ident(name: str) -> str:
         raise ValueError(f"Identifiant SQL invalide : {name!r}")
     return name
 
+
+# Exports hiérarchiques IFS : le fichier doit lister les PARENTS AVANT les ENFANTS.
+# Les loaders numérotent la séquence dans cet ordre ; sans ORDER BY, le SELECT
+# rendrait l'ordre physique de la table, qui ne le garantit pas.
+_EXPORT_ORDER_BY = {
+    'equipment_functional': 'equipment_object_seq',
+    'equipment_serial': 'equipment_object_seq',
+    'equipment_object_spare': 'mch_spare_seq',
+    'equipment_spare_structure': 'spare_seq',
+}
+
 class ExportService:
     """Service pour gérer les exports de données - Version dynamique avec column_list"""
     
@@ -162,6 +173,9 @@ class ExportService:
             )
 
         query = f"SELECT {', '.join(select_exprs)} FROM {safe_schema}.{safe_table}"
+        order_col = _EXPORT_ORDER_BY.get(table_name.lower())
+        if order_col and order_col in existing:
+            query += f' ORDER BY "{order_col}"'
         logger.debug(f"🔧 Requête générée pour {table_name}: {query}")
         return query
 
