@@ -8,14 +8,10 @@
 --   - objet fonctionnel = poste technique de equipment_functional ;
 --   - objet série       = équipement de equipment_serial.
 -- Toutes catégories de poste de nomenclature (L, I, N, X, Y, Z, vide...).
--- La nomenclature des articles est dépliée À PLAT sur tous les niveaux :
--- chaque composant est relié directement à l'objet, quantité = produit des
--- quantités le long du chemin.
---
--- Ordre : PARENTS AVANT ENFANTS -> mch_spare_seq suit la profondeur (pièces
--- directement sous l'objet, puis leurs composants, niveau par niveau).
--- Un même article sous un même objet (plusieurs positions / chemins) donne
--- une seule ligne, quantités SOMMÉES, niveau = le plus haut.
+-- Règle du 2026-11-17 : on S'ARRÊTE aux articles PARENTS (directement sous
+-- l'objet) ; leurs composants vont dans equipment_spare_structure.
+-- Un même article sous un même objet (plusieurs positions) donne une seule
+-- ligne, quantités SOMMÉES.
 --
 -- equipment_object_seq = CODE de l'objet (mch_code), pas la séquence interne.
 -- spare_id = code article (matnr sans zéros de tête).
@@ -28,33 +24,20 @@
 -- =============================================================
 
 CREATE OR REPLACE VIEW clean_data.v_object_spare_export AS
-WITH RECURSIVE pieces AS (
-    -- Niveau 1 : postes de nomenclature directement sous l'objet
-    SELECT o.code AS mch_code, a.id AS article_id, a.code AS spare_id,
-           b.quantity::numeric AS qty, 1 AS lvl, ARRAY[a.id] AS path
-    FROM clean_data.maintenance_object b
-    JOIN clean_data.maintenance_object o
-      ON o.id = b.parent_id AND o.object_type IN ('FUNC_LOC', 'EQUIPMENT') AND o.is_active
-    JOIN clean_data.maintenance_object a
-      ON a.id = b.ref_object_id AND a.object_type = 'ARTICLE'
-    WHERE b.object_type = 'BOM_ITEM' AND b.is_active
-    UNION ALL
-    -- Niveaux suivants : nomenclature matière de l'article, à plat
-    SELECT p.mch_code, a.id, a.code, p.qty * b.quantity, p.lvl + 1, p.path || a.id
-    FROM pieces p
-    JOIN clean_data.maintenance_object b
-      ON b.parent_id = p.article_id AND b.object_type = 'BOM_ITEM' AND b.is_active
-    JOIN clean_data.maintenance_object a
-      ON a.id = b.ref_object_id AND a.object_type = 'ARTICLE'
-    WHERE a.id <> ALL (p.path)          -- anti-cycle
-      AND p.lvl < 50                    -- garde-fou de profondeur
-)
-SELECT mch_code, spare_id, qty, lvl FROM pieces;
+-- Pièces PARENTS uniquement : postes de nomenclature directement sous l'objet.
+-- Leurs composants sortent dans equipment_spare_structure (kit -> composants).
+SELECT o.code AS mch_code, a.code AS spare_id, b.quantity::numeric AS qty, 1 AS lvl
+FROM clean_data.maintenance_object b
+JOIN clean_data.maintenance_object o
+  ON o.id = b.parent_id AND o.object_type IN ('FUNC_LOC', 'EQUIPMENT') AND o.is_active
+JOIN clean_data.maintenance_object a
+  ON a.id = b.ref_object_id AND a.object_type = 'ARTICLE'
+WHERE b.object_type = 'BOM_ITEM' AND b.is_active;
 
 COMMENT ON VIEW clean_data.v_object_spare_export IS
-'Pièces détachées connectées pour equipment_object_spare : tout article sous un poste
- technique ou un équipement dans IH02, toutes catégories, nomenclature dépliée à plat
- (qty = produit des quantités, lvl = profondeur, 1 = directement sous l''objet).';
+'Pièces détachées connectées pour equipment_object_spare : articles PARENTS directement
+ sous un poste technique ou un équipement dans IH02, toutes catégories. Les composants
+ de ces articles sortent dans equipment_spare_structure.';
 
 -- Remplacée par v_object_spare_export (plus utilisée).
 DROP VIEW IF EXISTS clean_data.v_eq_nomenclature_export;
@@ -175,9 +158,9 @@ $$;
 COMMENT ON PROCEDURE clean_data.load_equipment_object_spare IS
     'Charge equipment_object_spare = pièces détachées CONNECTÉES : tout article de la
      structure IH02 sous un objet fonctionnel (equipment_functional) ou un objet série
-     (equipment_serial), toutes catégories, nomenclature des articles dépliée à plat
-     (v_object_spare_export). 1 ligne par (objet, article), quantités sommées ;
-     mch_spare_seq ordonné parents avant enfants (profondeur).
+     (equipment_serial), toutes catégories, articles PARENTS seulement
+     (v_object_spare_export) ; leurs composants sont dans equipment_spare_structure.
+     1 ligne par (objet, article), quantités sommées.
      FULL  : Truncate + rechargement complet.
      DELTA : Suppression + réinjection d''un objet (p_tplnr = mch_code) ou de tous.
      Dépendances : equipment_functional et equipment_serial alimentées AVANT.';

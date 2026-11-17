@@ -20,14 +20,13 @@
 --   article, division 9200 en priorité) ne sont plus produites.
 --   Un composant DÉSACTIVÉ à l'écran (is_active = false) ne sort plus.
 --
--- PIÈCES DÉCONNECTÉES UNIQUEMENT (règle métier du 2026-11-16) : cette table
---   est la liste des pièces détachées HORS structure. Une pièce CONNECTÉE =
---   rattachée à un poste technique ou un équipement (equipment_object_spare)
---   ou présente dans le sous-arbre de nomenclature d'une telle pièce. Toute
---   ligne dont le kit OU le composant est connecté est exclue.
+-- RÈGLE MÉTIER (2026-11-17) : equipment_object_spare s'arrête aux articles
+--   PARENTS rattachés à un poste technique ou un équipement ; cette table
+--   porte la structure de ces parents avec leurs enfants (kit -> composants).
 --
 -- PÉRIMÈTRE (Finance > Articles, clean_data.article_perimetre) :
---   RACINES B = les articles IBAU et ERSA du périmètre NON connectés.
+--   RACINES B = les pièces parents rattachées (v_object_spare_export)
+--   + les articles IBAU et ERSA du périmètre.
 --   On explose ensuite la nomenclature matière de B de façon RÉCURSIVE
 --   (un composant qui est lui-même un kit est éclaté à son tour).
 --   Une ligne exige un kit ET un composant (colonnes NOT NULL) : un article
@@ -117,37 +116,26 @@ BEGIN
               AND c.code IN (SELECT numero_article FROM clean_data.article_perimetre)
             GROUP BY a.code, c.code
         ),
-        -- Pièces CONNECTÉES : rattachées à un objet exporté (v_object_spare_export)
-        -- + tout leur sous-arbre de nomenclature -> exclues de cet export
+        -- Pièces PARENTS rattachées à un objet exporté (equipment_object_spare) :
+        -- racines de leur nomenclature. Source = la vue AVANT les rejets d'export.
         connected AS (
-            -- Source = la vue AVANT les rejets d'export (code > 25 car., qté nulle) :
-            -- une pièce connectée mais rejetée reste connectée.
-            SELECT DISTINCT v.spare_id::text AS matnr, ARRAY[v.spare_id::text] AS path
+            SELECT DISTINCT v.spare_id::text AS matnr
             FROM clean_data.v_object_spare_export v
             WHERE v.spare_id IS NOT NULL
               AND (EXISTS (SELECT 1 FROM clean_data.equipment_functional f WHERE f.mch_code = v.mch_code)
                    OR EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = v.mch_code))
-            UNION ALL
-            SELECT e.child_id, c.path || e.child_id
-            FROM connected c
-            JOIN all_edges e ON e.parent_id = c.matnr
-            WHERE e.child_id <> ALL (c.path)
-              AND array_length(c.path, 1) < 50
         ),
-        -- Arêtes DÉCONNECTÉES : ni le kit ni le composant ne sont connectés
-        edges AS (
-            SELECT * FROM all_edges e
-            -- NOT EXISTS et non NOT IN : un NULL dans connected viderait tout
-            WHERE NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = e.parent_id)
-              AND NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = e.child_id)
-        ),
-        -- Racines B : IBAU / ERSA du périmètre non connectés (mono-site SJ)
+        edges AS (SELECT * FROM all_edges),
+        -- Racines : pièces parents rattachées + IBAU / ERSA du périmètre (mono-site SJ)
         roots AS (
-            SELECT p.numero_article AS matnr, 'SJ' AS contract
-            FROM clean_data.article_perimetre p
-            JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
-            WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
-              AND NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = p.numero_article)
+            SELECT r.matnr, r.contract FROM (
+                SELECT k.matnr, 'SJ' AS contract FROM connected k
+                UNION
+                SELECT p.numero_article, 'SJ'
+                FROM clean_data.article_perimetre p
+                JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
+                WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
+            ) r
         ),
         -- Descente récursive depuis les racines B (parents avant composants),
         -- le contrat de la racine suit tout le sous-arbre
@@ -273,34 +261,27 @@ BEGIN
               AND c.code IN (SELECT numero_article FROM clean_data.article_perimetre)
             GROUP BY a.code, c.code
         ),
+        -- Pièces PARENTS rattachées à un objet exporté (equipment_object_spare) :
+        -- racines de leur nomenclature. Source = la vue AVANT les rejets d'export.
         connected AS (
-            -- Source = la vue AVANT les rejets d'export (code > 25 car., qté nulle) :
-            -- une pièce connectée mais rejetée reste connectée.
-            SELECT DISTINCT v.spare_id::text AS matnr, ARRAY[v.spare_id::text] AS path
+            SELECT DISTINCT v.spare_id::text AS matnr
             FROM clean_data.v_object_spare_export v
             WHERE v.spare_id IS NOT NULL
               AND (EXISTS (SELECT 1 FROM clean_data.equipment_functional f WHERE f.mch_code = v.mch_code)
                    OR EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = v.mch_code))
-            UNION ALL
-            SELECT e.child_id, c.path || e.child_id
-            FROM connected c
-            JOIN all_edges e ON e.parent_id = c.matnr
-            WHERE e.child_id <> ALL (c.path)
-              AND array_length(c.path, 1) < 50
         ),
-        edges AS (
-            SELECT * FROM all_edges e
-            -- NOT EXISTS et non NOT IN : un NULL dans connected viderait tout
-            WHERE NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = e.parent_id)
-              AND NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = e.child_id)
-        ),
+        edges AS (SELECT * FROM all_edges),
+        -- Racines : pièces parents rattachées + IBAU / ERSA du périmètre (mono-site SJ)
         roots AS (
-            SELECT p.numero_article AS matnr, 'SJ' AS contract
-            FROM clean_data.article_perimetre p
-            JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
-            WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
-              AND NOT EXISTS (SELECT 1 FROM connected k WHERE k.matnr = p.numero_article)
-              AND (p_spare_id IS NULL OR p.numero_article = p_spare_id)
+            SELECT r.matnr, r.contract FROM (
+                SELECT k.matnr, 'SJ' AS contract FROM connected k
+                UNION
+                SELECT p.numero_article, 'SJ'
+                FROM clean_data.article_perimetre p
+                JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
+                WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
+            ) r
+            WHERE p_spare_id IS NULL OR r.matnr = p_spare_id
         ),
         hier AS (
             SELECT r.matnr AS matnr, r.contract, 1 AS lvl, ARRAY[r.matnr] AS path
@@ -402,10 +383,10 @@ $$;
 COMMENT ON PROCEDURE clean_data.load_equipment_spare_structure IS
     'Charge la structure kit -> composants (equipment_spare_structure) depuis
      la nomenclature matière préparée dans IH02 (maintenance_object).
-     PIÈCES DÉCONNECTÉES uniquement : toute ligne dont le kit ou le composant est
-     rattaché à un objet (equipment_object_spare) ou sous une pièce rattachée est exclue.
+     Structure des pièces PARENTS rattachées aux objets (equipment_object_spare)
+     avec leurs enfants, plus celle des IBAU / ERSA du périmètre.
      PÉRIMÈTRE : Finance > Articles (article_perimetre) pour le kit et le composant.
-     Racines B = IBAU / ERSA du périmètre non connectés ;
+     Racines B = pièces parents rattachées + IBAU / ERSA ;
      explosion RÉCURSIVE de leur nomenclature (parents avant composants).
      FULL  : Truncate + rechargement complet.
      DELTA : Suppression + réinjection du sous-arbre d''une racine (p_spare_id)

@@ -10,11 +10,12 @@ Enchaîne quatre traitements, dans cet ordre imposé (chaque étape lit la préc
      hiérarchie par parent_id, code/désignation de l'écran) -> clean_data.equipment_functional.
   2. clean_data.alimenter_equipment_serial() : TOUS les équipements sous les postes
      techniques de l'étape 1, avec ou sans article -> clean_data.equipment_serial.
-  3. clean_data.load_equipment_object_spare('FULL') : pièces CONNECTÉES = tout article
-     sous un objet des étapes 1-2 (toutes catégories, nomenclature à plat, parents avant
-     enfants) -> clean_data.equipment_object_spare.
-  4. clean_data.load_equipment_spare_structure('FULL') : pièces DÉCONNECTÉES, kit ->
-     composants hors des pièces de l'étape 3 -> clean_data.equipment_spare_structure.
+  3. clean_data.load_equipment_object_spare('FULL') : pièces CONNECTÉES = articles
+     PARENTS directement sous un objet des étapes 1-2 (toutes catégories)
+     -> clean_data.equipment_object_spare.
+  4. clean_data.load_equipment_spare_structure('FULL') : kit -> composants des pièces
+     parents de l'étape 3 et des IBAU/ERSA, parents avant enfants
+     -> clean_data.equipment_spare_structure.
 
 Mode FULL uniquement (TRUNCATE + rechargement) : snapshot de la structure.
 """
