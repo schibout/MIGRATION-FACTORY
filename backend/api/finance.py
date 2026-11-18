@@ -760,8 +760,10 @@ def export_commandes_achat_zip():
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as z:
         z.writestr(f'commandes_achat_{horodatage}.xlsx', classeur.getvalue())
         for t, (colonnes, rows) in ifs.items():
-            # Activite projet : colonnes hors modele Lot11, gardees dans le classeur seulement
+            # Activite projet : colonnes hors modele Lot11 retirees, sauf l'abreviation
+            # ajoutee en derniere colonne
             garde = [i for i, c in enumerate(colonnes) if c not in _CA_HORS_LOT11]
+            garde += [i for i, c in enumerate(colonnes) if c == 'abreviation_activite']
             texte = io.StringIO()
             w = csv.writer(texte, delimiter=';', lineterminator='\r\n')
             w.writerow([colonnes[i].upper() for i in garde])
