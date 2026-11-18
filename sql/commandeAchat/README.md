@@ -74,7 +74,7 @@ SELECT clean_data.alimenter_purchase_order();      -- 2. dispatch (NOTICE : volu
 
 - **Identifiants IFS par jointure, jamais SAP** : fournisseur et fournisseur de facturation =
   `supplier_info_general.supplier_id` (sur `supplier_legacy_sap_id`), `ADDR_NO`/`DOC_ADDR_NO` =
-  `supplier_info_address.address_id`, `PART_NO` = `part_catalog.part_no`, condition de paiement =
+  `supplier_info_address.address_id`, `PART_NO` = article SAP sans zeros de tete (pas de controle `part_catalog`), condition de paiement =
   transco `PAY_TERM` sinon `supplier.pay_term_id`, Incoterm = SAP sinon `supplier_address.delivery_terms`,
   pre-imputation = transco `COST_CENTER` (centre de couts) ou `PRE_ACCOUNTING` (chaine `ORDRE=...` complete).
 - **Constantes** : `public.get_default_value('clean_data.<table>', '<colonne>')`, seedees par la migration 104
@@ -82,7 +82,7 @@ SELECT clean_data.alimenter_purchase_order();      -- 2. dispatch (NOTICE : volu
   `mois_anteriorite` = fenetre d'eligibilite, `address1..city` par site (variante `SJ` / `CS`).
 - **Perimetre** : commande avec une date de reception souhaitee, sinon creee dans les 6 mois avant la bascule.
 - **Exclusions** (NOTICE) : commande sans fournisseur, fournisseur de facturation ou condition de paiement IFS ;
-  ligne PART dont l'article n'est pas dans `part_catalog`.
+  les lignes PART dont l'article n'est pas dans `part_catalog` sont chargees et seulement comptees.
 
 Installation : migration 104, puis `./compile.sh`, puis `insert_etl_export_queries.sql` (les 3 tables sortent
 dans l'export `Commande Achat`).

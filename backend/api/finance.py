@@ -719,7 +719,10 @@ def _ca_lignes_ifs(table):
     return list(result.keys()), result.all()
 
 
-_CA_HORS_LOT11 = {'abreviation_activite', 'sub_project_id', 'activity_no'}
+_CA_HORS_LOT11 = {'abreviation_activite', 'sub_project_id', 'activity_no',
+                  # Colonnes techniques IFS retirees des CSV : limite de colonnes du job de chargement
+                  'state', 'objtype', 'objversion', 'objid',
+                  *(f'code_{x}' for x in 'abcdefghij')}
 
 
 def _csv_ifs(v):

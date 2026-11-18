@@ -19,7 +19,8 @@
 --     quand le fournisseur facture est le fournisseur commande ;
 --   - ADDR_NO / DOC_ADDR_NO = clean_data.supplier_info_address.address_id du
 --     fournisseur IFS (une adresse par fournisseur), repli valeur par defaut ;
---   - PART_NO = clean_data.part_catalog.part_no ;
+--   - PART_NO = article SAP sans les zeros de tete (commande_achat_ifs.article_sap),
+--     sans controle dans part_catalog ;
 --   - PAY_TERM_ID = transcodification PAY_TERM, sinon clean_data.supplier.pay_term_id ;
 --   - DELIVERY_TERMS = Incoterm SAP (3 lettres reconnues), sinon
 --     clean_data.supplier_address.delivery_terms, sinon valeur par defaut ;
@@ -616,7 +617,7 @@ BEGIN
             d.taxable_db,
             d.inventory_part,
             d.inventory_part_db,
-            pc.part_no,
+            l.article_sap,
             d.project_address,
             d.project_address_db,
             d.rental,
@@ -651,7 +652,6 @@ BEGIN
             d.sup_loaned_part_return
     FROM clean_data.commande_achat_ifs l
     JOIN clean_data.purchase_order po ON po.order_no = 'S' || l.num_commande_sap
-    JOIN clean_data.part_catalog pc ON pc.part_no = l.article_sap
     LEFT JOIN tmp_po_pre_accounting pa ON pa.centre_cout_sap = l.centre_cout_sap
     LEFT JOIN tmp_po_activite act ON act.element_otp = l.element_otp AND act.numero_projet = l.numero_projet
     CROSS JOIN d
@@ -871,7 +871,7 @@ BEGIN
 
     RAISE NOTICE '[%] Commandes eligibles : %, chargees : % ; exclues : % sans fournisseur IFS, % sans fournisseur de facturation IFS, % sans condition de paiement IFS (cumulables)',
         clock_timestamp(), v_candidats, v_nb_po, v_sans_fournisseur, v_sans_facturation, v_sans_paiement;
-    RAISE NOTICE '[%] Lignes PART : % (% postes exclus, article absent de part_catalog) ; lignes NOPART : % ; duree %',
+    RAISE NOTICE '[%] Lignes PART : % (dont % avec un article absent de part_catalog, charges quand meme) ; lignes NOPART : % ; duree %',
         clock_timestamp(), v_nb_part, v_part_hors_catalogue, v_nb_nopart, clock_timestamp() - v_debut;
 
     RETURN v_nb_po;
