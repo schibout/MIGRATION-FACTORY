@@ -17,11 +17,16 @@ BEGIN
     -- equipment_functional. UNIQUEMENT des equipements : ni poste technique
     -- (-> equipment_functional) ni article / ligne de nomenclature.
     --
-    -- Perimetre : TOUS les equipements sous la structure, c.-a-d. dont la
-    -- chaine des parents remonte a un poste technique exporte dans
-    -- equipment_functional (a alimenter avant). Depuis le 2026-11-15, un
-    -- equipement SANS article est exporte aussi (part_no NULL) : decision
-    -- metier explicite, les rejets IFS correspondants sont acceptes.
+    -- Perimetre (regle du 2026-11-17) : les equipements de la structure, dont
+    -- la chaine des parents remonte a un poste technique exporte dans
+    -- equipment_functional (a alimenter avant), ou SANS PARENT dans IH02
+    -- (objet serie racine, sup_mch_code NULL), QUI ONT UN ARTICLE.
+    -- Article = meme regle que l'ecran Maintenance > Equipements
+    -- (api/equipment_browser.py, article_lie) : n° article saisi dans IH02
+    -- (attributes.matnr), sinon equi.matnr, sinon type de construction de la
+    -- periode EQUZ courante (equz.submt).
+    -- Hierarchie reproduite telle quelle : un equipement SANS article coupe la
+    -- branche -> ni lui ni ses descendants ne sont envoyes (regle du 2026-11-17).
     -- Exclusion des equipements ARCHIVES (statut SAP actif INAK=I0320 /
     -- suppression=I0076 dans raw_data.jest) : on ne descend pas sous eux.
     --
@@ -38,22 +43,43 @@ BEGIN
                         AND j.stat IN ('I0320', 'I0076')
                         AND (j.inact IS NULL OR TRIM(j.inact) <> 'X'))
     ),
+    art AS MATERIALIZED (
+        SELECT o.id,
+               COALESCE(NULLIF(LTRIM(TRIM(COALESCE(o.attributes->>'matnr', q.matnr)), '0'), ''),
+                        z.construction) AS part_no
+        FROM clean_data.maintenance_object o
+        LEFT JOIN raw_data.equi q ON q.mandt = '700' AND q.equnr = o.sap_key
+        LEFT JOIN (SELECT DISTINCT ON (equnr) equnr,
+                          NULLIF(LTRIM(TRIM(submt), '0'), '') AS construction
+                   FROM raw_data.equz WHERE mandt = '700'
+                   ORDER BY equnr, datbi DESC) z ON z.equnr = o.sap_key
+        WHERE o.object_type = 'EQUIPMENT' AND o.is_active
+    ),
     structure AS (
-        SELECT e.id, e.code, NULLIF(LTRIM(TRIM(e.attributes->>'matnr'), '0'), '') AS part_no,
+        SELECT e.id, e.code, ar.part_no,
                p.code AS sup_code, 1 AS lvl, ARRAY[e.id] AS chemin
         FROM clean_data.maintenance_object e
-        JOIN clean_data.maintenance_object p ON p.id = e.parent_id AND p.object_type = 'FUNC_LOC'
+        LEFT JOIN clean_data.maintenance_object p ON p.id = e.parent_id
+        JOIN art ar ON ar.id = e.id
         WHERE e.object_type = 'EQUIPMENT' AND e.is_active
+          AND ar.part_no IS NOT NULL
           AND e.id NOT IN (SELECT id FROM archive)
-          AND EXISTS (SELECT 1 FROM clean_data.equipment_functional ef WHERE ef.mch_code = p.code)
+          AND (
+                -- sous un poste technique exporte
+                (p.object_type = 'FUNC_LOC'
+                 AND EXISTS (SELECT 1 FROM clean_data.equipment_functional ef WHERE ef.mch_code = p.code))
+                -- ou sans parent dans IH02 : objet serie racine (sup_mch_code NULL)
+                OR e.parent_id IS NULL
+              )
         UNION ALL
-        SELECT c.id, c.code, NULLIF(LTRIM(TRIM(c.attributes->>'matnr'), '0'), ''),
-               a.code,
+        SELECT c.id, c.code, ar.part_no, a.code,
                a.lvl + 1, a.chemin || c.id
         FROM structure a
         JOIN clean_data.maintenance_object c
           ON c.parent_id = a.id AND c.object_type = 'EQUIPMENT' AND c.is_active
+        JOIN art ar ON ar.id = c.id
         WHERE c.id <> ALL (a.chemin)
+          AND ar.part_no IS NOT NULL            -- sans article : branche coupee
           AND c.id NOT IN (SELECT id FROM archive)
     ),
     eq AS (
@@ -131,9 +157,11 @@ $function$;
 
 COMMENT ON FUNCTION clean_data.alimenter_equipment_serial() IS
 'Alimente EQUIPMENT_SERIAL depuis clean_data.maintenance_object (EQUIPMENT) — UNIQUEMENT
-les equipements (ni postes techniques ni articles). Perimetre : TOUS les equipements sous
+les equipements (ni postes techniques ni articles). Perimetre : les equipements avec article sous
 la structure (chaine de parents jusqu''a un poste technique de equipment_functional, a
-alimenter avant), avec ou sans article (part_no NULL accepte depuis le 2026-11-15), hors
-equipements archives (jest I0320/I0076) et leurs descendants. Parents inseres avant
-enfants. sup_mch_code = parent direct. serial_no = sernr, a defaut le code de
+alimenter avant) ou sans parent dans IH02, QUI ONT UN ARTICLE (saisie IH02, sinon equi.matnr, sinon equz.submt,
+comme l''ecran Maintenance > Equipements), hors equipements archives (jest I0320/I0076)
+et leurs descendants. Un equipement sans article
+coupe la branche (ni lui ni ses descendants). Parents inseres avant enfants.
+sup_mch_code = parent direct. serial_no = sernr, a defaut le code de
 l''equipement (obligatoire IFS).';

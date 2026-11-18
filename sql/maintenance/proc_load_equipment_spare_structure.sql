@@ -25,8 +25,9 @@
 --   porte la structure de ces parents avec leurs enfants (kit -> composants).
 --
 -- PÉRIMÈTRE (Finance > Articles, clean_data.article_perimetre) :
---   RACINES B = les pièces parents rattachées (v_object_spare_export)
---   + les articles IBAU et ERSA du périmètre.
+--   RACINES B = UNIQUEMENT les pièces parents rattachées (v_object_spare_export).
+--   Règle du 2026-11-18 : une pièce qui n'est pas utilisée dans la structure
+--   (ni rattachée à un objet, ni sous une pièce rattachée) n'est envoyée nulle part.
 --   On explose ensuite la nomenclature matière de B de façon RÉCURSIVE
 --   (un composant qui est lui-même un kit est éclaté à son tour).
 --   Une ligne exige un kit ET un composant (colonnes NOT NULL) : un article
@@ -126,16 +127,9 @@ BEGIN
                    OR EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = v.mch_code))
         ),
         edges AS (SELECT * FROM all_edges),
-        -- Racines : pièces parents rattachées + IBAU / ERSA du périmètre (mono-site SJ)
+        -- Racines : UNIQUEMENT les pièces parents rattachées (mono-site SJ)
         roots AS (
-            SELECT r.matnr, r.contract FROM (
-                SELECT k.matnr, 'SJ' AS contract FROM connected k
-                UNION
-                SELECT p.numero_article, 'SJ'
-                FROM clean_data.article_perimetre p
-                JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
-                WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
-            ) r
+            SELECT k.matnr, 'SJ' AS contract FROM connected k
         ),
         -- Descente récursive depuis les racines B (parents avant composants),
         -- le contrat de la racine suit tout le sous-arbre
@@ -271,17 +265,10 @@ BEGIN
                    OR EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = v.mch_code))
         ),
         edges AS (SELECT * FROM all_edges),
-        -- Racines : pièces parents rattachées + IBAU / ERSA du périmètre (mono-site SJ)
+        -- Racines : UNIQUEMENT les pièces parents rattachées (mono-site SJ)
         roots AS (
-            SELECT r.matnr, r.contract FROM (
-                SELECT k.matnr, 'SJ' AS contract FROM connected k
-                UNION
-                SELECT p.numero_article, 'SJ'
-                FROM clean_data.article_perimetre p
-                JOIN clean_data.article_sap s ON s."N° article" = p.numero_article
-                WHERE s."Catégorie article" IN ('IBAU', 'ERSA')
-            ) r
-            WHERE p_spare_id IS NULL OR r.matnr = p_spare_id
+            SELECT k.matnr, 'SJ' AS contract FROM connected k
+            WHERE p_spare_id IS NULL OR k.matnr = p_spare_id
         ),
         hier AS (
             SELECT r.matnr AS matnr, r.contract, 1 AS lvl, ARRAY[r.matnr] AS path
@@ -384,9 +371,9 @@ COMMENT ON PROCEDURE clean_data.load_equipment_spare_structure IS
     'Charge la structure kit -> composants (equipment_spare_structure) depuis
      la nomenclature matière préparée dans IH02 (maintenance_object).
      Structure des pièces PARENTS rattachées aux objets (equipment_object_spare)
-     avec leurs enfants, plus celle des IBAU / ERSA du périmètre.
+     avec leurs enfants ; une pièce hors structure n''est envoyée nulle part.
      PÉRIMÈTRE : Finance > Articles (article_perimetre) pour le kit et le composant.
-     Racines B = pièces parents rattachées + IBAU / ERSA ;
+     Racines B = pièces parents rattachées uniquement ;
      explosion RÉCURSIVE de leur nomenclature (parents avant composants).
      FULL  : Truncate + rechargement complet.
      DELTA : Suppression + réinjection du sous-arbre d''une racine (p_spare_id)
