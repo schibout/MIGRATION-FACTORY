@@ -93,7 +93,8 @@ const CommandesAchatModeEmploi: React.FC = () => {
 
       <Section titre="4. Règles de gestion – étape 2 (objets IFS)">
         <Liste items={[
-          <><b>Commandes reprises</b> : celles qui ont déjà une réception, ou créées dans les <b>6 mois</b> précédant la <b>date de bascule</b> (01/09/2026). Les deux se paramètrent dans Valeurs par défaut (<Code>purchase_order.order_date</Code>, <Code>purchase_order.mois_anteriorite</Code>).</>,
+          <><b>Date de bascule</b> (01/09/2026) : seules les commandes SAP créées <b>avant</b> cette date sont reprises ; c'est aussi l'ORDER_DATE IFS. Elle se règle dans Valeurs par défaut (<Code>purchase_order.date_bascule</Code>) et remplace l'ancienne borne fixe du 31/08/2026 saisie en base.</>,
+          <><b>Commandes envoyées à IFS</b> : celles qui ont déjà une réception, ou créées dans les <b>6 mois</b> précédant la date de bascule (<Code>purchase_order.mois_anteriorite</Code>).</>,
           <><b>N° de commande IFS</b> = « S » + n° SAP ; <b>LINE_NO</b> = n° de poste SAP sans zéros (00010 → 10) ; ORDER_DATE = date de bascule.</>,
           <><b>Lignes PART</b> : postes avec un article, repris même si l'article est absent du catalogue IFS (<Code>part_catalog</Code>) ; <b>NOPART</b> : postes sans article.</>,
           <><b>Activité projet</b> : pour un poste imputé sur un OTP, <Code>ABREVIATION_ACTIVITE</Code> = projet IFS + <Code>.20.REP</Code> (CAPEX) ou <Code>.30.REP</Code> (OPEX), règle de la reprise des coûts projet. Les achats de stock (lignes PART) n'en ont en général pas.</>,

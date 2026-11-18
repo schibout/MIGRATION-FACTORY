@@ -90,30 +90,49 @@ L'imputation comptable principale du poste est reprise sous une forme lisible, p
 - Le champ « À transférer = OUI » demandé par le métier n'existe ni dans SAP ni dans le modèle IFS : c'est un arbitrage manuel (liste de commandes) qui doit être transmis sous forme de fichier ; tant qu'il n'est pas fourni, toutes les commandes ouvertes STJN sont reprises (§ 15).
 - Si l'extraction SAP des postes de commande (table EKPO) venait à être vide, le module charge un repli « en-tête seule » (une ligne par commande, sans article ni quantité) et le signale par un avertissement dans le journal du chargement ; il suffit de relancer le chargement après ré-extraction.
 
-## 14. Paramétrage des bornes de date (technique)
+## 14. Date de bascule et bornes de date
 
-Le module accepte deux paramètres facultatifs, `date_debut` et `date_fin` (format AAAA-MM-JJ), appliqués à la **date de création SAP** de la commande. Ils se paramètrent dans la colonne `module_params` de la ligne du module dans `public.etl_target_tables` ; **aucun écran ne permet de les saisir à ce jour**, le paramétrage se fait en base :
+### Date de bascule (valeur par défaut, depuis le 18/11/2026)
+
+La date de bascule se règle dans l'écran **Valeurs par défaut** (module `commandeAchat`, table `clean_data.purchase_order`, colonne **`date_bascule`**, format AAAA-MM-JJ), comme la largeur de la fenêtre d'envoi (`mois_anteriorite`). Valeur actuelle : **2026-09-01**. Elle sert à trois choses :
+
+1. **ORDER_DATE** de toutes les commandes chargées dans IFS ;
+2. **borne de création** : seules les commandes SAP créées **strictement avant** la date de bascule sont reprises ;
+3. **début de la fenêtre d'envoi** : une commande sans réception n'est envoyée à IFS que si elle a été créée dans les `mois_anteriorite` mois (6) précédant la date de bascule.
+
+Une modification s'applique au prochain « Recalculer ».
+
+### Suppression de l'ancienne borne fixe du 31/08/2026 (18/11/2026)
+
+Jusqu'au 18/11/2026, la date de bascule était portée par deux paramètres distincts :
+
+- la valeur par défaut `purchase_order.order_date` (2026-09-01), qui ne servait qu'à ORDER_DATE et à la fenêtre d'envoi ;
+- une borne **`date_fin` = 2026-08-31** inscrite **en base** dans `module_params` du module (`public.etl_target_tables`), sans écran pour la voir ni la modifier.
+
+Changer la date de bascule obligeait donc à modifier deux endroits, dont un par requête SQL, avec un risque d'incohérence (par exemple une bascule repoussée sans repousser la borne : les commandes créées entre-temps n'auraient pas été reprises). La migration 136 :
+
+- crée la valeur par défaut `purchase_order.date_bascule` avec la valeur de `order_date` ;
+- supprime la valeur par défaut `purchase_order.order_date`, remplacée par `date_bascule` ;
+- retire `date_fin` de `module_params`.
+
+Le résultat est inchangé à date égale : « créée avant le 01/09/2026 » équivaut à « créée au plus tard le 31/08/2026 ». Il n'y a plus qu'une date à changer si la bascule est déplacée.
+
+Restent à aligner à la main si la bascule change : la date `date_creation_min_sans_reception` des postes jamais réceptionnés (01/03/2026, § 1), qui est une règle métier distincte.
+
+### Bornes techniques facultatives (`module_params`)
+
+Le module accepte toujours `date_debut` et `date_fin` (AAAA-MM-JJ) sur la date de création SAP, dans `module_params` de `public.etl_target_tables`, sans écran. Elles s'ajoutent à la date de bascule et ne sont plus utilisées à ce jour (`module_params` vide).
 
 ```sql
--- Borne haute au 31/08/2026 (extraction unique demandée par le métier)
+-- Exemple : ne reprendre que les commandes créées depuis le 01/01/2024
 UPDATE public.etl_target_tables
-   SET module_params = '{"date_fin": "2026-08-31"}'::jsonb,
-       last_modified  = CURRENT_TIMESTAMP
+   SET module_params = '{"date_debut": "2024-01-01"}'::jsonb, last_modified = CURRENT_TIMESTAMP
  WHERE python_module = 'etl_commande_achat.py';
-
--- Exemple avec les deux bornes
---   SET module_params = '{"date_debut": "2024-01-01", "date_fin": "2026-08-31"}'::jsonb
--- Retirer toute borne
---   SET module_params = NULL
 ```
-
-Le paramétrage est pris en compte au **prochain chargement** lancé depuis l'écran de chargement des données ; le journal du chargement affiche alors « Paramètres du module : {...} ». Sans paramètre, toutes les commandes ouvertes sont reprises quelle que soit leur date.
-
-État au 12/09/2026 : aucune borne paramétrée. L'extraction SAP disponible s'arrête au 14/04/2026, la borne au 31/08 est donc satisfaite de fait mais reste à figer pour la prochaine extraction.
 
 ## 15. Points en attente du métier
 
-Pour livrer l'extraction demandée (commandes bornées au 31/08, « À transférer = OUI », colonnes du modèle IFS), il manque :
+Pour livrer l'extraction demandée (commandes créées avant la date de bascule, « À transférer = OUI », colonnes du modèle IFS), il manque :
 
 1. **La liste des commandes « À transférer »** : ce champ n'existe pas dans SAP ; il faut le fichier d'arbitrage (numéro de commande SAP + OUI/NON). Il sera importé dans une table de sélection et appliqué comme filtre, sur le même principe que le fichier de sélection des fournisseurs.
 2. **Les réponses sur les champs structurants IFS** du modèle (`Lot11_AchatAppro_CommandeAchat_V3.0`), dont les colonnes de mappage SAP sont vides : code acheteur IFS par groupe d'acheteurs SAP, transcodification des conditions de paiement (`PAY_TERM_ID`), identifiants d'adresse (`ADDR_NO`, `DELIVERY_ADDRESS`), mode d'expédition (`SHIP_VIA_CODE`), type de demande (`DEMAND_CODE`), pré-imputation (`PRE_ACCOUNTING_ID`).

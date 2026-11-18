@@ -34,6 +34,9 @@
 --       - poste ouvert SANS aucune reception : repris seulement s'il est cree
 --         a partir de date_creation_min_sans_reception (ecran Valeurs par
 --         defaut, module commandeAchat, defaut 01/03/2026, migration 124).
+--     Seules les commandes creees AVANT la date de bascule sont reprises
+--     (valeur par defaut purchase_order.date_bascule, migration 136, qui
+--     remplace la borne module_params date_fin = 2026-08-31).
 --     p_date_debut / p_date_fin bornent en plus l'ensemble.
 --   * ekpo VIDE (defaut d'extraction constate le 11/09/2026, ekkn vide aussi)
 --     -> RAISE WARNING puis repli EN-TETE : une ligne par commande EKKO, les
@@ -117,15 +120,20 @@ DECLARE
     v_debut     timestamp := clock_timestamp();
     v_ekpo_vide boolean;
     v_min_sans_reception text;
+    v_bascule   text;
 BEGIN
+    -- Date de bascule (ecran Valeurs par defaut, migration 136) : commandes
+    -- creees strictement avant. Texte YYYYMMDD comme ekko.aedat ; NULL = sans borne.
+    v_bascule := TO_CHAR(NULLIF(public.get_default_value('clean_data.purchase_order', 'date_bascule'), '')::date, 'YYYYMMDD');
+
     -- Date de creation minimale d'un poste SANS reception (ecran Valeurs par
     -- defaut, migration 124), en texte YYYYMMDD comme ekko.aedat
     v_min_sans_reception := TO_CHAR(COALESCE(
         NULLIF(public.get_default_value('clean_data.commande_achat_ifs', 'date_creation_min_sans_reception', 'STANDARD'), '')::date,
         DATE '2026-03-01'), 'YYYYMMDD');
 
-    RAISE NOTICE '[%] Debut alimentation clean_data.commande_achat_ifs (p_date_debut=%, p_date_fin=%, p_ebeln=%)',
-        clock_timestamp(), p_date_debut, p_date_fin, p_ebeln;
+    RAISE NOTICE '[%] Debut alimentation clean_data.commande_achat_ifs (bascule=%, p_date_debut=%, p_date_fin=%, p_ebeln=%)',
+        clock_timestamp(), v_bascule, p_date_debut, p_date_fin, p_ebeln;
 
     SELECT NOT EXISTS (SELECT 1 FROM raw_data.ekpo) INTO v_ekpo_vide;
 
@@ -214,6 +222,7 @@ BEGIN
               -- imbriquees (> 5 min). Sans borne, aucun predicat n'est ajoute.
               AND (p_date_debut IS NULL OR ekko.aedat >= TO_CHAR(p_date_debut, 'YYYYMMDD'))
               AND (p_date_fin   IS NULL OR ekko.aedat <= TO_CHAR(p_date_fin,   'YYYYMMDD'))
+              AND (v_bascule    IS NULL OR ekko.aedat <  v_bascule)
               AND (p_ebeln IS NULL OR ekko.ebeln = p_ebeln)
         )
         SELECT
@@ -378,6 +387,7 @@ BEGIN
               -- imbriquees (> 5 min). Sans borne, aucun predicat n'est ajoute.
               AND (p_date_debut IS NULL OR ekko.aedat >= TO_CHAR(p_date_debut, 'YYYYMMDD'))
               AND (p_date_fin   IS NULL OR ekko.aedat <= TO_CHAR(p_date_fin,   'YYYYMMDD'))
+              AND (v_bascule    IS NULL OR ekko.aedat <  v_bascule)
               AND (p_ebeln IS NULL OR ekko.ebeln = p_ebeln)
         )
         SELECT

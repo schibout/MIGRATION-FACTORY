@@ -45,12 +45,14 @@
 -- Perimetre (spec ORDER_NO) : une commande est reprise si un de ses postes a
 -- une date de reception souhaitee (derniere reception SAP), sinon si elle a ete
 -- creee dans les <mois_anteriorite> mois (defaut 6) precedant la date de
--- bascule (valeur par defaut purchase_order.order_date, qui est aussi
--- l'ORDER_DATE de toutes les commandes). Ses lignes suivent l'en-tete.
+-- bascule (valeur par defaut purchase_order.date_bascule, migration 136, qui
+-- est aussi l'ORDER_DATE de toutes les commandes et la borne de creation des
+-- commandes reprises dans 02). Ses lignes suivent l'en-tete.
 -- EXCLUSIONS (comptees en NOTICE, a traiter en cadrage) :
 --   - commande sans VENDOR_NO, sans INVOICING_SUPPLIER ou sans PAY_TERM_ID
 --     (champs obligatoires IFS, regle de la spec) -> en-tete ET lignes exclus ;
---   - poste PART dont l'article n'est pas dans clean_data.part_catalog.
+--   (un poste PART dont l'article n'est pas dans clean_data.part_catalog est
+--   charge quand meme et seulement compte, depuis le 2026-11-18).
 -- LINE_NO = num_ligne_sap sans zeros de tete ('00010' -> '10') : LINE_NO est
 -- un VARCHAR2(4) cote IFS.
 -- Retour : nombre de commandes chargees.
@@ -62,7 +64,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     v_debut    timestamp := clock_timestamp();
-    v_bascule  date := COALESCE(NULLIF(public.get_default_value('clean_data.purchase_order', 'order_date'), '')::date, CURRENT_DATE);
+    v_bascule  date := COALESCE(NULLIF(public.get_default_value('clean_data.purchase_order', 'date_bascule'), '')::date, CURRENT_DATE);
     v_mois     integer := COALESCE(NULLIF(public.get_default_value('clean_data.purchase_order', 'mois_anteriorite'), '')::integer, 6);
     v_candidats integer;
     v_sans_fournisseur integer;
@@ -299,7 +301,6 @@ BEGIN
             public.get_default_value('clean_data.purchase_order', 'language_code') AS language_code,
             public.get_default_value('clean_data.purchase_order', 'ship_via_code') AS ship_via_code,
             public.get_default_value('clean_data.purchase_order', 'order_code') AS order_code,
-            public.get_default_value('clean_data.purchase_order', 'order_date') AS order_date,
             public.get_default_value('clean_data.purchase_order', 'pick_list_flag') AS pick_list_flag,
             public.get_default_value('clean_data.purchase_order', 'pick_list_flag_db') AS pick_list_flag_db,
             public.get_default_value('clean_data.purchase_order', 'communicated') AS communicated,

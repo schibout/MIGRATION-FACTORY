@@ -5,6 +5,7 @@ arretee en 2014, est exclue) au format de reprise IFS : une ligne par poste `EKP
 reliquat a livrer > 0. Les postes anciens que les acheteurs n'ont jamais clos dans SAP sont
 ouverts au sens SAP et ressortent (au 12/09/2026 : 3 325 postes STJN, 2013-2026) :
 borner par `date_debut` dans `module_params` si le metier ne veut pas les reprendre.
+Seules les commandes creees **avant la date de bascule** (`purchase_order.date_bascule`, ecran Valeurs par defaut) sont reprises.
 
 | Element | Emplacement |
 |---|---|
@@ -31,15 +32,19 @@ Puis lancer le module depuis l'ecran de chargement des donnees, ou :
 docker exec -e PYTHONPATH=/app migration-app-backend python etl_modules/etl_commande_achat.py [date_debut [date_fin]]
 ```
 
-## Bornes de date (`module_params`)
+## Date de bascule et bornes de date
 
-Aucun ecran n'expose `module_params` (le `PUT /data/etl_target_tables` ne le met pas a jour) :
-parametrer en base, pris en compte au prochain chargement.
+- **Date de bascule** : valeur par defaut `purchase_order.date_bascule` (ecran Valeurs par defaut, migration 136) :
+  ORDER_DATE, borne de creation (`ekko.aedat < date_bascule`) et debut de la fenetre `mois_anteriorite`.
+- La migration 136 a supprime l'ancienne borne fixe `module_params = {"date_fin": "2026-08-31"}`
+  (saisie en base, sans ecran) et la valeur par defaut `purchase_order.order_date` : une seule date a changer.
+- `module_params` accepte toujours `date_debut` / `date_fin` en bornes techniques supplementaires,
+  sans ecran (le `PUT /data/etl_target_tables` ne le met pas a jour) :
 
 ```sql
 UPDATE public.etl_target_tables
-   SET module_params = '{"date_fin": "2026-08-31"}'::jsonb, last_modified = CURRENT_TIMESTAMP
- WHERE python_module = 'etl_commande_achat.py';   -- {"date_debut": ..., "date_fin": ...} ; NULL = sans borne
+   SET module_params = '{"date_debut": "2024-01-01"}'::jsonb, last_modified = CURRENT_TIMESTAMP
+ WHERE python_module = 'etl_commande_achat.py';   -- NULL = sans borne
 ```
 
 ## Regles de mappage
@@ -78,7 +83,7 @@ SELECT clean_data.alimenter_purchase_order();      -- 2. dispatch (NOTICE : volu
   transco `PAY_TERM` sinon `supplier.pay_term_id`, Incoterm = SAP sinon `supplier_address.delivery_terms`,
   pre-imputation = transco `COST_CENTER` (centre de couts) ou `PRE_ACCOUNTING` (chaine `ORDRE=...` complete).
 - **Constantes** : `public.get_default_value('clean_data.<table>', '<colonne>')`, seedees par la migration 104
-  (ecran Valeurs par defaut, module `commandeAchat`). `purchase_order.order_date` = date de bascule,
+  (ecran Valeurs par defaut, module `commandeAchat`). `purchase_order.date_bascule` = date de bascule,
   `mois_anteriorite` = fenetre d'eligibilite, `address1..city` par site (variante `SJ` / `CS`).
 - **Perimetre** : commande avec une date de reception souhaitee, sinon creee dans les 6 mois avant la bascule.
 - **Exclusions** (NOTICE) : commande sans fournisseur, fournisseur de facturation ou condition de paiement IFS ;
