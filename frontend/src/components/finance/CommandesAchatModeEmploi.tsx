@@ -65,7 +65,7 @@ const CommandesAchatModeEmploi: React.FC = () => {
             [<b>Synchroniser SAP</b>, 'Ré-extrait de SAP EKKO, EKPO, EKBE, EKET, EKPA, EKKN, LFA1, T001W, ADRC, PRPS, puis fait un « Recalculer ».',
               'Pour prendre en compte les dernières commandes, réceptions et factures SAP.'],
             [<b>Exporter Excel</b>, 'Classeur de l\'onglet affiché, toutes les colonnes, toutes les pages.', 'Contrôle d\'un onglet.'],
-            [<b>Exporter tout (ZIP)</b>, 'Classeur des 4 onglets + PURCHASE_ORDER.csv, PURCHASE_ORDER_LINE_PART.csv, PURCHASE_ORDER_LINE_NOPART.csv (format IFS : « ; », UTF-8, dates JJ/MM/AAAA, virgule décimale).',
+            [<b>Exporter tout (ZIP)</b>, 'Classeur des 4 onglets + PURCHASE_ORDER.csv, PURCHASE_ORDER_LINE_PART.csv, PURCHASE_ORDER_LINE_NOPART.csv (format IFS : « ; », UTF-8, dates JJ/MM/AAAA, virgule décimale). Les CSV de lignes se terminent par ABREVIATION_ACTIVITE ; les colonnes techniques STATE, OBJTYPE, OBJVERSION, OBJID, CODE_A à CODE_J n\'y figurent pas (elles restent dans le classeur).',
               'Livraison des fichiers de chargement IFS.'],
             [<b>Recherche / Site</b>, 'Filtrent la liste et les exports (y compris le ZIP).', 'Sans filtre, les exports contiennent tout.'],
             [<b>Toutes les colonnes</b>, 'Affiche toutes les colonnes au lieu des colonnes principales.', '—'],
@@ -95,9 +95,10 @@ const CommandesAchatModeEmploi: React.FC = () => {
         <Liste items={[
           <><b>Commandes reprises</b> : celles qui ont déjà une réception, ou créées dans les <b>6 mois</b> précédant la <b>date de bascule</b> (01/09/2026). Les deux se paramètrent dans Valeurs par défaut (<Code>purchase_order.order_date</Code>, <Code>purchase_order.mois_anteriorite</Code>).</>,
           <><b>N° de commande IFS</b> = « S » + n° SAP ; <b>LINE_NO</b> = n° de poste SAP sans zéros (00010 → 10) ; ORDER_DATE = date de bascule.</>,
-          <><b>Lignes PART</b> : postes avec un article présent dans le catalogue IFS (<Code>part_catalog</Code>) ; <b>NOPART</b> : postes sans article.</>,
+          <><b>Lignes PART</b> : postes avec un article, repris même si l'article est absent du catalogue IFS (<Code>part_catalog</Code>) ; <b>NOPART</b> : postes sans article.</>,
+          <><b>Activité projet</b> : pour un poste imputé sur un OTP, <Code>ABREVIATION_ACTIVITE</Code> = projet IFS + <Code>.20.REP</Code> (CAPEX) ou <Code>.30.REP</Code> (OPEX), règle de la reprise des coûts projet. Les achats de stock (lignes PART) n'en ont en général pas.</>,
           <><b>Adresse de livraison</b> : adresse du site de la commande (Saint-Jean ou Castelsarrasin), paramétrée dans Valeurs par défaut.</>,
-          <><b>Exclusions</b> (journal du chargement) : commande sans fournisseur IFS, sans fournisseur de facturation IFS ou sans condition de paiement IFS (en-tête et lignes exclus) ; poste avec un article absent du catalogue IFS.</>,
+          <><b>Exclusions</b> (journal du chargement) : commande sans fournisseur IFS, sans fournisseur de facturation IFS ou sans condition de paiement IFS (en-tête et lignes exclus). Les postes dont l'article est absent du catalogue IFS sont repris et seulement comptés.</>,
         ]} />
       </Section>
 
@@ -108,7 +109,7 @@ const CommandesAchatModeEmploi: React.FC = () => {
             [<Code>VENDOR_NO</Code>, 'ID fournisseur IFS de la fiche fournisseur (rapproché sur le n° SAP).', 'Module fournisseurs / fichier de sélection'],
             [<Code>INVOICING_SUPPLIER</Code>, 'ID IFS du fournisseur de facturation ; s\'il est identique au fournisseur commandé, VENDOR_NO.', 'Idem'],
             [<Code>ADDR_NO</Code>, 'Adresse IFS du fournisseur ; à défaut valeur par défaut « 1 ».', 'Valeurs par défaut'],
-            [<Code>PART_NO</Code>, 'Article du catalogue IFS (n° SAP sans zéros de tête).', 'Modules articles'],
+            [<Code>PART_NO</Code>, 'N° article SAP sans zéros de tête, sans contrôle du catalogue IFS.', 'Modules articles'],
             [<Code>PAY_TERM_ID</Code>, <>Transco <Chip size="small" label="PAY_TERM" /> du code SAP ; sinon condition de la fiche fournisseur IFS ; sinon commande exclue.</>, 'Transcodification'],
             [<Code>DELIVERY_TERMS</Code>, 'Incoterm SAP (3 lettres reconnues : DDP, DAP, CPT, FCA, EXW…) ; sinon Incoterm du fournisseur IFS ; sinon valeur par défaut (DDP).', 'Valeurs par défaut'],
             [<Code>DEL_TERMS_LOCATION</Code>, 'Suite du libellé SAP après l\'Incoterm (« DDP Saint Jean » → « Saint Jean »), seulement si l\'Incoterm vient de SAP.', '—'],

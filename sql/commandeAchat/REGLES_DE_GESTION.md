@@ -27,7 +27,7 @@ La table est « à plat » : **une ligne par poste de commande** (numéro de com
 
 ## 3. Type de ligne IFS : PART / NOPART
 
-- **PART** : le poste SAP porte un numéro d'article → ligne IFS « article » ; le numéro d'article est repris **sans les zéros de tête SAP**, tel qu'il figure dans le catalogue article IFS.
+- **PART** : le poste SAP porte un numéro d'article → ligne IFS « article » ; le numéro d'article est repris **sans les zéros de tête SAP**. Depuis le 18/11/2026, la ligne est reprise **même si l'article est absent du catalogue article IFS** (`part_catalog`, limité au périmètre Finance > Articles) : le nombre de ces lignes est seulement signalé dans le journal du chargement.
 - **NOPART** : le poste SAP n'a pas d'article (prestations, locations, études, travaux, achats non stockés) → ligne IFS « hors catalogue », décrite par sa désignation seule.
 
 La désignation est le texte court du poste SAP, débarrassé des caractères de contrôle.
@@ -145,3 +145,9 @@ Pour livrer l'extraction demandée (commandes bornées au 31/08, « À transfér
 8. **3 commandes dont la stratégie de libération SAP n'est pas aboutie** : à exclure si l'on s'en tient aux « commandes déjà autorisées » (§ 15).
 
 9. Points de vigilance sans action immédiate : 1 760 postes partiellement reçus (le reliquat est repris, pas l'historique des réceptions) ; 745 postes déjà facturés au-delà du reçu (acomptes ou factures anticipées, le restant à facturer est plus faible que le restant à livrer) ; 37 commandes avec un fournisseur de facturation différent du fournisseur ; 20 commandes en devise étrangère avec le taux SAP d'origine.
+
+## 17. Fichiers de chargement IFS (export ZIP) – règles au 18/11/2026
+
+- **Lignes article** (`PURCHASE_ORDER_LINE_PART.csv`) : `PART_NO` = numéro d'article SAP sans les zéros de tête, sans contrôle de présence dans `part_catalog`. Avant ce changement, 1 293 lignes (581 articles hors périmètre Finance > Articles) étaient écartées : 780 lignes au lieu d'environ 2 073.
+- **Activité projet** : la colonne `ABREVIATION_ACTIVITE` (`<projet>.20.REP` CAPEX, `<projet>.30.REP` OPEX) est ajoutée en **dernière colonne** des fichiers de lignes `PURCHASE_ORDER_LINE_PART.csv` et `PURCHASE_ORDER_LINE_NOPART.csv`. Elle n'est renseignée que pour les postes imputés sur un élément d'OTP : en pratique les lignes sans article (374 au 18/11/2026) ; les lignes article sont des achats de stock sans imputation projet (1 poste article sur 2 287 porte un OTP).
+- **Colonnes retirées des CSV** (limite du nombre de colonnes du job de chargement IFS) : `STATE`, `OBJTYPE`, `OBJVERSION`, `OBJID`, `CODE_A` à `CODE_J`, ainsi que `SUB_PROJECT_ID` et `ACTIVITY_NO`. Elles restent visibles dans le classeur Excel du ZIP.
