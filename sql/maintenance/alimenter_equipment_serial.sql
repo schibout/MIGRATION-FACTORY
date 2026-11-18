@@ -89,7 +89,6 @@ BEGIN
                CASE WHEN o.attributes->>'gwlen' ~ '^[0-9]{8}$' AND o.attributes->>'gwlen' <> '00000000'
                     THEN to_date(o.attributes->>'gwlen', 'YYYYMMDD') END AS warr_exp,
                NULLIF(NULLIF(o.attributes->>'answt', ''), '0.0')::numeric AS purch_price,
-               NULLIF(TRIM(o.attributes->>'herst'), '') AS manufacturer_no,
                NULLIF(TRIM(o.attributes->>'sernr'), '') AS serial_no,
                NULLIF(TRIM(o.attributes->>'typbz'), '') AS type,
                public.get_vendor_no_ifs(NULLIF(TRIM(o.attributes->>'elief'), '')) AS vendor_no
@@ -99,7 +98,7 @@ BEGIN
     INSERT INTO clean_data.equipment_serial (
         equipment_object_seq,
         contract, mch_code, mch_name, part_no, serial_no,
-        manufacturer_no, vendor_no, type,
+        vendor_no, type,                                      -- manufacturer_no non alimente (regle 2026-11-18)
         purch_price, purch_date, warr_exp,
         sup_contract, sup_mch_code,
         company, ownership_db, location_id, safe_access_code_db,
@@ -114,7 +113,6 @@ BEGIN
         SUBSTRING(COALESCE(o.designation, o.code), 1, 200),       -- mch_name
         SUBSTRING(eq.part_no, 1, 25),
         SUBSTRING(COALESCE(eq.serial_no, o.code), 1, 50),         -- obligatoire IFS : repli sur le code
-        SUBSTRING(eq.manufacturer_no, 1, 20),
         eq.vendor_no,
         SUBSTRING(eq.type, 1, 30),
         eq.purch_price, eq.purch_date, eq.warr_exp,
