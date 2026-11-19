@@ -710,16 +710,13 @@ _CA_LIGNE_IFS = ("t.order_no = 'S' || l.num_commande_sap "
                  "AND t.line_no = NULLIF(LTRIM(l.num_ligne_sap, '0'), '')")
 _CA_REFERENTIEL = 'EXISTS (SELECT 1 FROM clean_data.ifs_fournisseurs_perimetre f WHERE f.numero_compte_ifs = {})'
 # Colonnes de controle de l'export Excel (demande du 2026-11-19) : envoi IFS reel
-# (ligne presente dans un objet purchase_order_line_*), article connu du catalogue
-# de reprise et de l'extraction de la prod IFS (raw_data.mater_part_prod),
+# (ligne presente dans un objet purchase_order_line_*), article connu de
+# l'extraction de la prod IFS (raw_data.mater_part_prod),
 # fournisseurs presents dans le referentiel Finance > Fournisseurs.
 CA_CONTROLES = [
     ('envoye_ifs', 'Envoyé vers IFS', _oui_non(
         f'EXISTS (SELECT 1 FROM clean_data.purchase_order_line_part t WHERE {_CA_LIGNE_IFS}) '
         f'OR EXISTS (SELECT 1 FROM clean_data.purchase_order_line_nopart t WHERE {_CA_LIGNE_IFS})')),
-    ('article_part_catalog', 'Article dans part_catalog',
-     "CASE WHEN l.article_sap IS NOT NULL THEN " + _oui_non(
-         'EXISTS (SELECT 1 FROM clean_data.part_catalog p WHERE p.part_no = l.article_sap)') + ' END'),
     ('article_master_part_prod', 'Article dans Master Part (prod IFS)',
      "CASE WHEN l.article_sap IS NOT NULL THEN " + _oui_non(
          'EXISTS (SELECT 1 FROM raw_data.mater_part_prod p WHERE p.part_no = l.article_sap)') + ' END'),
