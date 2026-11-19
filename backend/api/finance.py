@@ -698,15 +698,46 @@ def export_commandes_achat_excel():
     rows = _ca_lignes_commandes()
     db.session.commit()  # liberer la transaction de lecture avant la generation
     wb = Workbook()
-    _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES, rows, _CA_MONTANTS | _CA_QUANTITES)
+    _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES_EXCEL, rows, _CA_MONTANTS | _CA_QUANTITES)
     return _envoyer(wb, 'commandes_achat')
 
 
+def _oui_non(condition):
+    return f"CASE WHEN {condition} THEN 'OUI' ELSE 'NON' END"
+
+
+_CA_LIGNE_IFS = ("t.order_no = 'S' || l.num_commande_sap "
+                 "AND t.line_no = NULLIF(LTRIM(l.num_ligne_sap, '0'), '')")
+_CA_REFERENTIEL = 'EXISTS (SELECT 1 FROM clean_data.ifs_fournisseurs_perimetre f WHERE f.numero_compte_ifs = {})'
+# Colonnes de controle de l'export Excel (demande du 2026-11-19) : envoi IFS reel
+# (ligne presente dans un objet purchase_order_line_*), article connu du catalogue
+# de reprise et de l'extraction de la prod IFS (raw_data.mater_part_prod),
+# fournisseurs presents dans le referentiel Finance > Fournisseurs.
+CA_CONTROLES = [
+    ('envoye_ifs', 'Envoyé vers IFS', _oui_non(
+        f'EXISTS (SELECT 1 FROM clean_data.purchase_order_line_part t WHERE {_CA_LIGNE_IFS}) '
+        f'OR EXISTS (SELECT 1 FROM clean_data.purchase_order_line_nopart t WHERE {_CA_LIGNE_IFS})')),
+    ('article_part_catalog', 'Article dans part_catalog',
+     "CASE WHEN l.article_sap IS NOT NULL THEN " + _oui_non(
+         'EXISTS (SELECT 1 FROM clean_data.part_catalog p WHERE p.part_no = l.article_sap)') + ' END'),
+    ('article_master_part_prod', 'Article dans Master Part (prod IFS)',
+     "CASE WHEN l.article_sap IS NOT NULL THEN " + _oui_non(
+         'EXISTS (SELECT 1 FROM raw_data.mater_part_prod p WHERE p.part_no = l.article_sap)') + ' END'),
+    ('fournisseur_referentiel', 'Fournisseur dans référentiel',
+     _oui_non(_CA_REFERENTIEL.format('l.fournisseur_ifs'))),
+    ('fournisseur_facturation_referentiel', 'Fournisseur facturation dans référentiel',
+     _oui_non(_CA_REFERENTIEL.format('l.fournisseur_facturation_ifs'))),
+]
+CA_LIBELLES_EXCEL = CA_LIBELLES + [(c, lib) for c, lib, _ in CA_CONTROLES]
+
+
 def _ca_lignes_commandes():
-    """Lignes filtrees de commande_achat_ifs, dates texte converties pour Excel."""
+    """Lignes filtrees de commande_achat_ifs avec les colonnes de controle,
+    dates texte converties pour Excel."""
     clause, params = _ca_filtres()
+    controles = ', '.join(f'{expr} AS {c}' for c, _, expr in CA_CONTROLES)
     rows = db.session.execute(text(
-        f'SELECT {", ".join(CA_COLONNES)} FROM clean_data.commande_achat_ifs {clause} '
+        f'SELECT {", ".join(CA_COLONNES)}, {controles} FROM clean_data.commande_achat_ifs l {clause} '
         'ORDER BY num_commande_sap, num_ligne_sap'), params).all()
     dates = [i for i, c in enumerate(CA_COLONNES) if c in _CA_DATES]
     return [[_ca_date(v) if i in dates else v for i, v in enumerate(r)] for r in rows]
@@ -752,7 +783,7 @@ def export_commandes_achat_zip():
     db.session.commit()
 
     wb = Workbook()
-    _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES, commandes, _CA_MONTANTS | _CA_QUANTITES)
+    _feuille_tableau(wb.active, "Commandes d'achat", CA_LIBELLES_EXCEL, commandes, _CA_MONTANTS | _CA_QUANTITES)
     for t, (colonnes, rows) in ifs.items():
         _feuille_tableau(wb.create_sheet(), t, [(c, c.upper()) for c in colonnes], rows, set())
     classeur = io.BytesIO()
