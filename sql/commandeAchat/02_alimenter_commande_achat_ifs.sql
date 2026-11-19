@@ -343,12 +343,15 @@ BEGIN
                 SELECT lifn2 FROM partenaire_facturation
             ) l
         ),
-        base AS (
+        -- MATERIALIZED : empeche de redescendre le filtre du circuit de
+        -- signature (WHERE final) sur le parcours de ekko, ou il est mal estime
+        base AS MATERIALIZED (
             SELECT
                 ekko.ebeln, ekpo.ebelp, ekko.bukrs, ekko.lifnr, ekko.waers, ekko.wkurs,
                 clean_data.commande_achat_to_date(ekko.aedat) AS aedat,
                 ekko.aedat AS aedat_sap,
                 ekko.zterm, ekko.inco1, ekko.inco2, ekko.ekgrp,
+                ekko.frgsx, ekko.frgrl,
                 ekpo.matnr, ekpo.txz01, ekpo.werks,
                 COALESCE(ekpo.elikz, '') <> '' AS livraison_finale,
                 COALESCE(ekpo.erekz, '') <> '' AS facture_finale,
@@ -405,10 +408,10 @@ BEGIN
               AND (p_date_debut IS NULL OR ekko.aedat >= TO_CHAR(p_date_debut, 'YYYYMMDD'))
               AND (p_date_fin   IS NULL OR ekko.aedat <= TO_CHAR(p_date_fin,   'YYYYMMDD'))
               AND (v_bascule    IS NULL OR ekko.aedat <  v_bascule)
-              -- Circuit de signature : liberation terminee, et commande passee
-              -- par une strategie sauf parametre contraire
-              AND (ekko.frgrl IS NULL OR ekko.frgrl = '')
-              AND (v_sans_circuit OR (ekko.frgsx IS NOT NULL AND ekko.frgsx <> ''))
+              -- Circuit de signature : filtre applique dans le WHERE final, sur
+              -- base materialisee. Ici, le planificateur sous-estimait les
+              -- commandes liberees (3 117 estimees pour 46 406 : frgsx correle a
+              -- bukrs) et partait en boucles imbriquees (> 10 min, 2026-11-19).
               AND (p_ebeln IS NULL OR ekko.ebeln = p_ebeln)
         )
         SELECT
@@ -479,10 +482,14 @@ BEGIN
         --     livrer > 0) : repris s'il a deja eu une reception, ou, sans
         --     aucune reception, s'il est cree a partir de
         --     date_creation_min_sans_reception (defaut 01/03/2026).
-        WHERE (COALESCE(base.qte_recue, 0) > COALESCE(base.qte_facturee, 0) AND NOT base.facture_finale)
-           OR (NOT base.livraison_finale
-               AND COALESCE(base.menge, 0) - COALESCE(base.qte_recue, 0) > 0
-               AND (COALESCE(base.qte_recue, 0) > 0 OR base.aedat_sap >= v_min_sans_reception))
+        WHERE ((COALESCE(base.qte_recue, 0) > COALESCE(base.qte_facturee, 0) AND NOT base.facture_finale)
+            OR (NOT base.livraison_finale
+                AND COALESCE(base.menge, 0) - COALESCE(base.qte_recue, 0) > 0
+                AND (COALESCE(base.qte_recue, 0) > 0 OR base.aedat_sap >= v_min_sans_reception)))
+          -- Circuit de signature (migration 137) : liberation terminee, et
+          -- commande passee par une strategie sauf parametre contraire
+          AND COALESCE(base.frgrl, '') = ''
+          AND (v_sans_circuit OR COALESCE(base.frgsx, '') <> '')
         ORDER BY base.ebeln, base.ebelp;
 
         GET DIAGNOSTICS v_nb_lignes = ROW_COUNT;
