@@ -37,6 +37,9 @@
 --     Seules les commandes creees AVANT la date de bascule sont reprises
 --     (valeur par defaut purchase_order.date_bascule, migration 136, qui
 --     remplace la borne module_params date_fin = 2026-08-31).
+--     Seules les commandes autorisees via le circuit de signature SAP sont
+--     reprises (strategie de liberation renseignee et liberation terminee,
+--     migration 137, parametre reprendre_sans_circuit_signature).
 --     p_date_debut / p_date_fin bornent en plus l'ensemble.
 --   * ekpo VIDE (defaut d'extraction constate le 11/09/2026, ekkn vide aussi)
 --     -> RAISE WARNING puis repli EN-TETE : une ligne par commande EKKO, les
@@ -121,7 +124,17 @@ DECLARE
     v_ekpo_vide boolean;
     v_min_sans_reception text;
     v_bascule   text;
+    v_sans_circuit boolean;
 BEGIN
+    -- Circuit de signature (strategie de liberation SAP, demande metier du
+    -- 2026-11-19, migration 137) : seules les commandes LIBEREES via le circuit
+    -- sont reprises (EKKO-FRGSX renseignee, EKKO-FRGRL vide = liberation
+    -- terminee). Les commandes hors circuit (FRGSX vide, petits montants sous le
+    -- seuil de la strategie) ne sont reprises que si la valeur par defaut
+    -- reprendre_sans_circuit_signature vaut OUI.
+    v_sans_circuit := UPPER(COALESCE(public.get_default_value('clean_data.commande_achat_ifs', 'reprendre_sans_circuit_signature', 'STANDARD'), 'NON'))
+                      IN ('OUI', 'O', 'Y', 'YES', 'TRUE', '1');
+
     -- Date de bascule (ecran Valeurs par defaut, migration 136) : commandes
     -- creees strictement avant. Texte YYYYMMDD comme ekko.aedat ; NULL = sans borne.
     v_bascule := TO_CHAR(NULLIF(public.get_default_value('clean_data.purchase_order', 'date_bascule'), '')::date, 'YYYYMMDD');
@@ -132,8 +145,8 @@ BEGIN
         NULLIF(public.get_default_value('clean_data.commande_achat_ifs', 'date_creation_min_sans_reception', 'STANDARD'), '')::date,
         DATE '2026-03-01'), 'YYYYMMDD');
 
-    RAISE NOTICE '[%] Debut alimentation clean_data.commande_achat_ifs (bascule=%, p_date_debut=%, p_date_fin=%, p_ebeln=%)',
-        clock_timestamp(), v_bascule, p_date_debut, p_date_fin, p_ebeln;
+    RAISE NOTICE '[%] Debut alimentation clean_data.commande_achat_ifs (bascule=%, sans_circuit_signature=%, p_date_debut=%, p_date_fin=%, p_ebeln=%)',
+        clock_timestamp(), v_bascule, v_sans_circuit, p_date_debut, p_date_fin, p_ebeln;
 
     SELECT NOT EXISTS (SELECT 1 FROM raw_data.ekpo) INTO v_ekpo_vide;
 
@@ -223,6 +236,10 @@ BEGIN
               AND (p_date_debut IS NULL OR ekko.aedat >= TO_CHAR(p_date_debut, 'YYYYMMDD'))
               AND (p_date_fin   IS NULL OR ekko.aedat <= TO_CHAR(p_date_fin,   'YYYYMMDD'))
               AND (v_bascule    IS NULL OR ekko.aedat <  v_bascule)
+              -- Circuit de signature : liberation terminee, et commande passee
+              -- par une strategie sauf parametre contraire
+              AND (ekko.frgrl IS NULL OR ekko.frgrl = '')
+              AND (v_sans_circuit OR (ekko.frgsx IS NOT NULL AND ekko.frgsx <> ''))
               AND (p_ebeln IS NULL OR ekko.ebeln = p_ebeln)
         )
         SELECT
@@ -388,6 +405,10 @@ BEGIN
               AND (p_date_debut IS NULL OR ekko.aedat >= TO_CHAR(p_date_debut, 'YYYYMMDD'))
               AND (p_date_fin   IS NULL OR ekko.aedat <= TO_CHAR(p_date_fin,   'YYYYMMDD'))
               AND (v_bascule    IS NULL OR ekko.aedat <  v_bascule)
+              -- Circuit de signature : liberation terminee, et commande passee
+              -- par une strategie sauf parametre contraire
+              AND (ekko.frgrl IS NULL OR ekko.frgrl = '')
+              AND (v_sans_circuit OR (ekko.frgsx IS NOT NULL AND ekko.frgsx <> ''))
               AND (p_ebeln IS NULL OR ekko.ebeln = p_ebeln)
         )
         SELECT

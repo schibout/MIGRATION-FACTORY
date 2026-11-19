@@ -5,7 +5,8 @@ arretee en 2014, est exclue) au format de reprise IFS : une ligne par poste `EKP
 reliquat a livrer > 0. Les postes anciens que les acheteurs n'ont jamais clos dans SAP sont
 ouverts au sens SAP et ressortent (au 12/09/2026 : 3 325 postes STJN, 2013-2026) :
 borner par `date_debut` dans `module_params` si le metier ne veut pas les reprendre.
-Seules les commandes creees **avant la date de bascule** (`purchase_order.date_bascule`, ecran Valeurs par defaut) sont reprises.
+Seules les commandes **liberees via le circuit de signature** (`ekko.frgsx` renseigne, `ekko.frgrl` vide ; parametre
+`reprendre_sans_circuit_signature`, migration 137) et creees **avant la date de bascule** (`purchase_order.date_bascule`, ecran Valeurs par defaut) sont reprises.
 
 | Element | Emplacement |
 |---|---|
@@ -85,7 +86,8 @@ SELECT clean_data.alimenter_purchase_order();      -- 2. dispatch (NOTICE : volu
 - **Constantes** : `public.get_default_value('clean_data.<table>', '<colonne>')`, seedees par la migration 104
   (ecran Valeurs par defaut, module `commandeAchat`). `purchase_order.date_bascule` = date de bascule,
   `mois_anteriorite` = fenetre d'eligibilite, `address1..city` par site (variante `SJ` / `CS`).
-- **Perimetre** : commande avec une date de reception souhaitee, sinon creee dans les 6 mois avant la bascule.
+- **Perimetre** : commande avec une date de reception souhaitee, sinon creee dans les 6 mois avant la bascule ;
+  commande a 0 exclue (aucun poste avec `qte_restant_livrer > 0`) et lignes a 0 exclues (demande du 2026-11-19).
 - **Exclusions** (NOTICE) : commande sans fournisseur, fournisseur de facturation ou condition de paiement IFS ;
   les lignes PART dont l'article n'est pas dans `part_catalog` sont chargees et seulement comptees.
 

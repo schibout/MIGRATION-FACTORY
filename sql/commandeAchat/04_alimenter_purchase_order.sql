@@ -48,6 +48,9 @@
 -- bascule (valeur par defaut purchase_order.date_bascule, migration 136, qui
 -- est aussi l'ORDER_DATE de toutes les commandes et la borne de creation des
 -- commandes reprises dans 02). Ses lignes suivent l'en-tete.
+-- Commandes a 0 exclues (demande du 2026-11-19) : aucun poste avec une
+-- quantite restant a livrer > 0 (toutes les lignes auraient BUY_QTY_DUE = 0) ;
+-- dans les autres commandes, les lignes a 0 sont exclues aussi.
 -- EXCLUSIONS (comptees en NOTICE, a traiter en cadrage) :
 --   - commande sans VENDOR_NO, sans INVOICING_SUPPLIER ou sans PAY_TERM_ID
 --     (champs obligatoires IFS, regle de la spec) -> en-tete ET lignes exclus ;
@@ -146,7 +149,8 @@ BEGIN
         ORDER BY num_commande_sap, num_ligne_sap
     ),
     reception AS (
-        SELECT num_commande_sap, MAX(TO_DATE(date_reception_souhaitee, 'DD/MM/YYYY')) AS date_reception
+        SELECT num_commande_sap, MAX(TO_DATE(date_reception_souhaitee, 'DD/MM/YYYY')) AS date_reception,
+               MAX(COALESCE(qte_restant_livrer, 0)) AS max_a_livrer
         FROM lig
         GROUP BY num_commande_sap
     ),
@@ -177,6 +181,7 @@ BEGIN
         SELECT e.*,
                TO_DATE(e.date_creation, 'DD/MM/YYYY') AS d_creation,
                r.date_reception,
+               r.max_a_livrer,
                f1.supplier_id AS vendor_no,
                COALESCE(f2.supplier_id,
                         CASE WHEN LTRIM(e.fournisseur_facturation_sap, '0') = LTRIM(e.fournisseur_sap, '0')
@@ -215,8 +220,12 @@ BEGIN
     LEFT JOIN livraison_fournisseur lf ON lf.vendor_no = b.vendor_no
     LEFT JOIN adresse_fournisseur af ON af.supplier_id = b.vendor_no
     LEFT JOIN tmp_po_pre_accounting pre ON pre.centre_cout_sap = b.centre_cout_sap
-    WHERE b.date_reception IS NOT NULL
-       OR b.d_creation >= v_bascule - make_interval(months => v_mois);
+    WHERE (b.date_reception IS NOT NULL
+           OR b.d_creation >= v_bascule - make_interval(months => v_mois))
+      -- Commandes a 0 exclues (demande metier du 2026-11-19) : aucun poste
+      -- avec une quantite restant a livrer, donc BUY_QTY_DUE = 0 sur toutes
+      -- les lignes (postes recus non factures seulement).
+      AND b.max_a_livrer > 0;
 
     SELECT COUNT(*),
            COUNT(*) FILTER (WHERE vendor_no IS NULL),
@@ -427,6 +436,7 @@ BEGIN
     FROM clean_data.commande_achat_ifs l
     JOIN clean_data.purchase_order po ON po.order_no = 'S' || l.num_commande_sap
     WHERE l.type_ligne_ifs = 'PART'
+      AND l.qte_restant_livrer > 0
       AND NOT EXISTS (SELECT 1 FROM clean_data.part_catalog pc WHERE pc.part_no = l.article_sap);
 
     INSERT INTO clean_data.purchase_order_line_part (
@@ -657,6 +667,7 @@ BEGIN
     LEFT JOIN tmp_po_activite act ON act.element_otp = l.element_otp AND act.numero_projet = l.numero_projet
     CROSS JOIN d
     WHERE l.type_ligne_ifs = 'PART'
+      AND l.qte_restant_livrer > 0   -- lignes a 0 exclues (demande du 2026-11-19)
     ORDER BY l.num_commande_sap, l.num_ligne_sap;
 
     GET DIAGNOSTICS v_nb_part = ROW_COUNT;
@@ -866,6 +877,7 @@ BEGIN
     CROSS JOIN d
     WHERE COALESCE(l.type_ligne_ifs, 'NOPART') = 'NOPART'
       AND l.num_ligne_sap IS NOT NULL
+      AND l.qte_restant_livrer > 0   -- lignes a 0 exclues (demande du 2026-11-19)
     ORDER BY l.num_commande_sap, l.num_ligne_sap;
 
     GET DIAGNOSTICS v_nb_nopart = ROW_COUNT;
