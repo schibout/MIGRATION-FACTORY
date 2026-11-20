@@ -137,3 +137,18 @@ def test_le_mode_delta_recharge_le_sous_arbre_depuis_ih02(cur, racine):
         VALUES ('BOM_ITEM', 'ZZS-B2', %s, %s, 'ZZS-COMP', 'L', 1, 'MANUAL')""", [racine['id'], comp])
     cur.execute("CALL clean_data.load_equipment_spare_structure('DELTA', %s)", [racine['code']])
     assert 'ZZS-COMP' in _lignes(cur, racine['code'])
+
+
+def test_une_nomenclature_non_rattachee_hors_categorie_l_sort(cur):
+    """Regle du 2026-11-20 : toutes les nomenclatures d'articles de IH02 sortent
+    (pieces deconnectees), meme d'un kit non rattache a un objet, toutes categories."""
+    comp = _composant_test(cur)
+    cur.execute("INSERT INTO clean_data.article_perimetre (numero_article, source) VALUES ('ZZS-KIT', 'FICHIER')")
+    kit = _one(cur, f"""
+        INSERT INTO {MO} (object_type, sap_key, code, designation, type_code, source)
+        VALUES ('ARTICLE', 'ZZS-KIT', 'ZZS-KIT', 'kit de test', 'ERSA', 'MANUAL') RETURNING id""")['id']
+    cur.execute(f"""
+        INSERT INTO {MO} (object_type, sap_key, parent_id, ref_object_id, code, category, quantity, source)
+        VALUES ('BOM_ITEM', 'ZZS-B3', %s, %s, 'ZZS-COMP', 'N', 2, 'MANUAL')""", [kit, comp])
+    cur.execute("CALL clean_data.load_equipment_spare_structure('FULL')")
+    assert _lignes(cur, 'ZZS-KIT')['ZZS-COMP']['qty'] == 2

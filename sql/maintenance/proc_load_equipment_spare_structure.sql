@@ -24,18 +24,20 @@
 --   PARENTS rattachés à un poste technique ou un équipement ; cette table
 --   porte la structure de ces parents avec leurs enfants (kit -> composants).
 --
+-- RÈGLE MÉTIER (2026-11-20) : pièces détachées DÉCONNECTÉES = TOUTES les
+--   nomenclatures d'articles de la structure IH02, sans exception (plus de
+--   restriction aux pièces parents rattachées ni à la catégorie 'L').
+--   Seuls les parents restent connectés (equipment_object_spare, inchangé).
+--
 -- PÉRIMÈTRE (Finance > Articles, clean_data.article_perimetre) :
---   RACINES B = UNIQUEMENT les pièces parents rattachées (v_object_spare_export).
---   Règle du 2026-11-18 : une pièce qui n'est pas utilisée dans la structure
---   (ni rattachée à un objet, ni sous une pièce rattachée) n'est envoyée nulle part.
---   On explose ensuite la nomenclature matière de B de façon RÉCURSIVE
---   (un composant qui est lui-même un kit est éclaté à son tour).
+--   Racines = kits qui ne sont composant d'aucun autre kit ; on explose leur
+--   nomenclature de façon RÉCURSIVE pour calculer le niveau (parents d'abord).
 --   Une ligne exige un kit ET un composant (colonnes NOT NULL) : un article
 --   sans nomenclature ni parent ne sort pas. Parent et composant doivent être
 --   dans le périmètre, donc dans part_catalog.
 --
--- Filtre category = 'L' (postp SAP : article stock), comme
---   equipment_object_spare. Un même composant à plusieurs positions d'une
+-- Toutes catégories de poste (L, N, X...), comme equipment_object_spare.
+--   Un même composant à plusieurs positions d'une
 --   nomenclature donne 1 seule ligne, quantités SOMMÉES.
 --
 -- Hiérarchie : le spare_seq est ordonné par niveau = profondeur MAXIMALE
@@ -111,25 +113,16 @@ BEGIN
               ON c.id = b.ref_object_id AND c.object_type = 'ARTICLE'
             WHERE b.object_type = 'BOM_ITEM'
               AND b.is_active
-              AND b.category = 'L'
               AND b.quantity IS NOT NULL
               AND a.code IN (SELECT numero_article FROM clean_data.article_perimetre)
               AND c.code IN (SELECT numero_article FROM clean_data.article_perimetre)
             GROUP BY a.code, c.code
         ),
-        -- Pièces PARENTS rattachées à un objet exporté (equipment_object_spare) :
-        -- racines de leur nomenclature. Source = la vue AVANT les rejets d'export.
-        connected AS (
-            SELECT DISTINCT v.spare_id::text AS matnr
-            FROM clean_data.v_object_spare_export v
-            WHERE v.spare_id IS NOT NULL
-              AND (EXISTS (SELECT 1 FROM clean_data.equipment_functional f WHERE f.mch_code = v.mch_code)
-                   OR EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = v.mch_code))
-        ),
         edges AS (SELECT * FROM all_edges),
-        -- Racines : UNIQUEMENT les pièces parents rattachées (mono-site SJ)
+        -- Racines = kits qui ne sont composant d'aucun autre kit (mono-site SJ)
         roots AS (
-            SELECT k.matnr, 'SJ' AS contract FROM connected k
+            SELECT DISTINCT e.parent_id AS matnr, 'SJ' AS contract FROM edges e
+            WHERE NOT EXISTS (SELECT 1 FROM edges x WHERE x.child_id = e.parent_id)
         ),
         -- Descente récursive depuis les racines B (parents avant composants),
         -- le contrat de la racine suit tout le sous-arbre
@@ -149,17 +142,18 @@ BEGIN
         source AS (
             SELECT
                 ROW_NUMBER() OVER (
-                    ORDER BY kl.lvl, kl.contract, e.parent_id, e.child_id
+                    ORDER BY COALESCE(kl.lvl, 1), e.parent_id, e.child_id
                 )                                                   AS spare_seq,
-                kl.contract                                         AS spare_contract,
+                'SJ'                                                AS spare_contract,
                 e.parent_id                                         AS spare_id,
                 e.child_id                                          AS component_spare_id,
-                kl.contract                                         AS component_spare_contract,
+                'SJ'                                                AS component_spare_contract,
                 e.qty                                               AS qty
             FROM edges e
-            -- INNER JOIN : on ne garde que les arêtes dont le PARENT est
-            -- atteignable depuis une racine B (rattachée à un poste technique)
-            JOIN kit_level     kl  ON  kl.matnr      = e.parent_id
+            -- TOUTES les arêtes sortent ; un kit pris uniquement dans un cycle
+            -- n'est atteint par aucune racine -> niveau 1.
+            -- ponytail: ordre parent/enfant non garanti sous un cycle (cas pathologique)
+            LEFT JOIN kit_level kl ON kl.matnr = e.parent_id
         )
         INSERT INTO clean_data.equipment_spare_structure (
             spare_seq,
@@ -209,7 +203,7 @@ BEGIN
                   ON a.id = b.parent_id AND a.object_type = 'ARTICLE'
                 JOIN clean_data.maintenance_object c
                   ON c.id = b.ref_object_id AND c.object_type = 'ARTICLE'
-                WHERE b.object_type = 'BOM_ITEM' AND b.category = 'L'
+                WHERE b.object_type = 'BOM_ITEM'
                 -- is_active non filtré ici : on supprime aussi ce qui a été
                 -- désactivé à l'écran depuis le dernier chargement
             ),
@@ -249,26 +243,18 @@ BEGIN
               ON c.id = b.ref_object_id AND c.object_type = 'ARTICLE'
             WHERE b.object_type = 'BOM_ITEM'
               AND b.is_active
-              AND b.category = 'L'
               AND b.quantity IS NOT NULL
               AND a.code IN (SELECT numero_article FROM clean_data.article_perimetre)
               AND c.code IN (SELECT numero_article FROM clean_data.article_perimetre)
             GROUP BY a.code, c.code
         ),
-        -- Pièces PARENTS rattachées à un objet exporté (equipment_object_spare) :
-        -- racines de leur nomenclature. Source = la vue AVANT les rejets d'export.
-        connected AS (
-            SELECT DISTINCT v.spare_id::text AS matnr
-            FROM clean_data.v_object_spare_export v
-            WHERE v.spare_id IS NOT NULL
-              AND (EXISTS (SELECT 1 FROM clean_data.equipment_functional f WHERE f.mch_code = v.mch_code)
-                   OR EXISTS (SELECT 1 FROM clean_data.equipment_serial s WHERE s.mch_code = v.mch_code))
-        ),
         edges AS (SELECT * FROM all_edges),
-        -- Racines : UNIQUEMENT les pièces parents rattachées (mono-site SJ)
+        -- Racines : kits sommets (tous) ou le kit demandé (mono-site SJ)
         roots AS (
-            SELECT k.matnr, 'SJ' AS contract FROM connected k
-            WHERE p_spare_id IS NULL OR k.matnr = p_spare_id
+            SELECT DISTINCT e.parent_id AS matnr, 'SJ' AS contract FROM edges e
+            WHERE CASE WHEN p_spare_id IS NULL
+                       THEN NOT EXISTS (SELECT 1 FROM edges x WHERE x.child_id = e.parent_id)
+                       ELSE e.parent_id = p_spare_id END
         ),
         hier AS (
             SELECT r.matnr AS matnr, r.contract, 1 AS lvl, ARRAY[r.matnr] AS path
@@ -287,15 +273,17 @@ BEGIN
             SELECT
                 (SELECT last_seq FROM max_seq)
                 + ROW_NUMBER() OVER (
-                    ORDER BY kl.lvl, kl.contract, e.parent_id, e.child_id
+                    ORDER BY COALESCE(kl.lvl, 1), e.parent_id, e.child_id
                 )                                                   AS spare_seq,
-                kl.contract                                         AS spare_contract,
+                'SJ'                                                AS spare_contract,
                 e.parent_id                                         AS spare_id,
                 e.child_id                                          AS component_spare_id,
-                kl.contract                                         AS component_spare_contract,
+                'SJ'                                                AS component_spare_contract,
                 e.qty                                               AS qty
             FROM edges e
-            JOIN kit_level     kl  ON  kl.matnr      = e.parent_id
+            LEFT JOIN kit_level kl ON kl.matnr = e.parent_id
+            -- DELTA ciblé : seul le sous-arbre du kit demandé
+            WHERE kl.matnr IS NOT NULL OR p_spare_id IS NULL
         )
         INSERT INTO clean_data.equipment_spare_structure (
             spare_seq,
@@ -370,15 +358,14 @@ $$;
 COMMENT ON PROCEDURE clean_data.load_equipment_spare_structure IS
     'Charge la structure kit -> composants (equipment_spare_structure) depuis
      la nomenclature matière préparée dans IH02 (maintenance_object).
-     Structure des pièces PARENTS rattachées aux objets (equipment_object_spare)
-     avec leurs enfants ; une pièce hors structure n''est envoyée nulle part.
+     Pièces détachées DÉCONNECTÉES : toutes les nomenclatures d''articles de IH02,
+     toutes catégories (règle du 2026-11-20).
      PÉRIMÈTRE : Finance > Articles (article_perimetre) pour le kit et le composant.
-     Racines B = pièces parents rattachées uniquement ;
-     explosion RÉCURSIVE de leur nomenclature (parents avant composants).
+     Explosion RÉCURSIVE depuis les kits sommets (parents avant composants).
      FULL  : Truncate + rechargement complet.
      DELTA : Suppression + réinjection du sous-arbre d''une racine (p_spare_id)
              ou de tout si p_spare_id est NULL.
-     Dépendance : equipment_object_spare doit être alimentée AVANT.';
+';
 
 
 -- =============================================================

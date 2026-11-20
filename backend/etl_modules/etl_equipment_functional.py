@@ -13,8 +13,8 @@ Enchaîne quatre traitements, dans cet ordre imposé (chaque étape lit la préc
   3. clean_data.load_equipment_object_spare('FULL') : pièces CONNECTÉES = articles
      PARENTS directement sous un objet des étapes 1-2 (toutes catégories)
      -> clean_data.equipment_object_spare.
-  4. clean_data.load_equipment_spare_structure('FULL') : kit -> composants des pièces
-     parents de l'étape 3 et des IBAU/ERSA, parents avant enfants
+  4. clean_data.load_equipment_spare_structure('FULL') : kit -> composants de TOUTES
+     les nomenclatures d'articles IH02 (pièces déconnectées), parents avant enfants
      -> clean_data.equipment_spare_structure.
 
 Mode FULL uniquement (TRUNCATE + rechargement) : snapshot de la structure.
@@ -83,7 +83,7 @@ class EquipmentFunctionalETL:
         self._add_log("Source : structure IH02 (clean_data.maintenance_object)", "info")
 
         # Ordre contraint : load_equipment_object_spare lit equipment_functional,
-        # load_equipment_spare_structure lit equipment_object_spare.
+        # load_equipment_spare_structure lit toutes les nomenclatures IH02.
         etapes = [
             ("SELECT clean_data.alimenter_equipment_functional()",
              "clean_data.alimenter_equipment_functional()"),
