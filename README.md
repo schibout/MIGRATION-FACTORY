@@ -219,9 +219,13 @@ python scripts/ai/verify_change.py backend/services/sql_guard.py
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
-Le vérificateur sélectionne syntaxe Python/JSON/Bash, tests de l'outillage,
-synchronisation des skills, tests SQL guard/filter, lint, tests React et build frontend selon
-les fichiers concernés. Aucun paquet n'est installé par ce contrôle.
+Le vérificateur sélectionne les tests backend hors ligne associés aux fichiers.
+Pour `backend/api/finance.py`, il compare les fonctions et constantes modifiées avec
+les dépendances des tests de l'export Excel des commandes et des filtres articles.
+Un comportement sans test associé nécessite une vérification ciblée.
+Côté React, le lint porte sur les fichiers TypeScript modifiés et Vitest recherche
+les tests liés par leurs imports. La configuration partagée, une suppression de
+source ou `--all` déclenchent les contrôles frontend complets.
 Les fichiers SQL déclenchent un rappel de revue, sans exécution ni promesse de
 validation sémantique PostgreSQL. Les tests backend connectés à la vraie base
 doivent être examinés et lancés séparément dans un environnement approprié.
@@ -306,7 +310,7 @@ consigne de l'interroger en priorité pour les questions d'architecture, de flux
 de dépendances et de localisation, avec un budget court pour limiter les tokens :
 
 ```bash
-graphify query "Où est géré le chargement IH02 ?" --budget 1500
+graphify query "maintenance_object" --budget 400
 graphify path "IH02" "maintenance_object"
 graphify explain "maintenance_object"
 ```

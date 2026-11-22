@@ -26,24 +26,50 @@ hooks = load_module("install_hooks", "scripts/ai/install_hooks.py")
 class VerificationTests(unittest.TestCase):
     def test_backend_tests_are_explicit_and_offline(self):
         plan = verify.build_plan(["backend/tests/test_new_database_test.py"])
-        command = next(check.command for check in plan if check.kind == "backend-tests")
-        self.assertIn("tests/test_sql_guard.py", command)
-        self.assertIn("tests/test_sql_filters.py", command)
-        self.assertNotIn("test_new_database_test.py", command)
+        self.assertEqual([check.kind for check in plan], ["python-syntax", "backend-review"])
+        self.assertFalse(any(check.command for check in plan))
 
     def test_mixed_change_selects_frontend_and_backend_once(self):
-        plan = verify.build_plan(["backend/services/sql_guard.py", "frontend/src/A.tsx", "frontend/src/B.tsx"])
+        plan = verify.build_plan(["backend/services/sql_guard.py", "frontend/src/pages/Login.tsx",
+                                  "frontend/tests/login.test.tsx"])
         kinds = [check.kind for check in plan]
-        self.assertEqual(kinds.count("frontend-build"), 1)
+        self.assertNotIn("frontend-build", kinds)
+        self.assertEqual(kinds.count("frontend-tests"), 1)
         self.assertEqual(kinds.count("backend-tests"), 1)
+        command = next(check.command for check in plan if check.kind == "backend-tests")
+        self.assertEqual(command[-1:], ("tests/test_sql_guard.py",))
+        self.assertNotIn("tests/test_sql_filters.py", command)
+        frontend = next(check.command for check in plan if check.kind == "frontend-tests")
+        self.assertEqual(frontend, ("npm", "run", "test:related", "--", "src/pages/Login.tsx", "tests/login.test.tsx"))
 
     def test_frontend_change_runs_lint_tests_and_build_in_order(self):
-        plan = verify.build_plan(["frontend/src/Page.tsx", "frontend/tests/Page.test.tsx"])
+        plan = verify.build_plan(["frontend/vitest.config.ts"])
         frontend = [check for check in plan if check.kind.startswith("frontend-")]
         self.assertEqual([check.command for check in frontend], [
             ("npm", "run", "lint"), ("npm", "test"), ("npm", "run", "build")
         ])
         self.assertTrue(all(check.cwd == "frontend" for check in frontend))
+
+    def test_full_mode_keeps_all_offline_checks(self):
+        plan = verify.build_plan(["backend/services/sql_guard.py", "frontend/src/pages/Login.tsx"], full=True)
+        command = next(check.command for check in plan if check.kind == "backend-tests")
+        self.assertIn("tests/test_commandes_achat_excel.py", command)
+        self.assertIn("tests/test_dashboard_synthese.py", command)
+        self.assertIn("frontend-build", [check.kind for check in plan])
+
+    def test_finance_uses_changed_behaviour_including_indirect_helpers(self):
+        before = ("CONTROLS = ['a']\ndef columns(): return CONTROLS\n"
+                  "def export_commandes_achat_excel(): return columns()\n"
+                  "def _art_condition(): return 1\ndef suppliers(): return 2\n")
+        for original, replacement, expected in [
+            ("['a']", "['b']", ({"test_commandes_achat_excel.py"}, False)),
+            ("_art_condition(): return 1", "_art_condition(): return 0", ({"test_finance_articles_filtres.py"}, False)),
+            ("return 2", "return 9", (set(), True)),
+        ]:
+            with self.subTest(change=original):
+                self.assertEqual(verify.finance_impact(before, before.replace(original, replacement)), expected)
+        self.assertEqual(verify.finance_impact(before, before.replace("CONTROLS = ['a']\n", "")),
+                         ({"test_commandes_achat_excel.py"}, False))
 
     def test_sql_is_reported_for_review_and_never_executed(self):
         plan = verify.build_plan(["migrations/129_new.sql"])

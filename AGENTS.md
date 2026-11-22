@@ -75,19 +75,26 @@ Pipeline question FR -> RAG (`ai_prompt_builder`, `ai_schema_retriever`) -> LLM
 - Installer les outils : `README.md`, `install_claude.sh`, `install_codex.sh`.
 - Verifier : `python scripts/ai/verify_change.py --plan`, puis la meme commande
   sans `--plan`. `--staged` pour l'index, `--all` pour le socle hors ligne complet.
+  Si plusieurs travaux coexistent, passer les chemins de la demande aux deux commandes.
 - Backend : tests cibles depuis `backend/`. Certains tests se connectent a la
   vraie base meme si leur transaction est annulee ; ne pas lancer tout pytest
   automatiquement. Le verificateur maintient une liste hors ligne explicite.
-- Frontend : `npm ci`, `npm run build`, `npm run lint` dans `frontend/`.
+- Partir du comportement attendu. Si le plan signale un fichier sans test associe
+  ou si Vitest trouve zero test, verifier le comportement sur des donnees locales
+  et preciser toute limite.
+- Frontend : lint des fichiers modifies et tests Vitest lies par leurs imports.
+  Le socle complet couvre aussi le build (CI, configuration partagee ou suppression).
 - Les skills sources sont dans `.agents/skills/`. Les copies Claude sont
   generees par `python scripts/ai/sync_skills.py` et controlees avec `--check`.
 - Reviewers : `reviewer-sap-ifs` et `reviewer-fullstack` ; fournir le diff et les
   fichiers utiles. Ils produisent une revue, l'assistant principal fait les changements.
-- Graphify est installe et le graphe du projet est disponible dans
-  `graphify-out/graph.json`. Claude et Codex doivent le consulter en priorite pour
-  les questions d'architecture, de dependances, de flux et de localisation afin
-  de reduire le contexte charge et le nombre de tokens :
-  `graphify query "<question precise>" --budget 1500`.
+- Fichier connu et changement local : lire directement le code. Pour localiser
+  un symbole, utiliser `graphify query "<symbole>" --budget 400`. Pour un flux
+  entre modules, elargir jusqu'a 1500 si le premier resultat est insuffisant.
+- Avant d'utiliser le graphe, lire la ligne `Built from commit` du rapport
+  `graphify-out/GRAPH_REPORT.md`. Comparer avec `git rev-parse HEAD` et
+  `git status --short`. Si les versions different, `git diff --name-only <commit> HEAD`
+  localise les ecarts. Verifier les fichiers concernes dans le depot courant.
 - Utiliser `graphify path` pour relier deux concepts et `graphify explain` pour
   expliquer un noeud. Ne pas reconstruire le graphe pour une simple question ;
   `/graphify --update` est reserve aux demandes explicites de mise a jour.
