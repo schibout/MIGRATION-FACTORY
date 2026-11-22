@@ -46,7 +46,9 @@ _EQUIPEMENTS = "SELECT mch_code, mch_name, sup_mch_code, 2 AS rang, 'Équipement
 _OBJETS = f'({_FONCTIONNELS} UNION ALL {_EQUIPEMENTS})'
 # Un code de poste peut exister sous deux parents : une seule ligne par code pour les jointures
 _OBJET_UNIQUE = f'(SELECT DISTINCT ON (mch_code) mch_code, mch_name, nature FROM {_OBJETS} u ORDER BY mch_code, rang)'
-_ABSENT_CATALOGUE = 'NOT EXISTS (SELECT 1 FROM clean_data.part_catalog x WHERE x.part_no = {0})'
+# Meme controle que Finance > Commandes d'achat : article connu de l'extraction de la
+# prod IFS (Master Part), pas du catalogue calcule clean_data.part_catalog (2026-11-22).
+_ABSENT_CATALOGUE = 'NOT EXISTS (SELECT 1 FROM raw_data.mater_part_prod x WHERE x.part_no = {0})'
 _ABSENT_OBJET = f'NOT EXISTS (SELECT 1 FROM {_OBJETS} x WHERE x.mch_code = {{0}})'
 
 _PIECE = {
@@ -133,12 +135,12 @@ def _source_controle(code):
         return {**_PIECE, 'label': 'Pièce sur un objet absent',
                 'where': _ABSENT_OBJET.format('t.equipment_object_seq')}
     if code == 'piece_hors_catalogue':
-        return {**_PIECE, 'label': 'Pièce hors catalogue', 'where': _ABSENT_CATALOGUE.format('t.spare_id')}
+        return {**_PIECE, 'label': 'Pièce connectée absente de Master Part (prod IFS)', 'where': _ABSENT_CATALOGUE.format('t.spare_id')}
     if code == 'kit_hors_catalogue':
-        return {**_KIT, 'label': 'Kit ou composant hors catalogue',
+        return {**_KIT, 'label': 'Pièce déconnectée (kit ou composant) absente de Master Part (prod IFS)',
                 'where': f"({_ABSENT_CATALOGUE.format('t.spare_id')} "
                          f"OR {_ABSENT_CATALOGUE.format('t.component_spare_id')})"}
-    return {**_source_objet('equipment_serial'), 'label': 'Article d’équipement hors catalogue',
+    return {**_source_objet('equipment_serial'), 'label': 'Article d’objet série absent de Master Part (prod IFS)',
             'where': 't.part_no IS NOT NULL AND ' + _ABSENT_CATALOGUE.format('t.part_no')}
 
 

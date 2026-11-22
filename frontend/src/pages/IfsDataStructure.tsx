@@ -16,7 +16,7 @@ const ONGLETS: OngletConsultation[] = [
   { value: 'kits', label: 'Composition des kits', placeholder: 'N° article, N° composant, désignation…',
     description: 'Composants des articles kits (clean_data.equipment_spare_structure).' },
   { value: 'controles', label: 'Contrôles',
-    description: 'Incohérences entre les tables de la structure et le catalogue. Choisir un contrôle pour voir les lignes concernées.' },
+    description: 'Incohérences de la structure ; les articles (pièces connectées, déconnectées, objets série) sont contrôlés dans Master Part de la prod IFS (raw_data.mater_part_prod). Choisir un contrôle pour voir les lignes concernées.' },
 ];
 
 const IfsDataStructure: React.FC = () => (
