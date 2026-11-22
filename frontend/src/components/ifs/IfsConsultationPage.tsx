@@ -26,12 +26,13 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    TableSortLabel,
     Tabs,
     TextField,
     Tooltip,
     Typography,
 } from '@mui/material';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -117,7 +118,19 @@ const IfsConsultationPage: React.FC<Props> = ({
   const cleColonnes = `ifs-colonnes:${apiUrl}`;
   const [masquees, setMasquees] = useState<Masquees>(() => lireMasquees(cleColonnes));
   const [menuColonnes, setMenuColonnes] = useState<HTMLElement | null>(null);
+  // Tri et filtres par colonne, côté serveur (liste paginée) ; remis à zéro au changement de table
+  const [tri, setTri] = useState<{ cle: string; sens: 'asc' | 'desc' } | null>(null);
+  const [filtres, setFiltres] = useState<Record<string, string>>({});
+  const [saisieFiltres, setSaisieFiltres] = useState<Record<string, string>>({});
   const derniereRequete = useRef(0); // une réponse lente ne doit pas écraser l'onglet affiché
+
+  const paramsColonnes = useMemo(() => {
+    const actifs = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v.trim()));
+    return {
+      ...(tri ? { tri: tri.cle, sens: tri.sens } : {}),
+      ...(Object.keys(actifs).length ? { filtres: JSON.stringify(actifs) } : {}),
+    };
+  }, [tri, filtres]);
 
   const load = useCallback(async () => {
     if (onglet === 'mode_emploi') return;
@@ -126,7 +139,7 @@ const IfsConsultationPage: React.FC<Props> = ({
       setLoading(true);
       setError(null);
       const res = await api.get<ListResponse>(apiUrl, {
-        params: { onglet, table, search, page: page + 1, page_size: pageSize },
+        params: { onglet, table, search, page: page + 1, page_size: pageSize, ...paramsColonnes },
       });
       if (requete !== derniereRequete.current) return;
       setData(res.data);
@@ -138,7 +151,7 @@ const IfsConsultationPage: React.FC<Props> = ({
     } finally {
       if (requete === derniereRequete.current) setLoading(false);
     }
-  }, [apiUrl, titre, onglet, table, search, page, pageSize]);
+  }, [apiUrl, titre, onglet, table, search, page, pageSize, paramsColonnes]);
 
   useEffect(() => {
     load();
@@ -177,7 +190,7 @@ const IfsConsultationPage: React.FC<Props> = ({
     try {
       setExporting(true);
       setError(null);
-      const res = await api.get(`${apiUrl}/export.xlsx`, { params: { onglet, search }, responseType: 'blob' });
+      const res = await api.get(`${apiUrl}/export.xlsx`, { params: { onglet, search, table: data?.table, ...paramsColonnes }, responseType: 'blob' });
       const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
       const url = window.URL.createObjectURL(res.data);
       const link = document.createElement('a');
@@ -195,8 +208,15 @@ const IfsConsultationPage: React.FC<Props> = ({
     }
   };
 
+  const reinitialiserColonnes = () => {
+    setTri(null);
+    setFiltres({});
+    setSaisieFiltres({});
+  };
+
   const changerOnglet = (v: string) => {
     setOnglet(v);
+    reinitialiserColonnes();
     setTable('');
     setPage(0);
     setData(null);
@@ -212,6 +232,16 @@ const IfsConsultationPage: React.FC<Props> = ({
     setMasquees(suivant);
     try { localStorage.setItem(cleColonnes, JSON.stringify(suivant)); } catch { /* stockage indisponible */ }
   };
+  const trier = (cle: string) => {
+    // croissant -> décroissant -> sans tri
+    setTri((t) => (t?.cle !== cle ? { cle, sens: 'asc' } : t.sens === 'asc' ? { cle, sens: 'desc' } : null));
+    setPage(0);
+  };
+  const appliquerFiltres = () => {
+    setFiltres(saisieFiltres);
+    setPage(0);
+  };
+  const nbFiltres = Object.values(filtres).filter((v) => v.trim()).length;
   const basculer = (cle: string) =>
     masquer(masqueesTable.includes(cle) ? masqueesTable.filter((k) => k !== cle) : [...masqueesTable, cle]);
   const tables = data?.tables ?? [];
@@ -317,6 +347,11 @@ const IfsConsultationPage: React.FC<Props> = ({
               Colonnes ({colonnes.length}/{toutesColonnes.length})
             </Button>
           </Tooltip>
+          {(nbFiltres > 0 || tri) && (
+            <Button size="small" onClick={() => { reinitialiserColonnes(); setPage(0); }}>
+              Effacer tri et filtres{nbFiltres > 0 ? ` (${nbFiltres})` : ''}
+            </Button>
+          )}
           <Menu
             anchorEl={menuColonnes}
             open={Boolean(menuColonnes)}
@@ -346,7 +381,7 @@ const IfsConsultationPage: React.FC<Props> = ({
               label={`${t.label} (${nombre(t.lignes)})`}
               color={t.key === data?.table ? 'primary' : onglet === 'controles' && t.lignes > 0 ? 'warning' : 'default'}
               variant={t.key === data?.table ? 'filled' : 'outlined'}
-              onClick={() => { setTable(t.key); setPage(0); }}
+              onClick={() => { setTable(t.key); setPage(0); reinitialiserColonnes(); }}
             />
           ))}
         </Box>
@@ -359,7 +394,34 @@ const IfsConsultationPage: React.FC<Props> = ({
             <TableHead>
               <TableRow>
                 {colonnes.map((c) => (
-                  <TableCell key={c.key} title={c.key} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.label}</TableCell>
+                  <TableCell key={c.key} title={c.key} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+                    sortDirection={tri?.cle === c.key ? tri.sens : false}>
+                    <TableSortLabel
+                      active={tri?.cle === c.key}
+                      direction={tri?.cle === c.key ? tri.sens : 'asc'}
+                      onClick={() => trier(c.key)}
+                    >
+                      {c.label}
+                    </TableSortLabel>
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                {colonnes.map((c) => (
+                  // top = hauteur de la ligne d'en-tête, pour rester visible au défilement
+                  <TableCell key={c.key} sx={{ py: 0.5, top: 37 }}>
+                    <TextField
+                      size="small"
+                      variant="standard"
+                      placeholder="Filtrer…"
+                      value={saisieFiltres[c.key] ?? ''}
+                      onChange={(e) => setSaisieFiltres((f) => ({ ...f, [c.key]: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === 'Enter') appliquerFiltres(); }}
+                      onBlur={() => { if ((saisieFiltres[c.key] ?? '') !== (filtres[c.key] ?? '')) appliquerFiltres(); }}
+                      inputProps={{ 'aria-label': `Filtrer ${c.label}` }}
+                      sx={{ minWidth: 90 }}
+                    />
+                  </TableCell>
                 ))}
               </TableRow>
             </TableHead>

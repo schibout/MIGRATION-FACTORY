@@ -86,7 +86,7 @@ _KIT = {
 def _complete(source):
     """Ajoute aux colonnes fixes toutes les autres colonnes de la table (choix d'affichage a l'ecran)."""
     table = source['table']
-    fixes = [k for e, k, _ in source['colonnes'] if e.startswith('t.')]
+    fixes = [e[2:].strip('"') for e, _, _ in source['colonnes'] if e.startswith('t.')]  # colonne, pas la cle d'affichage
     return {**source, 'colonnes': source['colonnes'] + colonnes_catalogue(table, colonnes_table(table, *fixes))}
 
 

@@ -2,6 +2,7 @@
 (table ou controle) est un dictionnaire label / from / where / colonnes / recherche / cle / ordre.
 Les noms de tables viennent de la configuration de chaque ecran, jamais de la requete.
 """
+import json
 from flask import jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import text
@@ -94,14 +95,40 @@ def source_export(table, label, recherche, cle, ordre):
     }
 
 
-def filtre(src, search):
-    """(FROM + WHERE, parametres) ; la recherche porte sur les expressions de la source."""
+def filtre(src, search, filtres=None):
+    """(FROM + WHERE, parametres) ; la recherche porte sur les expressions de la source.
+    `filtres` {cle de colonne: texte} : « contient », sans casse ; une cle inconnue de la source est ignoree
+    (seules les expressions declarees par la source entrent dans le SQL)."""
     clauses = [src['where']] if src.get('where') else []
     params = {}
     if search:
         clauses.append('(' + ' OR '.join(f'{e} ILIKE :search' for e in src['recherche']) + ')')
         params['search'] = f'%{search}%'
+    expressions = {k: e for e, k, _ in src['colonnes']}
+    for i, (cle, valeur) in enumerate((filtres or {}).items()):
+        if cle in expressions and str(valeur).strip():
+            clauses.append(f'CAST({expressions[cle]} AS text) ILIKE :f{i}')
+            params[f'f{i}'] = f'%{str(valeur).strip()}%'
     return src['from'] + (' WHERE ' + ' AND '.join(clauses) if clauses else ''), params
+
+
+def _filtres():
+    """Parametre `filtres` (JSON {cle: texte}) de la requete ; invalide -> aucun filtre."""
+    try:
+        valeur = json.loads(request.args.get('filtres') or '{}')
+    except ValueError:
+        return {}
+    return valeur if isinstance(valeur, dict) else {}
+
+
+def ordre(src):
+    """ORDER BY : colonne `tri` de la source (sens `sens`), puis l'ordre stable de la source."""
+    expressions = {k: e for e, k, _ in src['colonnes']}
+    tri = request.args.get('tri')
+    if tri not in expressions:
+        return src['ordre']
+    sens = 'DESC' if request.args.get('sens') == 'desc' else 'ASC'
+    return f"{expressions[tri]} {sens} NULLS LAST, {src['ordre']}"
 
 
 def colonnes_sql(src):
@@ -123,17 +150,18 @@ def lister(onglets, source, sync_key):
         table = onglets[onglet][0]
 
     sources = {k: source(k) for k in onglets[onglet]}
+    filtres = _filtres()  # filtres de colonnes : table affichee seulement
     tables = []
     for k, s in sources.items():
-        corps, params = filtre(s, search)
+        corps, params = filtre(s, search, filtres if k == table else None)
         tables.append({'key': k, 'label': s['label'],
                        'lignes': db.session.execute(text(f'SELECT count(*) FROM {corps}'), params).scalar()})
 
     src = sources[table]
-    corps, params = filtre(src, search)
+    corps, params = filtre(src, search, filtres)
     entites = db.session.execute(text(f"SELECT count(DISTINCT {src['cle']}) FROM {corps}"), params).scalar()
     rows = db.session.execute(
-        text(f"SELECT {colonnes_sql(src)} FROM {corps} ORDER BY {src['ordre']} LIMIT :limit OFFSET :offset"),
+        text(f"SELECT {colonnes_sql(src)} FROM {corps} ORDER BY {ordre(src)} LIMIT :limit OFFSET :offset"),
         {**params, 'limit': page_size, 'offset': (page - 1) * page_size}).mappings().all()
 
     return jsonify({
@@ -154,12 +182,15 @@ def exporter(onglets, source, prefixe):
 
     onglet = _onglet(onglets)
     search = (request.args.get('search') or '').strip()
+    table = request.args.get('table') or onglets[onglet][0]
     feuilles = []
     for key in onglets[onglet]:
         src = source(key)
-        corps, params = filtre(src, search)
+        # Tri et filtres de colonnes de l'ecran : feuille de la table affichee seulement
+        corps, params = filtre(src, search, _filtres() if key == table else None)
         rows = db.session.execute(
-            text(f"SELECT {colonnes_sql(src)} FROM {corps} ORDER BY {src['ordre']}"), params).all()
+            text(f"SELECT {colonnes_sql(src)} FROM {corps} ORDER BY {ordre(src) if key == table else src['ordre']}"),
+            params).all()
         feuilles.append((key, [(k, l) for _, k, l in src['colonnes']], rows))
     db.session.commit()  # liberer la transaction de lecture avant la generation
 
