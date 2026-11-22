@@ -97,7 +97,7 @@ BEGIN
     )
     INSERT INTO clean_data.equipment_serial (
         equipment_object_seq,
-        contract, mch_code, mch_name, part_no, serial_no,
+        contract, mch_code, mch_name, note, part_no, serial_no,
         vendor_no, type,                                      -- manufacturer_no non alimente (regle 2026-11-18)
         purch_price, purch_date, warr_exp,
         sup_contract, sup_mch_code,
@@ -111,6 +111,9 @@ BEGIN
         v_contract,
         o.code,                                                   -- mch_code (equnr sans zeros)
         SUBSTRING(COALESCE(o.designation, o.code), 1, 200),       -- mch_name
+        -- note = « Notes libres » : description de l'equipement (2026-11-22), IFS
+        -- remplace la description objet par celle de l'article rattache.
+        SUBSTRING(o.designation, 1, 2000),
         SUBSTRING(eq.part_no, 1, 25),
         SUBSTRING(COALESCE(eq.serial_no, o.code), 1, 50),         -- obligatoire IFS : repli sur le code
         eq.vendor_no,
@@ -161,5 +164,5 @@ alimenter avant) ou sans parent dans IH02, QUI ONT UN ARTICLE (saisie IH02, sino
 comme l''ecran Maintenance > Equipements), hors equipements archives (jest I0320/I0076)
 et leurs descendants. Un equipement sans article
 coupe la branche (ni lui ni ses descendants). Parents inseres avant enfants.
-sup_mch_code = parent direct. serial_no = sernr, a defaut le code de
+sup_mch_code = parent direct. note = description de l''equipement. serial_no = sernr, a defaut le code de
 l''equipement (obligatoire IFS).';
