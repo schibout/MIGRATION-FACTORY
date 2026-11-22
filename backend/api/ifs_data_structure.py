@@ -61,6 +61,7 @@ _PIECE = {
                  ('t.spare_id', 'spare_id', 'N° article'),
                  ('g.description', 'article_designation', 'Désignation article'),
                  ('t.qty', 'qty', 'Quantité')],
+    'table': 'equipment_object_spare',
     'recherche': ['t.equipment_object_seq', 'o.mch_name', 't.spare_id', 'g.description'],
     'cle': 't.equipment_object_seq',
     'ordre': 't.equipment_object_seq, t.spare_id, t.ctid',
@@ -75,10 +76,18 @@ _KIT = {
                  ('c.description', 'composant_designation', 'Désignation composant'),
                  ('t.spare_contract', 'spare_contract', 'Site'),
                  ('t.qty', 'qty', 'Quantité')],
+    'table': 'equipment_spare_structure',
     'recherche': ['t.spare_id', 'g.description', 't.component_spare_id', 'c.description'],
     'cle': 't.spare_id',
     'ordre': 't.spare_id, t.component_spare_id, t.ctid',
 }
+
+
+def _complete(source):
+    """Ajoute aux colonnes fixes toutes les autres colonnes de la table (choix d'affichage a l'ecran)."""
+    table = source['table']
+    fixes = [k for e, k, _ in source['colonnes'] if e.startswith('t.')]
+    return {**source, 'colonnes': source['colonnes'] + colonnes_catalogue(table, colonnes_table(table, *fixes))}
 
 
 def _source_objet(table):
@@ -132,12 +141,12 @@ def _source_controle(code):
             'ordre': 'o.rang, o.mch_code',
         }
     if code == 'piece_objet_inconnu':
-        return {**_PIECE, 'label': 'Pièce sur un objet absent',
+        return {**_complete(_PIECE), 'label': 'Pièce sur un objet absent',
                 'where': _ABSENT_OBJET.format('t.equipment_object_seq')}
     if code == 'piece_hors_catalogue':
-        return {**_PIECE, 'label': 'Pièce connectée absente de Master Part (prod IFS)', 'where': _ABSENT_CATALOGUE.format('t.spare_id')}
+        return {**_complete(_PIECE), 'label': 'Pièce connectée absente de Master Part (prod IFS)', 'where': _ABSENT_CATALOGUE.format('t.spare_id')}
     if code == 'kit_hors_catalogue':
-        return {**_KIT, 'label': 'Pièce déconnectée (kit ou composant) absente de Master Part (prod IFS)',
+        return {**_complete(_KIT), 'label': 'Pièce déconnectée (kit ou composant) absente de Master Part (prod IFS)',
                 'where': f"({_ABSENT_CATALOGUE.format('t.spare_id')} "
                          f"OR {_ABSENT_CATALOGUE.format('t.component_spare_id')})"}
     return {**_source_objet('equipment_serial'), 'label': 'Article d’objet série absent de Master Part (prod IFS)',
@@ -148,9 +157,9 @@ def _source(key):
     if key == 'synthese':
         return _source_synthese()
     if key == 'equipment_object_spare':
-        return {**_PIECE, 'label': TABLES[key]}
+        return {**_complete(_PIECE), 'label': TABLES[key]}
     if key == 'equipment_spare_structure':
-        return {**_KIT, 'label': TABLES[key]}
+        return {**_complete(_KIT), 'label': TABLES[key]}
     return _source_objet(key) if key in TABLES else _source_controle(key)
 
 

@@ -3,14 +3,20 @@ import {
     FileDownload as ExcelIcon,
     Search as SearchIcon,
     Sync as SyncIcon,
+    ViewColumn as ViewColumnIcon,
 } from '@mui/icons-material';
 import {
     Alert,
     Box,
     Button,
+    Checkbox,
     Chip,
+    Divider,
     InputAdornment,
     LinearProgress,
+    ListItemText,
+    Menu,
+    MenuItem,
     Paper,
     Tab,
     Table,
@@ -77,6 +83,12 @@ interface Props {
   noteEchec?: string;
 }
 
+// Colonnes masquées par table, mémorisées dans le navigateur (simple confort, sans enjeu)
+type Masquees = Record<string, string[]>;
+const lireMasquees = (cle: string): Masquees => {
+  try { return JSON.parse(localStorage.getItem(cle) ?? '{}') as Masquees; } catch { return {}; }
+};
+
 const nombre = (v: number) => v.toLocaleString('fr-FR');
 const formatDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : '');
 const formatCell = (v: Row[string], kind: Colonne['kind']) => {
@@ -102,6 +114,9 @@ const IfsConsultationPage: React.FC<Props> = ({
   const [searchInput, setSearchInput] = useState('');
   const [sync, setSync] = useState<SyncStatus | null>(null);
   const [exporting, setExporting] = useState(false);
+  const cleColonnes = `ifs-colonnes:${apiUrl}`;
+  const [masquees, setMasquees] = useState<Masquees>(() => lireMasquees(cleColonnes));
+  const [menuColonnes, setMenuColonnes] = useState<HTMLElement | null>(null);
   const derniereRequete = useRef(0); // une réponse lente ne doit pas écraser l'onglet affiché
 
   const load = useCallback(async () => {
@@ -188,7 +203,17 @@ const IfsConsultationPage: React.FC<Props> = ({
   };
 
   const running = sync?.status === 'running';
-  const colonnes = data?.colonnes ?? [];
+  const toutesColonnes = data?.colonnes ?? [];
+  const masqueesTable = masquees[data?.table ?? ''] ?? [];
+  const colonnes = toutesColonnes.filter((c) => !masqueesTable.includes(c.key));
+  const masquer = (cles: string[]) => {
+    if (!data) return;
+    const suivant = { ...masquees, [data.table]: cles };
+    setMasquees(suivant);
+    try { localStorage.setItem(cleColonnes, JSON.stringify(suivant)); } catch { /* stockage indisponible */ }
+  };
+  const basculer = (cle: string) =>
+    masquer(masqueesTable.includes(cle) ? masqueesTable.filter((k) => k !== cle) : [...masqueesTable, cle]);
   const tables = data?.tables ?? [];
   const consultation = onglet !== 'mode_emploi';
   const ongletActif = onglets.find((o) => o.value === onglet);
@@ -287,6 +312,29 @@ const IfsConsultationPage: React.FC<Props> = ({
         {data && (<>
           <Chip label={`${nombre(data.entites)} ${entite}`} color="primary" />
           <Chip label={`${nombre(data.total)} lignes`} />
+          <Tooltip title="Choisir les colonnes affichées (mémorisé pour cette table)">
+            <Button size="small" variant="outlined" startIcon={<ViewColumnIcon />} onClick={(e) => setMenuColonnes(e.currentTarget)}>
+              Colonnes ({colonnes.length}/{toutesColonnes.length})
+            </Button>
+          </Tooltip>
+          <Menu
+            anchorEl={menuColonnes}
+            open={Boolean(menuColonnes)}
+            onClose={() => setMenuColonnes(null)}
+            slotProps={{ paper: { sx: { maxHeight: 460 } } }}
+          >
+            <Box sx={{ display: 'flex', gap: 1, px: 2, py: 0.5 }}>
+              <Button size="small" onClick={() => masquer([])}>Tout afficher</Button>
+              <Button size="small" onClick={() => masquer(toutesColonnes.map((c) => c.key))}>Tout masquer</Button>
+            </Box>
+            <Divider />
+            {toutesColonnes.map((c) => (
+              <MenuItem key={c.key} dense onClick={() => basculer(c.key)}>
+                <Checkbox size="small" checked={!masqueesTable.includes(c.key)} sx={{ p: 0.5, mr: 1 }} />
+                <ListItemText primary={c.label} secondary={c.key} primaryTypographyProps={{ variant: 'body2' }} />
+              </MenuItem>
+            ))}
+          </Menu>
         </>)}
       </Box>
 
