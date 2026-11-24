@@ -81,16 +81,10 @@ BEGIN
         -- transcode en organisation IFS (SJ-MATC) ; non transcode -> NULL.
         SUBSTRING(public.get_transcodification('Organization',
             NULLIF(TRIM(split_part(o.resp_work_center, ' - ', 1)), '')), 1, 8),
-        sal.msgrp                                                 -- mch_loc = salle (ILOA-MSGRP)
+        NULL                                                      -- mch_loc (Salle IFS) : objets serie uniquement
     FROM tree t
     JOIN clean_data.maintenance_object o ON o.id = t.id
     LEFT JOIN clean_data.maintenance_object p ON p.id = o.parent_id
-    LEFT JOIN (
-        SELECT f.tplnr, SUBSTRING(TRIM(l.msgrp), 1, 60) AS msgrp
-        FROM raw_data.iflot f
-        JOIN raw_data.iloa l ON l.mandt = f.mandt AND l.iloan = f.iloan
-        WHERE TRIM(l.msgrp) <> ''
-    ) sal ON sal.tplnr = o.sap_key
     WHERE NOT EXISTS (
         SELECT 1
         FROM raw_data.iflot il

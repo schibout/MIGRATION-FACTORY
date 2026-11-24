@@ -133,17 +133,19 @@ BEGIN
         -- c_org_code = poste responsable (equz.gewrk, 7.MATC) transcode en SJ-MATC.
         SUBSTRING(public.get_transcodification('Organization',
             NULLIF(TRIM(split_part(o.resp_work_center, ' - ', 1)), '')), 1, 8),
-        sal.msgrp                                                 -- mch_loc = salle (ILOA-MSGRP)
+        loc.eqfnr                                                 -- mch_loc (Salle IFS) = zone de tri (ILOA-EQFNR)
     FROM eq
     JOIN clean_data.maintenance_object o ON o.id = eq.id
-    -- Salle de l'equipement : localisation (ILOA) de la periode EQUZ courante.
+    -- Zone de tri de l'equipement : localisation (ILOA) de la periode EQUZ courante.
     LEFT JOIN (
-        SELECT z.equnr, SUBSTRING(TRIM(l.msgrp), 1, 60) AS msgrp
+        SELECT z.equnr,
+               TRIM(l.eqfnr) AS eqfnr
         FROM (SELECT DISTINCT ON (equnr) mandt, equnr, iloan
               FROM raw_data.equz ORDER BY equnr, datbi DESC) z
         JOIN raw_data.iloa l ON l.mandt = z.mandt AND l.iloan = z.iloan
-        WHERE TRIM(l.msgrp) <> ''
-    ) sal ON sal.equnr = o.sap_key;
+        -- codes de la liste Salle d'IFS (UAT 2026-11-24) ; texte libre -> NULL
+        WHERE TRIM(l.eqfnr) ~ '^(M[0-9]{1,2}|Q|Y|Z)$'
+    ) loc ON loc.equnr = o.sap_key;
 
     GET DIAGNOSTICS v_count_total = ROW_COUNT;
     RAISE NOTICE 'EQUIPMENT_SERIAL alimente depuis maintenance_object : % equipements (durée %)',
