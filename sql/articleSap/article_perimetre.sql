@@ -2,10 +2,15 @@
 -- Alimentation de clean_data.article_perimetre (ecran Finance > Articles)
 -- Meme logique que clean_data.ifs_fournisseurs_perimetre (sql/supplier/01b_*) :
 -- la reference est le fichier valide par le metier (demande du 2026-11-04).
---   FICHIER     : article des fichiers valides importes (article_perimetre_validation),
+--   FICHIER     : article de magasin des fichiers valides importes (article_perimetre_validation),
 --                 qu'il existe ou non dans SAP
+--   MAINTENANCE_EQUIPEMENT, MAINTENANCE_IBAU, MAINTENANCE_ARTICLE : articles de la maintenance
+--                 (clean_data.v_article_structure, regle du 2026-11-24). Les IBAU (mara.mtart) et les
+--                 NLAG (ou absents de SAP) d'equipement des fichiers valides portent aussi ces sources, pas FICHIER
 --   SAP_NOUVEAU : article de clean_data.article_sap (Donnees SAP > Articles) cree
 --                 dans SAP (mara.ersda) a partir de la date d'arrete, absent des fichiers
+--                 et de la maintenance
+-- Une source par article, dans cet ordre de priorite.
 -- Les colonnes affichees viennent de clean_data.v_article_sap (vides pour un
 -- article absent de SAP) et des fichiers (donnees) : la table ne porte que la
 -- cle, la source et la date d'arrete.
@@ -14,14 +19,19 @@
 
 CREATE TABLE IF NOT EXISTS clean_data.article_perimetre (
     numero_article    VARCHAR     NOT NULL PRIMARY KEY,
-    source            VARCHAR(20) NOT NULL
-        CONSTRAINT ck_article_perimetre_source CHECK (source IN ('FICHIER', 'SAP_NOUVEAU')),
+    source            VARCHAR(30) NOT NULL
+        CONSTRAINT ck_article_perimetre_source CHECK (source IN ('FICHIER', 'MAINTENANCE_EQUIPEMENT', 'MAINTENANCE_IBAU', 'MAINTENANCE_ARTICLE', 'SAP_NOUVEAU')),
     date_creation_sap DATE,
     date_arrete       DATE,
     charge_le         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+-- Table deja creee avec les deux seules sources d'origine
+ALTER TABLE clean_data.article_perimetre ALTER COLUMN source TYPE VARCHAR(30);
+ALTER TABLE clean_data.article_perimetre DROP CONSTRAINT IF EXISTS ck_article_perimetre_source;
+ALTER TABLE clean_data.article_perimetre ADD CONSTRAINT ck_article_perimetre_source
+    CHECK (source IN ('FICHIER', 'MAINTENANCE_EQUIPEMENT', 'MAINTENANCE_IBAU', 'MAINTENANCE_ARTICLE', 'SAP_NOUVEAU'));
 COMMENT ON TABLE clean_data.article_perimetre IS
-    'Perimetre articles (ecran Finance > Articles) : articles de article_sap, SAP_NOUVEAU = crees dans SAP depuis la date d''arrete. Rechargee par clean_data.alimenter_article_perimetre().';
+    'Perimetre articles (ecran Finance > Articles) : FICHIER, MAINTENANCE_EQUIPEMENT, MAINTENANCE_IBAU, MAINTENANCE_ARTICLE (clean_data.v_article_structure), SAP_NOUVEAU = crees dans SAP depuis la date d''arrete. Rechargee par clean_data.alimenter_article_perimetre().';
 
 -- Articles du fichier valide par le metier (import ecran Finance > Articles),
 -- jamais alimentee par le recalcul : un article present ici est FICHIER.
@@ -50,6 +60,7 @@ DECLARE
        NULLIF(TRIM(public.get_default_value('clean_data.ifs_fournisseurs', 'date_arrete')), '')::DATE,
        DATE '2025-10-07');
    v_nb_fichier INTEGER;
+   v_nb_structure INTEGER;
    v_nb_sap INTEGER;
 BEGIN
    -- DELETE et non TRUNCATE : l'ecran lit la table pendant le calcul (cf. fournisseurs)
@@ -63,24 +74,45 @@ BEGIN
                    THEN TO_DATE(a."Date de création", 'DD/MM/YYYY') END AS creation
          FROM clean_data.article_sap a
         WHERE a."N° article" IS NOT NULL
+   ), structure AS MATERIALIZED (
+       SELECT s.numero_article, s.source
+         FROM clean_data.v_article_structure s
    )
-   SELECT val.numero_article, 'FICHIER', sap.creation, v_date_arrete
+   SELECT val.numero_article,
+          CASE WHEN m.mtart = 'IBAU' THEN 'MAINTENANCE_IBAU'
+               WHEN COALESCE(m.mtart, 'NLAG') = 'NLAG' AND s.source = 'MAINTENANCE_EQUIPEMENT' THEN s.source
+               ELSE 'FICHIER' END,
+          sap.creation, v_date_arrete
      FROM clean_data.article_perimetre_validation val
      LEFT JOIN sap USING (numero_article)
+     LEFT JOIN structure s USING (numero_article)
+     LEFT JOIN raw_data.mara m
+       ON m.mandt::text = '700'
+      AND m.matnr::text = CASE WHEN val.numero_article ~ '^[0-9]+$'
+                               THEN LPAD(val.numero_article, 18, '0')
+                               ELSE val.numero_article END
+   UNION ALL
+   SELECT s.numero_article, s.source, sap.creation, v_date_arrete
+     FROM structure s
+     LEFT JOIN sap USING (numero_article)
+    WHERE NOT EXISTS (SELECT 1 FROM clean_data.article_perimetre_validation val
+                       WHERE val.numero_article = s.numero_article)
    UNION ALL
    SELECT sap.numero_article, 'SAP_NOUVEAU', sap.creation, v_date_arrete
      FROM sap
     WHERE sap.creation >= v_date_arrete
       AND NOT EXISTS (SELECT 1 FROM clean_data.article_perimetre_validation val
-                       WHERE val.numero_article = sap.numero_article);
+                       WHERE val.numero_article = sap.numero_article)
+      AND NOT EXISTS (SELECT 1 FROM structure s WHERE s.numero_article = sap.numero_article);
 
    SELECT COUNT(*) FILTER (WHERE source = 'FICHIER'),
+          COUNT(*) FILTER (WHERE source NOT IN ('FICHIER', 'SAP_NOUVEAU')),
           COUNT(*) FILTER (WHERE source = 'SAP_NOUVEAU')
-     INTO v_nb_fichier, v_nb_sap
+     INTO v_nb_fichier, v_nb_structure, v_nb_sap
      FROM clean_data.article_perimetre;
 
-   RAISE NOTICE 'article_perimetre : % FICHIER + % SAP_NOUVEAU (crees depuis le %)',
-                v_nb_fichier, v_nb_sap, v_date_arrete;
-   RETURN v_nb_fichier + v_nb_sap;
+   RAISE NOTICE 'article_perimetre : % FICHIER + % maintenance + % SAP_NOUVEAU (crees depuis le %)',
+                v_nb_fichier, v_nb_structure, v_nb_sap, v_date_arrete;
+   RETURN v_nb_fichier + v_nb_structure + v_nb_sap;
 END;
 $function$;

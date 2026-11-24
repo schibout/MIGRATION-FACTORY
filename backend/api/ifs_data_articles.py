@@ -132,7 +132,8 @@ def _source_controle(code):
             'label': 'Fichier validé non chargé',
             'from': 'clean_data.article_perimetre p LEFT JOIN clean_data.ifs_article_maitre m '
                     f'ON {_NUMERO_MAITRE} = p.numero_article',
-            'where': "p.source = 'FICHIER' AND " + _ABSENT_CATALOGUE.format('p.numero_article'),
+            'where': 'EXISTS (SELECT 1 FROM clean_data.article_perimetre_validation v WHERE v.numero_article = p.numero_article) AND '
+                     + _ABSENT_CATALOGUE.format('p.numero_article'),
             'colonnes': [('p.numero_article', 'part_no', 'N° article'),
                          ('m.designation', 'designation', 'Désignation SAP'),
                          ('m.numero_article IS NOT NULL', 'dans_sap', 'Périmètre SAP')],

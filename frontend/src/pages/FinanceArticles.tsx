@@ -55,12 +55,21 @@ interface SyncStatus {
   finished_at?: string | null;
 }
 
+// Provenance de chaque article (sql/articleSap/article_perimetre.sql), par priorité
+const SOURCES: { k: string; l: string; couleur: 'default' | 'success' | 'info' | 'secondary' | 'warning' }[] = [
+  { k: 'FICHIER', l: 'Article de magasin des fichiers validés', couleur: 'default' },
+  { k: 'MAINTENANCE_EQUIPEMENT', l: 'Maintenance : article d’équipement (objet série)', couleur: 'success' },
+  { k: 'MAINTENANCE_IBAU', l: 'Maintenance : IBAU (structure et fichiers validés)', couleur: 'info' },
+  { k: 'MAINTENANCE_ARTICLE', l: 'Maintenance : autre article de la structure', couleur: 'secondary' },
+  { k: 'SAP_NOUVEAU', l: 'Créé dans SAP depuis la date d’arrêté', couleur: 'warning' },
+];
+
 interface Colonne { key: string; label: string }
 
 interface ListResponse {
   rows: Row[];
   total: number;
-  stats: { total: number; fichier: number; sap_nouveau: number; date_arrete: string | null };
+  stats: { total: number; sources: Record<string, number>; date_arrete: string | null };
   colonnes: Colonne[];
   sync: SyncStatus | null;
 }
@@ -110,17 +119,19 @@ const MODE_EMPLOI: { titre: string; items: [string, string][] }[] = [
   {
     titre: 'Actions en haut de page',
     items: [
-      ["Date d'arrêté", "Date de référence du périmètre : un article créé dans SAP à partir de cette date et absent des fichiers validés est ajouté en SAP_NOUVEAU. Elle est prise en compte au prochain Calculer ou Synchroniser SAP."],
-      ['Calculer', "Relit les tables SAP déjà extraites (MARA, MAKT, MARC…), met à jour les colonnes SAP de chaque N° article, puis recalcule le périmètre. N'appelle pas SAP. Ne touche ni au fichier validé, ni au groupe comptable, ni au groupe d'achat. Ne recharge pas les tables IFS."],
+      ["Date d'arrêté", "Date de référence du périmètre : un article créé dans SAP à partir de cette date et absent des fichiers validés et de la maintenance est ajouté en SAP_NOUVEAU. Elle est prise en compte au prochain Calculer ou Synchroniser SAP."],
+      ['Calculer', "Relit les tables SAP déjà extraites (MARA, MAKT, MARC…), met à jour les colonnes SAP de chaque N° article, puis recalcule le périmètre : fichiers validés, articles des équipements, IBAU et autres articles de la structure, nouveaux articles SAP. N'appelle pas SAP. Ne touche ni au fichier validé, ni au groupe comptable, ni au groupe d'achat. Ne recharge pas les tables IFS."],
       ['Synchroniser SAP', "Ré-extrait d'abord les tables articles de SAP, rejoue les modules de chargement articles (qui recalculent aussi part_catalog et les autres tables IFS articles), puis recalcule le périmètre. C'est l'action la plus longue : compter 15 à 40 minutes."],
-      ['Importer le fichier validé', "Ouvre l'assistant d'import : choix du fichier, association des colonnes (N° article obligatoire), contrôle, puis import. Les articles du fichier passent en FICHIER et le périmètre est recalculé. Une option permet de vider d'abord les fichiers déjà importés."],
+      ['Importer le fichier validé', "Ouvre l'assistant d'import : choix du fichier, association des colonnes (N° article obligatoire), contrôle, puis import. Le périmètre est ensuite recalculé : les articles de magasin sont en FICHIER, les IBAU et les NLAG d'équipement dans leur source de maintenance. Une option permet de vider d'abord les fichiers déjà importés."],
       ['Exporter Excel', 'Télécharge un classeur des articles affichés, avec tous les filtres et le tri en cours, et toutes les colonnes.'],
     ],
   },
   {
     titre: 'Pastilles de synthèse',
     items: [
-      ['Articles · FICHIER · SAP_NOUVEAU', "Nombre total d'articles du périmètre, ceux venant des fichiers validés, et ceux ajoutés depuis SAP après la date d'arrêté."],
+      ['Articles et sources', "Nombre total d'articles du périmètre, puis par source. Chaque article n'a qu'une source, dans l'ordre : FICHIER, MAINTENANCE_EQUIPEMENT, MAINTENANCE_IBAU ou MAINTENANCE_ARTICLE, SAP_NOUVEAU."],
+      ['MAINTENANCE_EQUIPEMENT', "Article d'un équipement actif de la structure, absent des fichiers, ou NLAG d'équipement des fichiers : nécessaire pour charger l'équipement en objet série. Un équipement sans article n'apparaît pas ici : le lier d'abord à un article dans Maintenance > Équipements."],
+      ['MAINTENANCE_IBAU · MAINTENANCE_ARTICLE', "IBAU de la structure ou des fichiers validés ; article de toute autre catégorie présent dans une nomenclature active de la structure et absent des fichiers. Un libellé saisi à la main à la place d'un numéro n'est pas repris."],
       ["Date d'arrêté du chargement", 'Date utilisée par le dernier calcul. Elle peut différer de la date saisie tant que le calcul n’est pas relancé.'],
     ],
   },
@@ -152,7 +163,7 @@ const MODE_EMPLOI: { titre: string; items: [string, string][] }[] = [
       ['Croix sur une condition', 'Retire cette condition.'],
       ['Tout effacer', 'Retire la vue, les types, la destination et les conditions. Ne retire ni la recherche ni le filtre Source.'],
       ['Recherche', 'Cherche dans le N° article, la description et l’ancien numéro. Valider avec la touche Entrée.'],
-      ['Source', 'Limite la liste aux articles FICHIER ou SAP_NOUVEAU.'],
+      ['Source', 'Limite la liste aux articles d’une provenance.'],
     ],
   },
   {
@@ -336,7 +347,7 @@ const FinanceArticles: React.FC = () => {
           Articles
         </Typography>
         <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Tooltip title="Les articles créés dans SAP à partir de cette date, absents des fichiers validés, sont ajoutés au périmètre (SAP_NOUVEAU)">
+          <Tooltip title="Les articles créés dans SAP à partir de cette date, absents des fichiers validés et de la maintenance, sont ajoutés au périmètre (SAP_NOUVEAU)">
             <TextField
               size="small"
               type="date"
@@ -360,7 +371,7 @@ const FinanceArticles: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Assistant d'import (comme l'import générique) : mapping des colonnes du fichier validé, N° article obligatoire, autres colonnes conservées ; les articles du fichier passent en FICHIER puis le périmètre est recalculé avec la date de validation">
+          <Tooltip title="Assistant d'import (comme l'import générique) : mapping des colonnes du fichier validé, N° article obligatoire, autres colonnes conservées ; le périmètre est ensuite recalculé avec la date de validation">
             <span>
               <Button variant="outlined" startIcon={<ImportIcon />} onClick={() => navigate('/finance/articles/import')} disabled={running}>
                 Importer le fichier validé
@@ -405,17 +416,19 @@ const FinanceArticles: React.FC = () => {
       {onglet === 0 && (
       <>
       <Alert severity="info" sx={{ mb: 2 }}>
-        FICHIER = article des fichiers validés par le métier (la référence, même absent de SAP : ses colonnes SAP restent
-        vides) ; SAP_NOUVEAU = article de Données SAP &gt; Articles créé dans SAP (date de création MARA) à partir de la
-        date d'arrêté et absent des fichiers validés. Les colonnes « Fichier · … » viennent des fichiers importés.
+        FICHIER = article de magasin des fichiers validés par le métier (la référence, même absent de SAP : ses colonnes SAP restent
+        vides) ; MAINTENANCE_EQUIPEMENT = article d'un équipement actif ; MAINTENANCE_IBAU = IBAU de la structure et des
+        fichiers ; MAINTENANCE_ARTICLE = autres articles de la structure absents des fichiers ; SAP_NOUVEAU = article de Données SAP &gt; Articles créé dans SAP (date de création MARA) à partir de la
+        date d'arrêté et absent des autres sources. Les colonnes « Fichier · … » viennent des fichiers importés.
         Groupe comptable et groupe d'achat viennent toujours du fichier, jamais de SAP : vides si le fichier ne les renseigne pas.
       </Alert>
 
       {stats && (
         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
           <Chip label={`${stats.total.toLocaleString('fr-FR')} articles`} color="primary" />
-          <Chip label={`${stats.fichier.toLocaleString('fr-FR')} FICHIER`} />
-          <Chip label={`${stats.sap_nouveau.toLocaleString('fr-FR')} SAP_NOUVEAU`} color="warning" />
+          {SOURCES.map((s) => (
+            <Tooltip key={s.k} title={s.l}><Chip label={`${nb(stats.sources[s.k] ?? 0)} ${s.k}`} color={s.couleur} /></Tooltip>
+          ))}
           {stats.date_arrete && <Chip label={`Date d'arrêté du chargement : ${formatDate(stats.date_arrete)}`} variant="outlined" />}
         </Box>
       )}
@@ -595,8 +608,7 @@ const FinanceArticles: React.FC = () => {
           <InputLabel>Source</InputLabel>
           <Select label="Source" value={source} onChange={(e) => { setPage(0); setSource(e.target.value); }}>
             <MenuItem value="">Toutes</MenuItem>
-            <MenuItem value="FICHIER">FICHIER</MenuItem>
-            <MenuItem value="SAP_NOUVEAU">SAP_NOUVEAU</MenuItem>
+            {SOURCES.map((s) => <MenuItem key={s.k} value={s.k}>{s.k}</MenuItem>)}
           </Select>
         </FormControl>
       </Box>
@@ -622,7 +634,7 @@ const FinanceArticles: React.FC = () => {
                   {colonnes.map((c) => (
                     <TableCell key={c.key} sx={{ whiteSpace: 'nowrap', maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {c.key === 'source' && r.source
-                        ? <Chip size="small" label={String(r.source)} color={r.source === 'SAP_NOUVEAU' ? 'warning' : 'default'} />
+                        ? <Chip size="small" label={String(r.source)} color={SOURCES.find((s) => s.k === r.source)?.couleur ?? 'default'} />
                         : String(r[c.key] ?? '')}
                     </TableCell>
                   ))}

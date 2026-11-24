@@ -12,6 +12,16 @@ _spec.loader.exec_module(finance)
 ART_VUES, _art_condition, _art_conditions = finance.ART_VUES, finance._art_condition, finance._art_conditions
 
 
+def test_sources_identiques_a_la_contrainte_sql():
+    import re
+    sql = open(os.path.join(os.path.dirname(__file__), '..', '..', 'sql', 'articleSap', 'article_perimetre.sql'),
+               encoding='utf-8').read()
+    contraintes = re.findall(r"CHECK \(source IN \(([^)]*)\)", sql)
+    assert len(contraintes) == 2
+    for c in contraintes:
+        assert tuple(re.findall(r"'(\w+)'", c)) == finance.ART_SOURCES
+
+
 def test_valeur_libre_toujours_en_parametre():
     injection = "x' OR 1=1 --"
     sql, params = _art_condition({'champ': 'type', 'op': 'est', 'valeur': injection}, 'c0')

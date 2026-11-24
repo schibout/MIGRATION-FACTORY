@@ -1502,6 +1502,8 @@ def import_fournisseurs_valides():
 # ---------------------------------------------------------------------------
 
 ART_CLE = 'N° article'
+# Provenance de chaque article (sql/articleSap/article_perimetre.sql)
+ART_SOURCES = ('FICHIER', 'MAINTENANCE_EQUIPEMENT', 'MAINTENANCE_IBAU', 'MAINTENANCE_ARTICLE', 'SAP_NOUVEAU')
 ART_RECHERCHE = (ART_CLE, 'Description article', 'Ancien numéro article')
 # Prefixe des colonnes du fichier valide (article_perimetre_validation.donnees)
 ART_FICHIER = 'Fichier · '
@@ -1623,7 +1625,7 @@ def _art_from(conditions=True, facettes=True):
         where.append('(p.numero_article ILIKE :s OR '
                      + ' OR '.join(f'v."{c}" ILIKE :s' for c in ART_RECHERCHE) + ')')
         params['s'] = f'%{search}%'
-    if request.args.get('source') in ('FICHIER', 'SAP_NOUVEAU'):
+    if request.args.get('source') in ART_SOURCES:
         where.append('p.source = :source')
         params['source'] = request.args['source']
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
@@ -1654,7 +1656,7 @@ def _art_charger(date_arrete):
 @finance_blueprint.route('/articles', methods=['GET'])
 @jwt_required()
 def list_articles():
-    """Filtres search (N°, description, ancien numero), source (FICHIER | SAP_NOUVEAU)."""
+    """Filtres search (N°, description, ancien numero), source (ART_SOURCES)."""
     page = max(int(request.args.get('page', 1)), 1)
     page_size = min(max(int(request.args.get('page_size', 50)), 1), 500)
     colonnes, cparams = _art_colonnes()
@@ -1665,17 +1667,19 @@ def list_articles():
         {**params, **cparams, 'limit': page_size, 'offset': (page - 1) * page_size}).all()
     total = db.session.execute(text(f'SELECT count(*) {sql_from}'), params).scalar()
     stats = db.session.execute(text(
-        "SELECT count(*) AS total, count(*) FILTER (WHERE source = 'FICHIER') AS fichier, "
-        "count(*) FILTER (WHERE source = 'SAP_NOUVEAU') AS sap_nouveau, "
+        "SELECT count(*) AS total, "
         "COALESCE(max(date_arrete), NULLIF(TRIM(public.get_default_value("
         "'clean_data.article_perimetre', 'date_arrete')), '')::date) AS date_arrete "
         "FROM clean_data.article_perimetre")).mappings().one()
+    par_source = dict(db.session.execute(text(
+        'SELECT source, count(*) FROM clean_data.article_perimetre GROUP BY 1')).all())
     return jsonify({
         'rows': [{c: _json(v) for (c, _, _), v in zip(colonnes, r)} for r in rows],
         'total': total,
         'page': page,
         'page_size': page_size,
-        'stats': {k: _json(v) for k, v in stats.items()},
+        'stats': {**{k: _json(v) for k, v in stats.items()},
+                  'sources': {s: par_source.get(s, 0) for s in ART_SOURCES}},
         'colonnes': [{'key': c, 'label': l, 'kind': 'text'} for c, l, _ in colonnes],
         'sync': _read_status('articles_perimetre'),
     })
@@ -1916,7 +1920,7 @@ def executer_import_articles():
     vide = bool(data.get('truncate'))
     devenus_fichier = db.session.execute(text(
         "SELECT count(*) FROM clean_data.article_perimetre "
-        "WHERE source = 'SAP_NOUVEAU' AND numero_article = ANY(:k)"), {'k': list(articles)}).scalar()
+        "WHERE source <> 'FICHIER' AND numero_article = ANY(:k)"), {'k': list(articles)}).scalar()
     if vide:
         # DELETE et non TRUNCATE : l'ecran lit la table pendant l'import (cf. fournisseurs)
         db.session.execute(text(f'DELETE FROM {ART_IMPORT_TABLE}'))
@@ -1947,7 +1951,7 @@ def executer_import_articles():
     return jsonify({
         'success': True,
         'message': (('Table vidée avant import. ' if vide else '')
-                    + f"{len(articles)} articles importés ({devenus_fichier} SAP_NOUVEAU passés en FICHIER). "
+                    + f"{len(articles)} articles importés ({devenus_fichier} déjà présents dans une autre source). "
                     f"Date d'arrêté fixée au {date_validation:%d/%m/%Y}, recalcul du périmètre lancé."),
         'successCount': len(articles),
         'insertedCount': len(articles) - existants,

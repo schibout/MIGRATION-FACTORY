@@ -2,7 +2,8 @@
 -- clean_data.ifs_article_maitre (societe STJN + articles de maintenance, cf.
 -- sql/inventory/alimenter_ifs_article.sql) : lancer alimenter_ifs_article()
 -- avant. S'y ajoutent les articles des fichiers valides presents dans MARA
--- (clean_data.article_perimetre_validation, ecran Finance > Articles).
+-- (clean_data.article_perimetre_validation, ecran Finance > Articles) et les articles
+-- de la maintenance (clean_data.v_article_structure), meme supprimes dans SAP.
 --
 -- Grain : une ligne par article (~35 700). Site = division STJN ouverte dans
 -- marc, SJ (9200) prioritaire sur CS (9000) ; un article sans division STJN
@@ -52,7 +53,9 @@ BEGIN
           FROM (SELECT numero_article FROM clean_data.ifs_article_maitre
                 UNION
                 SELECT m.matnr::text
-                  FROM clean_data.article_perimetre_validation v
+                  FROM (SELECT numero_article FROM clean_data.article_perimetre_validation
+                        UNION
+                        SELECT numero_article FROM clean_data.v_article_structure) v
                   JOIN raw_data.mara m
                     ON m.mandt::text = '700' AND LTRIM(m.matnr::text, '0') = v.numero_article) a
           LEFT JOIN raw_data.marc c
@@ -128,15 +131,19 @@ BEGIN
     JOIN raw_data.mara m ON m.mandt::text = '700' AND m.matnr::text = s.matnr
     LEFT JOIN raw_data.makt k
       ON k.mandt::text = '700' AND k.matnr = m.matnr AND k.spras::text = 'F'
-    LEFT JOIN raw_data.marc c
-      ON c.mandt::text = '700' AND c.matnr = m.matnr AND c.werks::text = s.werks
+    -- Article absent de la division du site (pieces de l'ancienne APSJ) : donnees de 2200
+    LEFT JOIN LATERAL (
+        SELECT x.* FROM raw_data.marc x
+         WHERE x.mandt::text = '700' AND x.matnr = m.matnr AND x.werks::text IN (s.werks, '2200')
+         ORDER BY (x.werks::text = s.werks) DESC LIMIT 1
+    ) c ON TRUE
     LEFT JOIN raw_data.t001w w ON w.mandt::text = '700' AND w.werks::text = s.werks
     LEFT JOIN raw_data.t023t t023
       ON t023.mandt::text = '700' AND t023.matkl = m.matkl AND t023.spras::text = 'F'
     LEFT JOIN raw_data.t134t t134
       ON t134.mandt::text = '700' AND t134.mtart = m.mtart AND t134.spras::text = 'F'
     LEFT JOIN raw_data.mbew ev
-      ON ev.mandt::text = '700' AND ev.matnr = m.matnr AND ev.bwkey::text = s.werks
+      ON ev.mandt::text = '700' AND ev.matnr = m.matnr AND ev.bwkey::text = COALESCE(c.werks::text, s.werks)
      AND (ev.lvorm IS NULL OR ev.lvorm::text = '')
     LEFT JOIN raw_data.t025t t025
       ON t025.mandt::text = '700' AND t025.bklas = ev.bklas AND t025.spras::text = 'F'

@@ -76,8 +76,9 @@ BEGIN
         -- Designation SAP (makt, langue F), a defaut celle du fichier valide
         SUBSTRING(COALESCE(
             NULLIF(TRIM(k.maktx), ''),
-            TRIM(val.donnees->>'Description article'),
-            ''
+            NULLIF(TRIM(val.donnees->>'Description article'), ''),
+            -- article d'equipement a creer (liste des liens) : pas de designation connue
+            t.part_no
         ), 1, 200) AS description,
         -- Unite de base SAP (mara.meins) transcodee UOM ; article absent de SAP :
         -- unite du fichier ; repli '*' (unite generique IFS), jamais l'unite SAP
