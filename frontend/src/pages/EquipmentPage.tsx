@@ -6,6 +6,7 @@ import {
   Close as CloseIcon,
   Edit as EditIcon,
   FileDownload as ExcelIcon,
+  FileUpload as ImportIcon,
   Inventory2 as ArticleIcon,
   OpenInNew as OpenIcon,
   Search as SearchIcon,
@@ -76,6 +77,7 @@ const FIELDS: Field[] = [
   { col: 'article_lie', lib: 'article_lie_description', label: 'Article', theme: 'Article', mono: true, tri: true },
   { col: 'article', lib: 'article_description', label: 'N° article', theme: 'Article', mono: true, tri: true },
   { col: 'construction', lib: 'construction_description', label: 'Type de construction', theme: 'Article', mono: true, tri: true },
+  { col: 'commentaire', label: 'Commentaire (incohérences article)', theme: 'Article', long: true, tri: true },
   { col: 'position', label: 'Position', theme: 'Structure', tri: true },
   { col: 'parent_code', lib: 'parent_designation', label: 'Parent', theme: 'Structure', mono: true, tri: true },
   { col: 'division', lib: 'division_description', label: 'Division', theme: 'Organisation', tri: true },
@@ -89,7 +91,7 @@ const FIELDS: Field[] = [
 const THEMES = Array.from(new Set(FIELDS.map((f) => f.theme)));
 
 const PRESETS: Record<string, string[]> = {
-  Essentiel: ['numero', 'description', 'article_lie', 'numero_serie', 'position', 'parent_code', 'poste_travail', 'zone_tri', 'statuts'],
+  Essentiel: ['numero', 'description', 'article_lie', 'commentaire', 'numero_serie', 'position', 'parent_code', 'poste_travail', 'zone_tri', 'statuts'],
   Structure: ['numero', 'description', 'position', 'parent_code', 'division', 'poste_travail', 'zone_tri'],
   Technique: ['numero', 'description', 'categorie', 'fabricant', 'modele', 'numero_serie', 'numero_inventaire'],
   Tout: FIELDS.map((f) => f.col),
@@ -511,6 +513,9 @@ const EquipmentPage: React.FC = () => {
   const [colsAnchor, setColsAnchor] = useState<HTMLElement | null>(null);
   const [fiche, setFiche] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [bilan, setBilan] = useState<{ lignes: number; mis_a_jour: number; articles_hors_sap: string[];
+    rejets: { ligne: number; equipement: string; motif: string }[] } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 350);
@@ -578,6 +583,24 @@ const EquipmentPage: React.FC = () => {
     }
   };
 
+  const importer = async (fichier: File) => {
+    const form = new FormData();
+    form.append('file', fichier, fichier.name);
+    try {
+      setImporting(true);
+      setBilan(null);
+      const res = await api.post('/maintenance/equipment-browser/import-liens', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setBilan(res.data);
+      charger();
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "L'import du fichier de liens a échoué.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const champs = FIELDS.filter((f) => colonnes.includes(f.col));
   const facette = (k: FacetKey) => facets?.facettes[k];
   const positions = useMemo(() => {
@@ -609,6 +632,13 @@ const EquipmentPage: React.FC = () => {
         </Stack>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<StructureIcon />} onClick={() => navigate('/maintenance/ih02')}>Structure IH02</Button>
+          <Tooltip title="Fichier Excel « Lien équipement - article » : N° équipement, N° article, N° série (cellule vide = inchangée)">
+            <Button variant="outlined" component="label" startIcon={<ImportIcon />} disabled={importing}>
+              {importing ? 'Import…' : 'Importer liens article / série'}
+              <input hidden type="file" accept=".xlsx"
+                onChange={(ev) => { const f = ev.target.files?.[0]; ev.target.value = ''; if (f) importer(f); }} />
+            </Button>
+          </Tooltip>
           <Button variant="contained" startIcon={<ExcelIcon />} onClick={exporter} disabled={exporting}>
             {exporting ? 'Export…' : 'Excel'}
           </Button>
@@ -616,6 +646,18 @@ const EquipmentPage: React.FC = () => {
       </Stack>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {bilan && (
+        <Alert severity={bilan.rejets.length ? 'warning' : 'success'} sx={{ mb: 2 }} onClose={() => setBilan(null)}>
+          {nb(bilan.mis_a_jour)} équipement(s) mis à jour sur {nb(bilan.lignes)} ligne(s) du fichier.
+          {bilan.articles_hors_sap.length > 0 && (
+            <div>Articles absents de SAP, enregistrés tels quels : {bilan.articles_hors_sap.join(', ')}</div>
+          )}
+          {bilan.rejets.slice(0, 20).map((r) => (
+            <div key={`${r.ligne}-${r.motif}`}>Ligne {r.ligne}{r.equipement ? ` (${r.equipement})` : ''} : {r.motif}</div>
+          ))}
+          {bilan.rejets.length > 20 && <div>… et {bilan.rejets.length - 20} autre(s) rejet(s)</div>}
+        </Alert>
+      )}
 
       {/* Répartition */}
       {facets && (

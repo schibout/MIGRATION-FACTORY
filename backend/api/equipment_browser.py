@@ -13,6 +13,7 @@ api/maintenance_hierarchy.py (/maintenance/equipment...).
   GET /api/v1/maintenance/equipment-browser/<equnr>/structure  chemin dans l'arbre + fils
   PUT /api/v1/maintenance/equipment-browser/<equnr>/numero-serie  saisie (maintenance_object)
   PUT /api/v1/maintenance/equipment-browser/<equnr>/article       saisie (maintenance_object)
+  POST /api/v1/maintenance/equipment-browser/import-liens       fichier Excel equipement / article / serie
 
 Filtres : search, une cle par facette (valeurs separees par des virgules, VIDE =
 valeur absente), anomalie (cle d'ANOMALIES ou 'toutes').
@@ -83,14 +84,17 @@ WITH z AS MATERIALIZED (
                       AND NOT EXISTS (SELECT 1 FROM raw_data.marc c WHERE c.mandt = '700' AND c.matnr = m.matnr
                                          AND COALESCE(c.lvorm, '') = ''))
                   THEN 'SUPPRIME_DIVISION'
-                ELSE 'HORS_PERIMETRE' END AS statut
+                ELSE 'HORS_PERIMETRE' END AS statut,
+           mp.part_no IS NOT NULL AS master_part
       FROM refs r
+      -- Reference IFS des articles (extraction Master Part prod), comme Structure IFS et Finance
+      LEFT JOIN (SELECT DISTINCT part_no FROM raw_data.mater_part_prod) mp ON mp.part_no = r.k
       LEFT JOIN clean_data.article_sap a ON a."N° article" = r.k
       -- egalite simple (jointure par hachage) : un IN (k, lpad(k)) faisait 10 s
       LEFT JOIN raw_data.mara m ON m.mandt = '700' AND ltrim(m.matnr, '0') = r.k
       LEFT JOIN raw_data.makt mk ON mk.mandt = '700' AND mk.matnr = m.matnr AND mk.spras = 'F'
      ORDER BY r.k, mk.maktx NULLS LAST
-), base AS MATERIALIZED (
+), base0 AS MATERIALIZED (
     SELECT e.equnr AS id,
            LTRIM(e.equnr, '0') AS numero,
            COALESCE(d.eqktx, 'Équipement ' || LTRIM(e.equnr, '0')) AS description,
@@ -111,6 +115,7 @@ WITH z AS MATERIALIZED (
            COALESCE(NULLIF(LTRIM(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '0'), ''), z.construction) AS article_lie,
            CASE WHEN NULLIF(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '') IS NOT NULL THEN ra.description ELSE rc.description END AS article_lie_description,
            CASE WHEN NULLIF(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '') IS NOT NULL THEN ra.statut ELSE rc.statut END AS article_lie_statut,
+           CASE WHEN NULLIF(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '') IS NOT NULL THEN ra.master_part ELSE rc.master_part END AS article_lie_master_part,
            CASE WHEN NULLIF(TRIM(COALESCE(mo.mo_matnr, e.matnr)), '') IS NOT NULL THEN 'ARTICLE'
                 WHEN z.construction IS NOT NULL THEN 'ARTICLE'
                 ELSE 'AUCUN' END AS lien_article,
@@ -145,6 +150,17 @@ WITH z AS MATERIALIZED (
       LEFT JOIN raw_data.iloa lo ON lo.mandt = '700' AND lo.iloan = z.iloan
       LEFT JOIN raw_data.crtx ct ON ct.mandt = '700' AND ct.objty = 'A' AND ct.objid = z.gewrk AND ct.spras = 'F'
      WHERE e.mandt = '700'
+), base AS (
+    -- Incoherences de l'article exporte vers IFS (n° article, sinon type de construction) :
+    -- la valeur saisie ou importee est conservee, le commentaire la signale.
+    SELECT b.*, 'Article ' || b.article_lie || ' : ' || NULLIF(concat_ws(', ',
+               CASE b.article_lie_statut
+                    WHEN 'INEXISTANT' THEN 'inexistant dans SAP'
+                    WHEN 'SUPPRIME' THEN 'supprimé dans SAP'
+                    WHEN 'SUPPRIME_DIVISION' THEN 'supprimé en division'
+                    WHEN 'HORS_PERIMETRE' THEN 'hors périmètre' END,
+               CASE WHEN NOT b.article_lie_master_part THEN 'absent de Master Part (prod IFS)' END), '') AS commentaire
+      FROM base0 b
 )
 """
 
@@ -187,6 +203,8 @@ ANOMALIES = {
     'article_inconnu': ('Article hors catalogue (supprimé, inexistant…)',
                         "(article IS NOT NULL AND article_statut <> 'CATALOGUE') "
                         "OR (construction IS NOT NULL AND construction_statut <> 'CATALOGUE')"),
+    'absent_master_part': ('Article absent de Master Part (prod IFS)',
+                           'article_lie IS NOT NULL AND NOT article_lie_master_part'),
     'sans_description_fr': ('Sans description FR', "langue_description IS DISTINCT FROM 'F'"),
     'inactif': ('Inactif ou marqué pour suppression', "statuts && ARRAY['I0320', 'I0076']::varchar[]"),
 }
@@ -196,7 +214,7 @@ EN_FIN = "(CASE WHEN tsup THEN 2 WHEN position = 'SANS_PARENT' THEN 1 ELSE 0 END
 
 COLONNES = ['numero', 'description', 'article_lie', 'article', 'construction', 'categorie', 'type_objet',
             'position', 'parent_code', 'division', 'poste_travail', 'zone_tri', 'fabricant', 'modele',
-            'numero_serie', 'numero_inventaire']
+            'numero_serie', 'numero_inventaire', 'commentaire']
 
 
 def _statut_libelles():
@@ -347,7 +365,7 @@ def export_excel():
                ('zone_tri', 'Zone de tri'),
                ('statuts', 'Statuts SAP'), ('fabricant', 'Fabricant'), ('modele', 'Modèle'),
                ('numero_serie', 'N° de série'), ('numero_inventaire', "N° d'inventaire"),
-               ('anomalies', 'Anomalies')]
+               ('anomalies', 'Anomalies'), ('commentaire', 'Commentaire')]
     lignes = []
     for r in rows:
         d = dict(r)
@@ -460,3 +478,75 @@ def modifier_article(equnr):
         return jsonify({'error': "Équipement absent de la structure IH02 : article non modifiable"}), 404
     db.session.commit()
     return jsonify({'article': matnr.lstrip('0') or None})
+
+
+@equipment_browser_blueprint.route('/import-liens', methods=['POST'])
+@jwt_required()
+def importer_liens():
+    """Fichier Excel « Lien équipement - article » (N° équipement, N° article, N° série) :
+    meme ecriture que les saisies unitaires (attributes.matnr / sernr, updated_by).
+    Cellule vide = valeur inchangee. Un article absent de SAP (a creer dans IFS) est
+    accepte tel quel et signale."""
+    from flask_jwt_extended import get_jwt_identity
+    from openpyxl import load_workbook
+
+    from api.maintenance_snapshots import active_job_conflict
+    conflit = active_job_conflict()
+    if conflit:
+        return conflit
+    fichier = request.files.get('file')
+    if not fichier:
+        return jsonify({'error': 'Fichier manquant'}), 400
+    try:
+        lignes = list(load_workbook(fichier, read_only=True, data_only=True).active.iter_rows(values_only=True))
+    except Exception:
+        return jsonify({'error': 'Fichier Excel illisible (.xlsx attendu)'}), 400
+
+    def cellule(v):
+        if isinstance(v, float) and v.is_integer():
+            v = int(v)
+        return '' if v is None else str(v).strip()
+
+    entete = [cellule(v).lower() for v in (lignes[0] if lignes else [])]
+    def col(mot, defaut):
+        return next((i for i, h in enumerate(entete) if mot in h), defaut)
+    i_eq, i_art, i_ser = col('quipement', 0), col('article', 1), col('rie', 2)
+
+    rejets, liens = [], {}
+    for n, r in enumerate(lignes[1:], start=2):
+        r = list(r) + [None] * 3
+        eq, art, ser = cellule(r[i_eq]), cellule(r[i_art]).upper(), cellule(r[i_ser])
+        if not eq and not art and not ser:
+            continue
+        if not eq:
+            rejets.append({'ligne': n, 'equipement': '', 'motif': 'N° équipement vide'})
+            continue
+        if len(ser) > 18:
+            rejets.append({'ligne': n, 'equipement': eq, 'motif': f'N° de série « {ser} » > 18 caractères : ignoré'})
+            ser = ''
+        liens[eq.zfill(18) if eq.isdigit() else eq] = (n, eq, art, ser)
+
+    sap = {m.lstrip('0') for m in db.session.execute(text(
+        "SELECT matnr FROM raw_data.mara WHERE mandt = '700' AND matnr = ANY(:a)"),
+        {'a': sorted({a.zfill(18) if a.isdigit() else a for _, _, a, _ in liens.values() if a})}).scalars()}
+    hors_sap = sorted({a for _, _, a, _ in liens.values() if a and a.lstrip('0') not in sap})
+    cles = list(liens)
+    maj = set(db.session.execute(text("""
+        UPDATE clean_data.maintenance_object o
+           SET attributes = COALESCE(o.attributes, '{}'::jsonb)
+                 || CASE WHEN l.art <> '' THEN jsonb_build_object('matnr', CASE WHEN l.art ~ '^[0-9]+$'
+                         THEN lpad(l.art, 18, '0') ELSE l.art END) ELSE '{}'::jsonb END
+                 || CASE WHEN l.ser <> '' THEN jsonb_build_object('sernr', l.ser) ELSE '{}'::jsonb END,
+               updated_by = :u, updated_at = now()
+          FROM unnest(CAST(:k AS text[]), CAST(:a AS text[]), CAST(:s AS text[])) AS l(cle, art, ser)
+         WHERE o.object_type = 'EQUIPMENT' AND o.is_active AND o.sap_key = l.cle
+           AND (l.art <> '' OR l.ser <> '')
+        RETURNING o.sap_key"""),
+        {'u': str(get_jwt_identity()), 'k': cles, 'a': [liens[c][2] for c in cles],
+         's': [liens[c][3] for c in cles]}).scalars())
+    db.session.commit()
+    rejets += [{'ligne': liens[c][0], 'equipement': liens[c][1],
+                'motif': 'Équipement absent de la structure IH02' if liens[c][2] or liens[c][3]
+                else 'Ni article ni n° de série'} for c in cles if c not in maj]
+    return jsonify({'lignes': len(liens), 'mis_a_jour': len(maj), 'articles_hors_sap': hors_sap,
+                    'rejets': sorted(rejets, key=lambda x: x['ligne'])})
