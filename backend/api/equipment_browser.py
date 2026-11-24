@@ -18,6 +18,8 @@ api/maintenance_hierarchy.py (/maintenance/equipment...).
 Filtres : search, une cle par facette (valeurs separees par des virgules, VIDE =
 valeur absente), anomalie (cle d'ANOMALIES ou 'toutes').
 """
+from itertools import islice
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import text
@@ -34,6 +36,7 @@ def _sans_jit():
     db.session.execute(text('SET LOCAL jit = off'))
 
 VIDE = '__vide__'
+MAX_LIGNES_IMPORT = 50000
 
 # MATERIALIZED : sans lui PostgreSQL deplie les CTE dans la requete et choisit des
 # boucles imbriquees sur les tables SAP (liste 15 s, facettes 105 s).
@@ -498,9 +501,13 @@ def importer_liens():
     if not fichier:
         return jsonify({'error': 'Fichier manquant'}), 400
     try:
-        lignes = list(load_workbook(fichier, read_only=True, data_only=True).active.iter_rows(values_only=True))
+        # Lecture bornee : un .xlsx compresse peut deplier un nombre de lignes demesure
+        lignes = list(islice(load_workbook(fichier, read_only=True, data_only=True).active
+                             .iter_rows(values_only=True), MAX_LIGNES_IMPORT + 2))
     except Exception:
         return jsonify({'error': 'Fichier Excel illisible (.xlsx attendu)'}), 400
+    if len(lignes) > MAX_LIGNES_IMPORT + 1:
+        return jsonify({'error': f'Fichier limité à {MAX_LIGNES_IMPORT} lignes'}), 400
 
     def cellule(v):
         if isinstance(v, float) and v.is_integer():
@@ -508,9 +515,11 @@ def importer_liens():
         return '' if v is None else str(v).strip()
 
     entete = [cellule(v).lower() for v in (lignes[0] if lignes else [])]
-    def col(mot, defaut):
-        return next((i for i, h in enumerate(entete) if mot in h), defaut)
-    i_eq, i_art, i_ser = col('quipement', 0), col('article', 1), col('rie', 2)
+    # Une seule colonne par en-tete attendu : sinon refus plutot qu'une ecriture dans le mauvais champ
+    trouves = {mot: [i for i, h in enumerate(entete) if mot in h] for mot in ('équipement', 'article', 'série')}
+    if any(len(v) != 1 for v in trouves.values()):
+        return jsonify({'error': 'En-têtes attendus, une fois chacun : N° équipement, N° article, N° série'}), 400
+    i_eq, i_art, i_ser = (trouves[m][0] for m in ('équipement', 'article', 'série'))
 
     rejets, liens = [], {}
     for n, r in enumerate(lignes[1:], start=2):
@@ -521,6 +530,9 @@ def importer_liens():
         if not eq:
             rejets.append({'ligne': n, 'equipement': '', 'motif': 'N° équipement vide'})
             continue
+        if len(art) > 18:
+            rejets.append({'ligne': n, 'equipement': eq, 'motif': f'N° article « {art} » > 18 caractères : ignoré'})
+            art = ''
         if len(ser) > 18:
             rejets.append({'ligne': n, 'equipement': eq, 'motif': f'N° de série « {ser} » > 18 caractères : ignoré'})
             ser = ''
