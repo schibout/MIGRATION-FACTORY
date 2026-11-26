@@ -187,6 +187,11 @@ class InventoryPartETL:
                     cursor.execute("SELECT clean_data.alimenter_sales_part()")
                     logger.info("Fonction alimenter_sales_part exécutée avec succès")
                     self._add_log_message("✅ sales_part alimenté avec succès", "success")
+
+                    # Alignement sur l'UAT IFS (sql/inventory/aligner_articles_uat.sql)
+                    cursor.execute("SELECT * FROM clean_data.aligner_articles_uat()")
+                    for regle, table, lignes in cursor.fetchall():
+                        self._add_log_message(f"✅ Alignement UAT {table} : {regle} ({lignes} lignes)", "success")
                     
                     # Capturer les notices
                     for notice in conn_psycopg2.notices:
@@ -263,6 +268,10 @@ class InventoryPartETL:
                     logger.info("Appel de la fonction clean_data.alimenter_sales_part")
                     conn.execute(text("SELECT clean_data.alimenter_sales_part()"))
                     logger.info("Fonction alimenter_sales_part exécutée avec succès")
+
+                    # Alignement sur l'UAT IFS (sql/inventory/aligner_articles_uat.sql)
+                    for regle, table, lignes in conn.execute(text("SELECT * FROM clean_data.aligner_articles_uat()")):
+                        logger.info(f"Alignement UAT {table} : {regle} ({lignes} lignes)")
                     
                     # Capturer les notices PostgreSQL
                     self._capture_postgres_notices(conn)

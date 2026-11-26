@@ -180,10 +180,14 @@ BEGIN
         -- pour la meme cle (contract, part_no).
         mara.mandt = '700'
         -- Types de service exclus : DIEN (prestation de service) et NLAG
-        -- (article non stocke). Meme filtre que alimenter_inventory_part() ;
+        -- (article non stocke), sauf NLAG d'objet serie : celui-ci a une
+        -- inventory_part (EXISTS plus bas). Meme filtre que alimenter_inventory_part() ;
         -- l'ancienne liste blanche des types stockables ('ERSA', 'HIBE', 'ROH',
         -- 'HALB', 'FERT') ecartait tous les autres types SAP.
-        AND mara.mtart NOT IN ('DIEN', 'NLAG')
+        AND (mara.mtart NOT IN ('DIEN', 'NLAG')
+             -- IN et non EXISTS correle : sous-plan hache (equipment_serial sans index)
+             OR (mara.mtart = 'NLAG' AND SUBSTRING(TRIM(LTRIM(mara.matnr, '0')), 1, 25)
+                    IN (SELECT es.part_no FROM clean_data.equipment_serial es)))
         -- Sites Trimet : meme perimetre que alimenter_inventory_part().
         -- 9100 retire : il retombait sur le contract 'SJ' par defaut et
         -- fabriquait des cles (SJ, part_no) en doublon de celles du site 9200.

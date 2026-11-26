@@ -94,6 +94,8 @@ files=(
     "alimenter_purchase_part.sql"
     "alimenter_purchase_part_supplier.sql"
     "alimenter_sales_part.sql"
+    # Alignement UAT, apres tous les chargements (appele aussi par le module Article SAP)
+    "aligner_articles_uat.sql"
 )
 
 # Exécution de chaque fichier

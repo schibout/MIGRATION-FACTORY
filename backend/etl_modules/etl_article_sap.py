@@ -150,6 +150,12 @@ class ArticleSapETL:
                         f"✅ part_catalog alimentee avec succes : {records} lignes", "success"
                     )
 
+                    # part_catalog vient d'etre recharge : realigner sur l'UAT IFS
+                    # (sql/inventory/aligner_articles_uat.sql, aussi appele par le module Articles)
+                    cursor.execute("SELECT * FROM clean_data.aligner_articles_uat()")
+                    for regle, table, lignes in cursor.fetchall():
+                        self._add_log_message(f"✅ Alignement UAT {table} : {regle} ({lignes} lignes)", "success")
+
                     # Traductions anglaises (makt langue E) des articles de part_catalog
                     cursor.execute("SELECT clean_data.alimenter_part_catalog_language()")
                     self._add_log_message(

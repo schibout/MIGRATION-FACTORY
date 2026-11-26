@@ -247,9 +247,13 @@ BEGIN
         AND mara.lvorm IS NULL
         AND TRIM(mara.matnr) != ''
         -- Types de service exclus de l'article d'inventaire : DIEN (prestation de
-        -- service) et NLAG (article non stocke). Meme filtre dans
+        -- service) et NLAG (article non stocke), sauf NLAG porte par un objet
+        -- serie (UAT 2026-11-27 : 12/12 ont une inventory part). Meme filtre dans
         -- alimenter_inventory_part_planning().
-        AND mara.mtart NOT IN ('DIEN', 'NLAG')
+        AND (mara.mtart NOT IN ('DIEN', 'NLAG')
+             -- IN et non EXISTS correle : sous-plan hache (equipment_serial sans index)
+             OR (mara.mtart = 'NLAG' AND SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25)
+                    IN (SELECT es.part_no FROM clean_data.equipment_serial es)))
         -- Garantir que l'article existe dans part_catalog (table de base) avant insertion
         AND EXISTS (
             SELECT 1 FROM clean_data.part_catalog pc

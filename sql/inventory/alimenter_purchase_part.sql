@@ -214,11 +214,15 @@ BEGIN
         ON mara.matnr = makt.matnr
         AND makt.mandt = '700'
         AND makt.spras = 'F'
-    INNER JOIN raw_data.marc marc
+    -- LEFT JOIN : les IBAU n'ont aucune vue MARC et ont une purchase part en UAT
+    -- (2026-11-27, regle IFS « kits et composants dans Purchasing ») : site SJ,
+    -- INVENTORY_FLAG = N (CASE plus haut)
+    LEFT JOIN raw_data.marc marc
         ON mara.matnr = marc.matnr
         AND marc.mandt = '700'
     WHERE
-        marc.werks IN ('9200', '9000', '2200')
+        (marc.werks IN ('9200', '9000', '2200')
+         OR (marc.matnr IS NULL AND mara.mtart = 'IBAU'))
         -- Perimetre = TOUT le catalogue (demande explicite du 2026-09-18) : chaque
         -- article de part_catalog doit exister en purchase_part sur chacun de ses
         -- sites. Plus de filtre sur le type d'approvisionnement (marc.beskz F/X
