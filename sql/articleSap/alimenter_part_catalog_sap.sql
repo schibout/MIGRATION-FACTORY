@@ -40,11 +40,15 @@ BEGIN
         m.matnr,
         m.meins
     FROM clean_data.article_perimetre p
-    LEFT JOIN raw_data.mara m
+    -- JOIN (2026-11-27) : seuls les articles presents dans SAP et non marques pour
+    -- suppression partent vers IFS ; les absents de SAP sont des articles PHL
+    -- (autre equipe, autres fichiers). Meme regle que clean_data.v_article_perimetre_sap.
+    JOIN raw_data.mara m
       ON m.mandt::text = '700'
      AND m.matnr::text = CASE WHEN p.numero_article ~ '^[0-9]+$'
                               THEN LPAD(p.numero_article, 18, '0')
-                              ELSE p.numero_article END;
+                              ELSE p.numero_article END
+    WHERE m.lvorm IS NULL OR TRIM(m.lvorm) = '';
 
     TRUNCATE TABLE clean_data.part_catalog RESTART IDENTITY;
     RAISE NOTICE 'Table part_catalog videe';

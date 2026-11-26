@@ -180,7 +180,8 @@ BEGIN
     INNER JOIN raw_data.eine eine 
         ON eina.infnr = eine.infnr
         AND eine.mandt = '700'
-    INNER JOIN clean_data.ifs_article_maitre ifs
+    -- Perimetre Finance > Articles present dans SAP (sql/articleSap/v_article_perimetre_sap.sql)
+    INNER JOIN clean_data.v_article_perimetre_sap ifs
         ON eina.matnr::text = ifs.numero_article
     -- Mapping LIFNR SAP -> identifiant IFS (600xxx) depuis supplier_info_general
     -- (demande explicite) et non depuis le fichier de sélection : c'est la table

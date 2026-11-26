@@ -146,10 +146,12 @@ class InventoryPartETL:
                     logger.info("Fonction alimenter_ifs_article exécutée avec succès")
                     self._add_log_message("✅ ifs_article_maitre alimenté avec succès", "success")
                     
-                    # Alimenter part_catalog
+                    # Alimenter part_catalog : meme fonction que le module Article SAP
+                    # (perimetre Finance > Articles present dans SAP), pour que inventory_part
+                    # et purchase_part, filtres sur part_catalog, voient tout le perimetre
                     logger.info("Appel de la fonction clean_data.alimenter_part_catalog")
                     self._add_log_message("Alimentation de part_catalog...", "info")
-                    cursor.execute("SELECT clean_data.alimenter_part_catalog()")
+                    cursor.execute("SELECT clean_data.alimenter_part_catalog_sap()")
                     logger.info("Fonction alimenter_part_catalog exécutée avec succès")
                     self._add_log_message("✅ part_catalog alimenté avec succès", "success")
                     
@@ -241,7 +243,7 @@ class InventoryPartETL:
                     
                     # Alimenter part_catalog
                     logger.info("Appel de la fonction clean_data.alimenter_part_catalog")
-                    conn.execute(text("SELECT clean_data.alimenter_part_catalog()"))
+                    conn.execute(text("SELECT clean_data.alimenter_part_catalog_sap()"))
                     logger.info("Fonction alimenter_part_catalog exécutée avec succès")
                     
                     # Alimenter inventory_part

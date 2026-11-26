@@ -227,7 +227,8 @@ BEGIN
                              FROM clean_data.article_perimetre_validation val
                             WHERE val.numero_article = SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25)), 1, 5) as part_cost_group_id
         
-    FROM clean_data.ifs_article_maitre ifs
+    -- Perimetre Finance > Articles present dans SAP, hors suppression (sql/articleSap/v_article_perimetre_sap.sql)
+    FROM clean_data.v_article_perimetre_sap ifs
     INNER JOIN raw_data.mara mara 
         ON mara.matnr::text = ifs.numero_article
         AND mara.mandt = '700'

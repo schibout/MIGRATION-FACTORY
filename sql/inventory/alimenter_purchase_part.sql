@@ -205,7 +205,8 @@ BEGIN
         public.get_default_value('clean_data.purchase_part', 'objid') as objid,
         -- STD_NAME_ID: vide
         public.get_default_value('clean_data.purchase_part', 'std_name_id') as std_name_id
-    FROM clean_data.ifs_article_maitre ifs
+    -- Perimetre Finance > Articles present dans SAP, hors suppression (sql/articleSap/v_article_perimetre_sap.sql)
+    FROM clean_data.v_article_perimetre_sap ifs
     INNER JOIN raw_data.mara mara
         ON mara.matnr::text = ifs.numero_article
         AND mara.mandt = '700'
