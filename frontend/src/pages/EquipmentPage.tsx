@@ -47,7 +47,7 @@ import {
   Typography,
 } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { couleur, FacetteAuto, FacetValue, nb, RepartitionBar, telecharger } from '../components/data/facettes';
 import api from '../services/api';
 
@@ -499,7 +499,9 @@ const EquipmentPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
   const [filters, setFilters] = useState<Filters>({});
-  const [anomalie, setAnomalie] = useState('');
+  // Filtre d'anomalie transmis par l'URL (cartes de Maintenance > Contrôles)
+  const [searchParams] = useSearchParams();
+  const [anomalie, setAnomalie] = useState(searchParams.get('anomalie') || '');
   const [facets, setFacets] = useState<FacetsResponse | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);

@@ -12,6 +12,7 @@ import {
   PlaylistAddCheck as OperationIcon,
   NotificationImportant as AvisIcon,
   Update as DerniereExecIcon,
+  FactCheck as ControleIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -24,6 +25,14 @@ const cards = [
     icon: EquipmentIcon,
     color: 'warning' as const,
     tag: 'SAP',
+  },
+  {
+    title: 'Contrôles maintenance',
+    description: 'Ensemble des contrôles de cohérence : équipements sans article… Chaque contrôle ouvre la liste à corriger et à exporter.',
+    path: '/maintenance/controles',
+    icon: ControleIcon,
+    color: 'error' as const,
+    tag: 'CONTRÔLES',
   },
   {
     title: 'Hiérarchie technique & Équipements',

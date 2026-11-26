@@ -80,6 +80,7 @@ import MaintenanceOrderDetailPage from './pages/MaintenanceOrderDetailPage';
 import MaintenanceNotificationsPage from './pages/MaintenanceNotificationsPage';
 import MaintenanceNotificationDetailPage from './pages/MaintenanceNotificationDetailPage';
 import MaintenancePlansDerniereExecPage from './pages/MaintenancePlansDerniereExecPage';
+import MaintenanceControlesPage from './pages/MaintenanceControlesPage';
 import MaintenancePeToolDetailPage from './pages/MaintenancePeToolDetailPage';
 import ModeEmploi from './pages/ModeEmploi';
 import Parametres from './pages/Parametres';
@@ -272,6 +273,7 @@ function App() {
           />
           <Route path="export/structure-maintenance" element={<ExportStructureMaintenance />} />
           <Route path="maintenance" element={<MaintenancePage />} />
+          <Route path="maintenance/controles" element={<MaintenanceControlesPage />} />
           <Route path="maintenance/hierarchy" element={<MaintenanceHierarchyPage />} />
           <Route path="maintenance/equipment" element={<EquipmentPage />} />
           <Route path="maintenance/articles" element={<MaintenanceArticlesPage />} />
