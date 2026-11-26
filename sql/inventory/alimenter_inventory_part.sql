@@ -74,7 +74,9 @@ BEGIN
         
         -- Classification depuis SAP
         abc_class,
-        hsn_sac_code
+        hsn_sac_code,
+        accounting_group,
+        part_product_family
     )
     SELECT DISTINCT
         -- CONTRACT: 9200 = SJ (Saint Jean), 9000 = CS (Castel)
@@ -209,7 +211,16 @@ BEGIN
         SUBSTRING(marc.maabc, 1, 1) as abc_class,
         
         -- HSN_SAC_CODE: MARC.MOWNR
-        SUBSTRING(marc.mownr, 1, 20) as hsn_sac_code
+        SUBSTRING(marc.mownr, 1, 20) as hsn_sac_code,
+
+        -- ACCOUNTING_GROUP, PART_PRODUCT_FAMILY : valeurs du fichier complete par la
+        -- finance (Finance > Articles), jamais SAP ; vides tant que non renseignees
+        SUBSTRING((SELECT NULLIF(TRIM(val.donnees->>'Groupe comptable'), '')
+                             FROM clean_data.article_perimetre_validation val
+                            WHERE val.numero_article = SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25)), 1, 5) as accounting_group,
+        SUBSTRING((SELECT NULLIF(TRIM(val.donnees->>'Famille de produits'), '')
+                             FROM clean_data.article_perimetre_validation val
+                            WHERE val.numero_article = SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25)), 1, 5) as part_product_family
         
     FROM clean_data.ifs_article_maitre ifs
     INNER JOIN raw_data.mara mara 

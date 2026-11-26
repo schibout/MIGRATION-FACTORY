@@ -2,9 +2,11 @@ import {
     Add as AddIcon,
     Calculate as CalculIcon,
     Close as CloseIcon,
+    DeleteSweep as DeleteIcon,
     FileDownload as ExcelIcon,
     FileUpload as ImportIcon,
     Inventory2 as ArticleIcon,
+    AccountTree as StructureIcon,
     Search as SearchIcon,
     Sync as SyncIcon,
 } from '@mui/icons-material';
@@ -121,8 +123,10 @@ const MODE_EMPLOI: { titre: string; items: [string, string][] }[] = [
     items: [
       ["Date d'arrêté", "Date de référence du périmètre : un article créé dans SAP à partir de cette date et absent des fichiers validés et de la maintenance est ajouté en SAP_NOUVEAU. Elle est prise en compte au prochain Calculer ou Synchroniser SAP."],
       ['Calculer', "Relit les tables SAP déjà extraites (MARA, MAKT, MARC…), met à jour les colonnes SAP de chaque N° article, puis recalcule le périmètre : fichiers validés, articles des équipements, IBAU et autres articles de la structure, nouveaux articles SAP. N'appelle pas SAP. Ne touche ni au fichier validé, ni au groupe comptable, ni au groupe d'achat. Ne recharge pas les tables IFS."],
+      ['Charger la structure', "Ajoute au périmètre les articles de la maintenance qui n'y sont pas encore, sans rien supprimer : articles des équipements actifs liés à un article, et pièces des nomenclatures placées sous les équipements et les postes techniques. Chaque N° article n'est présent qu'une fois ; un article déjà là garde sa source. Un équipement sans article n'ajoute rien : le lier d'abord à un article dans Maintenance > Équipements. À relancer après une modification de la structure ou des liens équipement - article."],
       ['Synchroniser SAP', "Ré-extrait d'abord les tables articles de SAP, rejoue les modules de chargement articles (qui recalculent aussi part_catalog et les autres tables IFS articles), puis recalcule le périmètre. C'est l'action la plus longue : compter 15 à 40 minutes."],
       ['Importer le fichier validé', "Ouvre l'assistant d'import : choix du fichier, association des colonnes (N° article obligatoire), contrôle, puis import. Le périmètre est ensuite recalculé : les articles de magasin sont en FICHIER, les IBAU et les NLAG d'équipement dans leur source de maintenance. Une option permet de vider d'abord les fichiers déjà importés."],
+      ['Fichier à compléter', "Télécharge les articles affichés avec les seules colonnes utiles à la finance : groupe comptable, groupe d'achat et famille de produits. Une fois complété, l'importer par « Importer le fichier validé » : une case vide garde la valeur déjà enregistrée. Ces trois valeurs partent vers IFS au prochain chargement des articles."],
       ['Exporter Excel', 'Télécharge un classeur des articles affichés, avec tous les filtres et le tri en cours, et toutes les colonnes.'],
     ],
   },
@@ -182,6 +186,7 @@ const FinanceArticles: React.FC = () => {
   const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [search, setSearch] = useState('');
@@ -268,7 +273,7 @@ const FinanceArticles: React.FC = () => {
     return () => clearInterval(timer);
   }, [sync?.status, load, chargerDestinations]);
 
-  const handleSync = async (src: 'sap' | 'mf') => {
+  const handleSync = async (src: 'sap' | 'mf' | 'structure') => {
     try {
       setError(null);
       const res = await api.post<SyncStatus>('/finance/articles/sync', { source: src, date_arrete: dateArrete || null });
@@ -279,12 +284,28 @@ const FinanceArticles: React.FC = () => {
     }
   };
 
-  const handleExport = async () => {
+  const handleVider = async () => {
+    if (!window.confirm(
+      'Vider la table des articles ?\n\nLe périmètre et les fichiers validés importés seront supprimés '
+      + '(les fichiers sont d\'abord copiés dans une sauvegarde). Il faudra réimporter le fichier validé puis Calculer.',
+    )) return;
+    try {
+      setError(null);
+      const res = await api.post<{ message: string }>('/finance/articles/vider');
+      setInfo(res.data.message);
+      load();
+      chargerDestinations();
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? 'Impossible de vider la table');
+    }
+  };
+
+  const handleExport = async (modele?: string) => {
     try {
       setExporting(true);
       setError(null);
       const res = await api.get('/finance/articles/export.xlsx', {
-        params: { ...filtres, sort: sort || undefined, dir },
+        params: { ...filtres, sort: sort || undefined, dir, modele },
         responseType: 'blob',
       });
       const match = /filename="?([^";]+)"?/.exec(res.headers['content-disposition'] ?? '');
@@ -364,6 +385,13 @@ const FinanceArticles: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
+          <Tooltip title="Ajoute au périmètre, sans rien supprimer, les articles de la maintenance qui n'y sont pas encore : articles des équipements actifs liés à un article, et pièces des nomenclatures sous les équipements et les postes techniques. Un article n'est jamais ajouté deux fois. N'appelle pas SAP">
+            <span>
+              <Button variant="outlined" startIcon={<StructureIcon />} onClick={() => handleSync('structure')} disabled={running}>
+                Charger la structure
+              </Button>
+            </span>
+          </Tooltip>
           <Tooltip title="Ré-extrait de SAP les tables articles (MARA, MAKT, MARC…), rejoue les modules ETL articles comme l'écran Données SAP > Articles, puis recalcule le périmètre">
             <span>
               <Button variant="contained" startIcon={<SyncIcon />} onClick={() => handleSync('sap')} disabled={running}>
@@ -380,8 +408,22 @@ const FinanceArticles: React.FC = () => {
           </Tooltip>
           <Tooltip title="Classeur Excel des articles filtrés (recherche, source), toutes colonnes">
             <span>
-              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={handleExport} disabled={exporting || !data?.total}>
+              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={() => handleExport()} disabled={exporting || !data?.total}>
                 {exporting ? 'Export…' : 'Exporter Excel'}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="Classeur des articles filtrés à envoyer à la finance : N° article, description, source, catégorie, puis groupe comptable, groupe d'achat et famille de produits à compléter. Le fichier complété se réimporte tel quel">
+            <span>
+              <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={() => handleExport('finance')} disabled={exporting || !data?.total}>
+                Fichier à compléter
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="Supprime le périmètre (article_perimetre) et les fichiers validés importés (article_perimetre_validation, copiés d'abord dans backup_article_perimetre). Ne touche pas aux articles SAP">
+            <span>
+              <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleVider} disabled={running}>
+                Vider la table
               </Button>
             </span>
           </Tooltip>
@@ -450,6 +492,7 @@ const FinanceArticles: React.FC = () => {
         </Alert>
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {info && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>{info}</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 1.5, mb: 2 }}>
         {DESTS.map((d) => {

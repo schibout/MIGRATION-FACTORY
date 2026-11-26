@@ -1514,6 +1514,9 @@ ART_GROUPES = {
     "Groupe d'achat": "val.donnees ->> 'Groupe d''achat'",
     "Groupe d'achat Description": "val.donnees ->> 'Groupe d''achat Description'",
 }
+# Colonnes completees par la finance, envoyees a IFS par sql/inventory/ :
+# inventory_part.accounting_group, purchase_part.stat_grp, inventory_part.part_product_family
+ART_FINANCE = ('Groupe comptable', "Groupe d'achat", 'Famille de produits')
 # Colonnes de destination IFS (clean_data.v_article_destination_ifs), hors cibles d'import
 ART_COLONNES_DEST = [
     ('catalogue', 'Catalogue', "CASE WHEN d.catalogue THEN 'Oui' ELSE 'Non' END"),
@@ -1721,6 +1724,12 @@ def export_articles_excel():
     from openpyxl import Workbook
 
     colonnes, cparams = _art_colonnes()
+    if request.args.get('modele') == 'finance':
+        # Fichier a completer par la finance : en-tetes = cibles de l'import, reimportable tel quel
+        garder = (ART_CLE, 'Description article', 'source', 'Catégorie article', 'Catégorie article Description')
+        colonnes = ([c for c in colonnes if c[0] in garder]
+                    + [(c, c, f"val.donnees ->> '{c.replace(chr(39), chr(39) * 2)}'") for c in ART_FINANCE])
+        cparams = {}
     sql_from, params = _art_from()
     rows = db.session.execute(
         text(f'SELECT {", ".join(e for _, _, e in colonnes)} {sql_from} {_art_ordre(colonnes)}'),
@@ -1743,7 +1752,8 @@ def start_art_sync():
     """{"source": "sap"|"mf", "date_arrete": "YYYY-MM-DD"} ; 'sap' = extraction des
     tables articles + modules ETL articles (comme Donnees SAP > Articles) puis
     recalcul du perimetre ; 'mf' = sans appeler SAP, article_sap relue dans les tables SAP
-    deja extraites (raw_data), puis recalcul du perimetre."""
+    deja extraites (raw_data), puis recalcul du perimetre ; 'structure' = sans appeler SAP ni
+    recalculer : ajoute les articles de la maintenance absents du perimetre."""
     from api.sap_articles import ARTICLE_SAP_TABLES, _charger_modules
 
     saisie = (request.get_json(silent=True) or {}).get('date_arrete') or None
@@ -1751,6 +1761,13 @@ def start_art_sync():
         date_arrete = date.fromisoformat(saisie) if saisie else None
     except (TypeError, ValueError):
         return jsonify({'error': f"Date d'arrêté invalide : {saisie}"}), 400
+    if (request.get_json(silent=True) or {}).get('source') == 'structure':
+        def ajouter(conn):
+            conn.execute(text('SELECT clean_data.alimenter_article_sap()'))
+            conn.execute(text('SELECT clean_data.charger_article_structure()'))
+            # meme compteur que Calculer : l'ecran affiche « N articles charges »
+            return conn.execute(text('SELECT count(*) FROM clean_data.article_perimetre')).scalar()
+        return _start_sync('articles_perimetre', [], 'articles de la structure', ajouter, extraire=False)
     charger = _art_charger(date_arrete)
     if _sync_source() == 'sap':
         def load(conn):
@@ -1762,6 +1779,27 @@ def start_art_sync():
         conn.execute(text('SELECT clean_data.alimenter_article_sap()'))
         return charger(conn)
     return _start_sync('articles_perimetre', [], 'articles depuis les tables SAP', recalculer, extraire=False)
+
+
+@finance_blueprint.route('/articles/vider', methods=['POST'])
+@jwt_required()
+def vider_articles():
+    """Vide article_perimetre et article_perimetre_validation (fichiers valides, copies
+    d'abord dans backup_article_perimetre) via clean_data.sp_vider_article_perimetre."""
+    current = _read_status('articles_perimetre')
+    if current and current.get('status') == 'running':
+        return jsonify({'error': 'Un calcul est deja en cours, reessayer a la fin.'}), 409
+    nb = db.session.execute(text(
+        'SELECT (SELECT count(*) FROM clean_data.article_perimetre) AS perimetre, '
+        '(SELECT count(*) FROM clean_data.article_perimetre_validation) AS fichier')).mappings().one()
+    db.session.execute(text('CALL clean_data.sp_vider_article_perimetre(TRUE)'))
+    copie = db.session.execute(text(
+        "SELECT max(table_name) FROM information_schema.tables "
+        "WHERE table_schema = 'backup_article_perimetre'")).scalar()
+    db.session.commit()
+    logger.info(f"Finance articles videe par {get_jwt_identity()} : {dict(nb)}, copie {copie}")
+    return jsonify({'message': f"{nb['perimetre']} articles du périmètre et {nb['fichier']} lignes de fichiers "
+                               f"validés supprimés (copie : backup_article_perimetre.{copie})."})
 
 
 # Import du fichier valide (page /finance/articles/import) : memes etapes et memes
@@ -1871,6 +1909,7 @@ def suggerer_mapping_articles():
                'isPrimaryKey': c == ART_IMPORT_CLE, 'constraints': ['PRIMARY KEY'] if c == ART_IMPORT_CLE else []}
               for c, _, _ in _art_colonnes()[0]
               if c != 'source' and c not in {k for k, _, _ in ART_COLONNES_DEST} and not c.startswith(ART_FICHIER)]
+    cibles += [{**cibles[-1], 'name': c} for c in ART_FINANCE if c not in {x['name'] for x in cibles}]
     mappings = suggest_mapping(fichier['columns'], cibles)
 
     if not any(m['target'] == ART_IMPORT_CLE for m in mappings):

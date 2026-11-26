@@ -116,3 +116,32 @@ BEGIN
    RETURN v_nb_fichier + v_nb_structure + v_nb_sap;
 END;
 $function$;
+
+-- Bouton « Charger la structure » (ecran Finance > Articles) : ajoute au perimetre, sans rien
+-- supprimer, les articles de la maintenance qui n'y sont pas encore (clean_data.v_article_structure :
+-- articles des equipements actifs lies a un article, pieces des nomenclatures sous les equipements
+-- et les postes techniques). Une ligne par n° article (cle primaire), n° toujours renseigne.
+-- Un article deja present garde sa source, sauf SAP_NOUVEAU qui prend la source de maintenance
+-- (meme priorite que alimenter_article_perimetre). Retourne le nombre d'articles ajoutes ou reclasses.
+-- Prerequis : alimenter_article_sap() pour les caracteristiques SAP des articles ajoutes.
+CREATE OR REPLACE FUNCTION clean_data.charger_article_structure()
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+   v_nb INTEGER;
+BEGIN
+   INSERT INTO clean_data.article_perimetre (numero_article, source, date_creation_sap, date_arrete)
+   SELECT s.numero_article, s.source,
+          CASE WHEN a."Date de création" ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'
+               THEN TO_DATE(a."Date de création", 'DD/MM/YYYY') END,
+          (SELECT MAX(date_arrete) FROM clean_data.article_perimetre)
+     FROM clean_data.v_article_structure s
+     LEFT JOIN clean_data.article_sap a ON a."N° article" = s.numero_article
+   ON CONFLICT (numero_article) DO UPDATE SET source = EXCLUDED.source
+    WHERE clean_data.article_perimetre.source = 'SAP_NOUVEAU';
+   GET DIAGNOSTICS v_nb = ROW_COUNT;
+   RAISE NOTICE 'article_perimetre : % articles de la maintenance ajoutes', v_nb;
+   RETURN v_nb;
+END;
+$function$;

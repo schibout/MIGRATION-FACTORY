@@ -103,8 +103,12 @@ BEGIN
         public.get_default_value('clean_data.purchase_part', 'note_id')::numeric as note_id,
         -- QC_CODE: vide
         public.get_default_value('clean_data.purchase_part', 'qc_code') as qc_code,
-        -- STAT_GRP: vide
-        public.get_default_value('clean_data.purchase_part', 'stat_grp') as stat_grp,
+        -- STAT_GRP (Groupe d'achat IFS) : fichier complete par la finance
+        -- (Finance > Articles), a defaut la valeur par defaut de l'ecran
+        COALESCE(SUBSTRING((SELECT NULLIF(TRIM(val.donnees->>'Groupe d''achat'), '')
+                             FROM clean_data.article_perimetre_validation val
+                            WHERE val.numero_article = SUBSTRING(TRIM(LTRIM(ifs.numero_article, '0')), 1, 25)), 1, 6),
+                 public.get_default_value('clean_data.purchase_part', 'stat_grp')) as stat_grp,
         -- CLOSE_CODE: Automatic (libellé IFS de Y)
         public.get_default_value('clean_data.purchase_part', 'close_code') as close_code,
         -- CLOSE_CODE_DB: Y
