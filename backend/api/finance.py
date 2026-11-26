@@ -1502,6 +1502,9 @@ def import_fournisseurs_valides():
 # ---------------------------------------------------------------------------
 
 ART_CLE = 'N° article'
+# Article absent de la production IFS (extraction Master Part prod chargee dans raw_data.mater_part_prod).
+# IN (sous-requete) et non EXISTS : sous-plan hache, la table n'a pas d'index
+ART_ABSENT_PROD = 'p.numero_article NOT IN (SELECT part_no FROM raw_data.mater_part_prod WHERE part_no IS NOT NULL)'
 # Provenance de chaque article (sql/articleSap/article_perimetre.sql)
 ART_SOURCES = ('FICHIER', 'MAINTENANCE_EQUIPEMENT', 'MAINTENANCE_IBAU', 'MAINTENANCE_ARTICLE', 'SAP_NOUVEAU')
 ART_RECHERCHE = (ART_CLE, 'Description article', 'Ancien numéro article')
@@ -1515,8 +1518,10 @@ ART_GROUPES = {
     "Groupe d'achat Description": "val.donnees ->> 'Groupe d''achat Description'",
 }
 # Colonnes completees par la finance, envoyees a IFS par sql/inventory/ :
-# inventory_part.accounting_group, purchase_part.stat_grp, inventory_part.part_product_family
-ART_FINANCE = ('Groupe comptable', "Groupe d'achat", 'Famille de produits')
+# inventory_part.accounting_group, purchase_part.stat_grp, inventory_part.part_cost_group_id,
+# inventory_part.part_product_family (les descriptions restent dans le fichier, pour lecture)
+ART_FINANCE = ('Groupe comptable', 'Groupe comptable Description', "Groupe d'achat", "Groupe d'achat Description",
+               'Groupe de coûts', 'Groupe de coûts Description', 'Famille de produits')
 # Colonnes de destination IFS (clean_data.v_article_destination_ifs), hors cibles d'import
 ART_COLONNES_DEST = [
     ('catalogue', 'Catalogue', "CASE WHEN d.catalogue THEN 'Oui' ELSE 'Non' END"),
@@ -1525,6 +1530,17 @@ ART_COLONNES_DEST = [
     ('piece_detachee', 'Pièce détachée',
      "CASE d.piece_detachee WHEN 'RATTACHEE' THEN 'Rattachée' WHEN 'DECONNECTEE' THEN 'Déconnectée' ELSE 'Non' END"),
     ('en_nomenclature', 'Nomenclature', "CASE WHEN d.en_nomenclature THEN 'Oui' ELSE 'Non' END"),
+    ('absent_prod', 'Absent de la prod IFS', f"CASE WHEN {ART_ABSENT_PROD} THEN 'Oui' ELSE 'Non' END"),
+    # Article absent de SAP : vient de PHL (raw_data.phl_article) s'il y figure
+    ('origine', 'Origine', """CASE WHEN v."N° article" IS NOT NULL THEN 'SAP' WHEN p.numero_article IN """
+                           """(SELECT TRIM("N. ARTICLE") FROM raw_data.phl_article) THEN 'PHL' ELSE 'Inconnue' END"""),
+    # Presence dans les tables IFS chargees (sql/inventory/) ; IN = sous-plan hache
+    ('article_stock', 'Article stock', "CASE WHEN p.numero_article IN (SELECT part_no FROM clean_data.inventory_part) "
+                                       "THEN 'Oui' ELSE 'Non' END"),
+    ('article_achat', 'Article achat', "CASE WHEN p.numero_article IN (SELECT part_no FROM clean_data.purchase_part) "
+                                       "THEN 'Oui' ELSE 'Non' END"),
+    ('article_vente', 'Article vente', "CASE WHEN p.numero_article IN (SELECT catalog_no FROM clean_data.sales_part) "
+                                       "THEN 'Oui' ELSE 'Non' END"),
 ]
 # Filtre avancé : liste blanche des champs, les valeurs libres passent en parametres
 ART_DEST = {
@@ -1535,7 +1551,8 @@ ART_DEST = {
     'rattachee': "d.piece_detachee = 'RATTACHEE'",
     'deconnectee': "d.piece_detachee = 'DECONNECTEE'",
 }
-ART_OUI_NON = {'stock': 'd.avec_stock', 'magasin': 'd.en_magasin', 'nomenclature': 'd.en_nomenclature'}
+ART_OUI_NON = {'stock': 'd.avec_stock', 'magasin': 'd.en_magasin', 'nomenclature': 'd.en_nomenclature',
+               'absent_prod': f'({ART_ABSENT_PROD})'}
 ART_TEXTE = {'type': 'd.type_sap', 'fichier': 'd.fichier'}
 ART_MAX_CONDITIONS = 20
 ART_TRI_NUMERIQUE = {'Qté en stock', "Délai d'achat", 'Point de commande'}
@@ -1726,7 +1743,8 @@ def export_articles_excel():
     colonnes, cparams = _art_colonnes()
     if request.args.get('modele') == 'finance':
         # Fichier a completer par la finance : en-tetes = cibles de l'import, reimportable tel quel
-        garder = (ART_CLE, 'Description article', 'source', 'Catégorie article', 'Catégorie article Description')
+        garder = (ART_CLE, 'Description article', 'source', 'absent_prod', 'origine', 'Catégorie article',
+                  'Catégorie article Description', 'article_stock', 'article_achat', 'article_vente')
         colonnes = ([c for c in colonnes if c[0] in garder]
                     + [(c, c, f"val.donnees ->> '{c.replace(chr(39), chr(39) * 2)}'") for c in ART_FINANCE])
         cparams = {}

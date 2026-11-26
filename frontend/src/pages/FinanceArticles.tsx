@@ -115,6 +115,7 @@ const VALEURS_DESTINATION = [
 const CHAMPS = [
   { k: 'destination', l: 'Destination IFS' }, { k: 'type', l: 'Type SAP' }, { k: 'stock', l: 'Stock positif' },
   { k: 'magasin', l: 'Classe magasin' }, { k: 'nomenclature', l: 'Dans une nomenclature' }, { k: 'fichier', l: 'Fichier validé' },
+  { k: 'absent_prod', l: 'Absent de la prod IFS' },
 ];
 
 const MODE_EMPLOI: { titre: string; items: [string, string][] }[] = [
@@ -126,7 +127,7 @@ const MODE_EMPLOI: { titre: string; items: [string, string][] }[] = [
       ['Charger la structure', "Ajoute au périmètre les articles de la maintenance qui n'y sont pas encore, sans rien supprimer : articles des équipements actifs liés à un article, et pièces des nomenclatures placées sous les équipements et les postes techniques. Chaque N° article n'est présent qu'une fois ; un article déjà là garde sa source. Un équipement sans article n'ajoute rien : le lier d'abord à un article dans Maintenance > Équipements. À relancer après une modification de la structure ou des liens équipement - article."],
       ['Synchroniser SAP', "Ré-extrait d'abord les tables articles de SAP, rejoue les modules de chargement articles (qui recalculent aussi part_catalog et les autres tables IFS articles), puis recalcule le périmètre. C'est l'action la plus longue : compter 15 à 40 minutes."],
       ['Importer le fichier validé', "Ouvre l'assistant d'import : choix du fichier, association des colonnes (N° article obligatoire), contrôle, puis import. Le périmètre est ensuite recalculé : les articles de magasin sont en FICHIER, les IBAU et les NLAG d'équipement dans leur source de maintenance. Une option permet de vider d'abord les fichiers déjà importés."],
-      ['Fichier à compléter', "Télécharge les articles affichés avec les seules colonnes utiles à la finance : groupe comptable, groupe d'achat et famille de produits. Une fois complété, l'importer par « Importer le fichier validé » : une case vide garde la valeur déjà enregistrée. Ces trois valeurs partent vers IFS au prochain chargement des articles."],
+      ['Fichier à compléter', "Télécharge les articles affichés avec les seules colonnes utiles à la finance : origine (SAP ou PHL), présence en article stock, achat et vente, puis groupe comptable, groupe d'achat, groupe de coûts (avec leur description) et famille de produits. Une fois complété, l'importer par « Importer le fichier validé » : une case vide garde la valeur déjà enregistrée. Les groupes et la famille partent vers IFS au prochain chargement des articles. La colonne « Absent de la prod IFS » signale les articles qu'IFS ne connaît pas encore ; pour n'exporter qu'eux, ajouter le filtre avancé « Absent de la prod IFS est Oui »."],
       ['Exporter Excel', 'Télécharge un classeur des articles affichés, avec tous les filtres et le tri en cours, et toutes les colonnes.'],
     ],
   },
@@ -413,7 +414,7 @@ const FinanceArticles: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="Classeur des articles filtrés à envoyer à la finance : N° article, description, source, catégorie, puis groupe comptable, groupe d'achat et famille de produits à compléter. Le fichier complété se réimporte tel quel">
+          <Tooltip title="Classeur des articles filtrés à envoyer à la finance : N° article, description, source, origine, catégorie, article stock / achat / vente, puis groupe comptable, groupe d'achat, groupe de coûts (avec description) et famille de produits à compléter. Le fichier complété se réimporte tel quel">
             <span>
               <Button variant="outlined" color="success" startIcon={<ExcelIcon />} onClick={() => handleExport('finance')} disabled={exporting || !data?.total}>
                 Fichier à compléter
